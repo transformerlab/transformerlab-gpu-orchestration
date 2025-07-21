@@ -1,13 +1,13 @@
 # Lattice
 
-## 🏗️ Architecture
+## Architecture
 
 - **Backend**: FastAPI with WorkOS SSO integration
 - **Frontend**: React + TypeScript + MUI Joy UI components
 - **Authentication**: WorkOS SSO with JWT tokens
 - **Development**: Hot reload for both frontend and backend
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -84,7 +84,7 @@ src/
 6. Token is stored in localStorage
 7. User can access protected routes
 
-## 🎨 UI Components
+## UI Components
 
 The app uses MUI Joy components for a modern, accessible interface:
 
@@ -92,14 +92,6 @@ The app uses MUI Joy components for a modern, accessible interface:
 - **Dashboard**: User information and app features
 - **Loading states**: Proper loading indicators
 - **Error handling**: User-friendly error messages
-
-## 🔒 Security Features
-
-- JWT token-based authentication
-- Automatic token refresh handling
-- Protected routes
-- CORS configuration
-- Environment variable configuration
 
 ## 📝 Environment Variables
 
@@ -115,14 +107,3 @@ WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32``
 ```env
 REACT_APP_API_URL=http://localhost:8000
 ```
-
-## 🚧 Next Steps
-
-The authentication foundation is complete! You can now add:
-
-1. **Database integration** (PostgreSQL, MongoDB, etc.)
-2. **User management** (profiles, preferences)
-3. **Business logic** (your app's core features)
-4. **Additional UI pages** (settings, admin panel)
-5. **API endpoints** (CRUD operations)
-6. **Deployment configuration** (Docker, cloud providers)
