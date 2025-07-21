@@ -139,13 +139,10 @@ The app uses MUI Joy components for a modern, accessible interface:
 
 ### Backend (.env)
 ```env
-WORKOS_API_KEY=your_workos_api_key
-WORKOS_CLIENT_ID=your_workos_client_id
-# Choose one based on your SSO setup:
-WORKOS_DOMAIN=your_workos_domain          # For domain-based SSO
-# WORKOS_ORGANIZATION=org_12345           # For organization-based SSO
-WORKOS_REDIRECT_URI=http://localhost:3000/auth/callback
-JWT_SECRET_KEY=your_secret_key
+WORKOS_API_KEY= #from workos dashboard
+WORKOS_CLIENT_ID= #from workos dashboard
+WORKOS_REDIRECT_URI=http://localhost:8000/auth/callback
+WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32``
 ```
 
 ### Frontend (.env.local)
