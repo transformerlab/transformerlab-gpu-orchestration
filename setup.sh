@@ -30,6 +30,7 @@ echo "📦 Installing frontend dependencies..."
 cd frontend
 npm install
 cd ..
+npm install
 
 echo "🎉 Setup complete!"
 echo ""
