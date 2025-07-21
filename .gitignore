@@ -43,8 +43,6 @@ lerna-debug.log*
 frontend/build/
 
 # IDE
-.vscode/settings.json
-.vscode/launch.json
 .idea/
 *.swp
 *.swo
