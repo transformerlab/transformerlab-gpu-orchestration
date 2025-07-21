@@ -15,34 +15,24 @@
 - Node.js 16+
 - WorkOS account and application setup
 
-### 1. WorkOS Setup
+### Setup Instructions
+
+1. **WorkOS Setup**: Create a WorkOS account at [workos.com](https://workos.com) and configure your SSO connection
+2. **Run Setup Script**: `./setup.sh` (installs all dependencies)
+3. **Configure Environment**: Copy `backend/.env.example` to `backend/.env` and add your WorkOS credentials
+4. **Start Development**: `npm run dev` (runs both frontend and backend)
+
+That's it! 🎉
+
+### WorkOS Configuration
 
 1. Create a WorkOS account at [workos.com](https://workos.com)
 2. Create a new WorkOS application
 3. Configure your SSO connection (Google, Microsoft, etc.)
-4. Note down your:
-   - API Key
-   - Client ID
-5. Add a redirect URI in WorkOS:
-   - `http://localhost:8000/auth/callback`
+4. Note down your API Key and Client ID
+5. Add redirect URI: `http://localhost:8000/auth/callback`
 
-### 2. Backend Setup
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment file and configure
-cp .env.example .env
-# Edit .env with your WorkOS credentials
-```
+### Environment Variables
 
 Update `backend/.env` with your WorkOS credentials:
 
@@ -51,38 +41,14 @@ Update `backend/.env` with your WorkOS credentials:
 WORKOS_API_KEY= #from workos dashboard
 WORKOS_CLIENT_ID= #from workos dashboard
 WORKOS_REDIRECT_URI=http://localhost:8000/auth/callback
-WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32``
+WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32`
 ```
 
-### 3. Frontend Setup
+### URLs
 
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Copy environment file
-cp .env.example .env.local
-# No changes needed for development
-```
-
-### 4. Run the Application
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-python main.py
-# Backend will run on http://localhost:8000
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm start
-# Frontend will run on http://localhost:3000
-```
+- Frontend: <http://localhost:3000>
+- Backend: <http://localhost:8000>
+- API Docs: <http://localhost:8000/docs>
 
 ## 🔧 Development
 
