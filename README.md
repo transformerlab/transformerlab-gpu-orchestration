@@ -22,6 +22,28 @@
 3. **Configure Environment**: Copy `backend/.env.example` to `backend/.env` and add your WorkOS credentials
 4. **Start Development**: `npm run dev` (runs both frontend and backend)
 
+That's it! 🎉
+
+### WorkOS Configuration
+
+1. Create a WorkOS account at [workos.com](https://workos.com)
+2. Create a new WorkOS application
+3. Configure your SSO connection (Google, Microsoft, etc.)
+4. Note down your API Key and Client ID
+5. Add redirect URI: `http://localhost:8000/auth/callback`
+
+### Environment Variables
+
+Update `backend/.env` with your WorkOS credentials:
+
+```env
+# Backend Environment Variables
+WORKOS_API_KEY= #from workos dashboard
+WORKOS_CLIENT_ID= #from workos dashboard
+WORKOS_REDIRECT_URI=http://localhost:8000/auth/callback
+WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32`
+```
+
 ## 🐳 Docker Deployment
 
 ### Method 1: Using `docker-run.sh` (Recommended)
