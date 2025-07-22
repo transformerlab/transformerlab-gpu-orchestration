@@ -7,13 +7,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+      - "3000:3000" # Expose port 3000 for the frontend
     environment:
       # Required WorkOS credentials - set these in a .env file or pass them directly
       - WORKOS_API_KEY=${WORKOS_API_KEY}
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
 
       # Optional environment variables with defaults
-      - WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-http://localhost:8000/auth/callback}
+      - WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-http://localhost:3000/auth/callback}
       - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD}
       - DEBUG=${DEBUG:-false}
     volumes:
