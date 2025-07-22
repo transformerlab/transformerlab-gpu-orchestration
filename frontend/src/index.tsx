@@ -4,10 +4,8 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
-console.log(
-  "🔗 Frontend using REACT_APP_WORKOS_REDIRECT_URI:",
-  process.env.REACT_APP_WORKOS_REDIRECT_URI
-);
+// echo the API base URL to the console
+console.log("API Base URL:", process.env.REACT_APP_API_BASE_URL);
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement

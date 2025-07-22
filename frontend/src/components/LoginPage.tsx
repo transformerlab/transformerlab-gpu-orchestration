@@ -9,6 +9,8 @@ import {
 } from "@mui/joy";
 import axios from "axios";
 
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +20,8 @@ const LoginPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Get the login URL from the backend
-      const response = await axios.get("http://localhost:8000/auth/login-url", {
+      // Get the login URL from the backend using the environment variable
+      const response = await axios.get(`${apiBaseUrl}/auth/login-url`, {
         withCredentials: true,
       });
 

@@ -9,10 +9,15 @@ if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
     exit 1
 fi
 
+
 # Set default values for optional environment variables
 export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/auth/callback"}
 export WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-$(openssl rand -base64 32)}
 export DEBUG=${DEBUG:-"False"}
+
+# Set API base URL for frontend from environment variable, default to http://localhost:8000
+export REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-"http://localhost:8000"}
+echo "REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}" > /app/frontend/.env
 
 echo "🚀 Starting Lattice application using npm run dev..."
 echo "📦 Frontend: http://localhost:3000"
