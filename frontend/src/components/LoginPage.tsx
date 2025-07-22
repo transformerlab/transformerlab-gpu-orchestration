@@ -23,6 +23,10 @@ const LoginPage: React.FC = () => {
         withCredentials: true,
       });
 
+      // Debug output: log the full API response
+      console.debug("Login API response:", response);
+      console.debug("Login API response data:", response.data);
+
       // Redirect to the WorkOS login URL
       window.location.href = response.data.login_url;
     } catch (err) {
