@@ -209,5 +209,9 @@ if os.path.exists(frontend_build_path):
             raise HTTPException(status_code=404, detail="Frontend not found")
 
 
+# Print the redirect URI being used
+redirect_uri = os.getenv("WORKOS_REDIRECT_URI", "http://localhost:8000/auth/callback")
+print(f"🔗 Backend using WORKOS_REDIRECT_URI: {redirect_uri}")
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
