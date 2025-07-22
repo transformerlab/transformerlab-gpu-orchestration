@@ -15,6 +15,7 @@ import os
 from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
+import sky
 
 # Load environment variables from .env file
 load_dotenv()
@@ -78,6 +79,41 @@ class ClusterResponse(BaseModel):
 
 class ClustersListResponse(BaseModel):
     clusters: List[str]
+
+
+class LaunchClusterRequest(BaseModel):
+    cluster_name: str
+    command: str = "echo 'Hello SkyPilot'"
+    setup: Optional[str] = None
+    cloud: Optional[str] = None
+    instance_type: Optional[str] = None
+    cpus: Optional[str] = None
+    memory: Optional[str] = None
+    accelerators: Optional[str] = None
+    region: Optional[str] = None
+    zone: Optional[str] = None
+    use_spot: bool = False
+    idle_minutes_to_autostop: Optional[int] = None
+
+
+class LaunchClusterResponse(BaseModel):
+    request_id: str
+    cluster_name: str
+    message: str
+
+
+class ClusterStatusResponse(BaseModel):
+    cluster_name: str
+    status: str
+    launched_at: Optional[int] = None
+    last_use: Optional[str] = None
+    autostop: Optional[int] = None
+    to_down: Optional[bool] = None
+    resources_str: Optional[str] = None
+
+
+class StatusResponse(BaseModel):
+    clusters: List[ClusterStatusResponse]
 
 
 # WorkOS session helpers
@@ -213,6 +249,104 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
     save_ssh_node_pools(pools)
 
     return pools[cluster_name]
+
+
+# SkyPilot helper functions
+def launch_cluster_with_skypilot(
+    cluster_name: str,
+    command: str,
+    setup: Optional[str] = None,
+    cloud: Optional[str] = None,
+    instance_type: Optional[str] = None,
+    cpus: Optional[str] = None,
+    memory: Optional[str] = None,
+    accelerators: Optional[str] = None,
+    region: Optional[str] = None,
+    zone: Optional[str] = None,
+    use_spot: bool = False,
+    idle_minutes_to_autostop: Optional[int] = None,
+):
+    """Launch a cluster using SkyPilot"""
+    try:
+        # Create a task
+        task = sky.Task(
+            name=f"lattice-task-{cluster_name}",
+            run=command,
+            setup=setup,
+        )
+
+        # Build resources config
+        resources_kwargs = {}
+
+        # Handle infrastructure - support both cloud providers and SSH
+        if cloud:
+            if cloud.lower() == "ssh":
+                # For SSH, we use the SSH node pools configured in ~/.sky/ssh_node_pools.yaml
+                # The cluster_name should correspond to a pool name in the SSH node pools
+                resources_kwargs["infra"] = "ssh"
+                # For SSH clusters, we can optionally specify the pool name
+                # If cluster_name exists in SSH pools, SkyPilot will use it
+            else:
+                # For cloud providers (aws, gcp, azure, etc.)
+                resources_kwargs["infra"] = cloud
+
+        if instance_type:
+            resources_kwargs["instance_type"] = instance_type
+        if cpus:
+            resources_kwargs["cpus"] = cpus
+        if memory:
+            resources_kwargs["memory"] = memory
+        if accelerators:
+            resources_kwargs["accelerators"] = accelerators
+        if region:
+            resources_kwargs["region"] = region
+        if zone:
+            resources_kwargs["zone"] = zone
+        if use_spot and cloud and cloud.lower() != "ssh":
+            # Spot instances are not applicable for SSH clusters
+            resources_kwargs["use_spot"] = use_spot
+
+        # Set resources if any are specified
+        if resources_kwargs:
+            resources = sky.Resources(**resources_kwargs)
+            task.set_resources(resources)
+
+        # For SSH clusters, ensure the SSH node pool exists
+        if cloud and cloud.lower() == "ssh":
+            pools = load_ssh_node_pools()
+            if cluster_name not in pools:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"SSH cluster '{cluster_name}' not found in SSH node pools. "
+                    f"Please create the SSH cluster first using the SSH Clusters tab.",
+                )
+
+        # Launch the cluster
+        request_id = sky.launch(
+            task,
+            cluster_name=cluster_name,
+            idle_minutes_to_autostop=idle_minutes_to_autostop,
+        )
+
+        return request_id
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch cluster: {str(e)}"
+        )
+
+
+def get_skypilot_status(cluster_names: Optional[List[str]] = None):
+    """Get status of SkyPilot clusters"""
+    try:
+        request_id = sky.status(
+            cluster_names=cluster_names, refresh=sky.StatusRefreshMode.AUTO
+        )
+        result = sky.get(request_id)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster status: {str(e)}"
+        )
 
 
 # Routes
@@ -421,6 +555,111 @@ async def remove_node(cluster_name: str, node_ip: str, user=Depends(verify_auth)
     return {
         "message": f"Node with IP '{node_ip}' removed from cluster '{cluster_name}' successfully"
     }
+
+
+# SkyPilot cluster launching and status routes
+@app.get("/api/skypilot/ssh-clusters")
+async def list_ssh_clusters(user=Depends(verify_auth)):
+    """List available SSH clusters for SkyPilot"""
+    try:
+        pools = load_ssh_node_pools()
+        ssh_clusters = []
+        for cluster_name, config in pools.items():
+            hosts_count = len(config.get("hosts", []))
+            ssh_clusters.append(
+                {
+                    "name": cluster_name,
+                    "hosts_count": hosts_count,
+                    "has_defaults": any(
+                        key in config for key in ["user", "identity_file", "password"]
+                    ),
+                }
+            )
+        return {"ssh_clusters": ssh_clusters}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list SSH clusters: {str(e)}"
+        )
+
+
+@app.post("/api/skypilot/launch", response_model=LaunchClusterResponse)
+async def launch_skypilot_cluster(
+    launch_request: LaunchClusterRequest, user=Depends(verify_auth)
+):
+    """Launch a cluster using SkyPilot"""
+    try:
+        request_id = launch_cluster_with_skypilot(
+            cluster_name=launch_request.cluster_name,
+            command=launch_request.command,
+            setup=launch_request.setup,
+            cloud=launch_request.cloud,
+            instance_type=launch_request.instance_type,
+            cpus=launch_request.cpus,
+            memory=launch_request.memory,
+            accelerators=launch_request.accelerators,
+            region=launch_request.region,
+            zone=launch_request.zone,
+            use_spot=launch_request.use_spot,
+            idle_minutes_to_autostop=launch_request.idle_minutes_to_autostop,
+        )
+
+        return LaunchClusterResponse(
+            request_id=request_id,
+            cluster_name=launch_request.cluster_name,
+            message=f"Cluster '{launch_request.cluster_name}' launch initiated successfully",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch cluster: {str(e)}"
+        )
+
+
+@app.get("/api/skypilot/status", response_model=StatusResponse)
+async def get_skypilot_cluster_status(
+    cluster_names: Optional[str] = None, user=Depends(verify_auth)
+):
+    """Get status of SkyPilot clusters"""
+    try:
+        cluster_list = None
+        if cluster_names:
+            cluster_list = [name.strip() for name in cluster_names.split(",")]
+
+        cluster_records = get_skypilot_status(cluster_list)
+
+        clusters = []
+        for record in cluster_records:
+            clusters.append(
+                ClusterStatusResponse(
+                    cluster_name=record["name"],
+                    status=str(record["status"]),
+                    launched_at=record.get("launched_at"),
+                    last_use=record.get("last_use"),
+                    autostop=record.get("autostop"),
+                    to_down=record.get("to_down"),
+                    resources_str=record.get("resources_str"),
+                )
+            )
+
+        return StatusResponse(clusters=clusters)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster status: {str(e)}"
+        )
+
+
+@app.get("/api/skypilot/request/{request_id}")
+async def get_skypilot_request_status(request_id: str, user=Depends(verify_auth)):
+    """Get the status and result of a SkyPilot request"""
+    try:
+        # Check if the request is completed
+        result = sky.get(request_id)
+        return {"request_id": request_id, "status": "completed", "result": result}
+    except Exception as e:
+        return {
+            "request_id": request_id,
+            "status": "failed",
+            "error": str(e),
+        }
 
 
 # Mount static files for production (when frontend build exists)

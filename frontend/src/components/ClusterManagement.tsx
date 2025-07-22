@@ -14,8 +14,14 @@ import {
   Table,
   Chip,
   IconButton,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanel,
 } from "@mui/joy";
 import { Plus, Trash2, Monitor } from "lucide-react";
+import SkyPilotClusterLauncher from "./SkyPilotClusterLauncher";
+import SkyPilotClusterStatus from "./SkyPilotClusterStatus";
 
 interface SSHNode {
   ip: string;
@@ -42,6 +48,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const [showAddNodeModal, setShowAddNodeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
 
   // Form states
   const [newClusterName, setNewClusterName] = useState("");
@@ -53,6 +60,12 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const [newNodeUser, setNewNodeUser] = useState("");
   const [newNodeIdentityFile, setNewNodeIdentityFile] = useState("");
   const [newNodePassword, setNewNodePassword] = useState("");
+
+  useEffect(() => {
+    if (activeTab === 0) {
+      fetchClusters();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     fetchClusters();
@@ -178,7 +191,11 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   };
 
   const deleteCluster = async (clusterName: string) => {
-    if (!window.confirm(`Are you sure you want to delete cluster "${clusterName}"?`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete cluster "${clusterName}"?`
+      )
+    ) {
       return;
     }
 
@@ -239,9 +256,9 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
             <Typography color="danger">{error}</Typography>
-            <Button 
-              variant="plain" 
-              size="sm" 
+            <Button
+              variant="plain"
+              size="sm"
               color="danger"
               onClick={() => setError(null)}
             >
@@ -252,131 +269,156 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
       )}
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-        <Typography level="h2">SkyPilot Cluster Management</Typography>
-        <Button
-          startDecorator={<Plus size={16} />}
-          onClick={() => setShowCreateModal(true)}
-          disabled={loading}
-        >
-          Create New Cluster
-        </Button>
+        <Typography level="h2">Cluster Management</Typography>
       </Box>
 
-      {/* Clusters List */}
-      <Card sx={{ mb: 3 }}>
-        <Typography level="h4" sx={{ mb: 2 }}>
-          Clusters
-        </Typography>
-        {clusters.length === 0 ? (
-          <Typography level="body-md" sx={{ color: "text.secondary" }}>
-            No clusters found. Create your first cluster to get started.
-          </Typography>
-        ) : (
-          <Stack spacing={1}>
-            {clusters.map((clusterName) => (
-              <Box
-                key={clusterName}
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  p: 2,
-                  border: "1px solid",
-                  borderColor:
-                    selectedCluster?.cluster_name === clusterName
-                      ? "primary.main"
-                      : "neutral.300",
-                  borderRadius: "md",
-                  cursor: "pointer",
-                  bgcolor:
-                    selectedCluster?.cluster_name === clusterName
-                      ? "primary.50"
-                      : "transparent",
-                }}
-                onClick={() => fetchClusterDetails(clusterName)}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Monitor size={16} />
-                  <Typography level="title-md">{clusterName}</Typography>
-                  {selectedCluster?.cluster_name === clusterName && (
-                    <Chip variant="soft" color="primary" size="sm">
-                      Selected
-                    </Chip>
-                  )}
-                </Box>
-                <IconButton
-                  color="danger"
-                  variant="plain"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteCluster(clusterName);
-                  }}
-                >
-                  <Trash2 size={16} />
-                </IconButton>
-              </Box>
-            ))}
-          </Stack>
-        )}
-      </Card>
+      <Tabs
+        value={activeTab}
+        onChange={(_, value) => setActiveTab(value as number)}
+      >
+        <TabList>
+          <Tab>SSH Clusters</Tab>
+          <Tab>SkyPilot Clusters</Tab>
+        </TabList>
 
-      {/* Selected Cluster Details */}
-      {selectedCluster && (
-        <Card>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-            <Typography level="h4">
-              Cluster: {selectedCluster.cluster_name}
-            </Typography>
+        <TabPanel value={0}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Typography level="h3">SSH Cluster Configuration</Typography>
             <Button
               startDecorator={<Plus size={16} />}
-              size="sm"
-              onClick={() => setShowAddNodeModal(true)}
+              onClick={() => setShowCreateModal(true)}
               disabled={loading}
             >
-              Add Node
+              Create SSH Cluster
             </Button>
           </Box>
 
-          {selectedCluster.nodes.length === 0 ? (
-            <Typography level="body-md" sx={{ color: "text.secondary" }}>
-              No nodes in this cluster. Add nodes to get started.
+          {/* SSH Clusters List */}
+          <Card sx={{ mb: 3 }}>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              SSH Clusters
             </Typography>
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <th>IP Address</th>
-                  <th>User</th>
-                  <th>Identity File</th>
-                  <th>Password</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedCluster.nodes.map((node, index) => (
-                  <tr key={index}>
-                    <td>{node.ip}</td>
-                    <td>{node.user}</td>
-                    <td>{node.identity_file || "-"}</td>
-                    <td>{node.password ? "****" : "-"}</td>
-                    <td>
-                      <IconButton
-                        color="danger"
-                        variant="plain"
-                        size="sm"
-                        onClick={() => removeNode(node.ip)}
-                      >
-                        <Trash2 size={16} />
-                      </IconButton>
-                    </td>
-                  </tr>
+            {clusters.length === 0 ? (
+              <Typography level="body-md" sx={{ color: "text.secondary" }}>
+                No SSH clusters found. Create your first cluster to get started.
+              </Typography>
+            ) : (
+              <Stack spacing={1}>
+                {clusters.map((clusterName) => (
+                  <Box
+                    key={clusterName}
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      p: 2,
+                      border: "1px solid",
+                      borderColor:
+                        selectedCluster?.cluster_name === clusterName
+                          ? "primary.main"
+                          : "neutral.300",
+                      borderRadius: "md",
+                      cursor: "pointer",
+                      bgcolor:
+                        selectedCluster?.cluster_name === clusterName
+                          ? "primary.50"
+                          : "transparent",
+                    }}
+                    onClick={() => fetchClusterDetails(clusterName)}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Monitor size={16} />
+                      <Typography level="title-md">{clusterName}</Typography>
+                      {selectedCluster?.cluster_name === clusterName && (
+                        <Chip variant="soft" color="primary" size="sm">
+                          Selected
+                        </Chip>
+                      )}
+                    </Box>
+                    <IconButton
+                      color="danger"
+                      variant="plain"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteCluster(clusterName);
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </IconButton>
+                  </Box>
                 ))}
-              </tbody>
-            </Table>
+              </Stack>
+            )}
+          </Card>
+
+          {/* Selected Cluster Details */}
+          {selectedCluster && (
+            <Card>
+              <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
+              >
+                <Typography level="h4">
+                  Cluster: {selectedCluster.cluster_name}
+                </Typography>
+                <Button
+                  startDecorator={<Plus size={16} />}
+                  size="sm"
+                  onClick={() => setShowAddNodeModal(true)}
+                  disabled={loading}
+                >
+                  Add Node
+                </Button>
+              </Box>
+
+              {selectedCluster.nodes.length === 0 ? (
+                <Typography level="body-md" sx={{ color: "text.secondary" }}>
+                  No nodes in this cluster. Add nodes to get started.
+                </Typography>
+              ) : (
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>IP Address</th>
+                      <th>User</th>
+                      <th>Identity File</th>
+                      <th>Password</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedCluster.nodes.map((node, index) => (
+                      <tr key={index}>
+                        <td>{node.ip}</td>
+                        <td>{node.user}</td>
+                        <td>{node.identity_file || "-"}</td>
+                        <td>{node.password ? "****" : "-"}</td>
+                        <td>
+                          <IconButton
+                            color="danger"
+                            variant="plain"
+                            size="sm"
+                            onClick={() => removeNode(node.ip)}
+                          >
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
+        </TabPanel>
+
+        <TabPanel value={1}>
+          <Stack spacing={3}>
+            <SkyPilotClusterLauncher />
+            <SkyPilotClusterStatus />
+          </Stack>
+        </TabPanel>
+      </Tabs>
 
       {/* Create Cluster Modal */}
       <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)}>
@@ -420,10 +462,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
               />
             </FormControl>
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Button
-                variant="plain"
-                onClick={() => setShowCreateModal(false)}
-              >
+              <Button variant="plain" onClick={() => setShowCreateModal(false)}>
                 Cancel
               </Button>
               <Button
