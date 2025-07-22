@@ -1,20 +1,7 @@
 # Multi-stage Dockerfile for Lattice Full-Stack Application
+
 # Stage 1: Build the React frontend
-FROM node:18-alpine AS frontend-builder
-
-WORKDIR /app/frontend
-
-# Copy frontend package files
-COPY frontend/package*.json ./
-
-# Install frontend dependencies
-RUN npm ci --only=production
-
-# Copy frontend source code
-COPY frontend/ ./
-
-# Build the React application
-RUN npm run build
+FROM node:20 AS frontend-builder
 
 # Stage 2: Python backend setup
 FROM python:3.11-slim AS backend
@@ -22,7 +9,8 @@ FROM python:3.11-slim AS backend
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/backend
+    PYTHONPATH=/app/backend \
+    PORT=3000
 
 # Set work directory
 WORKDIR /app
@@ -30,13 +18,14 @@ WORKDIR /app
 # Copy root package.json and package-lock.json for dev scripts
 COPY package*.json ./
 
-# Install system dependencies and Node.js
+# Install system dependencies and Node.js 20
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Copy setup script and run it
 COPY setup.sh ./
@@ -44,8 +33,9 @@ COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
 
-# Copy built frontend from the previous stage
-COPY --from=frontend-builder /app/frontend/build ./frontend/build
+
+# # Copy built frontend from the previous stage
+# COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Copy and setup startup script
 COPY start.sh ./
