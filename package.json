@@ -1,0 +1,30 @@
+{
+  "name": "lattice",
+  "version": "1.0.0",
+  "description": "Full-stack application with FastAPI backend and React TypeScript frontend featuring WorkOS authentication",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && python main.py",
+    "dev:frontend": "cd frontend && npm start",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:frontend": "cd frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "test": "cd frontend && npm test",
+    "lint": "cd frontend && npm run lint"
+  },
+  "keywords": [
+    "fastapi",
+    "react",
+    "typescript",
+    "workos",
+    "authentication",
+    "mui-joy"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
