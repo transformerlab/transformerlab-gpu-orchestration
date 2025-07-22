@@ -7,6 +7,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && python main.py",
     "dev:frontend": "cd frontend && npm start",
+    "unified": "npm run build && cd backend && python main.py",
     "install:all": "npm run install:backend && npm run install:frontend",
     "install:backend": "cd backend && pip install -r requirements.txt",
     "install:frontend": "cd frontend && npm install",
