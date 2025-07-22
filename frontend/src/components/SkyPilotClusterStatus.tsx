@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, Card, Typography, Table, Chip } from "@mui/joy";
-import { RefreshCw, Monitor } from "lucide-react";
+import { RefreshCw, Monitor, Terminal } from "lucide-react";
+import TaskOutputModal from "./TaskOutputModal";
 
 interface ClusterStatus {
   cluster_name: string;
@@ -20,6 +21,8 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [clusters, setClusters] = useState<ClusterStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outputModalOpen, setOutputModalOpen] = useState(false);
+  const [selectedCluster, setSelectedCluster] = useState<string>("");
 
   useEffect(() => {
     fetchClusterStatus();
@@ -69,6 +72,11 @@ const SkyPilotClusterStatus: React.FC = () => {
     if (!autostop) return "-";
     const action = toDown ? "down" : "stop";
     return `${autostop}min (${action})`;
+  };
+
+  const handleViewOutput = (clusterName: string) => {
+    setSelectedCluster(clusterName);
+    setOutputModalOpen(true);
   };
 
   return (
@@ -133,6 +141,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                 <th>Launched At</th>
                 <th>Last Use</th>
                 <th>Autostop</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -172,12 +181,32 @@ const SkyPilotClusterStatus: React.FC = () => {
                       {formatAutostop(cluster.autostop, cluster.to_down)}
                     </Typography>
                   </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="outlined"
+                      startDecorator={<Terminal size={14} />}
+                      onClick={() => handleViewOutput(cluster.cluster_name)}
+                      disabled={
+                        cluster.status.toLowerCase() !== "up" &&
+                        !cluster.status.toLowerCase().includes("up")
+                      }
+                    >
+                      Output
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </Table>
         )}
       </Card>
+
+      <TaskOutputModal
+        open={outputModalOpen}
+        onClose={() => setOutputModalOpen(false)}
+        clusterName={selectedCluster}
+      />
     </Box>
   );
 };

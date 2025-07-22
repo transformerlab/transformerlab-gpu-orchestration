@@ -116,6 +116,27 @@ class StatusResponse(BaseModel):
     clusters: List[ClusterStatusResponse]
 
 
+class JobRecord(BaseModel):
+    job_id: int
+    job_name: str
+    username: str
+    submitted_at: float
+    start_at: Optional[float] = None
+    end_at: Optional[float] = None
+    resources: str
+    status: str
+    log_path: str
+
+
+class JobQueueResponse(BaseModel):
+    jobs: List[JobRecord]
+
+
+class JobLogsResponse(BaseModel):
+    job_id: int
+    logs: str
+
+
 # WorkOS session helpers
 cookie_password = os.getenv(
     "WORKOS_COOKIE_PASSWORD", "y0jN-wF1bIUoSwdKT6yWIHS5qLI4Kfq5TnqIANOxEXM="
@@ -347,6 +368,44 @@ def get_skypilot_status(cluster_names: Optional[List[str]] = None):
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster status: {str(e)}"
         )
+
+
+def get_cluster_job_queue(cluster_name: str):
+    """Get job queue for a specific cluster"""
+    try:
+        request_id = sky.queue(cluster_name)
+        job_records = sky.get(request_id)
+        return job_records
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get job queue: {str(e)}"
+        )
+
+
+def get_job_logs(cluster_name: str, job_id: int, tail_lines: int = 50):
+    """Get logs for a specific job"""
+    try:
+        import io
+
+        # Create a StringIO object to capture the logs
+        log_stream = io.StringIO()
+
+        # Get logs using tail_logs (this returns exit code, logs go to stream)
+        sky.tail_logs(
+            cluster_name=cluster_name,
+            job_id=job_id,
+            follow=False,  # Don't follow, just get current logs
+            tail=tail_lines,
+            output_stream=log_stream,
+        )
+
+        # Get the captured logs
+        logs = log_stream.getvalue()
+        log_stream.close()
+
+        return logs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
 
 
 # Routes
@@ -660,6 +719,52 @@ async def get_skypilot_request_status(request_id: str, user=Depends(verify_auth)
             "status": "failed",
             "error": str(e),
         }
+
+
+@app.get("/api/skypilot/jobs/{cluster_name}", response_model=JobQueueResponse)
+async def get_cluster_jobs(cluster_name: str, user=Depends(verify_auth)):
+    """Get job queue for a cluster"""
+    try:
+        job_records = get_cluster_job_queue(cluster_name)
+        print(f"Job records for cluster '{cluster_name}': {job_records}")
+
+        jobs = []
+        for record in job_records:
+            print("RECORD:", record["job_id"])
+            jobs.append(
+                JobRecord(
+                    job_id=record["job_id"],
+                    job_name=record["job_name"],
+                    username=record["username"],
+                    submitted_at=record["submitted_at"],
+                    start_at=record.get("start_at"),
+                    end_at=record.get("end_at"),
+                    resources=record["resources"],
+                    status=str(record["status"]),
+                    log_path=record["log_path"],
+                )
+            )
+
+        return JobQueueResponse(jobs=jobs)
+    except Exception as e:
+        print(f"Error getting cluster jobs: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster jobs: {str(e)}"
+        )
+
+
+@app.get(
+    "/api/skypilot/jobs/{cluster_name}/{job_id}/logs", response_model=JobLogsResponse
+)
+async def get_cluster_job_logs(
+    cluster_name: str, job_id: int, tail_lines: int = 50, user=Depends(verify_auth)
+):
+    """Get logs for a specific job"""
+    try:
+        logs = get_job_logs(cluster_name, job_id, tail_lines)
+        return JobLogsResponse(job_id=job_id, logs=logs)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
 
 
 # Mount static files for production (when frontend build exists)
