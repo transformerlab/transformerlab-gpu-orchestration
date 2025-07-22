@@ -63,6 +63,9 @@ else
     echo "⚠️  Please install kubectl manually for your OS"
 fi
 
+echo "✅ Backend dependencies installed (including WorkOS 5.24.0)"
+cd ..
+
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
 cd frontend
