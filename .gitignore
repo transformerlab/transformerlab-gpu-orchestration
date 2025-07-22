@@ -69,8 +69,5 @@ logs
 coverage/
 .nyc_output
 
-# Dependencies
-package-lock.json
-
 # Copilot instructions
 .github/copilot-instructions.md

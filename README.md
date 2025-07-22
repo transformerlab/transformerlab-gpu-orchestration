@@ -22,27 +22,80 @@
 3. **Configure Environment**: Copy `backend/.env.example` to `backend/.env` and add your WorkOS credentials
 4. **Start Development**: `npm run dev` (runs both frontend and backend)
 
-That's it! 🎉
+## 🐳 Docker Deployment
 
-### WorkOS Configuration
+### Method 1: Using `docker-run.sh` (Recommended)
 
-1. Create a WorkOS account at [workos.com](https://workos.com)
-2. Create a new WorkOS application
-3. Configure your SSO connection (Google, Microsoft, etc.)
-4. Note down your API Key and Client ID
-5. Add redirect URI: `http://localhost:8000/auth/callback`
+**Best for:** Development, quick testing, and CI/CD pipelines
 
-### Environment Variables
+1. **Create environment file**: Copy `.env.docker.example` to `.env` and configure:
+   ```env
+   WORKOS_API_KEY=your_api_key_here
+   WORKOS_CLIENT_ID=your_client_id_here
+   WORKOS_REDIRECT_URI=http://localhost:8000/auth/callback
+   WORKOS_COOKIE_PASSWORD=your_secure_cookie_password
+   ```
 
-Update `backend/.env` with your WorkOS credentials:
+2. **Run the helper script**:
+   ```bash
+   ./docker-run.sh [build|run|build-and-run|compose|stop|clean]
+   ```
 
-```env
-# Backend Environment Variables
-WORKOS_API_KEY= #from workos dashboard
-WORKOS_CLIENT_ID= #from workos dashboard
-WORKOS_REDIRECT_URI=http://localhost:8000/auth/callback
-WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32`
+   - `build`          - Build the Docker image only
+   - `run`            - Run the existing Docker image
+   - `build-and-run`  - Build and run (default)
+   - `compose`        - Use Docker Compose
+   - `stop`           - Stop running containers
+   - `clean`          - Stop and remove all containers and images
+
+   Example:
+   ```bash
+   ./docker-run.sh build-and-run
+   ```
+
+   The script will print URLs for both frontend (`http://localhost:3000`) and backend (`http://localhost:8000`).
+
+### Method 2: Docker Compose
+
+**Best for:** Development, production, and most use cases
+
+```bash
+docker-compose up -d
 ```
+
+### Method 3: Raw Docker Commands
+
+**Best for:** Manual control or custom CI/CD
+
+```bash
+# Build the image
+docker build -t lattice .
+
+# Run with environment variables
+docker run -p 8000:8000 -p 3000:3000 \
+  -e WORKOS_API_KEY=your_api_key \
+  -e WORKOS_CLIENT_ID=your_client_id \
+  lattice
+```
+
+### Docker Environment Variables
+
+The Docker container requires these environment variables:
+
+- `WORKOS_API_KEY` (required): Your WorkOS API key
+- `WORKOS_CLIENT_ID` (required): Your WorkOS Client ID  
+- `WORKOS_REDIRECT_URI` (optional): Defaults to `http://localhost:8000/auth/callback`
+- `WORKOS_COOKIE_PASSWORD` (optional): Auto-generated if not provided
+- `DEBUG` (optional): Set to `true` for debug mode
+
+### Production Considerations
+
+For production deployment:
+1. Use a proper reverse proxy (nginx, Traefik, etc.)
+2. Set secure `WORKOS_COOKIE_PASSWORD`
+3. Configure proper `WORKOS_REDIRECT_URI` for your domain
+4. Use environment-specific `.env` files
+5. Consider using Docker secrets for sensitive data
 
 ### URLs
 
