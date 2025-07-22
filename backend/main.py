@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, APIRouter
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -18,12 +18,16 @@ workos_client = workos.WorkOSClient(
     api_key=os.getenv("WORKOS_API_KEY"), client_id=os.getenv("WORKOS_CLIENT_ID")
 )
 
-app = FastAPI(title="Lattice API", version="1.0.0")
+# Create main app
+app = FastAPI(title="Lattice", version="1.0.0")
 
-# CORS middleware
+# Create API router for v1 endpoints
+api_v1_router = APIRouter(prefix="/api/v1")
+
+# CORS middleware - allow same origin since we're serving from same port
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["*"],  # Allow same origin requests
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,19 +86,24 @@ def verify_auth(request: Request):
 
 
 # Routes
-@app.get("/")
-async def root():
-    return {"message": "Lattice API"}
+@api_v1_router.get("/")
+async def api_root():
+    return {"message": "Lattice API v1"}
 
 
-@app.get("/auth/login-url")
-async def get_login_url():
+@api_v1_router.get("/auth/login-url")
+async def get_login_url(request: Request):
     """Generate WorkOS AuthKit login URL"""
     try:
+        # Get the base URL from the request
+        base_url = f"{request.url.scheme}://{request.url.netloc}"
+
+        print("BASE URL:", base_url)
+
         authorization_url = workos_client.user_management.get_authorization_url(
             provider="authkit",
             redirect_uri=os.getenv(
-                "WORKOS_REDIRECT_URI", "http://localhost:8000/auth/callback"
+                "WORKOS_REDIRECT_URI", f"{base_url}/api/v1/auth/callback"
             ),
         )
         return {"login_url": authorization_url}
@@ -105,7 +114,7 @@ async def get_login_url():
         )
 
 
-@app.get("/auth/callback")
+@api_v1_router.get("/auth/callback")
 async def auth_callback(request: Request, code: str):
     """Handle OAuth callback from WorkOS"""
     try:
@@ -115,8 +124,24 @@ async def auth_callback(request: Request, code: str):
             session={"seal_session": True, "cookie_password": cookie_password},
         )
 
-        # Create response with redirect to frontend
-        response = RedirectResponse(url="http://localhost:3000/dashboard")
+        # Determine redirect URL based on environment
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            # Auto-detect based on referer or use unified mode
+            referer = request.headers.get("referer", "")
+            print(f"DEBUG: Referer header: {referer}")
+
+            # If referer contains :3000, we're in development mode with separate frontend
+            if ":3000" in referer:
+                frontend_url = "http://localhost:3000"
+            else:
+                # Default to unified mode (relative URLs)
+                frontend_url = ""
+
+        # Create response with redirect to frontend dashboard
+        dashboard_url = f"{frontend_url}/dashboard" if frontend_url else "/dashboard"
+        print(f"DEBUG: Redirecting to: {dashboard_url}")
+        response = RedirectResponse(url=dashboard_url)
 
         # Set secure session cookie
         response.set_cookie(
@@ -126,15 +151,30 @@ async def auth_callback(request: Request, code: str):
             httponly=True,
             samesite="lax",
             max_age=86400 * 7,  # 7 days
+            path="/",  # Ensure cookie is available for all paths
         )
 
         return response
     except Exception as e:
         print(f"Authentication failed: {e}")
-        return RedirectResponse(url="http://localhost:3000/login?error=auth_failed")
+        # Handle error redirect similarly
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            referer = request.headers.get("referer", "")
+            if ":3000" in referer:
+                frontend_url = "http://localhost:3000"
+            else:
+                frontend_url = ""
+
+        error_url = (
+            f"{frontend_url}/login?error=auth_failed"
+            if frontend_url
+            else "/login?error=auth_failed"
+        )
+        return RedirectResponse(url=error_url)
 
 
-@app.get("/auth/me", response_model=UserResponse)
+@api_v1_router.get("/auth/me", response_model=UserResponse)
 async def get_current_user_info(user=Depends(verify_auth)):
     """Get current user info"""
     return UserResponse(
@@ -145,7 +185,7 @@ async def get_current_user_info(user=Depends(verify_auth)):
     )
 
 
-@app.get("/auth/logout")
+@api_v1_router.get("/auth/logout")
 async def logout(request: Request):
     """Logout user and clear session"""
     try:
@@ -161,23 +201,52 @@ async def logout(request: Request):
             response.delete_cookie("wos_session")
             return response
         else:
-            return RedirectResponse(url="http://localhost:3000/login")
+            # Handle redirect for development vs unified mode
+            frontend_url = os.getenv("FRONTEND_URL")
+            if not frontend_url:
+                referer = request.headers.get("referer", "")
+                if ":3000" in referer:
+                    frontend_url = "http://localhost:3000"
+                else:
+                    frontend_url = ""
+
+            login_url = f"{frontend_url}/login" if frontend_url else "/login"
+            return RedirectResponse(url=login_url)
     except Exception as e:
         print(f"Logout error: {e}")
-        response = RedirectResponse(url="http://localhost:3000/login")
+        # Handle error redirect similarly
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            referer = request.headers.get("referer", "")
+            if ":3000" in referer:
+                frontend_url = "http://localhost:3000"
+            else:
+                frontend_url = ""
+
+        login_url = f"{frontend_url}/login" if frontend_url else "/login"
+        response = RedirectResponse(url=login_url)
         response.delete_cookie("wos_session")
         return response
 
 
 # Health check for session
-@app.get("/auth/check")
+@api_v1_router.get("/auth/check")
 async def check_auth(request: Request):
     """Check if user is authenticated"""
+    session_cookie = request.cookies.get("wos_session")
+    print(f"DEBUG auth/check: Cookie present: {bool(session_cookie)}")
+
     user = get_current_user(request)
     if user:
+        print(f"DEBUG auth/check: User authenticated: {user.email}")
         return {"authenticated": True, "user": {"id": user.id, "email": user.email}}
+
+    print("DEBUG auth/check: User not authenticated")
     return {"authenticated": False}
 
+
+# Include the API router
+app.include_router(api_v1_router)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(
@@ -197,8 +266,8 @@ if os.path.exists(frontend_build_path):
     @app.get("/{path:path}")
     async def serve_frontend(path: str):
         """Serve React app for all non-API routes"""
-        # If path starts with 'api' or 'auth', let FastAPI handle it
-        if path.startswith(("api", "auth", "docs", "openapi.json")):
+        # If path starts with 'api', 'docs', 'openapi.json', let FastAPI handle it
+        if path.startswith(("api", "docs", "openapi.json", "redoc")):
             raise HTTPException(status_code=404, detail="API endpoint not found")
 
         # For all other paths, serve the React app
@@ -210,7 +279,8 @@ if os.path.exists(frontend_build_path):
 
 
 # Print the redirect URI being used
-redirect_uri = os.getenv("WORKOS_REDIRECT_URI", "http://localhost:8000/auth/callback")
+base_url = os.getenv("BASE_URL", "http://localhost:8000")
+redirect_uri = os.getenv("WORKOS_REDIRECT_URI", f"{base_url}/api/v1/auth/callback")
 print(f"🔗 Backend using WORKOS_REDIRECT_URI: {redirect_uri}")
 
 if __name__ == "__main__":

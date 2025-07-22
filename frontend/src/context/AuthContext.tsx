@@ -23,7 +23,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+// Use relative API base URL - this will work regardless of host/port
+const API_BASE_URL = process.env.REACT_APP_BASE_URL || "/api/v1";
 
 // Configure axios to include cookies
 const api = axios.create({
@@ -39,11 +40,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const checkAuth = async () => {
     try {
+      console.log("AuthContext: Checking authentication...");
       const response = await api.get("/auth/check");
+      console.log("AuthContext: Auth check response:", response.data);
       if (response.data.authenticated) {
         setUser(response.data.user);
+        console.log("AuthContext: User authenticated:", response.data.user);
       } else {
         setUser(null);
+        console.log("AuthContext: User not authenticated");
       }
     } catch (error) {
       console.error("Auth check failed:", error);
@@ -55,6 +60,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // Also check auth when the page becomes visible (handles OAuth redirects)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("AuthContext: Page became visible, rechecking auth...");
+        checkAuth();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   const logout = () => {
