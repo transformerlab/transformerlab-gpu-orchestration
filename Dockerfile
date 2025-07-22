@@ -22,7 +22,8 @@ FROM python:3.11-slim AS backend
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/backend
+    PYTHONPATH=/app/backend \
+    PORT=3000
 
 # Set work directory
 WORKDIR /app
