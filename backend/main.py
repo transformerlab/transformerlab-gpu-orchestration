@@ -362,6 +362,38 @@ def launch_cluster_with_skypilot(
 ):
     """Launch a cluster using SkyPilot"""
     try:
+        import subprocess
+        # For SSH clusters, ensure the SSH node pool exists and run sky ssh up
+        if cloud and cloud.lower() == "ssh":
+            pools = load_ssh_node_pools()
+            if cluster_name not in pools:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"SSH cluster '{cluster_name}' not found in SSH node pools. "
+                    f"Please create the SSH cluster first using the SSH Clusters tab.",
+                )
+            # Run `sky ssh up <cluster_name>` using subprocess
+            try:
+                print(f"[SkyPilot] Running: sky ssh up")
+                result = subprocess.run([
+                    "sky", "ssh", "up", "--infra", cluster_name
+                ], capture_output=True, text=True, check=True)
+                print(f"[SkyPilot][ssh up stdout]:\n{result.stdout}")
+                if result.stderr:
+                    print(f"[SkyPilot][ssh up stderr]:\n{result.stderr}")
+            except subprocess.CalledProcessError as e:
+                print(f"[SkyPilot][ssh up failed]: {e.stderr}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}"
+                )
+            except Exception as e:
+                print(f"[SkyPilot][ssh up error]: {str(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}"
+                )
+
         # Create a task
         task = sky.Task(
             name=f"lattice-task-{cluster_name}",
@@ -375,13 +407,8 @@ def launch_cluster_with_skypilot(
         # Handle infrastructure - support both cloud providers and SSH
         if cloud:
             if cloud.lower() == "ssh":
-                # For SSH, we use the SSH node pools configured in ~/.sky/ssh_node_pools.yaml
-                # The cluster_name should correspond to a pool name in the SSH node pools
                 resources_kwargs["infra"] = "ssh"
-                # For SSH clusters, we can optionally specify the pool name
-                # If cluster_name exists in SSH pools, SkyPilot will use it
             else:
-                # For cloud providers (aws, gcp, azure, etc.)
                 resources_kwargs["infra"] = cloud
 
         if instance_type:
@@ -397,23 +424,12 @@ def launch_cluster_with_skypilot(
         if zone:
             resources_kwargs["zone"] = zone
         if use_spot and cloud and cloud.lower() != "ssh":
-            # Spot instances are not applicable for SSH clusters
             resources_kwargs["use_spot"] = use_spot
 
         # Set resources if any are specified
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
-
-        # For SSH clusters, ensure the SSH node pool exists
-        if cloud and cloud.lower() == "ssh":
-            pools = load_ssh_node_pools()
-            if cluster_name not in pools:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"SSH cluster '{cluster_name}' not found in SSH node pools. "
-                    f"Please create the SSH cluster first using the SSH Clusters tab.",
-                )
 
         # Launch the cluster
         request_id = sky.launch(
@@ -506,7 +522,6 @@ def is_ssh_cluster(cluster_name: str):
         return cluster_name in pools
     except Exception:
         return False
-
 
 # Routes
 @api_v1_router.get("/")
@@ -879,6 +894,38 @@ async def list_ssh_clusters(user=Depends(verify_auth)):
             status_code=500, detail=f"Failed to list SSH clusters: {str(e)}"
         )
 
+from fastapi.responses import StreamingResponse
+import asyncio
+
+@api_v1_router.get("/skypilot/stream-logs/{logfile}")
+async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
+    """
+    Stream logs from a running sky api logs -l <logfile> command in real time.
+    """
+    async def log_streamer():
+        # Build the command
+        cmd = ["sky", "api", "logs", "-l", logfile]
+        # Start the subprocess
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        try:
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    if process.returncode is not None:
+                        break
+                    await asyncio.sleep(0.1)
+                    continue
+                yield line
+        finally:
+            if process.returncode is None:
+                process.terminate()
+                await process.wait()
+
+    return StreamingResponse(log_streamer(), media_type="text/plain")
 
 @api_v1_router.post("/skypilot/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
