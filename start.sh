@@ -13,6 +13,7 @@ if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
     exit 1
 fi
 
+
 # Set default values for optional environment variables
 
 # Check for --dev parameter
@@ -26,7 +27,7 @@ else
 fi
 export WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-$(openssl rand -base64 32)}
 
-echo "🚀 Starting Lattice application..."
+echo "🚀 Starting Lattice application using npm run dev..."
 if [ -n "$FRONTEND_URL" ]; then
     echo "📦 Frontend: $FRONTEND_URL"
 else
@@ -36,18 +37,6 @@ echo "🔧 Backend API: http://localhost:8000/api/v1"
 echo "📝 API Documentation: http://localhost:8000/docs"
 echo "🔑 WorkOS Client ID: ${WORKOS_CLIENT_ID}"
 echo "🔗 Redirect URI: ${WORKOS_REDIRECT_URI}"
-
-# Start SSH service for SkyPilot cluster communication
-echo "🔑 Starting SSH service for SkyPilot..."
-sudo service ssh start
-
-# Initialize SkyPilot as sky user
-echo "🌤️ Initializing SkyPilot..."
-sudo -u sky bash -c "source /home/sky/skypilot-runtime/bin/activate && sky check" || echo "⚠️ SkyPilot check failed, continuing..."
-
-# Start SkyPilot dashboard in background as sky user
-echo "📊 Starting SkyPilot dashboard..."
-sudo -u sky bash -c "source /home/sky/skypilot-runtime/bin/activate && sky dashboard --address 0.0.0.0 --port 46580" &
 
 echo "🔄 Activating Python virtual environment..."
 cd ./backend
