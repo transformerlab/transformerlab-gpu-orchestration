@@ -137,6 +137,26 @@ class JobLogsResponse(BaseModel):
     logs: str
 
 
+class StopClusterRequest(BaseModel):
+    cluster_name: str
+
+
+class StopClusterResponse(BaseModel):
+    request_id: str
+    cluster_name: str
+    message: str
+
+
+class DownClusterRequest(BaseModel):
+    cluster_name: str
+
+
+class DownClusterResponse(BaseModel):
+    request_id: str
+    cluster_name: str
+    message: str
+
+
 # WorkOS session helpers
 cookie_password = os.getenv(
     "WORKOS_COOKIE_PASSWORD", "y0jN-wF1bIUoSwdKT6yWIHS5qLI4Kfq5TnqIANOxEXM="
@@ -406,6 +426,33 @@ def get_job_logs(cluster_name: str, job_id: int, tail_lines: int = 50):
         return logs
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
+
+
+def stop_cluster_with_skypilot(cluster_name: str):
+    """Stop a cluster using SkyPilot"""
+    try:
+        request_id = sky.stop(cluster_name=cluster_name)
+        return request_id
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop cluster: {str(e)}")
+
+
+def down_cluster_with_skypilot(cluster_name: str):
+    """Down/tear down a cluster using SkyPilot"""
+    try:
+        request_id = sky.down(cluster_name=cluster_name)
+        return request_id
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to down cluster: {str(e)}")
+
+
+def is_ssh_cluster(cluster_name: str):
+    """Check if a cluster is SSH-based by checking if it exists in SSH node pools"""
+    try:
+        pools = load_ssh_node_pools()
+        return cluster_name in pools
+    except Exception:
+        return False
 
 
 # Routes
@@ -827,6 +874,80 @@ async def get_cluster_job_logs(
         return JobLogsResponse(job_id=job_id, logs=logs)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
+
+
+@api_v1_router.post("/skypilot/stop", response_model=StopClusterResponse)
+async def stop_skypilot_cluster(
+    stop_request: StopClusterRequest, user=Depends(verify_auth)
+):
+    """Stop a cluster using SkyPilot"""
+    try:
+        cluster_name = stop_request.cluster_name
+
+        # Check if this is an SSH cluster - SSH clusters cannot be stopped, only downed
+        if is_ssh_cluster(cluster_name):
+            raise HTTPException(
+                status_code=400,
+                detail=f"SSH cluster '{cluster_name}' cannot be stopped. Use down operation instead.",
+            )
+
+        request_id = stop_cluster_with_skypilot(cluster_name)
+
+        return StopClusterResponse(
+            request_id=request_id,
+            cluster_name=cluster_name,
+            message=f"Cluster '{cluster_name}' stop initiated successfully",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop cluster: {str(e)}")
+
+
+@api_v1_router.post("/skypilot/down", response_model=DownClusterResponse)
+async def down_skypilot_cluster(
+    down_request: DownClusterRequest, user=Depends(verify_auth)
+):
+    """Down/tear down a cluster using SkyPilot"""
+    try:
+        cluster_name = down_request.cluster_name
+        request_id = down_cluster_with_skypilot(cluster_name)
+
+        return DownClusterResponse(
+            request_id=request_id,
+            cluster_name=cluster_name,
+            message=f"Cluster '{cluster_name}' down initiated successfully",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to down cluster: {str(e)}")
+
+
+@api_v1_router.get("/skypilot/cluster-type/{cluster_name}")
+async def get_cluster_type(cluster_name: str, user=Depends(verify_auth)):
+    """Get cluster type information (SSH or cloud-based)"""
+    try:
+        is_ssh = is_ssh_cluster(cluster_name)
+        cluster_type = "ssh" if is_ssh else "cloud"
+
+        # Determine available operations based on cluster type
+        available_operations = ["down"]  # Both SSH and cloud clusters can be downed
+        if not is_ssh:
+            available_operations.append("stop")  # Only cloud clusters can be stopped
+
+        return {
+            "cluster_name": cluster_name,
+            "cluster_type": cluster_type,
+            "is_ssh": is_ssh,
+            "available_operations": available_operations,
+            "recommendations": {
+                "stop": "Stops the cluster while preserving disk data (cloud clusters only)",
+                "down": "Tears down the cluster and deletes all resources (SSH and cloud clusters)",
+            },
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster type: {str(e)}"
+        )
 
 
 # Include the API router
