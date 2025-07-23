@@ -12,6 +12,8 @@ import LoginPage from "./components/LoginPage";
 import Dashboard from "./components/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+import customTheme from "./utils/theme";
+
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
 
@@ -39,7 +41,7 @@ const AppRoutes: React.FC = () => {
 
 function App() {
   return (
-    <CssVarsProvider>
+    <CssVarsProvider theme={customTheme}>
       <CssBaseline />
       <AuthProvider>
         <Router>
