@@ -52,9 +52,12 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(buildApiUrl(`skypilot/jobs/${clusterName}`), {
-        credentials: "include",
-      });
+      const response = await fetch(
+        buildApiUrl(`skypilot/jobs/${clusterName}`),
+        {
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch jobs: ${response.statusText}`);
@@ -74,7 +77,9 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
     setSelectedJobId(jobId);
     try {
       const response = await fetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`),
+        buildApiUrl(
+          `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
+        ),
         {
           credentials: "include",
         }

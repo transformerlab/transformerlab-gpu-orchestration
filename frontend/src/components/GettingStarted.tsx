@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Button,
-  Card,
-  Typography,
-  Stack,
-  Chip,
-} from "@mui/joy";
+import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
 import ClusterManagement from "./ClusterManagement";
 import { buildApiUrl } from "../utils/api";
 
 const GettingStarted: React.FC = () => {
   const [clusters, setClusters] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState<"welcome" | "create-cluster" | "manage-cluster">("welcome");
+  const [currentStep, setCurrentStep] = useState<
+    "welcome" | "create-cluster" | "manage-cluster"
+  >("welcome");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -101,7 +96,8 @@ const GettingStarted: React.FC = () => {
       {clusters.length > 0 && (
         <Card variant="soft" color="success" sx={{ mb: 3 }}>
           <Typography level="title-md" sx={{ mb: 1 }}>
-            🎉 You have {clusters.length} cluster{clusters.length > 1 ? "s" : ""} configured!
+            🎉 You have {clusters.length} cluster
+            {clusters.length > 1 ? "s" : ""} configured!
           </Typography>
           <Button
             variant="solid"
@@ -126,12 +122,13 @@ const GettingStarted: React.FC = () => {
               bgcolor: step.completed ? "success.50" : "transparent",
               cursor: step.action !== undefined ? "pointer" : "default",
               transition: "all 0.2s",
-              "&:hover": step.action !== undefined
-                ? {
-                    borderColor: "primary.300",
-                    bgcolor: "primary.50",
-                  }
-                : {},
+              "&:hover":
+                step.action !== undefined
+                  ? {
+                      borderColor: "primary.300",
+                      bgcolor: "primary.50",
+                    }
+                  : {},
             }}
             onClick={step.action}
           >
@@ -151,7 +148,9 @@ const GettingStarted: React.FC = () => {
                 {step.icon}
               </Box>
               <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}
+                >
                   <Typography level="title-lg">{step.title}</Typography>
                   {step.completed && (
                     <Chip variant="soft" color="success" size="sm">
