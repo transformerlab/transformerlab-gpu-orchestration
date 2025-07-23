@@ -15,7 +15,7 @@ fi
 
 
 # Set default values for optional environment variables
-export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/auth/callback"}
+export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
 export WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-$(openssl rand -base64 32)}
 export DEBUG=${DEBUG:-"False"}
 
@@ -26,6 +26,11 @@ echo "📝 API Documentation: http://localhost:8000/docs"
 echo "🔑 WorkOS Client ID: ${WORKOS_CLIENT_ID}"
 echo "🔗 Redirect URI: ${WORKOS_REDIRECT_URI}"
 
-
+echo "🔄 Activating Python virtual environment..."
 cd ./backend
+
+# Activate the uv virtual environment
+source .venv/bin/activate
+
+echo "✅ Virtual environment activated"
 python main.py

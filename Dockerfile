@@ -17,13 +17,14 @@ WORKDIR /app
 # Copy root package.json and package-lock.json for dev scripts
 COPY package*.json ./
 
-# Install system dependencies, Node.js 20, and kubectl
+# Install system dependencies, Node.js 20, kubectl, socat, and uv
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     apt-transport-https \
     ca-certificates \
     gnupg \
+    socat \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
@@ -32,7 +33,11 @@ RUN apt-get update && apt-get install -y \
     && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
     && apt-get update \
     && apt-get install -y kubectl \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && rm -rf /var/lib/apt/lists/*
+
+# Add uv to PATH
+ENV PATH="/root/.local/bin:$PATH"
 
 # Copy setup script and run it
 COPY setup.sh ./

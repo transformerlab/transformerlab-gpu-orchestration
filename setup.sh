@@ -4,9 +4,10 @@
 
 echo "🚀 Setting up Lattice..."
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is required but not installed."
+# Check if uv is installed
+if ! command -v uv &> /dev/null; then
+    echo "❌ uv is required but not installed."
+    echo "💡 Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
     exit 1
 fi
 
@@ -18,10 +19,13 @@ fi
 
 echo "✅ Prerequisites check passed"
 
-# Install backend dependencies
-echo "📦 Installing backend dependencies..."
+# Create Python virtual environment and install backend dependencies
+echo "📦 Creating Python virtual environment with uv..."
+uv venv --seed --python 3.10
 cd backend || exit
-python -m pip install -r requirements.txt
+echo "📦 Installing backend dependencies with uv..."
+source ../.venv/bin/activate
+uv pip install -r requirements.txt
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
 cd ..
 
