@@ -15,13 +15,25 @@ fi
 
 
 # Set default values for optional environment variables
-export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
+
+# Check for --dev parameter
+if [[ "$1" == "--dev" ]]; then
+    export DEBUG="True"
+    export WORKOS_REDIRECT_URI="http://localhost:8000/api/v1/auth/callback"
+    export FRONTEND_URL="http://localhost:3000"
+else
+    export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
+    export DEBUG=${DEBUG:-"False"}
+fi
 export WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-$(openssl rand -base64 32)}
-export DEBUG=${DEBUG:-"False"}
 
 echo "🚀 Starting Lattice application using npm run dev..."
-echo "📦 Frontend: http://localhost:3000"
-echo "🔧 Backend API: http://localhost:8000"
+if [ -n "$FRONTEND_URL" ]; then
+    echo "📦 Frontend: $FRONTEND_URL"
+else
+    echo "📦 Frontend: http://localhost:8000"
+fi
+echo "🔧 Backend API: http://localhost:8000/api/v1"
 echo "📝 API Documentation: http://localhost:8000/docs"
 echo "🔑 WorkOS Client ID: ${WORKOS_CLIENT_ID}"
 echo "🔗 Redirect URI: ${WORKOS_REDIRECT_URI}"
