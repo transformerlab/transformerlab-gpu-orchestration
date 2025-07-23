@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Lattice Setup Script
+# Lattice Setup Script for Docker Environment
 
-echo "🚀 Setting up Lattice..."
+echo "🚀 Setting up Lattice in Docker..."
 
-# Check if uv is installed
+# Check if uv is installed (should be available in sky user's environment)
 if ! command -v uv &> /dev/null; then
     echo "❌ uv is required but not installed."
     echo "💡 Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
@@ -29,45 +29,10 @@ uv pip install -r requirements.txt
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
 cd ..
 
-# Install kubectl
-echo "📦 Installing kubectl..."
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    if ! command -v kubectl &> /dev/null; then
-        if command -v brew &> /dev/null; then
-            brew install kubectl
-        else
-            echo "Installing kubectl via curl to ~/.local/bin..."
-            mkdir -p ~/.local/bin
-            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/darwin/amd64/kubectl"
-            chmod +x ./kubectl
-            mv ./kubectl ~/.local/bin/kubectl
-            echo "✅ kubectl installed to ~/.local/bin (add to PATH if needed)"
-            echo "💡 Run: export PATH=\$PATH:~/.local/bin"
-        fi
-        echo "✅ kubectl installed"
-    else
-        echo "✅ kubectl already installed"
-    fi
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux
-    if ! command -v kubectl &> /dev/null; then
-        echo "Installing kubectl via curl to ~/.local/bin..."
-        mkdir -p ~/.local/bin
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x ./kubectl
-        mv ./kubectl ~/.local/bin/kubectl
-        echo "✅ kubectl installed to ~/.local/bin (add to PATH if needed)"
-        echo "💡 Run: export PATH=\$PATH:~/.local/bin"
-    else
-        echo "✅ kubectl already installed"
-    fi
-else
-    echo "⚠️  Please install kubectl manually for your OS"
-fi
+# In Docker, kubectl is already installed by the sky user setup
+echo "✅ kubectl already installed in Docker environment"
 
-echo "✅ Backend dependencies installed (including WorkOS 5.24.0)"
-# cd ..
+echo "✅ Backend dependencies installed"
 
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
@@ -75,17 +40,17 @@ cd frontend || exit
 npm install
 
 # Now build frontend
-echo "🔨 Building frontend..."
+echo "� Building frontend..."
 npm run build
 
 echo "🎉 Setup complete!"
 echo ""
-echo "📝 Next steps:"
-echo "1. Copy backend/.env.example to backend/.env and configure your WorkOS credentials"
-echo "2. Copy frontend/.env.example to frontend/.env.local (optional, has defaults)"
-echo "3. Run 'npm run dev' to start both frontend and backend"
+echo "📝 Docker environment ready!"
+echo "🌤️ SkyPilot environment configured for sky user"
+echo "🐳 Container will start with both backend and SkyPilot services"
 echo ""
-echo "🌐 URLs:"
-echo "  Frontend: http://localhost:3000"
-echo "  Backend:  http://localhost:8000"
+echo "🌐 URLs (when container is running):"
+echo "  Frontend: http://localhost:8000"
+echo "  Backend:  http://localhost:8000/api/v1"
 echo "  API Docs: http://localhost:8000/docs"
+echo "  SkyPilot Dashboard: http://localhost:46580"
