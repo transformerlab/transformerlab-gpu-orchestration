@@ -17,6 +17,7 @@ import {
   Checkbox,
 } from "@mui/joy";
 import { Play, Rocket } from "lucide-react";
+import { buildApiUrl } from "../utils/api";
 
 interface LaunchClusterRequest {
   cluster_name: string;
@@ -89,7 +90,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   const fetchSSHClusters = async () => {
     try {
-      const response = await fetch("/api/skypilot/ssh-clusters", {
+      const response = await fetch(buildApiUrl("skypilot/ssh-clusters"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -129,7 +130,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
           : undefined,
       };
 
-      const response = await fetch("/api/skypilot/launch", {
+      const response = await fetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -16,6 +16,7 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/joy";
+import { buildApiUrl } from "../utils/api";
 
 interface JobRecord {
   job_id: number;
@@ -51,7 +52,7 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/skypilot/jobs/${clusterName}`, {
+      const response = await fetch(buildApiUrl(`skypilot/jobs/${clusterName}`), {
         credentials: "include",
       });
 
@@ -73,7 +74,7 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
     setSelectedJobId(jobId);
     try {
       const response = await fetch(
-        `/api/skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`,
+        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`),
         {
           credentials: "include",
         }

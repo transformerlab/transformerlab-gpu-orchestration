@@ -22,6 +22,7 @@ import {
 import { Plus, Trash2, Monitor } from "lucide-react";
 import SkyPilotClusterLauncher from "./SkyPilotClusterLauncher";
 import SkyPilotClusterStatus from "./SkyPilotClusterStatus";
+import { buildApiUrl } from "../utils/api";
 
 interface SSHNode {
   ip: string;
@@ -74,7 +75,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const fetchClusters = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/clusters", {
+      const response = await fetch(buildApiUrl("clusters"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -93,7 +94,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const fetchClusterDetails = async (clusterName: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/clusters/${clusterName}`, {
+      const response = await fetch(buildApiUrl(`clusters/${clusterName}`), {
         credentials: "include",
       });
       if (response.ok) {
@@ -115,7 +116,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const createCluster = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/clusters", {
+      const response = await fetch(buildApiUrl("clusters"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,7 +154,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `/api/clusters/${selectedCluster.cluster_name}/nodes`,
+        buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
         {
           method: "POST",
           headers: {
@@ -201,7 +202,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/clusters/${clusterName}`, {
+      const response = await fetch(buildApiUrl(`clusters/${clusterName}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -231,7 +232,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `/api/clusters/${selectedCluster.cluster_name}/nodes/${nodeIp}`,
+        buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes/${nodeIp}`),
         {
           method: "DELETE",
           credentials: "include",

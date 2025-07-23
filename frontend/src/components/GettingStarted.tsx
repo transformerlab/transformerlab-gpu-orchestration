@@ -9,6 +9,7 @@ import {
 } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
 import ClusterManagement from "./ClusterManagement";
+import { buildApiUrl } from "../utils/api";
 
 const GettingStarted: React.FC = () => {
   const [clusters, setClusters] = useState<string[]>([]);
@@ -22,7 +23,7 @@ const GettingStarted: React.FC = () => {
   const fetchClusters = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/clusters", {
+      const response = await fetch(buildApiUrl("clusters"), {
         credentials: "include",
       });
       if (response.ok) {

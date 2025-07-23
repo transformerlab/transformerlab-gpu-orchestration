@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Box, Button, Card, Typography, Table, Chip } from "@mui/joy";
 import { RefreshCw, Monitor, Terminal } from "lucide-react";
 import TaskOutputModal from "./TaskOutputModal";
+import { buildApiUrl } from "../utils/api";
 
 interface ClusterStatus {
   cluster_name: string;
@@ -32,7 +33,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/skypilot/status", {
+      const response = await fetch(buildApiUrl("skypilot/status"), {
         credentials: "include",
       });
 
