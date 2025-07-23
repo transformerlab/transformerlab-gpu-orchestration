@@ -29,11 +29,9 @@ const Header: React.FC = () => {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        mb: 4,
-        p: 2,
-        bgcolor: "background.body",
-        borderRadius: "md",
-        boxShadow: "sm",
+        mb: 1,
+        px: 1,
+        gridArea: "header",
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
