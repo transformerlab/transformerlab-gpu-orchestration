@@ -53,7 +53,33 @@
       "dependsOn": ["Start Backend", "Start Frontend"],
       "group": {
         "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Start Unified Application",
+      "type": "shell",
+      "command": "cd backend && python main.py",
+      "group": {
+        "kind": "build",
         "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Build Frontend for Production",
+      "type": "shell",
+      "command": "cd frontend && npm run build",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always"
       }
     }
   ]

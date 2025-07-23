@@ -9,8 +9,7 @@ FROM python:3.11-slim AS backend
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/backend \
-    PORT=3000
+    PYTHONPATH=/app/backend
 
 # Set work directory
 WORKDIR /app
@@ -26,30 +25,22 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-
 # Copy setup script and run it
 COPY setup.sh ./
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
 
-
-# # Copy built frontend from the previous stage
-# COPY --from=frontend-builder /app/frontend/build ./frontend/build
-
 # Copy and setup startup script
 COPY start.sh ./
 RUN chmod +x start.sh
 
-# Expose backend port
+# Expose port 8000 for the combined frontend/backend
 EXPOSE 8000
-
-# Expose frontend port
-EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/').raise_for_status()" || exit 1
+    CMD python -c "import requests; requests.get('http://localhost:8000/api/v1/').raise_for_status()" || exit 1
 
 # Run start.sh as the container entrypoint
 CMD ["./start.sh"]

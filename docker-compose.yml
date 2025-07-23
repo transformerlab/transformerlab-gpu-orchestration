@@ -6,15 +6,15 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
-      - "3000:3000" # Expose port 3000 for the frontend
+      - "8000:8000" # Single port for both frontend and backend
     environment:
       # Required WorkOS credentials - set these in a .env file or pass them directly
       - WORKOS_API_KEY=${WORKOS_API_KEY}
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
 
       # Optional environment variables with defaults
-      - WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-http://localhost:3000/auth/callback}
+      - BASE_URL=${BASE_URL:-http://localhost:8000}
+      - WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-http://localhost:8000/api/v1/auth/callback}
       - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD}
       - DEBUG=${DEBUG:-false}
     volumes:
@@ -28,7 +28,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import requests; requests.get('http://localhost:8000/').raise_for_status()",
+          "import requests; requests.get('http://localhost:8000/api/v1/').raise_for_status()",
         ]
       interval: 30s
       timeout: 10s

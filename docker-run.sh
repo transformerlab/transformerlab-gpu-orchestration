@@ -17,8 +17,8 @@ fi
 # Check if .env file exists
 if [ ! -f ".env" ]; then
     echo "⚠️  No .env file found. Creating from template..."
-    if [ -f ".env.docker.example" ]; then
-        cp .env.docker.example .env
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
         echo "📝 Please edit .env file and add your WorkOS credentials:"
         echo "   - WORKOS_API_KEY"
         echo "   - WORKOS_CLIENT_ID"

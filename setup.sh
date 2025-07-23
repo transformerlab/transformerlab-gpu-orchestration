@@ -70,9 +70,10 @@ cd ..
 echo "📦 Installing frontend dependencies..."
 cd frontend
 npm install
-npm install lucide-react
-cd ..
-npm install
+
+# Now build frontend
+echo "🔨 Building frontend..."
+npm run build
 
 echo "🎉 Setup complete!"
 echo ""

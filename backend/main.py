@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, APIRouter
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -9,10 +9,6 @@ import yaml
 from pathlib import Path
 from typing import Optional, List
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-import workos
-import os
-from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
 import sky
@@ -25,12 +21,16 @@ workos_client = workos.WorkOSClient(
     api_key=os.getenv("WORKOS_API_KEY"), client_id=os.getenv("WORKOS_CLIENT_ID")
 )
 
-app = FastAPI(title="Lattice API", version="1.0.0")
+# Create main app
+app = FastAPI(title="Lattice", version="1.0.0")
 
-# CORS middleware
+# Create API router for v1 endpoints
+api_v1_router = APIRouter(prefix="/api/v1")
+
+# CORS middleware - allow same origin since we're serving from same port
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["*"],  # Allow same origin requests
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -409,19 +409,24 @@ def get_job_logs(cluster_name: str, job_id: int, tail_lines: int = 50):
 
 
 # Routes
-@app.get("/")
-async def root():
-    return {"message": "Lattice API"}
+@api_v1_router.get("/")
+async def api_root():
+    return {"message": "Lattice API v1"}
 
 
-@app.get("/auth/login-url")
-async def get_login_url():
+@api_v1_router.get("/auth/login-url")
+async def get_login_url(request: Request):
     """Generate WorkOS AuthKit login URL"""
     try:
+        # Get the base URL from the request
+        base_url = f"{request.url.scheme}://{request.url.netloc}"
+
+        print("BASE URL:", base_url)
+
         authorization_url = workos_client.user_management.get_authorization_url(
             provider="authkit",
             redirect_uri=os.getenv(
-                "WORKOS_REDIRECT_URI", "http://localhost:8000/auth/callback"
+                "WORKOS_REDIRECT_URI", f"{base_url}/api/v1/auth/callback"
             ),
         )
         return {"login_url": authorization_url}
@@ -432,7 +437,7 @@ async def get_login_url():
         )
 
 
-@app.get("/auth/callback")
+@api_v1_router.get("/auth/callback")
 async def auth_callback(request: Request, code: str):
     """Handle OAuth callback from WorkOS"""
     try:
@@ -442,8 +447,24 @@ async def auth_callback(request: Request, code: str):
             session={"seal_session": True, "cookie_password": cookie_password},
         )
 
-        # Create response with redirect to frontend
-        response = RedirectResponse(url="http://localhost:3000/dashboard")
+        # Determine redirect URL based on environment
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            # Auto-detect based on referer or use unified mode
+            referer = request.headers.get("referer", "")
+            print(f"DEBUG: Referer header: {referer}")
+
+            # If referer contains :3000, we're in development mode with separate frontend
+            if ":3000" in referer:
+                frontend_url = "http://localhost:3000"
+            else:
+                # Default to unified mode (relative URLs)
+                frontend_url = ""
+
+        # Create response with redirect to frontend dashboard
+        dashboard_url = f"{frontend_url}/dashboard" if frontend_url else "/dashboard"
+        print(f"DEBUG: Redirecting to: {dashboard_url}")
+        response = RedirectResponse(url=dashboard_url)
 
         # Set secure session cookie
         response.set_cookie(
@@ -453,15 +474,30 @@ async def auth_callback(request: Request, code: str):
             httponly=True,
             samesite="lax",
             max_age=86400 * 7,  # 7 days
+            path="/",  # Ensure cookie is available for all paths
         )
 
         return response
     except Exception as e:
         print(f"Authentication failed: {e}")
-        return RedirectResponse(url="http://localhost:3000/login?error=auth_failed")
+        # Handle error redirect similarly
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            referer = request.headers.get("referer", "")
+            if ":3000" in referer:
+                frontend_url = "http://localhost:3000"
+            else:
+                frontend_url = ""
+
+        error_url = (
+            f"{frontend_url}/login?error=auth_failed"
+            if frontend_url
+            else "/login?error=auth_failed"
+        )
+        return RedirectResponse(url=error_url)
 
 
-@app.get("/auth/me", response_model=UserResponse)
+@api_v1_router.get("/auth/me", response_model=UserResponse)
 async def get_current_user_info(user=Depends(verify_auth)):
     """Get current user info"""
     return UserResponse(
@@ -472,7 +508,7 @@ async def get_current_user_info(user=Depends(verify_auth)):
     )
 
 
-@app.get("/auth/logout")
+@api_v1_router.get("/auth/logout")
 async def logout(request: Request):
     """Logout user and clear session"""
     try:
@@ -487,33 +523,59 @@ async def logout(request: Request):
             response.delete_cookie("wos_session")
             return response
         else:
-            return RedirectResponse(url="http://localhost:3000/login")
+            # Handle redirect for development vs unified mode
+            frontend_url = os.getenv("FRONTEND_URL")
+            if not frontend_url:
+                referer = request.headers.get("referer", "")
+                if ":3000" in referer:
+                    frontend_url = "http://localhost:3000"
+                else:
+                    frontend_url = ""
+
+            login_url = f"{frontend_url}/login" if frontend_url else "/login"
+            return RedirectResponse(url=login_url)
     except Exception as e:
         print(f"Logout error: {e}")
-        response = RedirectResponse(url="http://localhost:3000/login")
+        # Handle error redirect similarly
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            referer = request.headers.get("referer", "")
+            if ":3000" in referer:
+                frontend_url = "http://localhost:3000"
+            else:
+                frontend_url = ""
+
+        login_url = f"{frontend_url}/login" if frontend_url else "/login"
+        response = RedirectResponse(url=login_url)
         response.delete_cookie("wos_session")
         return response
 
 
 # Health check for session
-@app.get("/auth/check")
+@api_v1_router.get("/auth/check")
 async def check_auth(request: Request):
     """Check if user is authenticated"""
+    session_cookie = request.cookies.get("wos_session")
+    print(f"DEBUG auth/check: Cookie present: {bool(session_cookie)}")
+
     user = get_current_user(request)
     if user:
+        print(f"DEBUG auth/check: User authenticated: {user.email}")
         return {"authenticated": True, "user": {"id": user.id, "email": user.email}}
+
+    print("DEBUG auth/check: User not authenticated")
     return {"authenticated": False}
 
 
 # SkyPilot cluster management routes
-@app.get("/api/clusters", response_model=ClustersListResponse)
+@api_v1_router.get("/clusters", response_model=ClustersListResponse)
 async def list_clusters(user=Depends(verify_auth)):
     """List all available clusters"""
     pools = load_ssh_node_pools()
     return ClustersListResponse(clusters=list(pools.keys()))
 
 
-@app.post("/api/clusters", response_model=ClusterResponse)
+@api_v1_router.post("/clusters", response_model=ClusterResponse)
 async def create_cluster(cluster_request: ClusterRequest, user=Depends(verify_auth)):
     """Create a new cluster"""
     create_cluster_in_pools(
@@ -526,7 +588,7 @@ async def create_cluster(cluster_request: ClusterRequest, user=Depends(verify_au
     return ClusterResponse(cluster_name=cluster_request.cluster_name, nodes=[])
 
 
-@app.get("/api/clusters/{cluster_name}", response_model=ClusterResponse)
+@api_v1_router.get("/clusters/{cluster_name}", response_model=ClusterResponse)
 async def get_cluster(cluster_name: str, user=Depends(verify_auth)):
     """Get cluster configuration"""
     pools = load_ssh_node_pools()
@@ -551,7 +613,7 @@ async def get_cluster(cluster_name: str, user=Depends(verify_auth)):
     return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
 
 
-@app.post("/api/clusters/{cluster_name}/nodes")
+@api_v1_router.post("/clusters/{cluster_name}/nodes")
 async def add_node(
     cluster_name: str, add_node_request: AddNodeRequest, user=Depends(verify_auth)
 ):
@@ -571,7 +633,7 @@ async def add_node(
     return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
 
 
-@app.delete("/api/clusters/{cluster_name}")
+@api_v1_router.delete("/clusters/{cluster_name}")
 async def delete_cluster(cluster_name: str, user=Depends(verify_auth)):
     """Delete a cluster"""
     pools = load_ssh_node_pools()
@@ -587,7 +649,7 @@ async def delete_cluster(cluster_name: str, user=Depends(verify_auth)):
     return {"message": f"Cluster '{cluster_name}' deleted successfully"}
 
 
-@app.delete("/api/clusters/{cluster_name}/nodes/{node_ip}")
+@api_v1_router.delete("/clusters/{cluster_name}/nodes/{node_ip}")
 async def remove_node(cluster_name: str, node_ip: str, user=Depends(verify_auth)):
     """Remove a node from a cluster"""
     pools = load_ssh_node_pools()
@@ -617,7 +679,7 @@ async def remove_node(cluster_name: str, node_ip: str, user=Depends(verify_auth)
 
 
 # SkyPilot cluster launching and status routes
-@app.get("/api/skypilot/ssh-clusters")
+@api_v1_router.get("/skypilot/ssh-clusters")
 async def list_ssh_clusters(user=Depends(verify_auth)):
     """List available SSH clusters for SkyPilot"""
     try:
@@ -641,7 +703,7 @@ async def list_ssh_clusters(user=Depends(verify_auth)):
         )
 
 
-@app.post("/api/skypilot/launch", response_model=LaunchClusterResponse)
+@api_v1_router.post("/skypilot/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
     launch_request: LaunchClusterRequest, user=Depends(verify_auth)
 ):
@@ -673,7 +735,7 @@ async def launch_skypilot_cluster(
         )
 
 
-@app.get("/api/skypilot/status", response_model=StatusResponse)
+@api_v1_router.get("/skypilot/status", response_model=StatusResponse)
 async def get_skypilot_cluster_status(
     cluster_names: Optional[str] = None, user=Depends(verify_auth)
 ):
@@ -706,7 +768,7 @@ async def get_skypilot_cluster_status(
         )
 
 
-@app.get("/api/skypilot/request/{request_id}")
+@api_v1_router.get("/skypilot/request/{request_id}")
 async def get_skypilot_request_status(request_id: str, user=Depends(verify_auth)):
     """Get the status and result of a SkyPilot request"""
     try:
@@ -721,7 +783,7 @@ async def get_skypilot_request_status(request_id: str, user=Depends(verify_auth)
         }
 
 
-@app.get("/api/skypilot/jobs/{cluster_name}", response_model=JobQueueResponse)
+@api_v1_router.get("/skypilot/jobs/{cluster_name}", response_model=JobQueueResponse)
 async def get_cluster_jobs(cluster_name: str, user=Depends(verify_auth)):
     """Get job queue for a cluster"""
     try:
@@ -753,8 +815,8 @@ async def get_cluster_jobs(cluster_name: str, user=Depends(verify_auth)):
         )
 
 
-@app.get(
-    "/api/skypilot/jobs/{cluster_name}/{job_id}/logs", response_model=JobLogsResponse
+@api_v1_router.get(
+    "/skypilot/jobs/{cluster_name}/{job_id}/logs", response_model=JobLogsResponse
 )
 async def get_cluster_job_logs(
     cluster_name: str, job_id: int, tail_lines: int = 50, user=Depends(verify_auth)
@@ -766,6 +828,9 @@ async def get_cluster_job_logs(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
 
+
+# Include the API router
+app.include_router(api_v1_router)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(
@@ -785,8 +850,8 @@ if os.path.exists(frontend_build_path):
     @app.get("/{path:path}")
     async def serve_frontend(path: str):
         """Serve React app for all non-API routes"""
-        # If path starts with 'api' or 'auth', let FastAPI handle it
-        if path.startswith(("api", "auth", "docs", "openapi.json")):
+        # If path starts with 'api', 'docs', 'openapi.json', let FastAPI handle it
+        if path.startswith(("api", "docs", "openapi.json", "redoc")):
             raise HTTPException(status_code=404, detail="API endpoint not found")
 
         # For all other paths, serve the React app
@@ -798,7 +863,8 @@ if os.path.exists(frontend_build_path):
 
 
 # Print the redirect URI being used
-redirect_uri = os.getenv("WORKOS_REDIRECT_URI", "http://localhost:8000/auth/callback")
+base_url = os.getenv("BASE_URL", "http://localhost:8000")
+redirect_uri = os.getenv("WORKOS_REDIRECT_URI", f"{base_url}/api/v1/auth/callback")
 print(f"🔗 Backend using WORKOS_REDIRECT_URI: {redirect_uri}")
 
 if __name__ == "__main__":
