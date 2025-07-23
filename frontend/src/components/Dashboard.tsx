@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Button, Card, Typography, Avatar, Chip } from "@mui/joy";
 import { useAuth } from "../context/AuthContext";
+import GettingStarted from "./GettingStarted";
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -109,15 +110,12 @@ const Dashboard: React.FC = () => {
         </Box>
       </Card>
 
-      {/* Features Placeholder */}
+      {/* SkyPilot Cluster Management */}
       <Card variant="outlined">
         <Typography level="h4" sx={{ mb: 2 }}>
-          Features
+          SkyPilot Cluster Management
         </Typography>
-        <Typography level="body-md" sx={{ color: "text.secondary" }}>
-          Your application features will be available here. The authentication
-          system is now set up and ready for you to build upon.
-        </Typography>
+        <GettingStarted />
       </Card>
     </Box>
   );
