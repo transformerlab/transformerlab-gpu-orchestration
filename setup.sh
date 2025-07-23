@@ -64,7 +64,7 @@ else
 fi
 
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0)"
-cd ..
+# cd ..
 
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
