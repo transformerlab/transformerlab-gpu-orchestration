@@ -21,7 +21,7 @@
 1. **WorkOS Setup**: Create a WorkOS account at [workos.com](https://workos.com) and configure your SSO connection
 2. **Run Setup Script**: `./setup.sh` (installs all dependencies)
 3. **Configure Environment**: Copy `.env.example` to `.env` and add your WorkOS credentials
-4. **Start Application**: 
+4. **Start Application**:
    - **Production Mode**: `npm run unified` (single server on port 8000)
    - **Development Mode**: `npm run dev` (separate frontend and backend servers)
 
@@ -48,7 +48,7 @@ WORKOS_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback
 WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32`
 
 # React Environment Variables (for development)
-REACT_APP_API_URL=/api/v1
+VITE_API_URL=/api/v1
 ```
 
 ## 🐳 Docker Deployment
@@ -73,12 +73,12 @@ REACT_APP_API_URL=/api/v1
    ./docker-run.sh [build|run|build-and-run|compose|stop|clean]
    ```
 
-   - `build`          - Build the Docker image only
-   - `run`            - Run the existing Docker image
-   - `build-and-run`  - Build and run (default)
-   - `compose`        - Use Docker Compose
-   - `stop`           - Stop running containers
-   - `clean`          - Stop and remove all containers and images
+   - `build` - Build the Docker image only
+   - `run` - Run the existing Docker image
+   - `build-and-run` - Build and run (default)
+   - `compose` - Use Docker Compose
+   - `stop` - Stop running containers
+   - `clean` - Stop and remove all containers and images
 
    Example:
 
@@ -116,7 +116,7 @@ docker run -p 8000:8000 \
 The Docker container requires these environment variables:
 
 - `WORKOS_API_KEY` (required): Your WorkOS API key
-- `WORKOS_CLIENT_ID` (required): Your WorkOS Client ID  
+- `WORKOS_CLIENT_ID` (required): Your WorkOS Client ID
 - `BASE_URL` (optional): Defaults to `http://localhost:8000`
 - `WORKOS_REDIRECT_URI` (optional): Defaults to `http://localhost:8000/api/v1/auth/callback`
 - `WORKOS_COOKIE_PASSWORD` (optional): Auto-generated if not provided
@@ -143,15 +143,18 @@ For production deployment:
 ### Development Modes
 
 #### Unified Mode (Production-like)
+
 ```bash
 cd backend && python main.py
 ```
+
 - Single server on port 8000
 - Frontend served from `/`
 - API served from `/api/v1/*`
 - Requires built frontend (`npm run build` in frontend directory)
 
 #### Separate Mode (Development)
+
 ```bash
 # Terminal 1: Start backend
 cd backend && python main.py
@@ -159,6 +162,7 @@ cd backend && python main.py
 # Terminal 2: Start frontend dev server
 cd frontend && npm start
 ```
+
 - Backend on port 8000
 - Frontend dev server on port 3000 with hot reload
 - Frontend proxies API calls to backend
@@ -217,5 +221,5 @@ WORKOS_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback
 WORKOS_COOKIE_PASSWORD= # can be generated with `openssl rand -base64 32`
 
 # React Environment Variables (for development)
-REACT_APP_API_URL=/api/v1
+VITE_API_URL=/api/v1
 ```

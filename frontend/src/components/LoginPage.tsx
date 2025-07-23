@@ -10,7 +10,7 @@ import {
 import axios from "axios";
 
 // Use relative API base URL - this will work regardless of host/port
-const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "/api/v1";
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
