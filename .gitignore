@@ -71,3 +71,6 @@ coverage/
 
 # Copilot instructions
 .github/copilot-instructions.md
+
+# Frontend sample script
+frontend/src/sample_skypilot_script.py

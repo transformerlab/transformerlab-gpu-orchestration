@@ -6,6 +6,7 @@ from fastapi import (
     APIRouter,
     UploadFile,
     Form,
+    File,
 )
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,10 @@ import uvicorn
 from dotenv import load_dotenv
 import sky
 import uuid
+from tempfile import TemporaryDirectory
+
+UPLOADS_DIR = Path(__file__).parent / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -103,6 +108,8 @@ class LaunchClusterRequest(BaseModel):
     zone: Optional[str] = None
     use_spot: bool = False
     idle_minutes_to_autostop: Optional[int] = None
+    # New field for filename (for OpenAPI docs, not used in FastAPI form)
+    python_filename: Optional[str] = None
 
 
 class LaunchClusterResponse(BaseModel):
@@ -359,11 +366,13 @@ def launch_cluster_with_skypilot(
     zone: Optional[str] = None,
     use_spot: bool = False,
     idle_minutes_to_autostop: Optional[int] = None,
+    file_mounts: Optional[dict] = None,
+    workdir: Optional[str] = None,
 ):
-    """Launch a cluster using SkyPilot"""
+    """Launch a cluster using SkyPilot, optionally mounting files."""
     try:
         import subprocess
-        # For SSH clusters, ensure the SSH node pool exists and run sky ssh up
+
         if cloud and cloud.lower() == "ssh":
             pools = load_ssh_node_pools()
             if cluster_name not in pools:
@@ -372,12 +381,14 @@ def launch_cluster_with_skypilot(
                     detail=f"SSH cluster '{cluster_name}' not found in SSH node pools. "
                     f"Please create the SSH cluster first using the SSH Clusters tab.",
                 )
-            # Run `sky ssh up <cluster_name>` using subprocess
             try:
                 print(f"[SkyPilot] Running: sky ssh up")
-                result = subprocess.run([
-                    "sky", "ssh", "up", "--infra", cluster_name
-                ], capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    ["sky", "ssh", "up", "--infra", cluster_name],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
                 print(f"[SkyPilot][ssh up stdout]:\n{result.stdout}")
                 if result.stderr:
                     print(f"[SkyPilot][ssh up stderr]:\n{result.stderr}")
@@ -385,32 +396,33 @@ def launch_cluster_with_skypilot(
                 print(f"[SkyPilot][ssh up failed]: {e.stderr}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}"
+                    detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}",
                 )
             except Exception as e:
                 print(f"[SkyPilot][ssh up error]: {str(e)}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}"
+                    detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}",
                 )
-
         # Create a task
         task = sky.Task(
             name=f"lattice-task-{cluster_name}",
             run=command,
             setup=setup,
         )
-
+        # Add file_mounts if provided
+        if file_mounts:
+            task.set_file_mounts(file_mounts)
+        # Add workdir if provided
+        if workdir:
+            task.set_workdir(workdir)
         # Build resources config
         resources_kwargs = {}
-
-        # Handle infrastructure - support both cloud providers and SSH
         if cloud:
             if cloud.lower() == "ssh":
                 resources_kwargs["infra"] = "ssh"
             else:
                 resources_kwargs["infra"] = cloud
-
         if instance_type:
             resources_kwargs["instance_type"] = instance_type
         if cpus:
@@ -425,19 +437,14 @@ def launch_cluster_with_skypilot(
             resources_kwargs["zone"] = zone
         if use_spot and cloud and cloud.lower() != "ssh":
             resources_kwargs["use_spot"] = use_spot
-
-        # Set resources if any are specified
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
-
-        # Launch the cluster
         request_id = sky.launch(
             task,
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
-
         return request_id
     except Exception as e:
         raise HTTPException(
@@ -522,6 +529,7 @@ def is_ssh_cluster(cluster_name: str):
         return cluster_name in pools
     except Exception:
         return False
+
 
 # Routes
 @api_v1_router.get("/")
@@ -894,14 +902,17 @@ async def list_ssh_clusters(user=Depends(verify_auth)):
             status_code=500, detail=f"Failed to list SSH clusters: {str(e)}"
         )
 
+
 from fastapi.responses import StreamingResponse
 import asyncio
+
 
 @api_v1_router.get("/skypilot/stream-logs/{logfile}")
 async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
     """
     Stream logs from a running sky api logs -l <logfile> command in real time.
     """
+
     async def log_streamer():
         # Build the command
         cmd = ["sky", "api", "logs", "-l", logfile]
@@ -927,31 +938,60 @@ async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
 
     return StreamingResponse(log_streamer(), media_type="text/plain")
 
+
 @api_v1_router.post("/skypilot/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
-    launch_request: LaunchClusterRequest, user=Depends(verify_auth)
+    cluster_name: str = Form(...),
+    command: str = Form("echo 'Hello SkyPilot'"),
+    setup: Optional[str] = Form(None),
+    cloud: Optional[str] = Form(None),
+    instance_type: Optional[str] = Form(None),
+    cpus: Optional[str] = Form(None),
+    memory: Optional[str] = Form(None),
+    accelerators: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    zone: Optional[str] = Form(None),
+    use_spot: bool = Form(False),
+    idle_minutes_to_autostop: Optional[int] = Form(None),
+    python_file: Optional[UploadFile] = File(None),
+    user=Depends(verify_auth),
 ):
-    """Launch a cluster using SkyPilot"""
+    """Launch a cluster using SkyPilot, optionally attaching a Python file."""
     try:
+        file_mounts = None
+        workdir = None
+        python_filename = None
+        if python_file is not None and python_file.filename:
+            # Save the uploaded file to a persistent uploads directory
+            python_filename = python_file.filename
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            # Mount the file to /workspace/<filename> in the cluster
+            file_mounts = {f"/workspace/{python_filename}": str(file_path)}
+        # Launch the cluster with the file mounted
         request_id = launch_cluster_with_skypilot(
-            cluster_name=launch_request.cluster_name,
-            command=launch_request.command,
-            setup=launch_request.setup,
-            cloud=launch_request.cloud,
-            instance_type=launch_request.instance_type,
-            cpus=launch_request.cpus,
-            memory=launch_request.memory,
-            accelerators=launch_request.accelerators,
-            region=launch_request.region,
-            zone=launch_request.zone,
-            use_spot=launch_request.use_spot,
-            idle_minutes_to_autostop=launch_request.idle_minutes_to_autostop,
+            cluster_name=cluster_name,
+            command=command,
+            setup=setup,
+            cloud=cloud,
+            instance_type=instance_type,
+            cpus=cpus,
+            memory=memory,
+            accelerators=accelerators,
+            region=region,
+            zone=zone,
+            use_spot=use_spot,
+            idle_minutes_to_autostop=idle_minutes_to_autostop,
+            file_mounts=file_mounts,
+            workdir=None,  # Could be set to uploads dir if you want to sync a whole directory
         )
-
+        # Do NOT delete the file immediately; cleanup can be handled later if needed
         return LaunchClusterResponse(
             request_id=request_id,
-            cluster_name=launch_request.cluster_name,
-            message=f"Cluster '{launch_request.cluster_name}' launch initiated successfully",
+            cluster_name=cluster_name,
+            message=f"Cluster '{cluster_name}' launch initiated successfully",
         )
     except Exception as e:
         raise HTTPException(
