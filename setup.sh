@@ -20,7 +20,7 @@ echo "✅ Prerequisites check passed"
 
 # Install backend dependencies
 echo "📦 Installing backend dependencies..."
-cd backend
+cd backend || exit
 python -m pip install -r requirements.txt
 python -m pip install "skypilot[ssh]"
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
@@ -68,7 +68,7 @@ cd ..
 
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
-cd frontend
+cd frontend || exit
 npm install
 
 # Now build frontend
