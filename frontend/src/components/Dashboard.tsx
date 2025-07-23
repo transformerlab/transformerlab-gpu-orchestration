@@ -13,6 +13,7 @@ import {
   ListDivider,
 } from "@mui/joy";
 import { useAuth } from "../context/AuthContext";
+import logo from "../logo.png";
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -36,9 +37,16 @@ const Dashboard: React.FC = () => {
           boxShadow: "sm",
         }}
       >
-        <Typography level="h1" sx={{ color: "primary.500" }}>
-          Lattice
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <img
+            src={logo}
+            alt="Lattice Logo"
+            style={{ width: 40, height: 40 }}
+          />
+          <Typography level="h1" sx={{ color: "primary.500" }}>
+            Lattice
+          </Typography>
+        </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Dropdown>
             <MenuButton
