@@ -22,7 +22,6 @@ echo "✅ Prerequisites check passed"
 echo "📦 Installing backend dependencies..."
 cd backend || exit
 python -m pip install -r requirements.txt
-python -m pip install "skypilot[ssh]"
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
 cd ..
 
