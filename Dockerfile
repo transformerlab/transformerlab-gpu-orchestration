@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     socat \
+    netcat-openbsd \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \

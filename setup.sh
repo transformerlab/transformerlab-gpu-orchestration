@@ -26,6 +26,8 @@ echo "📦 Installing backend dependencies with uv..."
 uv venv --seed --python 3.10
 source .venv/bin/activate
 uv pip install -r requirements.txt
+uv pip install --upgrade uvicorn
+uv pip install "skypilot[kubernetes]"
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
 cd ..
 
