@@ -54,12 +54,15 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   // Form states
   const [newClusterName, setNewClusterName] = useState("");
   const [newClusterUser, setNewClusterUser] = useState("");
-  const [newClusterIdentityFile, setNewClusterIdentityFile] = useState("");
+  const [newClusterIdentityFile, setNewClusterIdentityFile] =
+    useState<File | null>(null);
   const [newClusterPassword, setNewClusterPassword] = useState("");
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
-  const [newNodeIdentityFile, setNewNodeIdentityFile] = useState("");
+  const [newNodeIdentityFile, setNewNodeIdentityFile] = useState<File | null>(
+    null
+  );
   const [newNodePassword, setNewNodePassword] = useState("");
 
   useEffect(() => {
@@ -116,25 +119,25 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const createCluster = async () => {
     try {
       setLoading(true);
+
+      const formData = new FormData();
+      formData.append("cluster_name", newClusterName);
+      if (newClusterUser) formData.append("user", newClusterUser);
+      if (newClusterPassword) formData.append("password", newClusterPassword);
+      if (newClusterIdentityFile)
+        formData.append("identity_file", newClusterIdentityFile);
+
       const response = await fetch(buildApiUrl("clusters"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify({
-          cluster_name: newClusterName,
-          user: newClusterUser || undefined,
-          identity_file: newClusterIdentityFile || undefined,
-          password: newClusterPassword || undefined,
-        }),
+        body: formData,
       });
 
       if (response.ok) {
         setShowCreateModal(false);
         setNewClusterName("");
         setNewClusterUser("");
-        setNewClusterIdentityFile("");
+        setNewClusterIdentityFile(null);
         setNewClusterPassword("");
         fetchClusters();
       } else {
@@ -153,23 +156,20 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
 
     try {
       setLoading(true);
+
+      const formData = new FormData();
+      formData.append("ip", newNodeIp);
+      formData.append("user", newNodeUser);
+      if (newNodePassword) formData.append("password", newNodePassword);
+      if (newNodeIdentityFile)
+        formData.append("identity_file", newNodeIdentityFile);
+
       const response = await fetch(
         buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           credentials: "include",
-          body: JSON.stringify({
-            cluster_name: selectedCluster.cluster_name,
-            node: {
-              ip: newNodeIp,
-              user: newNodeUser,
-              identity_file: newNodeIdentityFile || undefined,
-              password: newNodePassword || undefined,
-            },
-          }),
+          body: formData,
         }
       );
 
@@ -177,7 +177,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
         setShowAddNodeModal(false);
         setNewNodeIp("");
         setNewNodeUser("");
-        setNewNodeIdentityFile("");
+        setNewNodeIdentityFile(null);
         setNewNodePassword("");
         fetchClusterDetails(selectedCluster.cluster_name);
       } else {
@@ -392,7 +392,16 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                       <tr key={index}>
                         <td>{node.ip}</td>
                         <td>{node.user}</td>
-                        <td>{node.identity_file || "-"}</td>
+                        <td>
+                          {node.identity_file ? (
+                            <Chip size="sm" variant="soft">
+                              {node.identity_file.split("/").pop() ||
+                                node.identity_file}
+                            </Chip>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
                         <td>{node.password ? "****" : "-"}</td>
                         <td>
                           <IconButton
@@ -448,10 +457,25 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
             <FormControl>
               <FormLabel>Default Identity File (optional)</FormLabel>
               <Input
-                value={newClusterIdentityFile}
-                onChange={(e) => setNewClusterIdentityFile(e.target.value)}
-                placeholder="~/.ssh/id_rsa"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setNewClusterIdentityFile(file);
+                }}
+                slotProps={{
+                  input: {
+                    accept: ".pem,.key,.rsa",
+                  },
+                }}
               />
+              {newClusterIdentityFile && (
+                <Typography
+                  level="body-sm"
+                  sx={{ mt: 0.5, color: "text.secondary" }}
+                >
+                  Selected: {newClusterIdentityFile.name}
+                </Typography>
+              )}
             </FormControl>
             <FormControl>
               <FormLabel>Default Password (optional)</FormLabel>
@@ -504,10 +528,25 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
             <FormControl>
               <FormLabel>Identity File (optional)</FormLabel>
               <Input
-                value={newNodeIdentityFile}
-                onChange={(e) => setNewNodeIdentityFile(e.target.value)}
-                placeholder="/path/to/private/key.pem"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setNewNodeIdentityFile(file);
+                }}
+                slotProps={{
+                  input: {
+                    accept: ".pem,.key,.rsa",
+                  },
+                }}
               />
+              {newNodeIdentityFile && (
+                <Typography
+                  level="body-sm"
+                  sx={{ mt: 0.5, color: "text.secondary" }}
+                >
+                  Selected: {newNodeIdentityFile.name}
+                </Typography>
+              )}
             </FormControl>
             <FormControl>
               <FormLabel>Password (optional)</FormLabel>

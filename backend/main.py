@@ -1,4 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, APIRouter
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Depends,
+    Request,
+    APIRouter,
+    UploadFile,
+    Form,
+)
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -12,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 from dotenv import load_dotenv
 import sky
+import uuid
 
 # Load environment variables from .env file
 load_dotenv()
@@ -196,6 +205,50 @@ def get_ssh_node_pools_path():
     sky_dir = Path.home() / ".sky"
     sky_dir.mkdir(exist_ok=True)
     return sky_dir / "ssh_node_pools.yaml"
+
+
+def get_identity_files_dir():
+    """Get the directory to store SSH identity files"""
+    sky_dir = Path.home() / ".sky"
+    identity_dir = sky_dir / "identity_files"
+    identity_dir.mkdir(exist_ok=True, mode=0o700)  # Secure directory permissions
+    return identity_dir
+
+
+def save_identity_file(file_content: bytes, original_filename: str) -> str:
+    """Save an uploaded identity file with proper permissions and return the path"""
+    try:
+        identity_dir = get_identity_files_dir()
+
+        # Generate a unique filename to avoid conflicts
+        file_extension = Path(original_filename).suffix
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = identity_dir / unique_filename
+
+        # Write the file content
+        with open(file_path, "wb") as f:
+            f.write(file_content)
+
+        # Set proper permissions for SSH private key (read-only for owner)
+        os.chmod(file_path, 0o600)
+
+        return str(file_path)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save identity file: {str(e)}"
+        )
+
+
+def cleanup_identity_file(file_path: str):
+    """Remove an identity file if it exists"""
+    try:
+        if file_path and os.path.exists(file_path):
+            # Only remove files from our identity files directory for security
+            identity_dir = get_identity_files_dir()
+            if Path(file_path).parent == identity_dir:
+                os.remove(file_path)
+    except Exception as e:
+        print(f"Warning: Failed to cleanup identity file {file_path}: {e}")
 
 
 def load_ssh_node_pools():
@@ -623,16 +676,29 @@ async def list_clusters(user=Depends(verify_auth)):
 
 
 @api_v1_router.post("/clusters", response_model=ClusterResponse)
-async def create_cluster(cluster_request: ClusterRequest, user=Depends(verify_auth)):
-    """Create a new cluster"""
+async def create_cluster(
+    cluster_name: str = Form(...),
+    user: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    identity_file: Optional[UploadFile] = None,
+    current_user=Depends(verify_auth),
+):
+    """Create a new cluster with optional identity file upload"""
+
+    identity_file_path = None
+    if identity_file and identity_file.filename:
+        # Read and save the uploaded identity file
+        file_content = await identity_file.read()
+        identity_file_path = save_identity_file(file_content, identity_file.filename)
+
     create_cluster_in_pools(
-        cluster_request.cluster_name,
-        cluster_request.user,
-        cluster_request.identity_file,
-        cluster_request.password,
+        cluster_name,
+        user,
+        identity_file_path,
+        password,
     )
 
-    return ClusterResponse(cluster_name=cluster_request.cluster_name, nodes=[])
+    return ClusterResponse(cluster_name=cluster_name, nodes=[])
 
 
 @api_v1_router.get("/clusters/{cluster_name}", response_model=ClusterResponse)
@@ -662,33 +728,62 @@ async def get_cluster(cluster_name: str, user=Depends(verify_auth)):
 
 @api_v1_router.post("/clusters/{cluster_name}/nodes")
 async def add_node(
-    cluster_name: str, add_node_request: AddNodeRequest, user=Depends(verify_auth)
+    cluster_name: str,
+    ip: str = Form(...),
+    user: str = Form(...),
+    password: Optional[str] = Form(None),
+    identity_file: Optional[UploadFile] = None,
+    current_user=Depends(verify_auth),
 ):
-    """Add a node to an existing cluster"""
-    cluster_config = add_node_to_cluster(cluster_name, add_node_request.node)
+    """Add a node to an existing cluster with optional identity file upload"""
+
+    identity_file_path = None
+    if identity_file and identity_file.filename:
+        # Read and save the uploaded identity file
+        file_content = await identity_file.read()
+        identity_file_path = save_identity_file(file_content, identity_file.filename)
+
+    # Create SSHNode object
+    node = SSHNode(
+        ip=ip, user=user, identity_file=identity_file_path, password=password
+    )
+
+    cluster_config = add_node_to_cluster(cluster_name, node)
 
     nodes = []
     for host in cluster_config.get("hosts", []):
-        node = SSHNode(
+        node_obj = SSHNode(
             ip=host["ip"],
             user=host["user"],
             identity_file=host.get("identity_file"),
             password=host.get("password"),
         )
-        nodes.append(node)
+        nodes.append(node_obj)
 
     return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
 
 
 @api_v1_router.delete("/clusters/{cluster_name}")
 async def delete_cluster(cluster_name: str, user=Depends(verify_auth)):
-    """Delete a cluster"""
+    """Delete a cluster and cleanup associated identity files"""
     pools = load_ssh_node_pools()
 
     if cluster_name not in pools:
         raise HTTPException(
             status_code=404, detail=f"Cluster '{cluster_name}' not found"
         )
+
+    # Clean up identity files before deleting cluster
+    cluster_config = pools[cluster_name]
+
+    # Clean up cluster-level identity file
+    if "identity_file" in cluster_config:
+        cleanup_identity_file(cluster_config["identity_file"])
+
+    # Clean up node-level identity files
+    for host in cluster_config.get("hosts", []):
+        if "identity_file" in host:
+            cleanup_identity_file(host["identity_file"])
 
     del pools[cluster_name]
     save_ssh_node_pools(pools)
@@ -698,7 +793,7 @@ async def delete_cluster(cluster_name: str, user=Depends(verify_auth)):
 
 @api_v1_router.delete("/clusters/{cluster_name}/nodes/{node_ip}")
 async def remove_node(cluster_name: str, node_ip: str, user=Depends(verify_auth)):
-    """Remove a node from a cluster"""
+    """Remove a node from a cluster and cleanup associated identity file"""
     pools = load_ssh_node_pools()
 
     if cluster_name not in pools:
@@ -708,6 +803,16 @@ async def remove_node(cluster_name: str, node_ip: str, user=Depends(verify_auth)
 
     hosts = pools[cluster_name].get("hosts", [])
     original_length = len(hosts)
+
+    # Find and cleanup identity file for the node being removed
+    node_to_remove = None
+    for host in hosts:
+        if host.get("ip") == node_ip:
+            node_to_remove = host
+            break
+
+    if node_to_remove and "identity_file" in node_to_remove:
+        cleanup_identity_file(node_to_remove["identity_file"])
 
     # Filter out the node with the specified IP
     pools[cluster_name]["hosts"] = [host for host in hosts if host.get("ip") != node_ip]
@@ -723,6 +828,31 @@ async def remove_node(cluster_name: str, node_ip: str, user=Depends(verify_auth)
     return {
         "message": f"Node with IP '{node_ip}' removed from cluster '{cluster_name}' successfully"
     }
+
+
+@api_v1_router.get("/clusters/identity-files")
+async def list_identity_files(user=Depends(verify_auth)):
+    """List all stored identity files (for debugging/management)"""
+    try:
+        identity_dir = get_identity_files_dir()
+        files = []
+        for file_path in identity_dir.iterdir():
+            if file_path.is_file():
+                stat_info = file_path.stat()
+                files.append(
+                    {
+                        "filename": file_path.name,
+                        "path": str(file_path),
+                        "size": stat_info.st_size,
+                        "permissions": oct(stat_info.st_mode)[-3:],
+                        "created": stat_info.st_ctime,
+                    }
+                )
+        return {"identity_files": files}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list identity files: {str(e)}"
+        )
 
 
 # SkyPilot cluster launching and status routes
