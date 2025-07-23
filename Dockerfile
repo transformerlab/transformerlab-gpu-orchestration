@@ -17,14 +17,22 @@ WORKDIR /app
 # Copy root package.json and package-lock.json for dev scripts
 COPY package*.json ./
 
-# Install system dependencies and Node.js 20
+# Install system dependencies, Node.js 20, and kubectl
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
+    && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list \
+    && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
+    && apt-get update \
+    && apt-get install -y kubectl \
     && rm -rf /var/lib/apt/lists/*
-
 
 # Copy setup script and run it
 COPY setup.sh ./
@@ -32,16 +40,14 @@ COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
 
-
-# # Copy built frontend from the previous stage
-# COPY --from=frontend-builder /app/frontend/build ./frontend/build
-
 # Copy and setup startup script
 COPY start.sh ./
 RUN chmod +x start.sh
 
 # Expose port 8000 for the combined frontend/backend
 EXPOSE 8000
+# Expose port 46580 for skypilot
+EXPOSE 46580
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

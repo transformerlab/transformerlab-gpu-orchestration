@@ -1,6 +1,24 @@
-# Getting Started with Create React App
+# Lattice Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the React frontend for Lattice, a cluster management application built with SkyPilot.
+
+## Environment Configuration
+
+The frontend uses environment variables to configure API endpoints. Copy `.env.example` to `.env` and configure as needed:
+
+```bash
+cp .env.example .env
+```
+
+### Key Environment Variables
+
+- `REACT_APP_API_BASE_URL`: The base URL for API calls
+  - Development (separate frontend): `http://localhost:8000/api/v1`  
+  - Production (unified): `/api/v1` (or leave blank to use default)
+
+## API Integration
+
+All API calls use the `buildApiUrl` utility from `src/utils/api.ts` to ensure consistent URL construction. This allows the frontend to work in both development mode (with separate backend) and production mode (unified deployment).
 
 ## Available Scripts
 
