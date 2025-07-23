@@ -49,6 +49,15 @@ EXPOSE 8000
 # Expose port 46580 for skypilot
 EXPOSE 46580
 
+# Check Skypilot installation and run
+RUN sky --version || (echo "Skypilot not installed, skipping..." && exit 0)
+
+# Run a sky check to see if something else needs to be installed for ssh
+RUN sky check
+
+# Start sky dashboard
+RUN sky dashboard &
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/api/v1/').raise_for_status()" || exit 1
