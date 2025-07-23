@@ -24,7 +24,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Use relative API base URL - this will work regardless of host/port
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "/api/v1";
+const API_BASE_URL = import.meta.env.VITE_BASE_URL || "/api/v1";
 
 // Configure axios to include cookies
 const api = axios.create({

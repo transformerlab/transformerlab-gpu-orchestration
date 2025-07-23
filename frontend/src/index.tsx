@@ -5,7 +5,7 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
 // echo the API base URL to the console
-console.log("API Base URL:", process.env.REACT_APP_API_BASE_URL || "/api/v1");
+console.log("API Base URL:", import.meta.env.VITE_API_URL || "/api/v1");
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement

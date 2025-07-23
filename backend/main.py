@@ -1090,9 +1090,9 @@ frontend_build_path = os.path.join(
 if os.path.exists(frontend_build_path):
     # Mount static files
     app.mount(
-        "/static",
-        StaticFiles(directory=os.path.join(frontend_build_path, "static")),
-        name="static",
+        "/assets",
+        StaticFiles(directory=os.path.join(frontend_build_path, "assets")),
+        name="assets",
     )
 
     # Serve index.html for all other routes (SPA routing)
