@@ -66,7 +66,7 @@ RUN sky --version || (echo "Skypilot not installed, skipping..." && exit 0)
 RUN sky check || (echo "Sky check failed, printing log file contents:" && cat ~/.sky/api_server/server.log 2>/dev/null || echo "Log file not found or empty")
 
 # Start sky dashboard
-RUN sky dashboard &
+RUN sky ssh up
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

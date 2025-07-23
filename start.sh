@@ -14,6 +14,11 @@ if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
 fi
 
 
+# RUN sky stuff for proper setup
+export PATH="./backend/.venv/bin:$PATH"
+sky check
+sky ssh up
+
 # Set default values for optional environment variables
 
 # Check for --dev parameter
