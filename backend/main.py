@@ -894,6 +894,39 @@ async def list_ssh_clusters(user=Depends(verify_auth)):
             status_code=500, detail=f"Failed to list SSH clusters: {str(e)}"
         )
 
+from fastapi.responses import StreamingResponse
+import asyncio
+
+@api_v1_router.get("/skypilot/stream-logs/{logfile}")
+async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
+    """
+    Stream logs from a running sky api logs -l <logfile> command in real time.
+    """
+    async def log_streamer():
+        # Build the command
+        cmd = ["sky", "api", "logs", "-l", logfile]
+        # Start the subprocess
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        try:
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    if process.returncode is not None:
+                        break
+                    await asyncio.sleep(0.1)
+                    continue
+                yield line
+        finally:
+            if process.returncode is None:
+                process.terminate()
+                await process.wait()
+
+    return StreamingResponse(log_streamer(), media_type="text/plain")
+
 @api_v1_router.post("/skypilot/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
     launch_request: LaunchClusterRequest, user=Depends(verify_auth)
