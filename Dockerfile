@@ -45,6 +45,10 @@ COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
 
+# Add sky command to PATH
+ENV PATH="/app/backend/.venv/bin:$PATH"
+
+
 # Copy and setup startup script
 COPY start.sh ./
 RUN chmod +x start.sh
