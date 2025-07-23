@@ -4,7 +4,6 @@
   "description": "Full-stack application with FastAPI backend and React TypeScript frontend featuring WorkOS authentication",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && python main.py",
     "dev:frontend": "cd frontend && npm start",
     "unified": "npm run build && cd backend && python main.py",
@@ -24,8 +23,5 @@
     "mui-joy"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
+  "license": "MIT"
 }
