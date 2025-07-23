@@ -25,16 +25,11 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-
 # Copy setup script and run it
 COPY setup.sh ./
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
-
-
-# # Copy built frontend from the previous stage
-# COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Copy and setup startup script
 COPY start.sh ./
