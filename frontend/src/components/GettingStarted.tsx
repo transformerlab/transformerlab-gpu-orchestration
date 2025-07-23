@@ -83,7 +83,12 @@ const GettingStarted: React.FC = () => {
   }
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto" }}>
+    <Box
+      sx={{
+        maxWidth: 800,
+        mx: "auto",
+      }}
+    >
       <Box sx={{ textAlign: "center", mb: 4 }}>
         <Typography level="h2" sx={{ mb: 1 }}>
           Welcome to SkyPilot Cluster Management
@@ -109,7 +114,7 @@ const GettingStarted: React.FC = () => {
         </Card>
       )}
 
-      <Stack spacing={3}>
+      <Stack spacing={1}>
         {steps.map((step, index) => (
           <Card
             key={index}
@@ -168,8 +173,8 @@ const GettingStarted: React.FC = () => {
       </Stack>
 
       {clusters.length === 0 && (
-        <Card variant="soft" sx={{ mt: 4, textAlign: "center" }}>
-          <Typography level="title-md" sx={{ mb: 2 }}>
+        <Card variant="soft" sx={{ mt: 2, textAlign: "center" }}>
+          <Typography level="title-md" sx={{}}>
             Ready to get started?
           </Typography>
           <Button
