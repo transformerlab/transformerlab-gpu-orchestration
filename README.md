@@ -37,8 +37,7 @@ You are setup
 
 1. Make sure your env files are set in the `/.env` and in `/frontend/.env` and make sure the frontend env redirect is set to VITE_API_URL=http://localhost:8000/api/v1 (not VITE_API_URL=/api/v1 which is only appropriate for production with one server)
 2. Run `./start.sh --dev` in one window
-3. Run `npm start` in frontend in another window
-
+3. Run `npm start dev` in frontend in another window
 
 
 ## 🐳 Docker Deployment
@@ -54,6 +53,8 @@ You are setup
    WORKOS_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback
    WORKOS_COOKIE_PASSWORD=your_secure_cookie_password
    ```
+
+Then run `docker-run.sh build-and-run`
 
 ### Frontend Structure
 
