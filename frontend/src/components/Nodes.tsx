@@ -6,7 +6,7 @@ import { buildApiUrl } from "../utils/api";
 
 interface Node {
   id: string;
-  status: 'healthy' | 'warning' | 'error';
+  status: "healthy" | "warning" | "error";
 }
 
 interface Cluster {
@@ -16,41 +16,45 @@ interface Cluster {
 }
 
 const generateRandomNodes = (count: number): Node[] => {
-  const statuses: ('healthy' | 'warning' | 'error')[] = ['healthy', 'warning', 'error'];
+  const statuses: ("healthy" | "warning" | "error")[] = [
+    "healthy",
+    "warning",
+    "error",
+  ];
   return Array.from({ length: count }, (_, i) => ({
     id: `node-${i}`,
-    status: statuses[Math.floor(Math.random() * statuses.length)]
+    status: statuses[Math.floor(Math.random() * statuses.length)],
   }));
 };
 
 const mockClusters: Cluster[] = [
   {
-    id: 'cluster-1',
-    name: 'Production Cluster',
-    nodes: generateRandomNodes(65)
+    id: "cluster-1",
+    name: "Production Cluster",
+    nodes: generateRandomNodes(165),
   },
   {
-    id: 'cluster-2',
-    name: 'Development Cluster',
-    nodes: generateRandomNodes(42)
+    id: "cluster-2",
+    name: "Development Cluster",
+    nodes: generateRandomNodes(48),
   },
   {
-    id: 'cluster-3',
-    name: 'Testing Cluster',
-    nodes: generateRandomNodes(78)
-  }
+    id: "cluster-3",
+    name: "Testing Cluster",
+    nodes: generateRandomNodes(278),
+  },
 ];
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'healthy':
-      return '#10b981'; // emerald-500
-    case 'warning':
-      return '#f59e0b'; // amber-500
-    case 'error':
-      return '#ef4444'; // red-500
+    case "healthy":
+      return "#10b981"; // emerald-500
+    case "warning":
+      return "#f59e0b"; // amber-500
+    case "error":
+      return "#ef4444"; // red-500
     default:
-      return '#6b7280'; // gray-500
+      return "#6b7280"; // gray-500
   }
 };
 
@@ -60,22 +64,26 @@ const NodeSquare: React.FC<{ node: Node }> = ({ node }) => (
       width: 12,
       height: 12,
       backgroundColor: getStatusColor(node.status),
-      borderRadius: '2px',
-      margin: '1px',
-      transition: 'all 0.2s ease',
-      cursor: 'pointer',
-      '&:hover': {
-        transform: 'scale(1.2)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      }
+      borderRadius: "2px",
+      margin: "1px",
+      transition: "all 0.2s ease",
+      cursor: "pointer",
+      "&:hover": {
+        transform: "scale(1.2)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+      },
     }}
   />
 );
 
 const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
-  const healthyCount = cluster.nodes.filter(n => n.status === 'healthy').length;
-  const warningCount = cluster.nodes.filter(n => n.status === 'warning').length;
-  const errorCount = cluster.nodes.filter(n => n.status === 'error').length;
+  const healthyCount = cluster.nodes.filter(
+    (n) => n.status === "healthy"
+  ).length;
+  const warningCount = cluster.nodes.filter(
+    (n) => n.status === "warning"
+  ).length;
+  const errorCount = cluster.nodes.filter((n) => n.status === "error").length;
 
   return (
     <Card
@@ -83,11 +91,11 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
       sx={{
         p: 3,
         mb: 3,
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          boxShadow: 'md',
-          transform: 'translateY(-2px)',
-        }
+        transition: "all 0.2s ease",
+        "&:hover": {
+          boxShadow: "md",
+          transform: "translateY(-2px)",
+        },
       }}
     >
       <Box sx={{ mb: 2 }}>
@@ -106,17 +114,17 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
           </Chip>
         </Stack>
       </Box>
-      
+
       <Box
         sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '1px',
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "1px",
           p: 2,
-          backgroundColor: 'background.level1',
-          borderRadius: 'md',
+          backgroundColor: "background.level1",
+          borderRadius: "md",
           maxHeight: 200,
-          overflow: 'auto',
+          overflow: "auto",
         }}
       >
         {cluster.nodes.map((node) => (
