@@ -374,9 +374,9 @@ def launch_cluster_with_skypilot(
                 )
             # Run `sky ssh up <cluster_name>` using subprocess
             try:
-                print(f"[SkyPilot] Running: sky ssh up {cluster_name}")
+                print(f"[SkyPilot] Running: sky ssh up")
                 result = subprocess.run([
-                    "sky", "ssh", "up"
+                    "sky", "ssh", "up", "--infra", cluster_name
                 ], capture_output=True, text=True, check=True)
                 print(f"[SkyPilot][ssh up stdout]:\n{result.stdout}")
                 if result.stderr:
