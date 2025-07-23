@@ -8,6 +8,7 @@ import {
   Alert,
 } from "@mui/joy";
 import axios from "axios";
+import logo from "../logo.png";
 
 // Use relative API base URL - this will work regardless of host/port
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api/v1";
@@ -60,11 +61,18 @@ const LoginPage: React.FC = () => {
           textAlign: "center",
         }}
       >
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+          <img
+            src={logo}
+            alt="Lattice Logo"
+            style={{ width: 128, height: 128 }}
+          />
+        </Box>
         <Typography level="h2" sx={{ mb: 1 }}>
-          Welcome to Lattice
+          Lattice
         </Typography>
         <Typography level="body-md" sx={{ mb: 3, color: "text.secondary" }}>
-          Sign in with your WorkOS account to continue
+          Distributed computing for AI
         </Typography>
 
         {error && (
@@ -90,10 +98,6 @@ const LoginPage: React.FC = () => {
             "Sign in with WorkOS"
           )}
         </Button>
-
-        <Typography level="body-sm" sx={{ mt: 3, color: "text.tertiary" }}>
-          Secure authentication powered by WorkOS
-        </Typography>
       </Card>
     </Box>
   );
