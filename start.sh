@@ -17,7 +17,6 @@ fi
 # RUN sky stuff for proper setup
 export PATH="./backend/.venv/bin:$PATH"
 sky check
-sky ssh up
 
 # Set default values for optional environment variables
 

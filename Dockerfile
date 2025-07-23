@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     socat \
     netcat-openbsd \
+    jq \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
@@ -65,8 +66,8 @@ RUN sky --version || (echo "Skypilot not installed, skipping..." && exit 0)
 # Run a sky check to see if something else needs to be installed for ssh
 RUN sky check || (echo "Sky check failed, printing log file contents:" && cat ~/.sky/api_server/server.log 2>/dev/null || echo "Log file not found or empty")
 
-# Start sky dashboard
-RUN sky ssh up
+# # Make file at /root/.sky/ssh_node_pools.yaml
+# RUN mkdir -p /root/.sky && touch /root/.sky/ssh_node_pools.yaml
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
