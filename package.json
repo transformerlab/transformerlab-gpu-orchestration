@@ -6,9 +6,9 @@
   "scripts": {
     "dev:backend": "source .venv/bin/activate && cd backend && python main.py",
     "dev:frontend": "cd frontend && npm start",
-    "unified": "npm run build && source .venv/bin/activate && cd backend && python main.py",
+    "unified": "npm run build && cd backend && source .venv/bin/activate && python main.py",
     "install:all": "npm run install:backend && npm run install:frontend",
-    "install:backend": "source .venv/bin/activate && cd backend && uv pip install -r requirements.txt",
+    "install:backend": "cd backend && source .venv/bin/activate && uv pip install -r requirements.txt",
     "install:frontend": "cd frontend && npm install",
     "build": "cd frontend && npm run build",
     "test": "cd frontend && npm test",

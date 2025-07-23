@@ -21,10 +21,10 @@ echo "✅ Prerequisites check passed"
 
 # Create Python virtual environment and install backend dependencies
 echo "📦 Creating Python virtual environment with uv..."
-uv venv --seed --python 3.10
 cd backend || exit
 echo "📦 Installing backend dependencies with uv..."
-source ../.venv/bin/activate
+uv venv --seed --python 3.10
+source .venv/bin/activate
 uv pip install -r requirements.txt
 echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
 cd ..
