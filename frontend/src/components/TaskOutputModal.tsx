@@ -35,12 +35,14 @@ interface TaskOutputModalProps {
   open: boolean;
   onClose: () => void;
   clusterName: string;
+  isClusterLaunching?: boolean;
 }
 
 const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
   open,
   onClose,
   clusterName,
+  isClusterLaunching = false,
 }) => {
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
@@ -116,18 +118,18 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case "succeeded":
+      case "jobstatus.succeeded":
         return "success";
-      case "running":
+      case "jobstatus.running":
         return "primary";
-      case "failed":
-      case "failed_driver":
-      case "failed_setup":
+      case "jobstatus.failed":
+      case "jobstatus.failed_driver":
+      case "jobstatus.failed_setup":
         return "danger";
-      case "cancelled":
+      case "jobstatus.cancelled":
         return "neutral";
-      case "pending":
-      case "setting_up":
+      case "jobstatus.pending":
+      case "jobstatus.setting_up":
         return "warning";
       default:
         return "neutral";
@@ -149,6 +151,12 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
           {/* Jobs List */}
           <Card sx={{ flex: 1, overflow: "hidden" }}>
             <CardContent>
+              {isClusterLaunching && (
+                <Alert color="warning" sx={{ mb: 2 }}>
+                  Cluster is launching. Please wait until it is ready to view
+                  jobs.
+                </Alert>
+              )}
               <Box
                 sx={{
                   display: "flex",
@@ -163,6 +171,7 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
                   variant="outlined"
                   onClick={fetchJobs}
                   loading={loading}
+                  disabled={isClusterLaunching}
                 >
                   Refresh
                 </Button>
@@ -194,92 +203,264 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
                       <React.Fragment key={job.job_id}>
                         {index > 0 && <ListDivider />}
                         <ListItem>
-                          <Box sx={{ width: "100%" }}>
+                          {isClusterLaunching ? (
                             <Box
                               sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                mb: 1,
+                                width: "100%",
+                                opacity: 0.5,
+                                pointerEvents: "none",
                               }}
                             >
-                              <Typography level="title-sm">
-                                {job.job_name}
+                              {/* All content below is visually disabled */}
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  mb: 1,
+                                }}
+                              >
+                                <Typography level="title-sm">
+                                  {job.job_name}
+                                </Typography>
+                                {(() => {
+                                  const status = job.status.toUpperCase();
+                                  if (status === "JOBSTATUS.PENDING") {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color="warning"
+                                        variant="soft"
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 0.5,
+                                          }}
+                                        >
+                                          <CircularProgress size="sm" />
+                                          Pending
+                                        </Box>
+                                      </Chip>
+                                    );
+                                  } else if (status === "JOBSTATUS.RUNNING") {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color="primary"
+                                        variant="soft"
+                                      >
+                                        Running
+                                      </Chip>
+                                    );
+                                  } else if (status === "JOBSTATUS.SUCCEEDED") {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color="success"
+                                        variant="soft"
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 0.5,
+                                          }}
+                                        >
+                                          <Check
+                                            size={16}
+                                            style={{ color: "#22c55e" }}
+                                          />
+                                          Succeeded
+                                        </Box>
+                                      </Chip>
+                                    );
+                                  } else {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color={getStatusColor(job.status)}
+                                        variant="soft"
+                                      >
+                                        {job.status.charAt(0).toUpperCase() +
+                                          job.status
+                                            .slice(1)
+                                            .replace(/_/g, " ")}
+                                      </Chip>
+                                    );
+                                  }
+                                })()}
+                              </Box>
+                              <Typography
+                                level="body-xs"
+                                sx={{ color: "text.secondary", mb: 1 }}
+                              >
+                                Job ID: {job.job_id} | User: {job.username}
                               </Typography>
-                              <Chip
+                              <Typography
+                                level="body-xs"
+                                sx={{ color: "text.secondary", mb: 1 }}
+                              >
+                                Submitted: {formatTimestamp(job.submitted_at)}
+                              </Typography>
+                              {job.start_at && (
+                                <Typography
+                                  level="body-xs"
+                                  sx={{ color: "text.secondary", mb: 1 }}
+                                >
+                                  Started: {formatTimestamp(job.start_at)}
+                                </Typography>
+                              )}
+                              {job.end_at && (
+                                <Typography
+                                  level="body-xs"
+                                  sx={{ color: "text.secondary", mb: 1 }}
+                                >
+                                  Ended: {formatTimestamp(job.end_at)}
+                                </Typography>
+                              )}
+                              <Typography
+                                level="body-xs"
+                                sx={{ color: "text.secondary", mb: 1 }}
+                              >
+                                Resources: {job.resources}
+                              </Typography>
+                              <Button
                                 size="sm"
-                                color={getStatusColor(job.status)}
-                                variant="soft"
+                                variant="outlined"
+                                sx={{ mt: 1 }}
+                                disabled
                               >
-                                {job.status
-                                  .toLowerCase()
-                                  .includes("setting_up") ? (
-                                  "Setting Up"
-                                ) : job.status
-                                    .toLowerCase()
-                                    .includes("succeeded") ? (
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 0.5,
-                                    }}
-                                  >
-                                    <Check
-                                      size={16}
-                                      style={{ color: "#22c55e" }}
-                                    />
-                                    Succeeded
-                                  </Box>
-                                ) : (
-                                  job.status.charAt(0).toUpperCase() +
-                                  job.status.slice(1).replace(/_/g, " ")
-                                )}
-                              </Chip>
+                                View Logs
+                              </Button>
                             </Box>
-                            <Typography
-                              level="body-xs"
-                              sx={{ color: "text.secondary", mb: 1 }}
-                            >
-                              Job ID: {job.job_id} | User: {job.username}
-                            </Typography>
-                            <Typography
-                              level="body-xs"
-                              sx={{ color: "text.secondary", mb: 1 }}
-                            >
-                              Submitted: {formatTimestamp(job.submitted_at)}
-                            </Typography>
-                            {job.start_at && (
+                          ) : (
+                            <Box sx={{ width: "100%" }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  mb: 1,
+                                }}
+                              >
+                                <Typography level="title-sm">
+                                  {job.job_name}
+                                </Typography>
+                                {(() => {
+                                  const status = job.status.toUpperCase();
+                                  if (status === "JOBSTATUS.PENDING") {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color="warning"
+                                        variant="soft"
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 0.5,
+                                          }}
+                                        >
+                                          <CircularProgress size="sm" />
+                                          Pending
+                                        </Box>
+                                      </Chip>
+                                    );
+                                  } else if (status === "JOBSTATUS.RUNNING") {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color="primary"
+                                        variant="soft"
+                                      >
+                                        Running
+                                      </Chip>
+                                    );
+                                  } else if (status === "JOBSTATUS.SUCCEEDED") {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color="success"
+                                        variant="soft"
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 0.5,
+                                          }}
+                                        >
+                                          <Check
+                                            size={16}
+                                            style={{ color: "#22c55e" }}
+                                          />
+                                          Succeeded
+                                        </Box>
+                                      </Chip>
+                                    );
+                                  } else {
+                                    return (
+                                      <Chip
+                                        size="sm"
+                                        color={getStatusColor(job.status)}
+                                        variant="soft"
+                                      >
+                                        {job.status.charAt(0).toUpperCase() +
+                                          job.status
+                                            .slice(1)
+                                            .replace(/_/g, " ")}
+                                      </Chip>
+                                    );
+                                  }
+                                })()}
+                              </Box>
                               <Typography
                                 level="body-xs"
                                 sx={{ color: "text.secondary", mb: 1 }}
                               >
-                                Started: {formatTimestamp(job.start_at)}
+                                Job ID: {job.job_id} | User: {job.username}
                               </Typography>
-                            )}
-                            {job.end_at && (
                               <Typography
                                 level="body-xs"
                                 sx={{ color: "text.secondary", mb: 1 }}
                               >
-                                Ended: {formatTimestamp(job.end_at)}
+                                Submitted: {formatTimestamp(job.submitted_at)}
                               </Typography>
-                            )}
-                            <Typography
-                              level="body-xs"
-                              sx={{ color: "text.secondary", mb: 1 }}
-                            >
-                              Resources: {job.resources}
-                            </Typography>
-                            <Button
-                              size="sm"
-                              variant="outlined"
-                              onClick={() => fetchJobLogs(job.job_id)}
-                              sx={{ mt: 1 }}
-                            >
-                              View Logs
-                            </Button>
-                          </Box>
+                              {job.start_at && (
+                                <Typography
+                                  level="body-xs"
+                                  sx={{ color: "text.secondary", mb: 1 }}
+                                >
+                                  Started: {formatTimestamp(job.start_at)}
+                                </Typography>
+                              )}
+                              {job.end_at && (
+                                <Typography
+                                  level="body-xs"
+                                  sx={{ color: "text.secondary", mb: 1 }}
+                                >
+                                  Ended: {formatTimestamp(job.end_at)}
+                                </Typography>
+                              )}
+                              <Typography
+                                level="body-xs"
+                                sx={{ color: "text.secondary", mb: 1 }}
+                              >
+                                Resources: {job.resources}
+                              </Typography>
+                              <Button
+                                size="sm"
+                                variant="outlined"
+                                onClick={() => fetchJobLogs(job.job_id)}
+                                sx={{ mt: 1 }}
+                              >
+                                View Logs
+                              </Button>
+                            </Box>
+                          )}
                         </ListItem>
                       </React.Fragment>
                     ))

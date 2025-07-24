@@ -22,6 +22,7 @@ interface SubmitJobModalProps {
   onClose: () => void;
   clusterName: string;
   onJobSubmitted?: () => void;
+  isClusterLaunching?: boolean;
 }
 
 const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
@@ -29,10 +30,16 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   onClose,
   clusterName,
   onJobSubmitted,
+  isClusterLaunching = false,
 }) => {
   const [command, setCommand] = useState("");
   const [setup, setSetup] = useState("");
   const [pythonFile, setPythonFile] = useState<File | null>(null);
+  const [cpus, setCpus] = useState("");
+  const [memory, setMemory] = useState("");
+  const [accelerators, setAccelerators] = useState("");
+  const [region, setRegion] = useState("");
+  const [zone, setZone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -41,6 +48,11 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setCommand("");
     setSetup("");
     setPythonFile(null);
+    setCpus("");
+    setMemory("");
+    setAccelerators("");
+    setRegion("");
+    setZone("");
     setError(null);
     setSuccess(null);
   };
@@ -55,6 +67,11 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       formData.append("command", command);
       if (setup) formData.append("setup", setup);
       if (pythonFile) formData.append("python_file", pythonFile);
+      if (cpus) formData.append("cpus", cpus);
+      if (memory) formData.append("memory", memory);
+      if (accelerators) formData.append("accelerators", accelerators);
+      if (region) formData.append("region", region);
+      if (zone) formData.append("zone", zone);
       const response = await fetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
         {
@@ -93,6 +110,12 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
         <form onSubmit={handleSubmit}>
           <Card variant="outlined">
             <CardContent>
+              {isClusterLaunching && (
+                <Alert color="warning" sx={{ mb: 2 }}>
+                  Cluster is launching. Please wait until it is ready to submit
+                  jobs.
+                </Alert>
+              )}
               {error && (
                 <Alert color="danger" sx={{ mb: 2 }}>
                   {error}
@@ -111,6 +134,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   placeholder="python my_script.py"
                   minRows={2}
                   required
+                  disabled={isClusterLaunching}
                 />
               </FormControl>
               <FormControl sx={{ mb: 2 }}>
@@ -120,6 +144,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   onChange={(e) => setSetup(e.target.value)}
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
+                  disabled={isClusterLaunching}
                 />
               </FormControl>
               <FormControl sx={{ mb: 2 }}>
@@ -135,6 +160,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                     }
                   }}
                   style={{ marginTop: 8 }}
+                  disabled={isClusterLaunching}
                 />
                 {pythonFile && (
                   <Typography level="body-xs" color="primary">
@@ -142,14 +168,69 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   </Typography>
                 )}
               </FormControl>
+              {/* Resource Configuration */}
+              <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Resource Configuration
+                </Typography>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>CPUs</FormLabel>
+                  <Input
+                    value={cpus}
+                    onChange={(e) => setCpus(e.target.value)}
+                    placeholder="e.g., 4, 8+"
+                    disabled={isClusterLaunching}
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Memory (GB)</FormLabel>
+                  <Input
+                    value={memory}
+                    onChange={(e) => setMemory(e.target.value)}
+                    placeholder="e.g., 16, 32+"
+                    disabled={isClusterLaunching}
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Accelerators</FormLabel>
+                  <Input
+                    value={accelerators}
+                    onChange={(e) => setAccelerators(e.target.value)}
+                    placeholder="e.g., V100, V100:2, A100:4"
+                    disabled={isClusterLaunching}
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Region</FormLabel>
+                  <Input
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    placeholder="e.g., us-west-2, us-central1"
+                    disabled={isClusterLaunching}
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Zone</FormLabel>
+                  <Input
+                    value={zone}
+                    onChange={(e) => setZone(e.target.value)}
+                    placeholder="e.g., us-west-2a, us-central1-a"
+                    disabled={isClusterLaunching}
+                  />
+                </FormControl>
+              </Card>
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Button variant="plain" onClick={onClose} disabled={loading}>
+                <Button
+                  variant="plain"
+                  onClick={onClose}
+                  disabled={loading || isClusterLaunching}
+                >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   loading={loading}
-                  disabled={!command || loading}
+                  disabled={!command || loading || isClusterLaunching}
                   color="success"
                 >
                   Submit Job

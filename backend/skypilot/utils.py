@@ -164,10 +164,13 @@ def submit_job_to_existing_cluster(
     setup: Optional[str] = None,
     file_mounts: Optional[dict] = None,
     workdir: Optional[str] = None,
+    cpus: Optional[str] = None,
+    memory: Optional[str] = None,
+    accelerators: Optional[str] = None,
+    region: Optional[str] = None,
+    zone: Optional[str] = None,
 ):
     try:
-        import sky
-
         task = sky.Task(
             name=f"lattice-job-{cluster_name}",
             run=command,
@@ -175,8 +178,21 @@ def submit_job_to_existing_cluster(
         )
         if file_mounts:
             task.set_file_mounts(file_mounts)
-        # if workdir:
-        #     task.set_workdir(workdir)
+
+        resources_kwargs = {}
+        if cpus:
+            resources_kwargs["cpus"] = cpus
+        if memory:
+            resources_kwargs["memory"] = memory
+        if accelerators:
+            resources_kwargs["accelerators"] = accelerators
+        if region:
+            resources_kwargs["region"] = region
+        if zone:
+            resources_kwargs["zone"] = zone
+        if resources_kwargs:
+            resources = sky.Resources(**resources_kwargs)
+            task.set_resources(resources)
         request_id = sky.exec(
             task,
             cluster_name=cluster_name,

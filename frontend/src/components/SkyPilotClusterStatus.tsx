@@ -702,6 +702,11 @@ const SkyPilotClusterStatus: React.FC = () => {
         onJobSubmitted={() => {
           if (expandedCluster) fetchJobs(expandedCluster);
         }}
+        isClusterLaunching={
+          clusters
+            .find((c) => c.cluster_name === jobModalCluster)
+            ?.status.toLowerCase() === "init"
+        }
       />
     </Box>
   );
