@@ -110,8 +110,8 @@ async def launch_skypilot_cluster(
             file_path = UPLOADS_DIR / unique_filename
             with open(file_path, "wb") as f:
                 f.write(await python_file.read())
-            # Mount the file to /workspace/<filename> in the cluster
-            file_mounts = {f"/workspace/{python_filename}": str(file_path)}
+            # Mount the file to workspace/<filename> in the cluster
+            file_mounts = {f"workspace/{python_filename}": str(file_path)}
         request_id = launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             command=command,

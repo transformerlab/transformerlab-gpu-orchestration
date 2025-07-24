@@ -115,56 +115,29 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
       setLoading(true);
       setError(null);
 
-      let response;
+      // Always use multipart/form-data
+      const formData = new FormData();
+      formData.append("cluster_name", clusterName);
+      formData.append("command", command);
+      if (setup) formData.append("setup", setup);
+      if (cloud) formData.append("cloud", cloud);
+      if (instanceType) formData.append("instance_type", instanceType);
+      if (cpus) formData.append("cpus", cpus);
+      if (memory) formData.append("memory", memory);
+      if (accelerators) formData.append("accelerators", accelerators);
+      if (region) formData.append("region", region);
+      if (zone) formData.append("zone", zone);
+      formData.append("use_spot", useSpot ? "true" : "false");
+      if (idleMinutesToAutostop)
+        formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
       if (pythonFile) {
-        // Use multipart/form-data
-        const formData = new FormData();
-        formData.append("cluster_name", clusterName);
-        formData.append("command", command);
-        if (setup) formData.append("setup", setup);
-        if (cloud) formData.append("cloud", cloud);
-        if (instanceType) formData.append("instance_type", instanceType);
-        if (cpus) formData.append("cpus", cpus);
-        if (memory) formData.append("memory", memory);
-        if (accelerators) formData.append("accelerators", accelerators);
-        if (region) formData.append("region", region);
-        if (zone) formData.append("zone", zone);
-        formData.append("use_spot", useSpot ? "true" : "false");
-        if (idleMinutesToAutostop)
-          formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
         formData.append("python_file", pythonFile);
-        response = await fetch(buildApiUrl("skypilot/launch"), {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        });
-      } else {
-        // Use JSON
-        const launchRequest: LaunchClusterRequest = {
-          cluster_name: clusterName,
-          command: command,
-          setup: setup || undefined,
-          cloud: cloud || undefined,
-          instance_type: instanceType || undefined,
-          cpus: cpus || undefined,
-          memory: memory || undefined,
-          accelerators: accelerators || undefined,
-          region: region || undefined,
-          zone: zone || undefined,
-          use_spot: useSpot,
-          idle_minutes_to_autostop: idleMinutesToAutostop
-            ? parseInt(idleMinutesToAutostop)
-            : undefined,
-        };
-        response = await fetch(buildApiUrl("skypilot/launch"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(launchRequest),
-        });
       }
+      const response = await fetch(buildApiUrl("skypilot/launch"), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
 
       if (response.ok) {
         const data: LaunchClusterResponse = await response.json();
