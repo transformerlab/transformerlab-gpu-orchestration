@@ -8,12 +8,16 @@ import ListItemButton from "@mui/joy/ListItemButton";
 import ListItemDecorator from "@mui/joy/ListItemDecorator";
 import ListItemContent from "@mui/joy/ListItemContent";
 import {
+  AppleIcon,
+  BananaIcon,
   ChartAreaIcon,
   CogIcon,
   ComputerIcon,
   GpuIcon,
+  HardHatIcon,
   LightbulbIcon,
   PersonStandingIcon,
+  ShovelIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -55,10 +59,26 @@ const sidebarItems = [
     content: "Clusters",
     path: "/dashboard/getting-started",
   },
-  { icon: <ComputerIcon />, content: "Nodes", path: "/dashboard/nodes" },
-  { icon: <GpuIcon />, content: "GPU" },
-  { icon: <ChartAreaIcon />, content: "Reports" },
-  { icon: <CogIcon />, content: "Admin", chipCount: 2 },
+  { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
+  { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
+  { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
+  {
+    icon: <CogIcon />,
+    content: "Admin",
+    chipCount: 2,
+    path: "/dashboard/admin",
+  },
+];
+
+const sidebarItems2 = [
+  {
+    icon: <PersonStandingIcon />,
+    content: "Clusters",
+  },
+  { icon: <AppleIcon />, content: "Apple" },
+  { icon: <BananaIcon />, content: "Banana" },
+  { icon: <ShovelIcon />, content: "Shovel" },
+  { icon: <HardHatIcon />, content: "Hat", chipCount: 3 },
 ];
 
 export default function Sidebar() {
@@ -96,14 +116,14 @@ export default function Sidebar() {
           ))}
         </List>
         <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
-          Cluster
+          Administration
         </ListSubheader>
       </ListItem>
       <List
         aria-labelledby="nav-list-browse"
         sx={{ "& .JoyListItemButton-root": { p: "8px" } }}
       >
-        {sidebarItems.map((item, index) => (
+        {sidebarItems2.map((item, index) => (
           <Item
             key={`section2-${index}`}
             icon={item.icon}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
-import ClusterManagement from "./ClusterManagement";
-import { buildApiUrl } from "../utils/api";
+import ClusterManagement from "../ClusterManagement";
+import { buildApiUrl } from "../../utils/api";
 
 interface Node {
   id: string;
@@ -135,7 +135,7 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
   );
 };
 
-const Nodes: React.FC = () => {
+const Reports: React.FC = () => {
   return (
     <Box
       sx={{
@@ -144,9 +144,9 @@ const Nodes: React.FC = () => {
         p: 2,
       }}
     >
-      <Box sx={{ textAlign: "center", mb: 4 }}>
+      <Box sx={{ mb: 4 }}>
         <Typography level="h2" sx={{ mb: 1 }}>
-          Cluster Nodes
+          Reports
         </Typography>
         <Typography level="body-lg" sx={{ color: "text.secondary" }}>
           Visual representation of nodes across your clusters
@@ -160,4 +160,4 @@ const Nodes: React.FC = () => {
   );
 };
 
-export default Nodes;
+export default Reports;
