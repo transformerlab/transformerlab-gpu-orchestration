@@ -16,6 +16,7 @@ import {
 import { RefreshCw, Monitor, Square, Trash2 } from "lucide-react";
 import SubmitJobModal from "./SubmitJobModal";
 import { buildApiUrl } from "../utils/api";
+import useSWR from "swr";
 
 interface ClusterStatus {
   cluster_name: string;
@@ -54,9 +55,10 @@ interface JobRecord {
   log_path: string;
 }
 
+const fetcher = (url: string) =>
+  fetch(url, { credentials: "include" }).then((res) => res.json());
+
 const SkyPilotClusterStatus: React.FC = () => {
-  const [clusters, setClusters] = useState<ClusterStatus[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState<{
     [key: string]: boolean;
@@ -74,62 +76,62 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchClusterStatus();
-  }, []);
+  // SWR for cluster status
+  const { data, isLoading, mutate } = useSWR(
+    buildApiUrl("skypilot/status"),
+    fetcher,
+    { refreshInterval: 2000 }
+  );
 
+  const clusters = data?.clusters || [];
+
+  // Fetch cluster type info for each cluster
+  useEffect(() => {
+    if (!clusters.length) {
+      setClusterTypes({});
+      return;
+    }
+    let isMounted = true;
+    const fetchTypes = async () => {
+      const typePromises = clusters.map(async (cluster: any) => {
+        try {
+          const typeResponse = await fetch(
+            buildApiUrl(`skypilot/cluster-type/${cluster.cluster_name}`),
+            { credentials: "include" }
+          );
+          if (typeResponse.ok) {
+            const typeData: ClusterTypeInfo = await typeResponse.json();
+            return { [cluster.cluster_name]: typeData };
+          }
+        } catch (err) {
+          console.error(
+            `Failed to fetch cluster type for ${cluster.cluster_name}:`,
+            err
+          );
+        }
+        return null;
+      });
+      const typeResults = await Promise.all(typePromises);
+      const typesMap: { [key: string]: ClusterTypeInfo } = {};
+      typeResults.forEach((result) => {
+        if (result && typeof result === "object") {
+          Object.assign(typesMap, result);
+        }
+      });
+      if (isMounted) setClusterTypes(typesMap);
+    };
+    fetchTypes();
+    return () => {
+      isMounted = false;
+    };
+  }, [clusters]);
+
+  // Replace fetchClusterStatus with mutate for manual refresh
   const fetchClusterStatus = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch(buildApiUrl("skypilot/status"), {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data: StatusResponse = await response.json();
-        setClusters(data.clusters);
-
-        // Fetch cluster type info for each cluster
-        const typePromises = data.clusters.map(async (cluster) => {
-          try {
-            const typeResponse = await fetch(
-              buildApiUrl(`skypilot/cluster-type/${cluster.cluster_name}`),
-              {
-                credentials: "include",
-              }
-            );
-            if (typeResponse.ok) {
-              const typeData: ClusterTypeInfo = await typeResponse.json();
-              return { [cluster.cluster_name]: typeData };
-            }
-          } catch (err) {
-            console.error(
-              `Failed to fetch cluster type for ${cluster.cluster_name}:`,
-              err
-            );
-          }
-          return null;
-        });
-
-        const typeResults = await Promise.all(typePromises);
-        const typesMap: { [key: string]: ClusterTypeInfo } = {};
-
-        typeResults.forEach((result) => {
-          if (result && typeof result === "object") {
-            Object.assign(typesMap, result);
-          }
-        });
-
-        setClusterTypes(typesMap);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || "Failed to fetch cluster status");
-      }
+      await mutate();
     } catch (err) {
       setError("Error fetching cluster status");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -364,8 +366,8 @@ const SkyPilotClusterStatus: React.FC = () => {
         <Button
           startDecorator={<RefreshCw size={16} />}
           onClick={fetchClusterStatus}
-          disabled={loading}
-          loading={loading}
+          disabled={isLoading}
+          loading={isLoading}
           variant="outlined"
         >
           Refresh
@@ -398,7 +400,7 @@ const SkyPilotClusterStatus: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {clusters.map((cluster, index) => (
+              {clusters.map((cluster: ClusterStatus, index: number) => (
                 <React.Fragment key={index}>
                   <tr>
                     <td>
@@ -739,7 +741,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         }}
         isClusterLaunching={
           clusters
-            .find((c) => c.cluster_name === jobModalCluster)
+            .find((c: ClusterStatus) => c.cluster_name === jobModalCluster)
             ?.status.toLowerCase() === "init"
         }
         isSshCluster={!!clusterTypes[jobModalCluster]?.is_ssh}
