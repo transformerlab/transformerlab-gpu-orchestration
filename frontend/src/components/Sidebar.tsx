@@ -56,7 +56,7 @@ function Item({
 const sidebarItems = [
   {
     icon: <PersonStandingIcon />,
-    content: "Clusters",
+    content: "Clouds",
     path: "/dashboard/getting-started",
   },
   { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },

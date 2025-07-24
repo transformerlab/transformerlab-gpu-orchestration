@@ -3,6 +3,8 @@ import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
 import ClusterManagement from "../ClusterManagement";
 import { buildApiUrl } from "../../utils/api";
+import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
+import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 
 interface Node {
   id: string;
@@ -149,13 +151,14 @@ const Jobs: React.FC = () => {
           Jobs
         </Typography>
         <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Visual representation of nodes across your clusters
+          Create and View jobs
         </Typography>
       </Box>
 
-      {mockClusters.map((cluster) => (
-        <ClusterCard key={cluster.id} cluster={cluster} />
-      ))}
+      <Stack spacing={3}>
+        <SkyPilotClusterLauncher />
+        <SkyPilotClusterStatus />
+      </Stack>
     </Box>
   );
 };
