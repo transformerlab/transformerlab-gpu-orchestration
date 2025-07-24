@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography } from "@mui/joy";
+import SSHClusterAdmin from "../SSHClusterAdmin";
 
 const Admin: React.FC = () => {
   return (
@@ -17,6 +18,12 @@ const Admin: React.FC = () => {
         <Typography level="body-lg" sx={{ color: "text.secondary" }}>
           Admin stuff
         </Typography>
+      </Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography level="h3" sx={{ mb: 2 }}>
+          Add Cloud Provider
+        </Typography>
+        <SSHClusterAdmin />
       </Box>
     </Box>
   );
