@@ -17,6 +17,7 @@ import {
   Alert,
 } from "@mui/joy";
 import { buildApiUrl } from "../utils/api";
+import { Check } from "lucide-react";
 
 interface JobRecord {
   job_id: number;
@@ -210,7 +211,30 @@ const TaskOutputModal: React.FC<TaskOutputModalProps> = ({
                                 color={getStatusColor(job.status)}
                                 variant="soft"
                               >
-                                {job.status}
+                                {job.status
+                                  .toLowerCase()
+                                  .includes("setting_up") ? (
+                                  "Setting Up"
+                                ) : job.status
+                                    .toLowerCase()
+                                    .includes("succeeded") ? (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    <Check
+                                      size={16}
+                                      style={{ color: "#22c55e" }}
+                                    />
+                                    Succeeded
+                                  </Box>
+                                ) : (
+                                  job.status.charAt(0).toUpperCase() +
+                                  job.status.slice(1).replace(/_/g, " ")
+                                )}
                               </Chip>
                             </Box>
                             <Typography

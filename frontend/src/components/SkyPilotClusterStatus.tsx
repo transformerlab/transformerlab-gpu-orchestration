@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Card, Typography, Table, Chip } from "@mui/joy";
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+  Table,
+  Chip,
+  CircularProgress,
+} from "@mui/joy";
 import { RefreshCw, Monitor, Terminal, Square, Trash2 } from "lucide-react";
 import TaskOutputModal from "./TaskOutputModal";
 import { buildApiUrl } from "../utils/api";
@@ -268,13 +276,36 @@ const SkyPilotClusterStatus: React.FC = () => {
                     </Typography>
                   </td>
                   <td>
-                    <Chip
-                      color={getStatusColor(cluster.status)}
-                      variant="soft"
-                      size="sm"
-                    >
-                      {cluster.status}
-                    </Chip>
+                    {cluster.status.toLowerCase().includes("init") ? (
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <CircularProgress size="sm" />
+                        <Typography level="body-sm">Launching</Typography>
+                      </Box>
+                    ) : cluster.status.toLowerCase().includes("up") ? (
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            bgcolor: "success.500",
+                            borderRadius: "50%",
+                          }}
+                        />
+                        <Typography level="body-sm">Running</Typography>
+                      </Box>
+                    ) : (
+                      <Chip
+                        color={getStatusColor(cluster.status)}
+                        variant="soft"
+                        size="sm"
+                      >
+                        {cluster.status}
+                      </Chip>
+                    )}
                   </td>
                   <td>
                     <Typography level="body-sm">
