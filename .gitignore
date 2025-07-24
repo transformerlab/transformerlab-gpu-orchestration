@@ -74,3 +74,5 @@ coverage/
 
 
 frontend/src/sample_skypilot_script.py
+
+backend/uploads/

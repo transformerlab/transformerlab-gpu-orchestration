@@ -72,6 +72,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   const [zone, setZone] = useState("");
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
+  const [pythonFile, setPythonFile] = useState<File | null>(null);
 
   const resetForm = () => {
     setClusterName("");
@@ -86,6 +87,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     setZone("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
+    setPythonFile(null);
   };
 
   const fetchSSHClusters = async () => {
@@ -113,30 +115,28 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
       setLoading(true);
       setError(null);
 
-      const launchRequest: LaunchClusterRequest = {
-        cluster_name: clusterName,
-        command: command,
-        setup: setup || undefined,
-        cloud: cloud || undefined,
-        instance_type: instanceType || undefined,
-        cpus: cpus || undefined,
-        memory: memory || undefined,
-        accelerators: accelerators || undefined,
-        region: region || undefined,
-        zone: zone || undefined,
-        use_spot: useSpot,
-        idle_minutes_to_autostop: idleMinutesToAutostop
-          ? parseInt(idleMinutesToAutostop)
-          : undefined,
-      };
-
+      // Always use multipart/form-data
+      const formData = new FormData();
+      formData.append("cluster_name", clusterName);
+      formData.append("command", command);
+      if (setup) formData.append("setup", setup);
+      if (cloud) formData.append("cloud", cloud);
+      if (instanceType) formData.append("instance_type", instanceType);
+      if (cpus) formData.append("cpus", cpus);
+      if (memory) formData.append("memory", memory);
+      if (accelerators) formData.append("accelerators", accelerators);
+      if (region) formData.append("region", region);
+      if (zone) formData.append("zone", zone);
+      formData.append("use_spot", useSpot ? "true" : "false");
+      if (idleMinutesToAutostop)
+        formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
+      if (pythonFile) {
+        formData.append("python_file", pythonFile);
+      }
       const response = await fetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify(launchRequest),
+        body: formData,
       });
 
       if (response.ok) {
@@ -199,76 +199,27 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
           disabled={loading}
           color="success"
         >
-          Launch SkyPilot Cluster
+          Select Cloud Instance to Launch
         </Button>
       </Box>
 
       {/* Launch Cluster Modal */}
       <Modal open={showLaunchModal} onClose={() => setShowLaunchModal(false)}>
-        <ModalDialog size="lg" sx={{ width: "90vw", maxWidth: "800px" }}>
+        <ModalDialog
+          size="lg"
+          sx={{
+            width: "90vw",
+            maxWidth: "800px",
+            maxHeight: "90vh",
+            overflowY: "auto",
+          }}
+        >
           <ModalClose />
           <Typography level="h4" sx={{ mb: 2 }}>
-            Launch SkyPilot Cluster
+            Select Cloud Instance to Launch
           </Typography>
 
           <Stack spacing={3}>
-            {/* Basic Configuration */}
-            <Card variant="outlined">
-              <Typography level="title-sm" sx={{ mb: 2 }}>
-                Basic Configuration
-              </Typography>
-              <Stack spacing={2}>
-                <FormControl required>
-                  <FormLabel>Cluster Name</FormLabel>
-                  {cloud === "ssh" ? (
-                    <Select
-                      value={clusterName}
-                      onChange={(_, value) => setClusterName(value || "")}
-                      placeholder="Select SSH cluster"
-                    >
-                      {sshClusters.map((cluster) => (
-                        <Option key={cluster.name} value={cluster.name}>
-                          {cluster.name} ({cluster.hosts_count} hosts)
-                        </Option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Input
-                      value={clusterName}
-                      onChange={(e) => setClusterName(e.target.value)}
-                      placeholder="my-skypilot-cluster"
-                    />
-                  )}
-                  {cloud === "ssh" && sshClusters.length === 0 && (
-                    <Typography level="body-sm" color="warning">
-                      No SSH clusters found. Create SSH clusters in the "SSH
-                      Clusters" tab first.
-                    </Typography>
-                  )}
-                </FormControl>
-
-                <FormControl required>
-                  <FormLabel>Run Command</FormLabel>
-                  <Textarea
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    placeholder="echo 'Hello SkyPilot'"
-                    minRows={2}
-                  />
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setup}
-                    onChange={(e) => setSetup(e.target.value)}
-                    placeholder="pip install -r requirements.txt"
-                    minRows={2}
-                  />
-                </FormControl>
-              </Stack>
-            </Card>
-
             {/* Resource Configuration */}
             <Card variant="outlined">
               <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -366,6 +317,84 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                     />
                   </FormControl>
                 </Box>
+              </Stack>
+            </Card>
+
+            {/* Basic Configuration */}
+            <Card variant="outlined">
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Launch Task Configuration
+              </Typography>
+              <Stack spacing={2}>
+                <FormControl required>
+                  <FormLabel>Cluster Name</FormLabel>
+                  {cloud === "ssh" ? (
+                    <Select
+                      value={clusterName}
+                      onChange={(_, value) => setClusterName(value || "")}
+                      placeholder="Select a cluster from your Node Pool"
+                    >
+                      {sshClusters.map((cluster) => (
+                        <Option key={cluster.name} value={cluster.name}>
+                          {cluster.name} ({cluster.hosts_count} hosts)
+                        </Option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      value={clusterName}
+                      onChange={(e) => setClusterName(e.target.value)}
+                      placeholder="my-skypilot-cluster"
+                    />
+                  )}
+                  {cloud === "ssh" && sshClusters.length === 0 && (
+                    <Typography level="body-sm" color="warning">
+                      No SSH clusters found. Create SSH clusters in the "SSH
+                      Clusters" tab first.
+                    </Typography>
+                  )}
+                </FormControl>
+
+                <FormControl required>
+                  <FormLabel>Run Command</FormLabel>
+                  <Textarea
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    placeholder="echo 'Hello SkyPilot'"
+                    minRows={2}
+                  />
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Setup Command (optional)</FormLabel>
+                  <Textarea
+                    value={setup}
+                    onChange={(e) => setSetup(e.target.value)}
+                    placeholder="pip install -r requirements.txt"
+                    minRows={2}
+                  />
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Attach Python file (optional)</FormLabel>
+                  <input
+                    type="file"
+                    accept=".py"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setPythonFile(e.target.files[0]);
+                      } else {
+                        setPythonFile(null);
+                      }
+                    }}
+                    style={{ marginTop: 8 }}
+                  />
+                  {pythonFile && (
+                    <Typography level="body-xs" color="primary">
+                      Selected: {pythonFile.name}
+                    </Typography>
+                  )}
+                </FormControl>
               </Stack>
             </Card>
 

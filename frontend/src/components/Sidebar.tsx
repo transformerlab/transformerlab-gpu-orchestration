@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Chip from "@mui/joy/Chip";
 import List from "@mui/joy/List";
 import ListSubheader from "@mui/joy/ListSubheader";
@@ -7,12 +8,16 @@ import ListItemButton from "@mui/joy/ListItemButton";
 import ListItemDecorator from "@mui/joy/ListItemDecorator";
 import ListItemContent from "@mui/joy/ListItemContent";
 import {
+  AppleIcon,
+  BananaIcon,
   ChartAreaIcon,
   CogIcon,
   ComputerIcon,
   GpuIcon,
+  HardHatIcon,
   LightbulbIcon,
   PersonStandingIcon,
+  ShovelIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -20,12 +25,20 @@ interface ItemProps {
   content: string;
   selected?: boolean;
   chipCount?: number;
+  path?: string;
+  onClick?: () => void;
 }
 
-function Item({ icon, content, selected = false, chipCount }: ItemProps) {
+function Item({
+  icon,
+  content,
+  selected = false,
+  chipCount,
+  onClick,
+}: ItemProps) {
   return (
     <ListItem>
-      <ListItemButton selected={selected}>
+      <ListItemButton selected={selected} onClick={onClick}>
         <ListItemDecorator sx={selected ? {} : { color: "neutral.500" }}>
           {icon}
         </ListItemDecorator>
@@ -41,14 +54,41 @@ function Item({ icon, content, selected = false, chipCount }: ItemProps) {
 }
 
 const sidebarItems = [
-  { icon: <PersonStandingIcon />, content: "Compute", selected: true },
-  { icon: <ComputerIcon />, content: "Your Machines" },
-  { icon: <GpuIcon />, content: "GPU" },
-  { icon: <ChartAreaIcon />, content: "Reports" },
-  { icon: <CogIcon />, content: "Admin", chipCount: 2 },
+  {
+    icon: <PersonStandingIcon />,
+    content: "Clouds",
+    path: "/dashboard/getting-started",
+  },
+  { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
+  { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
+  { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
+  {
+    icon: <CogIcon />,
+    content: "Admin",
+    chipCount: 2,
+    path: "/dashboard/admin",
+  },
+];
+
+const sidebarItems2 = [
+  {
+    icon: <PersonStandingIcon />,
+    content: "Clusters",
+  },
+  { icon: <AppleIcon />, content: "Apple" },
+  { icon: <BananaIcon />, content: "Banana" },
+  { icon: <ShovelIcon />, content: "Shovel" },
+  { icon: <HardHatIcon />, content: "Hat", chipCount: 3 },
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <List
       size="sm"
@@ -67,26 +107,30 @@ export default function Sidebar() {
               key={`section1-${index}`}
               icon={item.icon}
               content={item.content}
-              selected={item.selected}
+              selected={item.path ? location.pathname === item.path : false}
               chipCount={item.chipCount}
+              onClick={
+                item.path ? () => handleNavigation(item.path) : undefined
+              }
             />
           ))}
         </List>
         <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
-          Cluster
+          Administration
         </ListSubheader>
       </ListItem>
       <List
         aria-labelledby="nav-list-browse"
         sx={{ "& .JoyListItemButton-root": { p: "8px" } }}
       >
-        {sidebarItems.map((item, index) => (
+        {sidebarItems2.map((item, index) => (
           <Item
             key={`section2-${index}`}
             icon={item.icon}
             content={item.content}
-            selected={item.selected}
+            selected={item.path ? location.pathname === item.path : false}
             chipCount={item.chipCount}
+            onClick={item.path ? () => handleNavigation(item.path) : undefined}
           />
         ))}
       </List>

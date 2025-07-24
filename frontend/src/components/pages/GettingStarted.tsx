@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
-import ClusterManagement from "./ClusterManagement";
-import { buildApiUrl } from "../utils/api";
+import ClusterManagement from "../ClusterManagement";
+import { buildApiUrl } from "../../utils/api";
 
 const GettingStarted: React.FC = () => {
   const [clusters, setClusters] = useState<string[]>([]);
@@ -85,11 +85,13 @@ const GettingStarted: React.FC = () => {
   return (
     <Box
       sx={{
-        maxWidth: 800,
+        maxWidth: 1000,
         mx: "auto",
+        p: 2,
       }}
     >
-      <Box sx={{ textAlign: "center", mb: 4 }}>
+      {" "}
+      <Box sx={{ mb: 4 }}>
         <Typography level="h2" sx={{ mb: 1 }}>
           Welcome to SkyPilot Cluster Management
         </Typography>
@@ -97,7 +99,6 @@ const GettingStarted: React.FC = () => {
           Get started by setting up your first cluster and adding SSH machines
         </Typography>
       </Box>
-
       {clusters.length > 0 && (
         <Card variant="soft" color="success" sx={{ mb: 3 }}>
           <Typography level="title-md" sx={{ mb: 1 }}>
@@ -113,7 +114,6 @@ const GettingStarted: React.FC = () => {
           </Button>
         </Card>
       )}
-
       <Stack spacing={1}>
         {steps.map((step, index) => (
           <Card
@@ -171,7 +171,6 @@ const GettingStarted: React.FC = () => {
           </Card>
         ))}
       </Stack>
-
       {clusters.length === 0 && (
         <Card variant="soft" sx={{ mt: 2, textAlign: "center" }}>
           <Typography level="title-md" sx={{}}>

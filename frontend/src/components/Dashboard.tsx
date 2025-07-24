@@ -1,8 +1,13 @@
 import React from "react";
 import { Box, Card, Typography } from "@mui/joy";
-import GettingStarted from "./GettingStarted";
+import { Routes, Route, Navigate } from "react-router-dom";
+import GettingStarted from "./pages/GettingStarted";
+import Nodes from "./pages/Nodes";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
+import Admin from "./pages/Admin";
+import Jobs from "./pages/Jobs";
+import Reports from "./pages/Reports";
 
 const Dashboard: React.FC = () => {
   return (
@@ -33,7 +38,17 @@ const Dashboard: React.FC = () => {
         <Sidebar />
       </Box>
       <Box sx={{ gridArea: "main", px: 3, py: 2, overflowY: "auto" }}>
-        <GettingStarted />
+        <Routes>
+          <Route
+            path="/"
+            element={<Navigate to="/dashboard/getting-started" replace />}
+          />
+          <Route path="/getting-started" element={<GettingStarted />} />
+          <Route path="/nodes" element={<Nodes />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/reports" element={<Reports />} />
+        </Routes>
       </Box>
     </Box>
   );
