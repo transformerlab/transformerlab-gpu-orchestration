@@ -339,9 +339,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                       onChange={(_, value) => setCloud(value || "")}
                       placeholder="Select cloud"
                     >
-                      <Option value="ssh">
-                        SSH (Use existing SSH clusters)
-                      </Option>
+                      <Option value="ssh">Direct Connect</Option>
                       <Option value="aws">AWS</Option>
                       <Option value="gcp">Google Cloud</Option>
                       <Option value="azure">Azure</Option>
