@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 import sky
+from typing import Optional
 
 
 def launch_cluster_with_skypilot(
@@ -15,6 +16,8 @@ def launch_cluster_with_skypilot(
     zone=None,
     use_spot=False,
     idle_minutes_to_autostop=None,
+    file_mounts: Optional[dict] = None,
+    workdir: Optional[str] = None,
 ):
     try:
         import subprocess
@@ -57,6 +60,10 @@ def launch_cluster_with_skypilot(
             run=command,
             setup=setup,
         )
+        if file_mounts:
+            task.set_file_mounts(file_mounts)
+        if workdir:
+            task.set_workdir(workdir)
         resources_kwargs = {}
         if cloud:
             if cloud.lower() == "ssh":

@@ -55,6 +55,7 @@ class LaunchClusterRequest(BaseModel):
     zone: Optional[str] = None
     use_spot: bool = False
     idle_minutes_to_autostop: Optional[int] = None
+    python_filename: Optional[str] = None
 
 
 class LaunchClusterResponse(BaseModel):

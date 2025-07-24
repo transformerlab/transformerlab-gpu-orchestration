@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables from .env file
 load_dotenv()
@@ -12,3 +13,5 @@ WORKOS_COOKIE_PASSWORD = os.getenv(
 WORKOS_REDIRECT_URI = os.getenv("WORKOS_REDIRECT_URI")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+UPLOADS_DIR = Path(__file__).parent / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)

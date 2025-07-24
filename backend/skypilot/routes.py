@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
+import uuid
+from config import UPLOADS_DIR
+from models import LaunchClusterRequest
 from fastapi.responses import StreamingResponse
 from models import (
     LaunchClusterRequest,
@@ -81,27 +84,54 @@ async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
 
 @router.post("/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
-    launch_request: LaunchClusterRequest, user=Depends(verify_auth)
+    cluster_name: str = Form(...),
+    command: str = Form("echo 'Hello SkyPilot'"),
+    setup: Optional[str] = Form(None),
+    cloud: Optional[str] = Form(None),
+    instance_type: Optional[str] = Form(None),
+    cpus: Optional[str] = Form(None),
+    memory: Optional[str] = Form(None),
+    accelerators: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    zone: Optional[str] = Form(None),
+    use_spot: bool = Form(False),
+    idle_minutes_to_autostop: Optional[int] = Form(None),
+    python_file: Optional[UploadFile] = File(None),
+    user=Depends(verify_auth),
 ):
     try:
+        file_mounts = None
+        workdir = None
+        python_filename = None
+        if python_file is not None and python_file.filename:
+            # Save the uploaded file to a persistent uploads directory
+            python_filename = python_file.filename
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            # Mount the file to /workspace/<filename> in the cluster
+            file_mounts = {f"/workspace/{python_filename}": str(file_path)}
         request_id = launch_cluster_with_skypilot(
-            cluster_name=launch_request.cluster_name,
-            command=launch_request.command,
-            setup=launch_request.setup,
-            cloud=launch_request.cloud,
-            instance_type=launch_request.instance_type,
-            cpus=launch_request.cpus,
-            memory=launch_request.memory,
-            accelerators=launch_request.accelerators,
-            region=launch_request.region,
-            zone=launch_request.zone,
-            use_spot=launch_request.use_spot,
-            idle_minutes_to_autostop=launch_request.idle_minutes_to_autostop,
+            cluster_name=cluster_name,
+            command=command,
+            setup=setup,
+            cloud=cloud,
+            instance_type=instance_type,
+            cpus=cpus,
+            memory=memory,
+            accelerators=accelerators,
+            region=region,
+            zone=zone,
+            use_spot=use_spot,
+            idle_minutes_to_autostop=idle_minutes_to_autostop,
+            file_mounts=file_mounts,
+            workdir=None,
         )
         return LaunchClusterResponse(
             request_id=request_id,
-            cluster_name=launch_request.cluster_name,
-            message=f"Cluster '{launch_request.cluster_name}' launch initiated successfully",
+            cluster_name=cluster_name,
+            message=f"Cluster '{cluster_name}' launch initiated successfully",
         )
     except Exception as e:
         raise HTTPException(
