@@ -7,9 +7,14 @@ import {
   Table,
   Chip,
   CircularProgress,
+  Alert,
+  List,
+  ListItem,
+  ListDivider,
+  Textarea,
 } from "@mui/joy";
-import { RefreshCw, Monitor, Terminal, Square, Trash2 } from "lucide-react";
-import TaskOutputModal from "./TaskOutputModal";
+import { RefreshCw, Monitor, Square, Trash2 } from "lucide-react";
+import SubmitJobModal from "./SubmitJobModal";
 import { buildApiUrl } from "../utils/api";
 
 interface ClusterStatus {
@@ -37,18 +42,37 @@ interface ClusterTypeInfo {
   };
 }
 
+interface JobRecord {
+  job_id: number;
+  job_name: string;
+  username: string;
+  submitted_at: number;
+  start_at?: number;
+  end_at?: number;
+  resources: string;
+  status: string;
+  log_path: string;
+}
+
 const SkyPilotClusterStatus: React.FC = () => {
   const [clusters, setClusters] = useState<ClusterStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [outputModalOpen, setOutputModalOpen] = useState(false);
-  const [selectedCluster, setSelectedCluster] = useState<string>("");
   const [operationLoading, setOperationLoading] = useState<{
     [key: string]: boolean;
   }>({});
   const [clusterTypes, setClusterTypes] = useState<{
     [key: string]: ClusterTypeInfo;
   }>({});
+  const [submitJobModalOpen, setSubmitJobModalOpen] = useState(false);
+  const [jobModalCluster, setJobModalCluster] = useState<string>("");
+  const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<JobRecord[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState<string>("");
+  const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     fetchClusterStatus();
@@ -109,6 +133,63 @@ const SkyPilotClusterStatus: React.FC = () => {
     }
   };
 
+  // Fetch jobs for a cluster
+  const fetchJobs = async (clusterName: string) => {
+    setJobsLoading(true);
+    setJobsError("");
+    try {
+      const response = await fetch(
+        buildApiUrl(`skypilot/jobs/${clusterName}`),
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setJobs(data.jobs || []);
+    } catch (err) {
+      setJobsError(err instanceof Error ? err.message : "Failed to fetch jobs");
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  // Fetch jobs when a cluster is expanded
+  useEffect(() => {
+    if (expandedCluster) {
+      fetchJobs(expandedCluster);
+    }
+  }, [expandedCluster, submitJobModalOpen]);
+
+  // Fetch logs for a job
+  const fetchJobLogs = async (clusterName: string, jobId: number) => {
+    setLogsLoading(true);
+    setSelectedJobId(jobId);
+    try {
+      const response = await fetch(
+        buildApiUrl(
+          `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
+        ),
+        { credentials: "include" }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch logs: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setSelectedJobLogs(data.logs || "No logs available");
+    } catch (err) {
+      setSelectedJobLogs(
+        `Error fetching logs: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "up":
@@ -131,11 +212,6 @@ const SkyPilotClusterStatus: React.FC = () => {
     if (!autostop) return "-";
     const action = toDown ? "down" : "stop";
     return `${autostop}min (${action})`;
-  };
-
-  const handleViewOutput = (clusterName: string) => {
-    setSelectedCluster(clusterName);
-    setOutputModalOpen(true);
   };
 
   const handleStopCluster = async (clusterName: string) => {
@@ -202,6 +278,21 @@ const SkyPilotClusterStatus: React.FC = () => {
     }
   };
 
+  // Handler to open job submission modal
+  const handleOpenSubmitJobModal = (clusterName: string) => {
+    setJobModalCluster(clusterName);
+    setSubmitJobModalOpen(true);
+  };
+  // Handler to close job submission modal
+  const handleCloseSubmitJobModal = () => {
+    setSubmitJobModalOpen(false);
+    setJobModalCluster("");
+  };
+  // Handler to expand/collapse job list for a cluster
+  const handleToggleExpandCluster = (clusterName: string) => {
+    setExpandedCluster((prev) => (prev === clusterName ? null : clusterName));
+  };
+
   return (
     <Box>
       {error && (
@@ -258,6 +349,7 @@ const SkyPilotClusterStatus: React.FC = () => {
           <Table>
             <thead>
               <tr>
+                <th></th>
                 <th>Cluster Name</th>
                 <th>Status</th>
                 <th>Resources</th>
@@ -269,152 +361,347 @@ const SkyPilotClusterStatus: React.FC = () => {
             </thead>
             <tbody>
               {clusters.map((cluster, index) => (
-                <tr key={index}>
-                  <td>
-                    <Typography level="title-sm">
-                      {cluster.cluster_name}
-                    </Typography>
-                  </td>
-                  <td>
-                    {cluster.status.toLowerCase().includes("init") ? (
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <CircularProgress size="sm" />
-                        <Typography level="body-sm">Launching</Typography>
-                      </Box>
-                    ) : cluster.status.toLowerCase().includes("up") ? (
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Box
-                          sx={{
-                            width: 10,
-                            height: 10,
-                            bgcolor: "success.500",
-                            borderRadius: "50%",
-                          }}
-                        />
-                        <Typography level="body-sm">Running</Typography>
-                      </Box>
-                    ) : (
-                      <Chip
-                        color={getStatusColor(cluster.status)}
-                        variant="soft"
-                        size="sm"
-                      >
-                        {cluster.status}
-                      </Chip>
-                    )}
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {cluster.resources_str || "-"}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {formatTimestamp(cluster.launched_at)}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {cluster.last_use || "-"}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {formatAutostop(cluster.autostop, cluster.to_down)}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <React.Fragment key={index}>
+                  <tr>
+                    <td>
                       <Button
                         size="sm"
-                        variant="outlined"
-                        startDecorator={<Terminal size={14} />}
-                        onClick={() => handleViewOutput(cluster.cluster_name)}
-                        disabled={
-                          cluster.status.toLowerCase() !== "up" &&
-                          !cluster.status.toLowerCase().includes("up")
+                        variant="plain"
+                        onClick={() =>
+                          handleToggleExpandCluster(cluster.cluster_name)
                         }
                       >
-                        Output
+                        {expandedCluster === cluster.cluster_name ? "−" : "+"}
                       </Button>
+                    </td>
+                    <td>
+                      <Typography level="title-sm">
+                        {cluster.cluster_name}
+                      </Typography>
+                    </td>
+                    <td>
+                      {cluster.status.toLowerCase().includes("init") ? (
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <CircularProgress size="sm" />
+                          <Typography level="body-sm">Launching</Typography>
+                        </Box>
+                      ) : cluster.status.toLowerCase().includes("up") ? (
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <Box
+                            sx={{
+                              width: 10,
+                              height: 10,
+                              bgcolor: "success.500",
+                              borderRadius: "50%",
+                            }}
+                          />
+                          <Typography level="body-sm">Running</Typography>
+                        </Box>
+                      ) : (
+                        <Chip
+                          color={getStatusColor(cluster.status)}
+                          variant="soft"
+                          size="sm"
+                        >
+                          {cluster.status}
+                        </Chip>
+                      )}
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {cluster.resources_str || "-"}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(cluster.launched_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {cluster.last_use || "-"}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatAutostop(cluster.autostop, cluster.to_down)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        {/* Show stop button only for cloud clusters and if cluster is UP */}
+                        {clusterTypes[cluster.cluster_name] &&
+                          !clusterTypes[cluster.cluster_name].is_ssh &&
+                          cluster.status.toLowerCase().includes("up") && (
+                            <Button
+                              size="sm"
+                              variant="outlined"
+                              color="warning"
+                              startDecorator={<Square size={14} />}
+                              onClick={() =>
+                                handleStopCluster(cluster.cluster_name)
+                              }
+                              loading={
+                                operationLoading[`stop_${cluster.cluster_name}`]
+                              }
+                              disabled={
+                                operationLoading[`stop_${cluster.cluster_name}`]
+                              }
+                            >
+                              Stop
+                            </Button>
+                          )}
 
-                      {/* Show stop button only for cloud clusters and if cluster is UP */}
-                      {clusterTypes[cluster.cluster_name] &&
-                        !clusterTypes[cluster.cluster_name].is_ssh &&
-                        cluster.status.toLowerCase().includes("up") && (
+                        {/* Show down button for all clusters if cluster is UP */}
+                        {cluster.status.toLowerCase().includes("up") && (
                           <Button
                             size="sm"
                             variant="outlined"
-                            color="warning"
-                            startDecorator={<Square size={14} />}
+                            color="danger"
+                            startDecorator={<Trash2 size={14} />}
                             onClick={() =>
-                              handleStopCluster(cluster.cluster_name)
+                              handleDownCluster(cluster.cluster_name)
                             }
                             loading={
-                              operationLoading[`stop_${cluster.cluster_name}`]
+                              operationLoading[`down_${cluster.cluster_name}`]
                             }
                             disabled={
-                              operationLoading[`stop_${cluster.cluster_name}`]
+                              operationLoading[`down_${cluster.cluster_name}`]
                             }
                           >
-                            Stop
+                            Down
                           </Button>
                         )}
 
-                      {/* Show down button for all clusters if cluster is UP */}
-                      {cluster.status.toLowerCase().includes("up") && (
-                        <Button
-                          size="sm"
-                          variant="outlined"
-                          color="danger"
-                          startDecorator={<Trash2 size={14} />}
-                          onClick={() =>
-                            handleDownCluster(cluster.cluster_name)
-                          }
-                          loading={
-                            operationLoading[`down_${cluster.cluster_name}`]
-                          }
-                          disabled={
-                            operationLoading[`down_${cluster.cluster_name}`]
-                          }
-                        >
-                          Down
-                        </Button>
-                      )}
+                        {/* Show cluster type indicator */}
+                        {clusterTypes[cluster.cluster_name] && (
+                          <Chip
+                            size="sm"
+                            variant="outlined"
+                            color={
+                              clusterTypes[cluster.cluster_name].is_ssh
+                                ? "primary"
+                                : "neutral"
+                            }
+                          >
+                            {clusterTypes[
+                              cluster.cluster_name
+                            ].cluster_type.toUpperCase()}
+                          </Chip>
+                        )}
 
-                      {/* Show cluster type indicator */}
-                      {clusterTypes[cluster.cluster_name] && (
-                        <Chip
-                          size="sm"
-                          variant="outlined"
-                          color={
-                            clusterTypes[cluster.cluster_name].is_ssh
-                              ? "primary"
-                              : "neutral"
-                          }
+                        {/* Show Add Task button only for cloud clusters and if cluster is UP */}
+                        {cluster.status.toLowerCase().includes("up") && (
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            color="success"
+                            onClick={() =>
+                              handleOpenSubmitJobModal(cluster.cluster_name)
+                            }
+                          >
+                            Add Task
+                          </Button>
+                        )}
+                      </Box>
+                    </td>
+                  </tr>
+                  {/* Expanded job list row */}
+                  {expandedCluster === cluster.cluster_name && (
+                    <tr>
+                      <td colSpan={8}>
+                        <Box
+                          sx={{
+                            p: 2,
+                            bgcolor: "background.level1",
+                            borderRadius: 2,
+                          }}
                         >
-                          {clusterTypes[
-                            cluster.cluster_name
-                          ].cluster_type.toUpperCase()}
-                        </Chip>
-                      )}
-                    </Box>
-                  </td>
-                </tr>
+                          {/* Inline job list */}
+                          <Typography level="title-md" sx={{ mb: 2 }}>
+                            Jobs for {cluster.cluster_name}
+                          </Typography>
+                          {jobsError && (
+                            <Alert color="danger" sx={{ mb: 2 }}>
+                              {jobsError}
+                            </Alert>
+                          )}
+                          {jobsLoading ? (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                p: 4,
+                              }}
+                            >
+                              <CircularProgress />
+                            </Box>
+                          ) : (
+                            <List sx={{ maxHeight: "40vh", overflow: "auto" }}>
+                              {jobs.length === 0 ? (
+                                <ListItem>
+                                  <Typography
+                                    level="body-sm"
+                                    sx={{ color: "text.secondary" }}
+                                  >
+                                    No jobs found for this cluster
+                                  </Typography>
+                                </ListItem>
+                              ) : (
+                                jobs.map((job, idx) => (
+                                  <React.Fragment key={job.job_id}>
+                                    {idx > 0 && <ListDivider />}
+                                    <ListItem>
+                                      <Box sx={{ width: "100%" }}>
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "flex-start",
+                                            mb: 1,
+                                          }}
+                                        >
+                                          <Typography level="title-sm">
+                                            {job.job_name}
+                                          </Typography>
+                                          <Chip
+                                            size="sm"
+                                            color={getStatusColor(job.status)}
+                                            variant="soft"
+                                          >
+                                            {job.status
+                                              .charAt(0)
+                                              .toUpperCase() +
+                                              job.status
+                                                .slice(1)
+                                                .replace(/_/g, " ")}
+                                          </Chip>
+                                        </Box>
+                                        <Typography
+                                          level="body-xs"
+                                          sx={{
+                                            color: "text.secondary",
+                                            mb: 1,
+                                          }}
+                                        >
+                                          Job ID: {job.job_id} | User:{" "}
+                                          {job.username}
+                                        </Typography>
+                                        <Typography
+                                          level="body-xs"
+                                          sx={{
+                                            color: "text.secondary",
+                                            mb: 1,
+                                          }}
+                                        >
+                                          Submitted:{" "}
+                                          {formatTimestamp(job.submitted_at)}
+                                        </Typography>
+                                        {job.start_at && (
+                                          <Typography
+                                            level="body-xs"
+                                            sx={{
+                                              color: "text.secondary",
+                                              mb: 1,
+                                            }}
+                                          >
+                                            Started:{" "}
+                                            {formatTimestamp(job.start_at)}
+                                          </Typography>
+                                        )}
+                                        {job.end_at && (
+                                          <Typography
+                                            level="body-xs"
+                                            sx={{
+                                              color: "text.secondary",
+                                              mb: 1,
+                                            }}
+                                          >
+                                            Ended: {formatTimestamp(job.end_at)}
+                                          </Typography>
+                                        )}
+                                        <Typography
+                                          level="body-xs"
+                                          sx={{
+                                            color: "text.secondary",
+                                            mb: 1,
+                                          }}
+                                        >
+                                          Resources: {job.resources}
+                                        </Typography>
+                                        <Button
+                                          size="sm"
+                                          variant="outlined"
+                                          onClick={() =>
+                                            fetchJobLogs(
+                                              cluster.cluster_name,
+                                              job.job_id
+                                            )
+                                          }
+                                          sx={{ mt: 1 }}
+                                        >
+                                          View Logs
+                                        </Button>
+                                        {selectedJobId === job.job_id && (
+                                          <Box sx={{ mt: 2 }}>
+                                            <Typography
+                                              level="body-xs"
+                                              sx={{ mb: 1 }}
+                                            >
+                                              Logs:
+                                            </Typography>
+                                            {logsLoading ? (
+                                              <CircularProgress size="sm" />
+                                            ) : (
+                                              <Textarea
+                                                value={
+                                                  selectedJobLogs ||
+                                                  "No logs available"
+                                                }
+                                                readOnly
+                                                minRows={8}
+                                                maxRows={12}
+                                                sx={{
+                                                  fontFamily: "monospace",
+                                                  fontSize: "sm",
+                                                  width: "100%",
+                                                  "& textarea": {
+                                                    resize: "none",
+                                                  },
+                                                }}
+                                              />
+                                            )}
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    </ListItem>
+                                  </React.Fragment>
+                                ))
+                              )}
+                            </List>
+                          )}
+                        </Box>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </Table>
         )}
       </Card>
-
-      <TaskOutputModal
-        open={outputModalOpen}
-        onClose={() => setOutputModalOpen(false)}
-        clusterName={selectedCluster}
+      {/* SubmitJobModal rendered at root level */}
+      <SubmitJobModal
+        open={submitJobModalOpen}
+        onClose={handleCloseSubmitJobModal}
+        clusterName={jobModalCluster}
+        onJobSubmitted={() => {
+          if (expandedCluster) fetchJobs(expandedCluster);
+        }}
       />
     </Box>
   );
