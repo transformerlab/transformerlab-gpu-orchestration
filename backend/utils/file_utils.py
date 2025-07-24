@@ -18,8 +18,26 @@ def get_identity_files_dir():
     return identity_dir
 
 
+def is_valid_identity_file(filename: str) -> bool:
+    allowed_exts = {".pem", ".key", ".rsa", ".pub", ""}
+    ext = Path(filename).suffix
+    # Allow files with no extension (e.g., id_rsa, id_ecdsa, id_ed25519)
+    if ext in allowed_exts:
+        return True
+    # Also allow common SSH private key names with no extension
+    basename = Path(filename).name
+    if basename in {"id_rsa", "id_ecdsa", "id_ed25519"} or basename.startswith("id_"):
+        return True
+    return False
+
+
 def save_identity_file(file_content: bytes, original_filename: str) -> str:
     try:
+        if not is_valid_identity_file(original_filename):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid identity file type. Allowed: .pem, .key, .rsa, .pub, or files with no extension (e.g., id_rsa)",
+            )
         identity_dir = get_identity_files_dir()
         file_extension = Path(original_filename).suffix
         unique_filename = f"{uuid.uuid4()}{file_extension}"

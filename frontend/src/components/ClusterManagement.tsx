@@ -452,11 +452,6 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   const file = e.target.files?.[0] || null;
                   setNewClusterIdentityFile(file);
                 }}
-                slotProps={{
-                  input: {
-                    accept: ".pem,.key,.rsa",
-                  },
-                }}
               />
               {newClusterIdentityFile && (
                 <Typography
@@ -466,6 +461,10 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   Selected: {newClusterIdentityFile.name}
                 </Typography>
               )}
+              <Typography level="body-xs" color="neutral">
+                Allowed: .pem, .key, .rsa, .pub, or files with no extension
+                (e.g., id_rsa)
+              </Typography>
             </FormControl>
             <FormControl>
               <FormLabel>Default Password (optional)</FormLabel>
@@ -523,11 +522,6 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   const file = e.target.files?.[0] || null;
                   setNewNodeIdentityFile(file);
                 }}
-                slotProps={{
-                  input: {
-                    accept: ".pem,.key,.rsa",
-                  },
-                }}
               />
               {newNodeIdentityFile && (
                 <Typography
@@ -537,6 +531,10 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   Selected: {newNodeIdentityFile.name}
                 </Typography>
               )}
+              <Typography level="body-xs" color="neutral">
+                Allowed: .pem, .key, .rsa, .pub, or files with no extension
+                (e.g., id_rsa)
+              </Typography>
             </FormControl>
             <FormControl>
               <FormLabel>Password (optional)</FormLabel>
