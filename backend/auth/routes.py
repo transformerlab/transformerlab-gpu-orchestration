@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from models import UserResponse
 from auth.utils import get_current_user, verify_auth
@@ -69,7 +69,8 @@ async def auth_callback(request: Request, code: str):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(user=Depends(verify_auth)):
+async def get_current_user_info(request: Request, response: Response):
+    user = verify_auth(request, response)
     return UserResponse(
         id=user.id,
         email=user.email,
@@ -116,8 +117,8 @@ async def logout(request: Request):
 
 
 @router.get("/check")
-async def check_auth(request: Request):
-    user = get_current_user(request)
+async def check_auth(request: Request, response: Response):
+    user = get_current_user(request, response)
     if user:
         return {"authenticated": True, "user": {"id": user.id, "email": user.email}}
     return {"authenticated": False}

@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Form,
+    UploadFile,
+    File,
+    Request,
+    Response,
+)
 import uuid
 from config import UPLOADS_DIR
 from models import LaunchClusterRequest
@@ -34,7 +43,8 @@ router = APIRouter(prefix="/skypilot")
 
 
 @router.get("/ssh-clusters")
-async def list_ssh_clusters(user=Depends(verify_auth)):
+async def list_ssh_clusters(request: Request, response: Response):
+    user = verify_auth(request, response)
     try:
         pools = load_ssh_node_pools()
         ssh_clusters = []
@@ -57,7 +67,9 @@ async def list_ssh_clusters(user=Depends(verify_auth)):
 
 
 @router.get("/stream-logs/{logfile}")
-async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
+async def stream_skypilot_logs(logfile: str, request: Request, response: Response):
+    user = verify_auth(request, response)
+
     async def log_streamer():
         cmd = ["sky", "api", "logs", "-l", logfile]
         process = await asyncio.create_subprocess_exec(
@@ -84,6 +96,8 @@ async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
 
 @router.post("/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
+    request: Request,
+    response: Response,
     cluster_name: str = Form(...),
     command: str = Form("echo 'Hello SkyPilot'"),
     setup: Optional[str] = Form(None),
@@ -97,8 +111,8 @@ async def launch_skypilot_cluster(
     use_spot: bool = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file: Optional[UploadFile] = File(None),
-    user=Depends(verify_auth),
 ):
+    user = verify_auth(request, response)
     try:
         file_mounts = None
         workdir = None
@@ -141,8 +155,11 @@ async def launch_skypilot_cluster(
 
 @router.get("/status", response_model=StatusResponse)
 async def get_skypilot_cluster_status(
-    cluster_names: Optional[str] = None, user=Depends(verify_auth)
+    request: Request,
+    response: Response,
+    cluster_names: Optional[str] = None,
 ):
+    user = verify_auth(request, response)
     try:
         cluster_list = None
         if cluster_names:
@@ -169,7 +186,10 @@ async def get_skypilot_cluster_status(
 
 
 @router.get("/request/{request_id}")
-async def get_skypilot_request_status(request_id: str, user=Depends(verify_auth)):
+async def get_skypilot_request_status(
+    request_id: str, request: Request, response: Response
+):
+    user = verify_auth(request, response)
     import sky
 
     try:
@@ -184,7 +204,8 @@ async def get_skypilot_request_status(request_id: str, user=Depends(verify_auth)
 
 
 @router.get("/jobs/{cluster_name}", response_model=JobQueueResponse)
-async def get_cluster_jobs(cluster_name: str, user=Depends(verify_auth)):
+async def get_cluster_jobs(cluster_name: str, request: Request, response: Response):
+    user = verify_auth(request, response)
     try:
         job_records = get_cluster_job_queue(cluster_name)
         jobs = []
@@ -211,19 +232,28 @@ async def get_cluster_jobs(cluster_name: str, user=Depends(verify_auth)):
 
 @router.get("/jobs/{cluster_name}/{job_id}/logs", response_model=JobLogsResponse)
 async def get_cluster_job_logs(
-    cluster_name: str, job_id: int, tail_lines: int = 50, user=Depends(verify_auth)
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+    tail_lines: int = 50,
 ):
+    user = verify_auth(request, response)
     try:
         logs = get_job_logs(cluster_name, job_id, tail_lines)
         return JobLogsResponse(job_id=job_id, logs=logs)
     except Exception as e:
+        print(f"Failed to get job logs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
 
 
 @router.post("/stop", response_model=StopClusterResponse)
 async def stop_skypilot_cluster(
-    stop_request: StopClusterRequest, user=Depends(verify_auth)
+    request: Request,
+    response: Response,
+    stop_request: StopClusterRequest,
 ):
+    user = verify_auth(request, response)
     try:
         cluster_name = stop_request.cluster_name
         if is_ssh_cluster(cluster_name):
@@ -245,8 +275,11 @@ async def stop_skypilot_cluster(
 
 @router.post("/down", response_model=DownClusterResponse)
 async def down_skypilot_cluster(
-    down_request: DownClusterRequest, user=Depends(verify_auth)
+    request: Request,
+    response: Response,
+    down_request: DownClusterRequest,
 ):
+    user = verify_auth(request, response)
     try:
         cluster_name = down_request.cluster_name
         request_id = down_cluster_with_skypilot(cluster_name)
@@ -260,7 +293,8 @@ async def down_skypilot_cluster(
 
 
 @router.get("/cluster-type/{cluster_name}")
-async def get_cluster_type(cluster_name: str, user=Depends(verify_auth)):
+async def get_cluster_type(cluster_name: str, request: Request, response: Response):
+    user = verify_auth(request, response)
     try:
         is_ssh = is_ssh_cluster(cluster_name)
         cluster_type = "ssh" if is_ssh else "cloud"
@@ -285,6 +319,8 @@ async def get_cluster_type(cluster_name: str, user=Depends(verify_auth)):
 
 @router.post("/jobs/{cluster_name}/submit")
 async def submit_job_to_cluster(
+    request: Request,
+    response: Response,
     cluster_name: str,
     command: str = Form(...),
     setup: Optional[str] = Form(None),
@@ -295,8 +331,8 @@ async def submit_job_to_cluster(
     zone: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
     python_file: Optional[UploadFile] = File(None),
-    user=Depends(verify_auth),
 ):
+    user = verify_auth(request, response)
     try:
         file_mounts = None
         python_filename = None
