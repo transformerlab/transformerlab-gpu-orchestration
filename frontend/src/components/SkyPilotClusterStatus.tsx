@@ -203,6 +203,44 @@ const SkyPilotClusterStatus: React.FC = () => {
     }
   };
 
+  const getJobStatusLabel = (status: string) => {
+    switch (status) {
+      case "JobStatus.INIT":
+        return "Initializing";
+      case "JobStatus.PENDING":
+        return "Pending";
+      case "JobStatus.RUNNING":
+        return "Running";
+      case "JobStatus.SUCCEEDED":
+        return "Succeeded";
+      case "JobStatus.FAILED":
+        return "Failed";
+      case "JobStatus.CANCELLED":
+        return "Cancelled";
+      default:
+        return status;
+    }
+  };
+
+  const getJobStatusColor = (status: string) => {
+    switch (status) {
+      case "JobStatus.INIT":
+        return "primary";
+      case "JobStatus.PENDING":
+        return "neutral";
+      case "JobStatus.RUNNING":
+        return "primary";
+      case "JobStatus.SUCCEEDED":
+        return "success";
+      case "JobStatus.FAILED":
+        return "danger";
+      case "JobStatus.CANCELLED":
+        return "warning";
+      default:
+        return "neutral";
+    }
+  };
+
   const formatTimestamp = (timestamp?: number) => {
     if (!timestamp) return "-";
     return new Date(timestamp * 1000).toLocaleString();
@@ -570,15 +608,12 @@ const SkyPilotClusterStatus: React.FC = () => {
                                           </Typography>
                                           <Chip
                                             size="sm"
-                                            color={getStatusColor(job.status)}
+                                            color={getJobStatusColor(
+                                              job.status
+                                            )}
                                             variant="soft"
                                           >
-                                            {job.status
-                                              .charAt(0)
-                                              .toUpperCase() +
-                                              job.status
-                                                .slice(1)
-                                                .replace(/_/g, " ")}
+                                            {getJobStatusLabel(job.status)}
                                           </Chip>
                                         </Box>
                                         <Typography
