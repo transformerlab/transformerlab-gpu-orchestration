@@ -72,6 +72,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   const [zone, setZone] = useState("");
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
+  const [pythonFile, setPythonFile] = useState<File | null>(null);
 
   const resetForm = () => {
     setClusterName("");
@@ -86,6 +87,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     setZone("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
+    setPythonFile(null);
   };
 
   const fetchSSHClusters = async () => {
@@ -113,31 +115,56 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
       setLoading(true);
       setError(null);
 
-      const launchRequest: LaunchClusterRequest = {
-        cluster_name: clusterName,
-        command: command,
-        setup: setup || undefined,
-        cloud: cloud || undefined,
-        instance_type: instanceType || undefined,
-        cpus: cpus || undefined,
-        memory: memory || undefined,
-        accelerators: accelerators || undefined,
-        region: region || undefined,
-        zone: zone || undefined,
-        use_spot: useSpot,
-        idle_minutes_to_autostop: idleMinutesToAutostop
-          ? parseInt(idleMinutesToAutostop)
-          : undefined,
-      };
-
-      const response = await fetch(buildApiUrl("skypilot/launch"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(launchRequest),
-      });
+      let response;
+      if (pythonFile) {
+        // Use multipart/form-data
+        const formData = new FormData();
+        formData.append("cluster_name", clusterName);
+        formData.append("command", command);
+        if (setup) formData.append("setup", setup);
+        if (cloud) formData.append("cloud", cloud);
+        if (instanceType) formData.append("instance_type", instanceType);
+        if (cpus) formData.append("cpus", cpus);
+        if (memory) formData.append("memory", memory);
+        if (accelerators) formData.append("accelerators", accelerators);
+        if (region) formData.append("region", region);
+        if (zone) formData.append("zone", zone);
+        formData.append("use_spot", useSpot ? "true" : "false");
+        if (idleMinutesToAutostop)
+          formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
+        formData.append("python_file", pythonFile);
+        response = await fetch(buildApiUrl("skypilot/launch"), {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+      } else {
+        // Use JSON
+        const launchRequest: LaunchClusterRequest = {
+          cluster_name: clusterName,
+          command: command,
+          setup: setup || undefined,
+          cloud: cloud || undefined,
+          instance_type: instanceType || undefined,
+          cpus: cpus || undefined,
+          memory: memory || undefined,
+          accelerators: accelerators || undefined,
+          region: region || undefined,
+          zone: zone || undefined,
+          use_spot: useSpot,
+          idle_minutes_to_autostop: idleMinutesToAutostop
+            ? parseInt(idleMinutesToAutostop)
+            : undefined,
+        };
+        response = await fetch(buildApiUrl("skypilot/launch"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(launchRequest),
+        });
+      }
 
       if (response.ok) {
         const data: LaunchClusterResponse = await response.json();
@@ -205,7 +232,15 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
       {/* Launch Cluster Modal */}
       <Modal open={showLaunchModal} onClose={() => setShowLaunchModal(false)}>
-        <ModalDialog size="lg" sx={{ width: "90vw", maxWidth: "800px" }}>
+        <ModalDialog
+          size="lg"
+          sx={{
+            width: "90vw",
+            maxWidth: "800px",
+            maxHeight: "90vh",
+            overflowY: "auto",
+          }}
+        >
           <ModalClose />
           <Typography level="h4" sx={{ mb: 2 }}>
             Launch SkyPilot Cluster
@@ -266,6 +301,27 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                     minRows={2}
                   />
                 </FormControl>
+
+                <FormControl>
+                  <FormLabel>Attach Python file (optional)</FormLabel>
+                  <input
+                    type="file"
+                    accept=".py"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setPythonFile(e.target.files[0]);
+                      } else {
+                        setPythonFile(null);
+                      }
+                    }}
+                    style={{ marginTop: 8 }}
+                  />
+                  {pythonFile && (
+                    <Typography level="body-xs" color="primary">
+                      Selected: {pythonFile.name}
+                    </Typography>
+                  )}
+                </FormControl>
               </Stack>
             </Card>
 
@@ -283,9 +339,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                       onChange={(_, value) => setCloud(value || "")}
                       placeholder="Select cloud"
                     >
-                      <Option value="ssh">
-                        SSH (Use existing SSH clusters)
-                      </Option>
+                      <Option value="ssh">Direct Connect</Option>
                       <Option value="aws">AWS</Option>
                       <Option value="gcp">Google Cloud</Option>
                       <Option value="azure">Azure</Option>
