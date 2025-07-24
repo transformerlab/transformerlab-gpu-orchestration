@@ -281,3 +281,55 @@ async def get_cluster_type(cluster_name: str, user=Depends(verify_auth)):
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster type: {str(e)}"
         )
+
+
+@router.post("/jobs/{cluster_name}/submit")
+async def submit_job_to_cluster(
+    cluster_name: str,
+    command: str = Form(...),
+    setup: Optional[str] = Form(None),
+    cpus: Optional[str] = Form(None),
+    memory: Optional[str] = Form(None),
+    accelerators: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    zone: Optional[str] = Form(None),
+    job_name: Optional[str] = Form(None),
+    python_file: Optional[UploadFile] = File(None),
+    user=Depends(verify_auth),
+):
+    try:
+        file_mounts = None
+        python_filename = None
+        workdir = None
+        if python_file is not None and python_file.filename:
+            import uuid
+            from config import UPLOADS_DIR
+
+            python_filename = python_file.filename
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            file_mounts = {f"workspace/{python_filename}": str(file_path)}
+            workdir = "workspace"
+        from .utils import submit_job_to_existing_cluster
+
+        request_id = submit_job_to_existing_cluster(
+            cluster_name=cluster_name,
+            command=command,
+            setup=setup,
+            file_mounts=file_mounts,
+            workdir=workdir,
+            cpus=cpus,
+            memory=memory,
+            accelerators=accelerators,
+            region=region,
+            zone=zone,
+            job_name=job_name,
+        )
+        return {
+            "request_id": request_id,
+            "message": f"Job submitted to cluster '{cluster_name}'",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")

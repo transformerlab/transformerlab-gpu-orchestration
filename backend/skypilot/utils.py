@@ -62,8 +62,8 @@ def launch_cluster_with_skypilot(
         )
         if file_mounts:
             task.set_file_mounts(file_mounts)
-        if workdir:
-            task.set_workdir(workdir)
+        # if workdir:
+        #     task.set_workdir(workdir)
         resources_kwargs = {}
         if cloud:
             if cloud.lower() == "ssh":
@@ -156,3 +156,50 @@ def down_cluster_with_skypilot(cluster_name: str):
         return request_id
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to down cluster: {str(e)}")
+
+
+def submit_job_to_existing_cluster(
+    cluster_name: str,
+    command: str,
+    setup: Optional[str] = None,
+    file_mounts: Optional[dict] = None,
+    workdir: Optional[str] = None,
+    cpus: Optional[str] = None,
+    memory: Optional[str] = None,
+    accelerators: Optional[str] = None,
+    region: Optional[str] = None,
+    zone: Optional[str] = None,
+    job_name: Optional[str] = None,
+):
+    try:
+        task = sky.Task(
+            name=job_name if job_name else f"lattice-job-{cluster_name}",
+            run=command,
+            setup=setup,
+        )
+        if file_mounts:
+            task.set_file_mounts(file_mounts)
+
+        resources_kwargs = {}
+        if cpus:
+            resources_kwargs["cpus"] = cpus
+        if memory:
+            resources_kwargs["memory"] = memory
+        if accelerators:
+            resources_kwargs["accelerators"] = accelerators
+        if region:
+            resources_kwargs["region"] = region
+        if zone:
+            resources_kwargs["zone"] = zone
+        if resources_kwargs:
+            resources = sky.Resources(**resources_kwargs)
+            task.set_resources(resources)
+        request_id = sky.exec(
+            task,
+            cluster_name=cluster_name,
+        )
+        return request_id
+    except Exception as e:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
