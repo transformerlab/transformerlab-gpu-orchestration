@@ -125,18 +125,27 @@ def get_cluster_job_queue(cluster_name: str):
 
 def get_job_logs(cluster_name: str, job_id: int, tail_lines: int = 50):
     try:
-        import io
+        import os
 
-        log_stream = io.StringIO()
-        sky.tail_logs(
-            cluster_name=cluster_name,
-            job_id=job_id,
-            follow=False,
-            tail=tail_lines,
-            output_stream=log_stream,
-        )
-        logs = log_stream.getvalue()
-        log_stream.close()
+        log_paths = sky.download_logs(cluster_name, [str(job_id)])
+        log_path = log_paths.get(str(job_id))
+        log_path = os.path.expanduser(log_path)
+        if not log_path or (
+            not os.path.exists(log_path) and not os.path.isdir(log_path)
+        ):
+            raise HTTPException(status_code=404, detail="Log file not found")
+        # If log_path is a directory, look for run.log inside
+        if os.path.isdir(log_path):
+            run_log_path = os.path.join(log_path, "run.log")
+            if os.path.exists(run_log_path):
+                log_path = run_log_path
+            else:
+                raise HTTPException(
+                    status_code=404, detail="run.log not found in log directory"
+                )
+        with open(log_path, "r") as f:
+            lines = f.readlines()
+            logs = "".join(lines[-tail_lines:])
         return logs
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
