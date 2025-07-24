@@ -33,22 +33,18 @@ def launch_cluster_with_skypilot(
                     f"Please create the SSH cluster first using the SSH Clusters tab.",
                 )
             try:
-                print(f"[SkyPilot] Running: sky ssh up")
-                result = subprocess.run(
-                    ["sky", "ssh", "up", "--infra", cluster_name],
-                    capture_output=True,
-                    text=True,
-                    check=True,
+                print(
+                    f"[SkyPilot] Running: sky.client.sdk.ssh_up(infra={cluster_name})"
                 )
-                print(f"[SkyPilot][ssh up stdout]:\n{result.stdout}")
-                if result.stderr:
-                    print(f"[SkyPilot][ssh up stderr]:\n{result.stderr}")
-            except subprocess.CalledProcessError as e:
-                print(f"[SkyPilot][ssh up failed]: {e.stderr}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}",
-                )
+                request_id = sky.client.sdk.ssh_up(infra=cluster_name)
+                result = sky.get(request_id)
+                print(f"[SkyPilot][ssh up result]:\n{result}")
+            # except subprocess.CalledProcessError as e:
+            #     print(f"[SkyPilot][ssh up failed]: {e.stderr}")
+            #     raise HTTPException(
+            #         status_code=500,
+            #         detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}",
+            #     )
             except Exception as e:
                 print(f"[SkyPilot][ssh up error]: {str(e)}")
                 raise HTTPException(
