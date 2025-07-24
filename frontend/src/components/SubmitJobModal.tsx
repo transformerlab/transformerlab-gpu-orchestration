@@ -23,6 +23,7 @@ interface SubmitJobModalProps {
   clusterName: string;
   onJobSubmitted?: () => void;
   isClusterLaunching?: boolean;
+  isSshCluster?: boolean;
 }
 
 const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
@@ -31,6 +32,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   clusterName,
   onJobSubmitted,
   isClusterLaunching = false,
+  isSshCluster = false,
 }) => {
   const [command, setCommand] = useState("");
   const [setup, setSetup] = useState("");
@@ -40,6 +42,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [accelerators, setAccelerators] = useState("");
   const [region, setRegion] = useState("");
   const [zone, setZone] = useState("");
+  const [jobName, setJobName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -53,6 +56,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setAccelerators("");
     setRegion("");
     setZone("");
+    setJobName("");
     setError(null);
     setSuccess(null);
   };
@@ -72,6 +76,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       if (accelerators) formData.append("accelerators", accelerators);
       if (region) formData.append("region", region);
       if (zone) formData.append("zone", zone);
+      if (jobName) formData.append("job_name", jobName);
       const response = await fetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
         {
@@ -168,6 +173,15 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   </Typography>
                 )}
               </FormControl>
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Job Name (optional)</FormLabel>
+                <Input
+                  value={jobName}
+                  onChange={(e) => setJobName(e.target.value)}
+                  placeholder="e.g., My Training Job"
+                  disabled={isClusterLaunching}
+                />
+              </FormControl>
               {/* Resource Configuration */}
               <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
                 <Typography level="title-sm" sx={{ mb: 1 }}>
@@ -200,24 +214,28 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                     disabled={isClusterLaunching}
                   />
                 </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Region</FormLabel>
-                  <Input
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    placeholder="e.g., us-west-2, us-central1"
-                    disabled={isClusterLaunching}
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Zone</FormLabel>
-                  <Input
-                    value={zone}
-                    onChange={(e) => setZone(e.target.value)}
-                    placeholder="e.g., us-west-2a, us-central1-a"
-                    disabled={isClusterLaunching}
-                  />
-                </FormControl>
+                {!isSshCluster && (
+                  <>
+                    <FormControl sx={{ mb: 1 }}>
+                      <FormLabel>Region</FormLabel>
+                      <Input
+                        value={region}
+                        onChange={(e) => setRegion(e.target.value)}
+                        placeholder="e.g., us-west-2, us-central1"
+                        disabled={isClusterLaunching}
+                      />
+                    </FormControl>
+                    <FormControl sx={{ mb: 1 }}>
+                      <FormLabel>Zone</FormLabel>
+                      <Input
+                        value={zone}
+                        onChange={(e) => setZone(e.target.value)}
+                        placeholder="e.g., us-west-2a, us-central1-a"
+                        disabled={isClusterLaunching}
+                      />
+                    </FormControl>
+                  </>
+                )}
               </Card>
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 <Button

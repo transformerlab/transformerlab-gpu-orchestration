@@ -293,6 +293,7 @@ async def submit_job_to_cluster(
     accelerators: Optional[str] = Form(None),
     region: Optional[str] = Form(None),
     zone: Optional[str] = Form(None),
+    job_name: Optional[str] = Form(None),
     python_file: Optional[UploadFile] = File(None),
     user=Depends(verify_auth),
 ):
@@ -324,6 +325,7 @@ async def submit_job_to_cluster(
             accelerators=accelerators,
             region=region,
             zone=zone,
+            job_name=job_name,
         )
         return {
             "request_id": request_id,

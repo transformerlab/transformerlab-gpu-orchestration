@@ -169,10 +169,11 @@ def submit_job_to_existing_cluster(
     accelerators: Optional[str] = None,
     region: Optional[str] = None,
     zone: Optional[str] = None,
+    job_name: Optional[str] = None,
 ):
     try:
         task = sky.Task(
-            name=f"lattice-job-{cluster_name}",
+            name=job_name if job_name else f"lattice-job-{cluster_name}",
             run=command,
             setup=setup,
         )
