@@ -29,7 +29,20 @@ else
     export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
     export DEBUG=${DEBUG:-"False"}
 fi
-export WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-$(openssl rand -base64 32)}
+
+if [[ "$1" == "--dev" ]]; then
+    export WORKOS_COOKIE_PASSWORD="uX2+8A0+KO0UFR131I6eyehwZmZSt2V5wul6x5QiJYU="
+else
+    if [ -z "$WORKOS_COOKIE_PASSWORD" ]; then
+        if grep -q '^WORKOS_COOKIE_PASSWORD=' .env 2>/dev/null; then
+            export WORKOS_COOKIE_PASSWORD=$(grep '^WORKOS_COOKIE_PASSWORD=' .env | cut -d '=' -f2-)
+        else
+            GENERATED_COOKIE_PASSWORD=$(openssl rand -base64 32)
+            echo "WORKOS_COOKIE_PASSWORD=$GENERATED_COOKIE_PASSWORD" >> .env
+            export WORKOS_COOKIE_PASSWORD=$GENERATED_COOKIE_PASSWORD
+        fi
+    fi
+fi
 
 echo "🚀 Starting Lattice application using npm run dev..."
 if [ -n "$FRONTEND_URL" ]; then
