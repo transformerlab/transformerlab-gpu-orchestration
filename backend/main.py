@@ -363,6 +363,7 @@ def launch_cluster_with_skypilot(
     """Launch a cluster using SkyPilot"""
     try:
         import subprocess
+
         # For SSH clusters, ensure the SSH node pool exists and run sky ssh up
         if cloud and cloud.lower() == "ssh":
             pools = load_ssh_node_pools()
@@ -372,26 +373,19 @@ def launch_cluster_with_skypilot(
                     detail=f"SSH cluster '{cluster_name}' not found in SSH node pools. "
                     f"Please create the SSH cluster first using the SSH Clusters tab.",
                 )
-            # Run `sky ssh up <cluster_name>` using subprocess
+            # Use sky.client.sdk.ssh_up instead of subprocess
             try:
-                print(f"[SkyPilot] Running: sky ssh up")
-                result = subprocess.run([
-                    "sky", "ssh", "up", "--infra", cluster_name
-                ], capture_output=True, text=True, check=True)
-                print(f"[SkyPilot][ssh up stdout]:\n{result.stdout}")
-                if result.stderr:
-                    print(f"[SkyPilot][ssh up stderr]:\n{result.stderr}")
-            except subprocess.CalledProcessError as e:
-                print(f"[SkyPilot][ssh up failed]: {e.stderr}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}"
+                print(
+                    f"[SkyPilot] Running: sky.client.sdk.ssh_up(infra={cluster_name})"
                 )
+                request_id = sky.client.sdk.ssh_up(infra=cluster_name)
+                result = sky.get(request_id)
+                print(f"[SkyPilot][ssh up result]:\n{result}")
             except Exception as e:
                 print(f"[SkyPilot][ssh up error]: {str(e)}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}"
+                    detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}",
                 )
 
         # Create a task
@@ -522,6 +516,7 @@ def is_ssh_cluster(cluster_name: str):
         return cluster_name in pools
     except Exception:
         return False
+
 
 # Routes
 @api_v1_router.get("/")
@@ -894,14 +889,17 @@ async def list_ssh_clusters(user=Depends(verify_auth)):
             status_code=500, detail=f"Failed to list SSH clusters: {str(e)}"
         )
 
+
 from fastapi.responses import StreamingResponse
 import asyncio
+
 
 @api_v1_router.get("/skypilot/stream-logs/{logfile}")
 async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
     """
     Stream logs from a running sky api logs -l <logfile> command in real time.
     """
+
     async def log_streamer():
         # Build the command
         cmd = ["sky", "api", "logs", "-l", logfile]
@@ -926,6 +924,7 @@ async def stream_skypilot_logs(logfile: str, user=Depends(verify_auth)):
                 await process.wait()
 
     return StreamingResponse(log_streamer(), media_type="text/plain")
+
 
 @api_v1_router.post("/skypilot/launch", response_model=LaunchClusterResponse)
 async def launch_skypilot_cluster(
