@@ -422,7 +422,7 @@ const Nodes: React.FC = () => {
           <Typography level="h3" sx={{ mb: 2 }}>
             {selectedCluster.name} - Instances
           </Typography>
-          <Table size="sm" variant="outlined" borderAxis="both" stickyHeader>
+          <Table stickyHeader>
             <thead>
               <tr>
                 <th>Name</th>
