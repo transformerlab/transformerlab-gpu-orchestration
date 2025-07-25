@@ -8,6 +8,7 @@ import Sidebar from "./Sidebar";
 import Admin from "../pages/Admin";
 import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
+import MyNodes from "../pages/MyNodes";
 
 const Dashboard: React.FC = () => {
   return (
@@ -45,6 +46,7 @@ const Dashboard: React.FC = () => {
           />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/nodes" element={<Nodes />} />
+          <Route path="/my-nodes" element={<MyNodes />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />

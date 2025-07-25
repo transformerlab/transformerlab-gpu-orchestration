@@ -15,6 +15,7 @@ import {
   ComputerIcon,
   GpuIcon,
   HardHatIcon,
+  HouseIcon,
   LightbulbIcon,
   PersonStandingIcon,
   ShovelIcon,
@@ -55,6 +56,7 @@ function Item({
 
 const sidebarItems = [
   { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
+  { icon: <HouseIcon />, content: "My Nodes", path: "/dashboard/my-nodes" },
   {
     icon: <PersonStandingIcon />,
     content: "Clouds",
