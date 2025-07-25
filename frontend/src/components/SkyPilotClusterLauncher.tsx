@@ -17,7 +17,7 @@ import {
   Checkbox,
 } from "@mui/joy";
 import { Play, Rocket } from "lucide-react";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, runpodApi } from "../utils/api";
 
 interface LaunchClusterRequest {
   cluster_name: string;
@@ -74,6 +74,12 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [pythonFile, setPythonFile] = useState<File | null>(null);
 
+  // RunPod specific state
+  const [runpodGpuTypes, setRunpodGpuTypes] = useState<string[]>([]);
+  const [runpodSetupStatus, setRunpodSetupStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+
   const resetForm = () => {
     setClusterName("");
     setCommand("echo 'Hello SkyPilot'");
@@ -107,8 +113,29 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   useEffect(() => {
     if (cloud === "ssh") {
       fetchSSHClusters();
+    } else if (cloud === "runpod") {
+      setupRunPod();
     }
   }, [cloud]);
+
+  const setupRunPod = async () => {
+    try {
+      setRunpodSetupStatus("loading");
+      await runpodApi.setup();
+      const verifyResult = await runpodApi.verify();
+      if (verifyResult.valid) {
+        setRunpodSetupStatus("success");
+        // Fetch available GPU types
+        const gpuTypesResult = await runpodApi.getGpuTypes();
+        setRunpodGpuTypes(gpuTypesResult.gpu_types);
+      } else {
+        setRunpodSetupStatus("error");
+      }
+    } catch (err) {
+      console.error("Error setting up RunPod:", err);
+      setRunpodSetupStatus("error");
+    }
+  };
 
   const launchCluster = async () => {
     try {
@@ -242,6 +269,27 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                       <Option value="runpod">RunPod</Option>
                       <Option value="kubernetes">Kubernetes</Option>
                     </Select>
+                    {cloud === "runpod" && (
+                      <Box sx={{ mt: 1 }}>
+                        {runpodSetupStatus === "loading" && (
+                          <Typography level="body-sm" color="primary">
+                            ⏳ Setting up RunPod...
+                          </Typography>
+                        )}
+                        {runpodSetupStatus === "success" && (
+                          <Typography level="body-sm" color="success">
+                            ✅ RunPod ready ({runpodGpuTypes.length} GPU types
+                            available)
+                          </Typography>
+                        )}
+                        {runpodSetupStatus === "error" && (
+                          <Typography level="body-sm" color="danger">
+                            ❌ RunPod setup failed. Check RUNPOD_API_KEY
+                            environment variable.
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
                   </FormControl>
 
                   <FormControl sx={{ flex: 1 }}>
@@ -281,11 +329,25 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
                 <FormControl>
                   <FormLabel>Accelerators</FormLabel>
-                  <Input
-                    value={accelerators}
-                    onChange={(e) => setAccelerators(e.target.value)}
-                    placeholder="e.g., V100, V100:2, A100:4"
-                  />
+                  {cloud === "runpod" && runpodGpuTypes.length > 0 ? (
+                    <Select
+                      value={accelerators}
+                      onChange={(_, value) => setAccelerators(value || "")}
+                      placeholder="Select GPU type"
+                    >
+                      {runpodGpuTypes.map((gpuType) => (
+                        <Option key={gpuType} value={gpuType}>
+                          {gpuType}
+                        </Option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      value={accelerators}
+                      onChange={(e) => setAccelerators(e.target.value)}
+                      placeholder="e.g., V100, V100:2, A100:4"
+                    />
+                  )}
                 </FormControl>
 
                 <Box sx={{ display: "flex", gap: 2 }}>

@@ -15,3 +15,6 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
+
+# RunPod Configuration
+RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
