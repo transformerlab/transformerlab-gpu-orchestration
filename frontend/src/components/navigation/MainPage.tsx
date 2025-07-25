@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Card, Typography } from "@mui/joy";
 import { Routes, Route, Navigate } from "react-router-dom";
-import GettingStarted from "../pages/GettingStarted";
+import GettingStarted from "../pages/Admin/GettingStarted";
 import Nodes from "../pages/Nodes";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
@@ -9,6 +9,7 @@ import Admin from "../pages/Admin";
 import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
 import MyNodes from "../pages/MyNodes";
+import Users from "../pages/Admin/Users";
 
 const Dashboard: React.FC = () => {
   return (
@@ -50,6 +51,7 @@ const Dashboard: React.FC = () => {
           <Route path="/admin" element={<Admin />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/users/" element={<Users />} />
         </Routes>
       </Box>
     </Box>

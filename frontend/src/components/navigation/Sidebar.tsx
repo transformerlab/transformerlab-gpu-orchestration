@@ -14,11 +14,13 @@ import {
   CogIcon,
   ComputerIcon,
   GpuIcon,
+  GroupIcon,
   HardHatIcon,
   HouseIcon,
   LightbulbIcon,
   PersonStandingIcon,
   ShovelIcon,
+  UsersIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -55,13 +57,8 @@ function Item({
 }
 
 const sidebarItems = [
-  { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
+  { icon: <GpuIcon />, content: "Node Pool", path: "/dashboard/nodes" },
   { icon: <HouseIcon />, content: "My Nodes", path: "/dashboard/my-nodes" },
-  {
-    icon: <PersonStandingIcon />,
-    content: "Clouds",
-    path: "/dashboard/getting-started",
-  },
   { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
   {
@@ -73,14 +70,13 @@ const sidebarItems = [
 ];
 
 const sidebarItems2 = [
+  { icon: <UsersIcon />, content: "Users", path: "/dashboard/users" },
   {
-    icon: <PersonStandingIcon />,
+    icon: <GroupIcon />,
     content: "Clusters",
+    path: "/dashboard/getting-started",
   },
-  { icon: <AppleIcon />, content: "Apple" },
-  { icon: <BananaIcon />, content: "Banana" },
-  { icon: <ShovelIcon />, content: "Shovel" },
-  { icon: <HardHatIcon />, content: "Hat", chipCount: 3 },
+  { icon: <BananaIcon />, content: "Quotas" },
 ];
 
 export default function Sidebar() {

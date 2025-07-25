@@ -15,6 +15,8 @@ import {
   ListItem,
   ListDivider,
   Textarea,
+  ButtonGroup,
+  Link,
 } from "@mui/joy";
 import {
   ArrowRightIcon,
@@ -222,7 +224,10 @@ const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
   </Tooltip>
 );
 
-const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
+const ClusterCard: React.FC<{
+  cluster: Cluster;
+  setSelectedCluster: React.Dispatch<React.SetStateAction<Cluster | null>>;
+}> = ({ cluster, setSelectedCluster }) => {
   const reservedCount = cluster.nodes.filter(
     (n) => n.status === "reserved"
   ).length;
@@ -250,23 +255,28 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
         transition: "all 0.2s ease",
         "&:hover": {
           boxShadow: "md",
-          transform: "translateY(-2px)",
         },
       }}
     >
       <Box sx={{ mb: 2 }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent={"space-between"}
+        <Button
+          onClick={() => setSelectedCluster(cluster)}
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 0,
+            margin: 0,
+            mb: 1,
+          }}
+          variant="plain"
         >
-          <Typography level="h4" sx={{ mb: 1 }}>
-            {cluster.name}
-          </Typography>
+          <Typography level="h4">{cluster.name}</Typography>
           <>
             <ChevronRightIcon />
           </>
-        </Stack>
+        </Button>
         <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
           <Chip size="sm" color="primary" variant="plain">
             {assignedToYouCount} Assigned To You
@@ -285,7 +295,6 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
           </Chip>
         </Stack>
       </Box>
-
       <Box
         sx={{
           display: "flex",
@@ -302,6 +311,10 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
           <NodeSquare key={node.id} node={node} />
         ))}
       </Box>
+      <Stack direction="row" spacing={1}>
+        <Button variant="plain">Reserve a Node</Button>
+        <Button variant="plain">Start a Job</Button>
+      </Stack>
     </Card>
   );
 };
@@ -407,7 +420,7 @@ const Nodes: React.FC = () => {
       }}
     >
       <Box sx={{ mb: 4 }}>
-        <Typography level="h2">Square Bank's Nodes</Typography>
+        <Typography level="h2">Square Bank's Node Pool</Typography>
       </Box>
       {/* Existing Node Pools/Clusters UI */}
       {selectedCluster ? (
@@ -457,12 +470,11 @@ const Nodes: React.FC = () => {
         </Sheet>
       ) : (
         mockClusters.map((cluster) => (
-          <div
-            key={cluster.id}
-            style={{ cursor: "pointer" }}
-            onClick={() => setSelectedCluster(cluster)}
-          >
-            <ClusterCard cluster={cluster} />
+          <div key={cluster.id} style={{ cursor: "pointer" }}>
+            <ClusterCard
+              cluster={cluster}
+              setSelectedCluster={setSelectedCluster}
+            />
           </div>
         ))
       )}
