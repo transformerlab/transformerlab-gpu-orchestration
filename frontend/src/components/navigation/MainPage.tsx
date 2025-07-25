@@ -41,7 +41,7 @@ const Dashboard: React.FC = () => {
         <Routes>
           <Route
             path="/"
-            element={<Navigate to="/dashboard/getting-started" replace />}
+            element={<Navigate to="/dashboard/nodes" replace />}
           />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/nodes" element={<Nodes />} />

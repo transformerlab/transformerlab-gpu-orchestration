@@ -54,13 +54,13 @@ function Item({
 }
 
 const sidebarItems = [
+  { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
   {
     icon: <PersonStandingIcon />,
     content: "Clouds",
     path: "/dashboard/getting-started",
   },
   { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
-  { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
   {
     icon: <CogIcon />,
