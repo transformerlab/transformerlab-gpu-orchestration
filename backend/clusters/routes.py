@@ -6,6 +6,7 @@ from fastapi import (
     HTTPException,
     Request,
     Response,
+    BackgroundTasks,
 )
 from models import ClusterResponse, ClustersListResponse, SSHNode
 from clusters.utils import create_cluster_in_pools, add_node_to_cluster
@@ -77,6 +78,7 @@ async def get_cluster(cluster_name: str, request: Request, response: Response):
 async def add_node(
     request: Request,
     response: Response,
+    background_tasks: BackgroundTasks,
     cluster_name: str,
     ip: str = Form(...),
     user: str = Form(...),
@@ -91,7 +93,7 @@ async def add_node(
     node = SSHNode(
         ip=ip, user=user, identity_file=identity_file_path, password=password
     )
-    cluster_config = add_node_to_cluster(cluster_name, node)
+    cluster_config = add_node_to_cluster(cluster_name, node, background_tasks)
     nodes = []
     for host in cluster_config.get("hosts", []):
         node_obj = SSHNode(

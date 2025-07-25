@@ -86,3 +86,37 @@ def save_ssh_node_pools(pools_data):
         raise HTTPException(
             status_code=500, detail=f"Failed to save cluster configuration: {str(e)}"
         )
+
+
+def get_ssh_node_info_json_path():
+    sky_dir = Path.home() / ".sky" / "lattice_data"
+    sky_dir.mkdir(parents=True, exist_ok=True)
+    return sky_dir / "ssh_node_info.json"
+
+
+def load_ssh_node_info():
+    json_path = get_ssh_node_info_json_path()
+    if not json_path.exists():
+        return {}
+    try:
+        import json
+
+        with open(json_path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading SSH node info JSON: {e}")
+        return {}
+
+
+def save_ssh_node_info(data):
+    json_path = get_ssh_node_info_json_path()
+    try:
+        import json
+
+        with open(json_path, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Error saving SSH node info JSON: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save SSH node info: {str(e)}"
+        )
