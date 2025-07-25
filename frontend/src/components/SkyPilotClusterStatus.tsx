@@ -386,17 +386,17 @@ const SkyPilotClusterStatus: React.FC = () => {
             </Typography>
           </Box>
         ) : (
-          <Table>
+          <Table sx={{ tableLayout: "fixed" }}>
             <thead>
               <tr>
-                <th></th>
-                <th>Cluster Name</th>
-                <th>Status</th>
-                <th>Resources</th>
-                <th>Launched At</th>
-                <th>Last Use</th>
-                <th>Autostop</th>
-                <th>Actions</th>
+                <th style={{ width: "40px" }}></th>
+                <th style={{ width: "15%" }}>Cluster Name</th>
+                <th style={{ width: "10%" }}>Status</th>
+                <th style={{ width: "25%" }}>Resources</th>
+                <th style={{ width: "15%" }}>Launched At</th>
+                <th style={{ width: "10%" }}>Last Use</th>
+                <th style={{ width: "10%" }}>Autostop</th>
+                <th style={{ width: "15%" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -452,22 +452,52 @@ const SkyPilotClusterStatus: React.FC = () => {
                       )}
                     </td>
                     <td>
-                      <Typography level="body-sm">
+                      <Typography
+                        level="body-sm"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: "100%",
+                        }}
+                        title={cluster.resources_str || "-"}
+                      >
                         {cluster.resources_str || "-"}
                       </Typography>
                     </td>
                     <td>
-                      <Typography level="body-sm">
+                      <Typography
+                        level="body-sm"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {formatTimestamp(cluster.launched_at)}
                       </Typography>
                     </td>
                     <td>
-                      <Typography level="body-sm">
+                      <Typography
+                        level="body-sm"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {cluster.last_use || "-"}
                       </Typography>
                     </td>
                     <td>
-                      <Typography level="body-sm">
+                      <Typography
+                        level="body-sm"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {formatAutostop(cluster.autostop, cluster.to_down)}
                       </Typography>
                     </td>
