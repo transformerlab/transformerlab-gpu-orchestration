@@ -188,8 +188,8 @@ const MyNodes: React.FC = () => {
             },
           }}
         >
-          <Tab value={1}>Holds</Tab>
-          <Tab value={0}>Jobs</Tab>
+          <Tab value={0}>Holds</Tab>
+          <Tab value={1}>Jobs</Tab>
         </TabList>
         <TabPanel value={0}>
           <Held skypilotLoading={skypilotLoading} myClusters={myClusters} />
