@@ -12,8 +12,8 @@ import {
 } from "@mui/joy";
 import { useColorScheme } from "@mui/joy/styles";
 import { Sun, Moon } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import logo from "../logo.png";
+import { useAuth } from "../../context/AuthContext";
+import logo from "../../logo.png";
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
