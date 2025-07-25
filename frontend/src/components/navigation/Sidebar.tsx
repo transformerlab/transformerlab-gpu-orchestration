@@ -57,7 +57,7 @@ function Item({
 }
 
 const sidebarItems = [
-  { icon: <GpuIcon />, content: "Nodes", path: "/dashboard/nodes" },
+  { icon: <GpuIcon />, content: "Node Pool", path: "/dashboard/nodes" },
   { icon: <HouseIcon />, content: "My Nodes", path: "/dashboard/my-nodes" },
   { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
