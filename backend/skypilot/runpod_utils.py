@@ -1,5 +1,7 @@
 import os
 import runpod
+import csv
+from pathlib import Path
 from config import RUNPOD_API_KEY
 
 
@@ -55,50 +57,71 @@ def verify_runpod_setup():
 
 
 def get_runpod_gpu_types():
-    """Get available GPU types from RunPod"""
+    """Get available GPU types from SkyPilot's RunPod catalog"""
     try:
-        # Set the API key
-        if not RUNPOD_API_KEY:
-            print("❌ RUNPOD_API_KEY environment variable is required")
+        # Find the SkyPilot catalog directory
+        sky_home = Path.home() / ".sky"
+        catalogs_dir = sky_home / "catalogs"
+
+        if not catalogs_dir.exists():
+            print("❌ SkyPilot catalogs directory not found")
             return []
 
-        runpod.api_key = RUNPOD_API_KEY
-
-        # Get GPU types using the RunPod SDK
-        try:
-            gpu_list = runpod.get_gpus()
-            gpu_types = []
-
-            # Extract unique GPU types from the response
-            for gpu in gpu_list:
-                gpu_name = gpu.get("displayName") or gpu.get("name")
-                if gpu_name and gpu_name not in gpu_types:
-                    gpu_types.append(gpu_name)
-
-            if gpu_types:
-                print(f"✅ Found {len(gpu_types)} GPU types from RunPod")
-            else:
-                print(
-                    "⚠️ No GPU types found. This might indicate no GPUs are available."
-                )
-
-            return gpu_types
-
-        except Exception as gpu_error:
-            print(f"❌ Failed to get GPU types: {str(gpu_error)}")
-
-            # Check for specific error types
-            error_str = str(gpu_error).lower()
-            if "unauthorized" in error_str:
-                print("❌ API key authentication failed")
-            elif "not found" in error_str:
-                print("❌ API key not found")
-            elif "timeout" in error_str:
-                print("❌ Request timed out")
+        # Find the version directory (v7, v8, etc.)
+        version_dirs = [
+            d for d in catalogs_dir.iterdir() if d.is_dir() and d.name.startswith("v")
+        ]
+        if not version_dirs:
+            print("❌ No version directory found in SkyPilot catalogs")
             return []
+
+        # Use the first (and should be only) version directory
+        version_dir = version_dirs[0]
+        runpod_catalog_dir = version_dir / "runpod"
+
+        if not runpod_catalog_dir.exists():
+            print(f"❌ RunPod catalog directory not found at {runpod_catalog_dir}")
+            return []
+
+        # Find CSV files in the runpod catalog directory
+        csv_files = list(runpod_catalog_dir.glob("*.csv"))
+        if not csv_files:
+            print(f"❌ No CSV files found in {runpod_catalog_dir}")
+            return []
+
+        gpu_types = set()  # Use set to avoid duplicates
+
+        # Read all CSV files
+        for csv_file in csv_files:
+            try:
+                with open(csv_file, "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        accelerator_name = row.get("AcceleratorName", "").strip()
+                        accelerator_count = row.get("AcceleratorCount", "1").strip()
+
+                        if accelerator_name and accelerator_name != "AcceleratorName":
+                            # Format: GPU_NAME:COUNT
+                            gpu_type = f"{accelerator_name}:{accelerator_count}"
+                            gpu_types.add(gpu_type)
+
+            except Exception as csv_error:
+                print(f"⚠️ Error reading {csv_file}: {csv_error}")
+                continue
+
+        gpu_types_list = sorted(list(gpu_types))
+
+        if gpu_types_list:
+            print(
+                f"✅ Found {len(gpu_types_list)} GPU types from SkyPilot RunPod catalog"
+            )
+        else:
+            print("⚠️ No GPU types found in SkyPilot RunPod catalog")
+
+        return gpu_types_list
 
     except Exception as e:
-        print(f"❌ Error getting GPU types: {e}")
+        print(f"❌ Error getting GPU types from SkyPilot catalog: {e}")
         return []
 
 

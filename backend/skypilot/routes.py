@@ -39,7 +39,7 @@ from skypilot.runpod_utils import (
     get_runpod_gpu_types,
     setup_runpod_config,
 )
-from clusters.utils import is_ssh_cluster
+from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
 from auth.utils import verify_auth
 from typing import Optional
@@ -291,10 +291,11 @@ async def stop_skypilot_cluster(
     user = verify_auth(request, response)
     try:
         cluster_name = stop_request.cluster_name
-        if is_ssh_cluster(cluster_name):
+        if is_down_only_cluster(cluster_name):
+            cluster_type = "SSH" if is_ssh_cluster(cluster_name) else "RunPod"
             raise HTTPException(
                 status_code=400,
-                detail=f"SSH cluster '{cluster_name}' cannot be stopped. Use down operation instead.",
+                detail=f"{cluster_type} cluster '{cluster_name}' cannot be stopped. Use down operation instead.",
             )
         request_id = stop_cluster_with_skypilot(cluster_name)
         return StopClusterResponse(
@@ -332,9 +333,10 @@ async def get_cluster_type(cluster_name: str, request: Request, response: Respon
     user = verify_auth(request, response)
     try:
         is_ssh = is_ssh_cluster(cluster_name)
+        is_down_only = is_down_only_cluster(cluster_name)
         cluster_type = "ssh" if is_ssh else "cloud"
         available_operations = ["down"]
-        if not is_ssh:
+        if not is_down_only:
             available_operations.append("stop")
         return {
             "cluster_name": cluster_name,
@@ -342,8 +344,8 @@ async def get_cluster_type(cluster_name: str, request: Request, response: Respon
             "is_ssh": is_ssh,
             "available_operations": available_operations,
             "recommendations": {
-                "stop": "Stops the cluster while preserving disk data (cloud clusters only)",
-                "down": "Tears down the cluster and deletes all resources (SSH and cloud clusters)",
+                "stop": "Stops the cluster while preserving disk data (AWS, GCP, Azure clusters only)",
+                "down": "Tears down the cluster and deletes all resources (SSH, RunPod, and cloud clusters)",
             },
         }
     except Exception as e:

@@ -314,6 +314,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                       value={cpus}
                       onChange={(e) => setCpus(e.target.value)}
                       placeholder="e.g., 4, 8+"
+                      disabled={cloud === "runpod"}
                     />
                   </FormControl>
 
@@ -323,9 +324,17 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                       value={memory}
                       onChange={(e) => setMemory(e.target.value)}
                       placeholder="e.g., 16, 32+"
+                      disabled={cloud === "runpod"}
                     />
                   </FormControl>
                 </Box>
+
+                {cloud === "runpod" && (
+                  <Typography level="body-sm" color="neutral">
+                    ℹ️ CPU and Memory are automatically configured by RunPod
+                    based on the selected GPU type.
+                  </Typography>
+                )}
 
                 <FormControl>
                   <FormLabel>Accelerators</FormLabel>
