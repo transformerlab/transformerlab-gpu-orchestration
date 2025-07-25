@@ -14,6 +14,7 @@ import { useColorScheme } from "@mui/joy/styles";
 import { Sun, Moon } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../logo.png";
+import UserDropdown from "./UserDropdown";
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -29,8 +30,6 @@ const Header: React.FC = () => {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        mb: 1,
-        px: 1,
         gridArea: "header",
       }}
     >
@@ -51,47 +50,7 @@ const Header: React.FC = () => {
         >
           {mode === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </IconButton>
-        <Dropdown>
-          <MenuButton
-            variant="plain"
-            sx={{ p: 0, minWidth: 0, borderRadius: "50%" }}
-          >
-            <Avatar>
-              {user.first_name || user.last_name
-                ? `${user.first_name?.[0] || ""}${
-                    user.last_name?.[0] || ""
-                  }`.toUpperCase()
-                : user.email[0].toUpperCase()}
-            </Avatar>
-          </MenuButton>
-          <Menu placement="bottom-end" sx={{ minWidth: 220 }}>
-            <Box sx={{ p: 2, pb: 1 }}>
-              <Typography level="title-md" sx={{ fontWeight: "bold" }}>
-                {user.first_name || user.last_name
-                  ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
-                  : user.email}
-              </Typography>
-              <Typography level="body-sm" sx={{ color: "text.secondary" }}>
-                {user.email}
-              </Typography>
-            </Box>
-            <ListDivider />
-            <MenuItem disabled sx={{ cursor: "default" }}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                <Typography level="body-xs" sx={{ fontWeight: "bold" }}>
-                  User ID
-                </Typography>
-                <Typography level="body-xs" sx={{ fontFamily: "monospace" }}>
-                  {user.id}
-                </Typography>
-              </Box>
-            </MenuItem>
-            <ListDivider />
-            <MenuItem onClick={logout} color="danger">
-              Logout
-            </MenuItem>
-          </Menu>
-        </Dropdown>
+        <UserDropdown />
       </Box>
     </Box>
   );
