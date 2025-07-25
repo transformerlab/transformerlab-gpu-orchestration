@@ -1,5 +1,7 @@
 import React from "react";
 import { Box, Typography, Table, Chip, CircularProgress } from "@mui/joy";
+import useSWR from "swr";
+import { buildApiUrl } from "../../utils/api";
 
 // Add a mock "held time" generator for demonstration
 function randomHeldTime() {
@@ -54,7 +56,21 @@ function randomStatus(id: string) {
   return statuses[idx];
 }
 
-const generateRandomNodes = (count: number): Node[] => {
+// Define a custom interface for mock nodes to avoid DOM Node conflict
+interface MyNode {
+  id: string;
+  status: "reserved" | "requestable" | "active" | "unhealthy";
+  user?: "ali" | "bob" | "catherine";
+  gpuType?: string;
+  cpuType?: string;
+  vcpus?: number;
+  vgpus?: number;
+  ip: string;
+  jobName?: string;
+  experimentName?: string;
+}
+
+const generateRandomNodes = (count: number): MyNode[] => {
   const users = ["ali", "bob", "catherine"];
   return Array.from({ length: count }, (_, i) => {
     const rand = Math.random();
@@ -98,7 +114,7 @@ const generateRandomNodes = (count: number): Node[] => {
 interface Cluster {
   id: string;
   name: string;
-  nodes: Node[];
+  nodes: MyNode[];
 }
 
 const mockClusters: Cluster[] = [
@@ -125,6 +141,21 @@ const mockClusters: Cluster[] = [
 ];
 
 const MyNodes: React.FC = () => {
+  // --- SkyPilot Clusters Section ---
+  const skypilotFetcher = (url: string) =>
+    fetch(url, { credentials: "include" }).then((res) => res.json());
+  const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
+    buildApiUrl("skypilot/status"),
+    skypilotFetcher,
+    { refreshInterval: 2000 }
+  );
+  const myClusters = (skypilotData?.clusters || []).filter(
+    (c: any) =>
+      c.status &&
+      (c.status.toLowerCase().includes("init") ||
+        c.status.toLowerCase().includes("up"))
+  );
+
   // Flatten all nodes held by "ali" and annotate with cluster name and held time
   const nodesHeldByAli = mockClusters
     .flatMap((cluster) =>
@@ -148,6 +179,79 @@ const MyNodes: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", p: 2 }}>
+      {/* --- SkyPilot Clusters --- */}
+      <Typography level="h2" sx={{ mb: 2 }}>
+        Your SkyPilot Clusters
+      </Typography>
+      {skypilotLoading ? (
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography level="body-md" sx={{ color: "text.secondary" }}>
+            Loading clusters...
+          </Typography>
+        </Box>
+      ) : myClusters.length === 0 ? (
+        <Typography level="body-md" sx={{ color: "text.secondary", mt: 2 }}>
+          No active or launching SkyPilot clusters.
+        </Typography>
+      ) : (
+        myClusters.map((cluster: any) => (
+          <Box key={cluster.cluster_name} sx={{ mb: 4 }}>
+            <Typography level="h4" sx={{ mb: 1 }}>
+              {cluster.cluster_name}
+            </Typography>
+            <Table size="sm" variant="outlined" borderAxis="both" stickyHeader>
+              <thead>
+                <tr>
+                  <th>Cluster Name</th>
+                  <th>Status</th>
+                  <th>Resources</th>
+                  <th>Launched At</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{cluster.cluster_name}</td>
+                  <td>
+                    {cluster.status.toLowerCase().includes("init") ? (
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <CircularProgress size="sm" />
+                        <Typography level="body-sm">Launching</Typography>
+                      </Box>
+                    ) : cluster.status.toLowerCase().includes("up") ? (
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            bgcolor: "success.500",
+                            borderRadius: "50%",
+                          }}
+                        />
+                        <Typography level="body-sm">Running</Typography>
+                      </Box>
+                    ) : (
+                      <Chip color="neutral" variant="soft" size="sm">
+                        {cluster.status}
+                      </Chip>
+                    )}
+                  </td>
+                  <td>{cluster.resources_str || "-"}</td>
+                  <td>
+                    {cluster.launched_at
+                      ? new Date(cluster.launched_at * 1000).toLocaleString()
+                      : "-"}
+                  </td>
+                </tr>
+              </tbody>
+            </Table>
+          </Box>
+        ))
+      )}
+      {/* --- Existing held nodes tables --- */}
       <Typography level="h2" sx={{ mb: 2 }}>
         Your Held Nodes
       </Typography>
@@ -159,7 +263,7 @@ const MyNodes: React.FC = () => {
           <Table size="sm" variant="outlined" borderAxis="both" stickyHeader>
             <thead>
               <tr>
-                <th width="100px">Status</th>
+                <th>Status</th>
                 <th>Cluster</th>
                 <th>Name</th>
                 <th>Status (Node)</th>
