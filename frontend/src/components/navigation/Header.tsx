@@ -31,13 +31,12 @@ const Header: React.FC = () => {
         justifyContent: "space-between",
         alignItems: "center",
         gridArea: "header",
+        ml: 1,
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <img src={logo} alt="Lattice Logo" style={{ width: 40, height: 40 }} />
-        <Typography level="h1" sx={{ color: "primary.500" }}>
-          Lattice
-        </Typography>
+        <Typography level="h1">Lattice</Typography>
       </Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <IconButton
