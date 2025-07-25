@@ -180,7 +180,18 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   let gpuDisplay = "-";
                   const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
                   if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
-                    gpuDisplay = gpuInfo.gpus.map((g: any) => g.gpu).join(", ");
+                    gpuDisplay = gpuInfo.gpus
+                      .map((g: any) => {
+                        const qty = g.requestable_qty_per_node;
+                        if (qty && /^\d+$/.test(qty.trim())) {
+                          return `${g.gpu} (x${qty.trim()})`;
+                        } else if (qty && qty.trim().length > 0) {
+                          return `${g.gpu} (${qty.trim()})`;
+                        } else {
+                          return g.gpu;
+                        }
+                      })
+                      .join(", ");
                   }
                   return (
                     <tr key={index}>
