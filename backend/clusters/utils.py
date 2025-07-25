@@ -1,6 +1,13 @@
 from fastapi import HTTPException
-from utils.file_utils import load_ssh_node_pools, save_ssh_node_pools
+from utils.file_utils import (
+    load_ssh_node_pools,
+    save_ssh_node_pools,
+    load_ssh_node_info,
+    save_ssh_node_info,
+)
 from models import SSHNode
+import threading
+from skypilot.utils import fetch_and_parse_gpu_resources
 
 
 def create_cluster_in_pools(
@@ -26,7 +33,7 @@ def create_cluster_in_pools(
     return cluster_config
 
 
-def add_node_to_cluster(cluster_name: str, node: SSHNode):
+def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None):
     pools = load_ssh_node_pools()
     if cluster_name not in pools:
         raise HTTPException(
@@ -47,6 +54,25 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
             )
     pools[cluster_name]["hosts"].append(node_dict)
     save_ssh_node_pools(pools)
+
+    def update_gpu_info_thread():
+        import asyncio
+
+        try:
+            gpu_info = asyncio.run(fetch_and_parse_gpu_resources(cluster_name))
+            node_info = load_ssh_node_info()
+            node_info[node.ip] = {"gpu_resources": gpu_info}
+            save_ssh_node_info(node_info)
+        except Exception as e:
+            print(f"Warning: Failed to fetch/store GPU info for node {node.ip}: {e}")
+
+    if background_tasks is not None:
+        background_tasks.add_task(
+            lambda: threading.Thread(target=update_gpu_info_thread).start()
+        )
+    else:
+        threading.Thread(target=update_gpu_info_thread).start()
+
     return pools[cluster_name]
 
 

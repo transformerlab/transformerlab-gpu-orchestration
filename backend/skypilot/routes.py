@@ -32,9 +32,10 @@ from skypilot.utils import (
     get_job_logs,
     stop_cluster_with_skypilot,
     down_cluster_with_skypilot,
+    fetch_and_parse_gpu_resources,
 )
 from clusters.utils import is_ssh_cluster
-from utils.file_utils import load_ssh_node_pools
+from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
 from auth.utils import verify_auth
 from typing import Optional
 import asyncio
@@ -63,6 +64,35 @@ async def list_ssh_clusters(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to list SSH clusters: {str(e)}"
+        )
+
+
+@router.get("/fetch-resources/{cluster_name}")
+async def fetch_cluster_resources(
+    cluster_name: str, request: Request, response: Response
+):
+    """
+    For a given SSH cluster, bring it up, show GPU info, and bring it down again.
+    Returns GPU info under 'gpu_resources'.
+    Also updates ~/.sky/lattice_data/ssh_node_info.json for all nodes in the cluster.
+    """
+    user = verify_auth(request, response)
+    try:
+        gpu_info = await fetch_and_parse_gpu_resources(cluster_name)
+        # Update persistent file for all node IPs in node_gpus
+        try:
+            node_info = load_ssh_node_info()
+            for node in gpu_info.get("node_gpus", []):
+                ip = node.get("node")
+                if ip:
+                    node_info[ip] = {"gpu_resources": gpu_info}
+            save_ssh_node_info(node_info)
+        except Exception as e:
+            print(f"Warning: Failed to update ssh_node_info.json: {e}")
+        return {"gpu_resources": gpu_info}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch resources: {str(e)}"
         )
 
 
@@ -369,3 +399,15 @@ async def submit_job_to_cluster(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
+
+
+@router.get("/ssh-node-info")
+async def get_ssh_node_info(request: Request, response: Response):
+    user = verify_auth(request, response)
+    try:
+        node_info = load_ssh_node_info()
+        return node_info
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load SSH node info: {str(e)}"
+        )

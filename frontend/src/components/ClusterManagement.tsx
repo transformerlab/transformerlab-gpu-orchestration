@@ -34,6 +34,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nodeGpuInfo, setNodeGpuInfo] = useState<Record<string, any>>({});
 
   useEffect(() => {
     fetchClusters();
@@ -69,6 +70,16 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
         setSelectedCluster(data);
         if (onClusterSelected) {
           onClusterSelected(clusterName);
+        }
+        // Fetch GPU info for all nodes
+        const gpuRes = await fetch(buildApiUrl("skypilot/ssh-node-info"), {
+          credentials: "include",
+        });
+        if (gpuRes.ok) {
+          const gpuData = await gpuRes.json();
+          setNodeGpuInfo(gpuData);
+        } else {
+          setNodeGpuInfo({});
         }
       } else {
         setError("Failed to fetch cluster details");
@@ -161,26 +172,46 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   <th>User</th>
                   <th>Identity File</th>
                   <th>Password</th>
+                  <th>GPUs</th>
                 </tr>
               </thead>
               <tbody>
-                {selectedCluster.nodes.map((node, index) => (
-                  <tr key={index}>
-                    <td>{node.ip}</td>
-                    <td>{node.user}</td>
-                    <td>
-                      {node.identity_file ? (
-                        <Chip size="sm" variant="soft">
-                          {node.identity_file.split("/").pop() ||
-                            node.identity_file}
-                        </Chip>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td>{node.password ? "****" : "-"}</td>
-                  </tr>
-                ))}
+                {selectedCluster.nodes.map((node, index) => {
+                  let gpuDisplay = "-";
+                  const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
+                  if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
+                    gpuDisplay = gpuInfo.gpus
+                      .map((g: any) => {
+                        const qty = g.requestable_qty_per_node;
+                        if (qty && /^\d+$/.test(qty.trim())) {
+                          return `${g.gpu} (x${qty.trim()})`;
+                        } else if (qty && qty.trim().length > 0) {
+                          return `${g.gpu} (${qty.trim()})`;
+                        } else {
+                          return g.gpu;
+                        }
+                      })
+                      .join(", ");
+                  }
+                  return (
+                    <tr key={index}>
+                      <td>{node.ip}</td>
+                      <td>{node.user}</td>
+                      <td>
+                        {node.identity_file ? (
+                          <Chip size="sm" variant="soft">
+                            {node.identity_file.split("/").pop() ||
+                              node.identity_file}
+                          </Chip>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>{node.password ? "****" : "-"}</td>
+                      <td>{gpuDisplay}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </Table>
           )}

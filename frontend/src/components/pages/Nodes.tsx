@@ -35,7 +35,7 @@ import SubmitJobModal from "../SubmitJobModal";
 interface Node {
   id: string;
   status: "reserved" | "requestable" | "active" | "unhealthy";
-  user?: string;
+  user?: string; // allow string for user
   gpuType?: string;
   cpuType?: string;
   vcpus?: number;
@@ -43,6 +43,8 @@ interface Node {
   ip: string;
   jobName?: string;
   experimentName?: string;
+  identity_file?: string; // add this
+  password?: string; // add this
 }
 
 interface Cluster {
@@ -90,7 +92,7 @@ const generateRandomNodes = (count: number): Node[] => {
   return Array.from({ length: count }, (_, i) => {
     const rand = Math.random();
     let status: "reserved" | "requestable" | "active" | "unhealthy";
-    let user: "ali" | "bob" | "catherine" | undefined;
+    let user: string | undefined;
     let jobName: string | undefined;
     let experimentName: string | undefined;
     if (rand < 0.5) {
@@ -383,51 +385,84 @@ const Nodes: React.FC = () => {
     [clusterName: string]: number | null;
   }>({});
 
+  const [nodeGpuInfo, setNodeGpuInfo] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    // Fetch GPU info for all nodes
+    fetch(buildApiUrl("skypilot/ssh-node-info"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data) => setNodeGpuInfo(data))
+      .catch(() => setNodeGpuInfo({}));
+  }, []);
+
   // NodeSquare for SSHNode
-  const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
-    <Tooltip
-      title={
-        <Box>
-          <Typography level="body-sm">
-            <b>IP:</b> {node.ip}
-          </Typography>
-          <Typography level="body-sm">
-            <b>User:</b> {node.user}
-          </Typography>
-          {node.identity_file && (
+  const NodeSquare: React.FC<{ node: any }> = ({ node }) => {
+    let gpuDisplay = "-";
+    const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
+    if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
+      gpuDisplay = gpuInfo.gpus
+        .map((g: any) => {
+          const qty = g.requestable_qty_per_node;
+          if (qty && /^\d+$/.test(qty.trim())) {
+            return `${g.gpu} (x${qty.trim()})`;
+          } else if (qty && qty.trim().length > 0) {
+            return `${g.gpu} (${qty.trim()})`;
+          } else {
+            return g.gpu;
+          }
+        })
+        .join(", ");
+    } else if (node.gpuType) {
+      gpuDisplay = node.gpuType;
+    }
+    return (
+      <Tooltip
+        title={
+          <Box>
             <Typography level="body-sm">
-              <b>Identity File:</b> {node.identity_file}
+              <b>IP:</b> {node.ip}
             </Typography>
-          )}
-          {node.password && (
             <Typography level="body-sm">
-              <b>Password:</b> ****
+              <b>User:</b> {node.user}
             </Typography>
-          )}
-        </Box>
-      }
-      variant="soft"
-      size="sm"
-      arrow
-    >
-      <Box
-        sx={{
-          width: 12,
-          height: 12,
-          backgroundColor: "#f63bddff",
-          borderRadius: "2px",
-          margin: "1px",
-          transition: "all 0.2s ease",
-          cursor: "pointer",
-          boxSizing: "border-box",
-          "&:hover": {
-            transform: "scale(1.2)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-          },
-        }}
-      />
-    </Tooltip>
-  );
+            {node.identity_file && (
+              <Typography level="body-sm">
+                <b>Identity File:</b> {node.identity_file}
+              </Typography>
+            )}
+            {node.password && (
+              <Typography level="body-sm">
+                <b>Password:</b> ****
+              </Typography>
+            )}
+            <Typography level="body-sm">
+              <b>GPUs:</b> {gpuDisplay}
+            </Typography>
+          </Box>
+        }
+        variant="soft"
+        size="sm"
+        arrow
+      >
+        <Box
+          sx={{
+            width: 12,
+            height: 12,
+            backgroundColor: "#3b82f6",
+            borderRadius: "2px",
+            margin: "1px",
+            transition: "all 0.2s ease",
+            cursor: "pointer",
+            boxSizing: "border-box",
+            "&:hover": {
+              transform: "scale(1.2)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            },
+          }}
+        />
+      </Tooltip>
+    );
+  };
 
   return (
     <Box
@@ -469,20 +504,40 @@ const Nodes: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {selectedCluster.nodes.map((node) => (
-                <tr key={node.id}>
-                  <td>{node.id}</td>
-                  <td>{node.status}</td>
-                  <td>{node.user ?? "-"}</td>
-                  <td>{node.gpuType}</td>
-                  <td>{node.cpuType}</td>
-                  <td>{node.vcpus}</td>
-                  <td>{node.vgpus}</td>
-                  <td>{node.ip}</td>
-                  <td>{node.jobName ?? "-"}</td>
-                  <td>{node.experimentName ?? "-"}</td>
-                </tr>
-              ))}
+              {selectedCluster.nodes.map((node) => {
+                let gpuDisplay = "-";
+                const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
+                if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
+                  gpuDisplay = gpuInfo.gpus
+                    .map((g: any) => {
+                      const qty = g.requestable_qty_per_node;
+                      if (qty && /^\d+$/.test(qty.trim())) {
+                        return `${g.gpu} (x${qty.trim()})`;
+                      } else if (qty && qty.trim().length > 0) {
+                        return `${g.gpu} (${qty.trim()})`;
+                      } else {
+                        return g.gpu;
+                      }
+                    })
+                    .join(", ");
+                } else if (node.gpuType) {
+                  gpuDisplay = node.gpuType;
+                }
+                return (
+                  <tr key={node.id}>
+                    <td>{node.id}</td>
+                    <td>{node.status}</td>
+                    <td>{node.user ?? "-"}</td>
+                    <td>{gpuDisplay}</td>
+                    <td>{node.cpuType}</td>
+                    <td>{node.vcpus}</td>
+                    <td>{node.vgpus}</td>
+                    <td>{node.ip}</td>
+                    <td>{node.jobName ?? "-"}</td>
+                    <td>{node.experimentName ?? "-"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </Sheet>
@@ -607,6 +662,7 @@ const Nodes: React.FC = () => {
                                 <th>User</th>
                                 <th>Identity File</th>
                                 <th>Password</th>
+                                <th>GPUs</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -628,6 +684,40 @@ const Nodes: React.FC = () => {
                                     .password
                                     ? "****"
                                     : "-"}
+                                </td>
+                                <td>
+                                  {(() => {
+                                    const node =
+                                      cluster.nodes[selectedCloudNode[name]];
+                                    let gpuDisplay = "-";
+                                    const gpuInfo =
+                                      nodeGpuInfo[node.ip]?.gpu_resources;
+                                    if (
+                                      gpuInfo &&
+                                      gpuInfo.gpus &&
+                                      gpuInfo.gpus.length > 0
+                                    ) {
+                                      gpuDisplay = gpuInfo.gpus
+                                        .map((g: any) => {
+                                          const qty =
+                                            g.requestable_qty_per_node;
+                                          if (qty && /^\d+$/.test(qty.trim())) {
+                                            return `${g.gpu} (x${qty.trim()})`;
+                                          } else if (
+                                            qty &&
+                                            qty.trim().length > 0
+                                          ) {
+                                            return `${g.gpu} (${qty.trim()})`;
+                                          } else {
+                                            return g.gpu;
+                                          }
+                                        })
+                                        .join(", ");
+                                    } else if (node.gpuType) {
+                                      gpuDisplay = node.gpuType;
+                                    }
+                                    return gpuDisplay;
+                                  })()}
                                 </td>
                               </tr>
                             </tbody>
@@ -652,25 +742,52 @@ const Nodes: React.FC = () => {
                               <th>User</th>
                               <th>Identity File</th>
                               <th>Password</th>
+                              <th>GPUs</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {cluster.nodes.map((node: any, idx: number) => (
-                              <tr
-                                key={idx}
-                                style={{
-                                  background:
-                                    selectedCloudNode[name] === idx
-                                      ? "#f5f5f5"
-                                      : undefined,
-                                }}
-                              >
-                                <td>{node.ip || "-"}</td>
-                                <td>{node.user || "-"}</td>
-                                <td>{node.identity_file || "-"}</td>
-                                <td>{node.password ? "****" : "-"}</td>
-                              </tr>
-                            ))}
+                            {cluster.nodes.map((node: any, idx: number) => {
+                              let gpuDisplay = "-";
+                              const gpuInfo =
+                                nodeGpuInfo[node.ip]?.gpu_resources;
+                              if (
+                                gpuInfo &&
+                                gpuInfo.gpus &&
+                                gpuInfo.gpus.length > 0
+                              ) {
+                                gpuDisplay = gpuInfo.gpus
+                                  .map((g: any) => {
+                                    const qty = g.requestable_qty_per_node;
+                                    if (qty && /^\d+$/.test(qty.trim())) {
+                                      return `${g.gpu} (x${qty.trim()})`;
+                                    } else if (qty && qty.trim().length > 0) {
+                                      return `${g.gpu} (${qty.trim()})`;
+                                    } else {
+                                      return g.gpu;
+                                    }
+                                  })
+                                  .join(", ");
+                              } else if (node.gpuType) {
+                                gpuDisplay = node.gpuType;
+                              }
+                              return (
+                                <tr
+                                  key={idx}
+                                  style={{
+                                    background:
+                                      selectedCloudNode[name] === idx
+                                        ? "#f5f5f5"
+                                        : undefined,
+                                  }}
+                                >
+                                  <td>{node.ip || "-"}</td>
+                                  <td>{node.user || "-"}</td>
+                                  <td>{node.identity_file || "-"}</td>
+                                  <td>{node.password ? "****" : "-"}</td>
+                                  <td>{gpuDisplay}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </Table>
                       </Box>
