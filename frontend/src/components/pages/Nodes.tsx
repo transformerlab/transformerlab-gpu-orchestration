@@ -209,16 +209,34 @@ const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
       sx={{
         width: 12,
         height: 12,
-        backgroundColor: "#3b82f6",
+        backgroundColor:
+          node.user === "ali" ? "#3b83f61e" : getStatusColor(node.status),
         borderRadius: "2px",
         margin: "1px",
         transition: "all 0.2s ease",
         cursor: "pointer",
+        border: node.user === "ali" ? "2px solid #3b82f6" : undefined,
         boxSizing: "border-box",
         "&:hover": {
           transform: "scale(1.2)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
         },
+        ...(node.user === "ali"
+          ? {
+              animation: "pulseFill 2.5s infinite",
+              "@keyframes pulseFill": {
+                "0%": {
+                  backgroundColor: "#3b83f61e",
+                },
+                "50%": {
+                  backgroundColor: "#3b83f666",
+                },
+                "100%": {
+                  backgroundColor: "#3b83f61e",
+                },
+              },
+            }
+          : {}),
       }}
     />
   </Tooltip>
@@ -396,7 +414,7 @@ const Nodes: React.FC = () => {
         sx={{
           width: 12,
           height: 12,
-          backgroundColor: "#3b82f6",
+          backgroundColor: "#f63bddff",
           borderRadius: "2px",
           margin: "1px",
           transition: "all 0.2s ease",
