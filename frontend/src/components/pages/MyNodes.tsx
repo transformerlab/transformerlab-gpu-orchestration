@@ -13,8 +13,8 @@ import {
 } from "@mui/joy";
 import useSWR from "swr";
 import { buildApiUrl } from "../../utils/api";
-import Held from "./MyNodes/Jobs";
-import Jobs from "./MyNodes/Holds";
+import Held from "./MyNodes/Holds";
+import Jobs from "./MyNodes/Jobs";
 
 // Add a mock "held time" generator for demonstration
 function randomHeldTime() {
@@ -191,11 +191,11 @@ const MyNodes: React.FC = () => {
           <Tab value={0}>Holds</Tab>
           <Tab value={1}>Jobs</Tab>
         </TabList>
-        <TabPanel value={0}>
-          <Held skypilotLoading={skypilotLoading} myClusters={myClusters} />
-        </TabPanel>
         <TabPanel value={1}>
-          <Jobs
+          <Jobs skypilotLoading={skypilotLoading} myClusters={myClusters} />
+        </TabPanel>{" "}
+        <TabPanel value={0}>
+          <Held
             skypilotLoading={skypilotLoading}
             myClusters={myClusters}
             groupedByExperiment={groupedByExperiment}

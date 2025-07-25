@@ -9,8 +9,18 @@ import {
   MenuButton,
   MenuItem,
   Dropdown,
+  Divider,
+  ListItemDecorator,
 } from "@mui/joy";
-import { ChevronDownIcon, ComputerIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ComputerIcon,
+  RotateCcwIcon,
+  StopCircleIcon,
+  TerminalIcon,
+  TextIcon,
+  Trash2Icon,
+} from "lucide-react";
 
 // Add a mock status generator for demonstration
 const statuses = ["provisioning", "running", "deallocating", "held"];
@@ -71,16 +81,49 @@ const Jobs: React.FC<HeldProps> = ({
                   <tr key={node.id}>
                     <td>
                       <ComputerIcon />
-                      <Dropdown>
-                        <MenuButton variant="plain" size="sm">
-                          <ChevronDownIcon />
-                        </MenuButton>
-                        <Menu>
-                          <MenuItem>Info</MenuItem>
-                          <MenuItem>SSH</MenuItem>
-                          <MenuItem>VSCode</MenuItem>
-                        </Menu>
-                      </Dropdown>
+                      {(statusValue === "running" ||
+                        statusValue === "provisioning") && (
+                        <Dropdown>
+                          <MenuButton variant="plain" size="sm">
+                            <ChevronDownIcon />
+                          </MenuButton>
+                          <Menu size="sm" variant="soft">
+                            <MenuItem>
+                              <ListItemDecorator>
+                                <StopCircleIcon />
+                              </ListItemDecorator>
+                              Stop
+                            </MenuItem>
+                            <MenuItem>
+                              <ListItemDecorator>
+                                <Trash2Icon />
+                              </ListItemDecorator>
+                              Deallocate
+                            </MenuItem>
+                            <MenuItem>
+                              <ListItemDecorator>
+                                <RotateCcwIcon />
+                              </ListItemDecorator>
+                              Restart
+                            </MenuItem>
+                            <MenuItem>
+                              <ListItemDecorator>
+                                <TextIcon />
+                              </ListItemDecorator>
+                              Logs
+                            </MenuItem>
+                            <MenuItem>Metrics</MenuItem>
+                            <Divider />
+                            <MenuItem>
+                              <ListItemDecorator>
+                                <TerminalIcon />
+                              </ListItemDecorator>
+                              SSH
+                            </MenuItem>
+                            <MenuItem>VSCode</MenuItem>
+                          </Menu>
+                        </Dropdown>
+                      )}
                     </td>
                     <td>
                       <Chip
