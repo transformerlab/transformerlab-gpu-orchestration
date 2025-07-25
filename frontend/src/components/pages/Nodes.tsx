@@ -469,12 +469,12 @@ const Nodes: React.FC = () => {
       {/* --- Clouds Section --- */}
       <Box sx={{ mt: 6 }}>
         <Typography level="h3" sx={{ mb: 2 }}>
-          Cloud Clusters
+          Cloud Node Pools
         </Typography>
         {isLoading || loadingClusters ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
             <Typography level="body-md" sx={{ color: "text.secondary" }}>
-              Loading cloud clusters...
+              Loading node pools...
             </Typography>
           </Box>
         ) : (
