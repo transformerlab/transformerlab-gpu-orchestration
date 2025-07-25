@@ -35,13 +35,7 @@ const jobNames = [
   "RL Agent",
   "Protein Folding",
 ];
-const experimentNames = [
-  "Exp-Alpha",
-  "Exp-Beta",
-  "Exp-Gamma",
-  "Exp-Delta",
-  "Exp-Epsilon",
-];
+const experimentNames = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"];
 
 // Add a mock status generator for demonstration
 const statuses = ["provisioning", "running", "deallocating", "held"];
@@ -260,7 +254,7 @@ const MyNodes: React.FC = () => {
           <Typography level="h4" sx={{ mb: 1 }}>
             Experiment: {expName}
           </Typography>
-          <Table size="sm" variant="outlined" borderAxis="both" stickyHeader>
+          <Table>
             <thead>
               <tr>
                 <th>Status</th>
