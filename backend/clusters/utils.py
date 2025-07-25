@@ -82,3 +82,31 @@ def is_ssh_cluster(cluster_name: str):
         return cluster_name in pools
     except Exception:
         return False
+
+
+def is_down_only_cluster(cluster_name: str):
+    """
+    Check if a cluster only supports 'down' operation (not 'stop').
+    This includes SSH clusters and RunPod clusters.
+    """
+    try:
+        # Check if it's an SSH cluster
+        pools = load_ssh_node_pools()
+        if cluster_name in pools:
+            return True
+
+        # Check if it's a RunPod cluster by looking at SkyPilot status
+        from skypilot.utils import get_skypilot_status
+
+        cluster_records = get_skypilot_status([cluster_name])
+        for record in cluster_records:
+            if record.get("name") == cluster_name:
+                # Check if it's a RunPod cluster by looking at resources
+                resources_str = record.get("resources_str", "")
+                if "runpod" in resources_str.lower():
+                    return True
+                break
+
+        return False
+    except Exception:
+        return False

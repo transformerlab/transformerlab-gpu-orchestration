@@ -120,8 +120,6 @@ def launch_cluster_with_skypilot(
     workdir: Optional[str] = None,
 ):
     try:
-        import subprocess
-
         # Handle RunPod setup
         if cloud and cloud.lower() == "runpod":
             from .runpod_utils import setup_runpod_config, verify_runpod_setup
