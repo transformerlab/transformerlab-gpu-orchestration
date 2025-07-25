@@ -10,6 +10,11 @@ import {
   Table,
   Sheet,
   IconButton,
+  CircularProgress,
+  List,
+  ListItem,
+  ListDivider,
+  Textarea,
 } from "@mui/joy";
 import {
   ArrowRightIcon,
@@ -21,15 +26,18 @@ import {
 } from "lucide-react";
 import ClusterManagement from "../ClusterManagement";
 import { buildApiUrl } from "../../utils/api";
+import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
+import useSWR from "swr";
+import SubmitJobModal from "../SubmitJobModal";
 
 interface Node {
   id: string;
   status: "reserved" | "requestable" | "active" | "unhealthy";
-  user?: "ali" | "bob" | "catherine";
-  gpuType: string;
-  cpuType: string;
-  vcpus: number;
-  vgpus: number;
+  user?: string;
+  gpuType?: string;
+  cpuType?: string;
+  vcpus?: number;
+  vgpus?: number;
   ip: string;
   jobName?: string;
   experimentName?: string;
@@ -169,40 +177,25 @@ const getStatusOrder = (status: string): number => {
   }
 };
 
-const NodeSquare: React.FC<{ node: Node }> = ({ node }) => (
+const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
   <Tooltip
     title={
       <Box>
         <Typography level="body-sm">
-          <b>Name:</b> {node.id}
-        </Typography>
-        <Typography level="body-sm">
-          <b>GPU:</b> {node.gpuType}
-        </Typography>
-        <Typography level="body-sm">
-          <b>CPU:</b> {node.cpuType}
-        </Typography>
-        <Typography level="body-sm">
-          <b>vCPUs:</b> {node.vcpus}
-        </Typography>
-        <Typography level="body-sm">
-          <b>vGPUs:</b> {node.vgpus}
-        </Typography>
-        <Typography level="body-sm">
           <b>IP:</b> {node.ip}
         </Typography>
-        {node.status === "active" && node.user && (
-          <>
-            <Typography level="body-sm">
-              <b>Assigned To:</b> {node.user}
-            </Typography>
-            <Typography level="body-sm">
-              <b>Job:</b> {node.jobName}
-            </Typography>
-            <Typography level="body-sm">
-              <b>Experiment:</b> {node.experimentName}
-            </Typography>
-          </>
+        <Typography level="body-sm">
+          <b>User:</b> {node.user}
+        </Typography>
+        {node.identity_file && (
+          <Typography level="body-sm">
+            <b>Identity File:</b> {node.identity_file}
+          </Typography>
+        )}
+        {node.password && (
+          <Typography level="body-sm">
+            <b>Password:</b> ****
+          </Typography>
         )}
       </Box>
     }
@@ -214,13 +207,11 @@ const NodeSquare: React.FC<{ node: Node }> = ({ node }) => (
       sx={{
         width: 12,
         height: 12,
-        backgroundColor:
-          node.user === "ali" ? "#3b83f61e" : getStatusColor(node.status),
+        backgroundColor: "#3b82f6",
         borderRadius: "2px",
         margin: "1px",
         transition: "all 0.2s ease",
         cursor: "pointer",
-        border: node.user === "ali" ? "2px solid #3b82f6" : undefined,
         boxSizing: "border-box",
         "&:hover": {
           transform: "scale(1.2)",
@@ -316,7 +307,96 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
 };
 
 const Nodes: React.FC = () => {
+  console.error("NODES COMPONENT MOUNTED");
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
+
+  // --- Node Pools/Clouds Section ---
+  const fetcher = (url: string) =>
+    fetch(url, { credentials: "include" }).then((res) => res.json());
+  const { data, isLoading } = useSWR(buildApiUrl("clusters"), fetcher, {
+    refreshInterval: 2000,
+  });
+  const clusterNames = data?.clusters || [];
+
+  // State for all cluster details
+  const [clusterDetails, setClusterDetails] = useState<{
+    [name: string]: Cluster | null;
+  }>({});
+  const [loadingClusters, setLoadingClusters] = useState(false);
+
+  useEffect(() => {
+    if (!Array.isArray(clusterNames) || clusterNames.length === 0) return;
+    setLoadingClusters(true);
+    Promise.all(
+      clusterNames.map((name: string) =>
+        fetch(buildApiUrl(`clusters/${name}`), { credentials: "include" })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => ({ name, data }))
+          .catch(() => ({ name, data: null }))
+      )
+    ).then((results) => {
+      const details: { [name: string]: Cluster | null } = {};
+      results.forEach(({ name, data }) => {
+        details[name] = data;
+      });
+      setClusterDetails(details);
+      setLoadingClusters(false);
+    });
+  }, [JSON.stringify(clusterNames)]);
+
+  // State for expanded all-nodes table and selected node per cluster
+  const [expandedCloudCluster, setExpandedCloudCluster] = useState<
+    string | null
+  >(null);
+  const [selectedCloudNode, setSelectedCloudNode] = useState<{
+    [clusterName: string]: number | null;
+  }>({});
+
+  // NodeSquare for SSHNode
+  const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
+    <Tooltip
+      title={
+        <Box>
+          <Typography level="body-sm">
+            <b>IP:</b> {node.ip}
+          </Typography>
+          <Typography level="body-sm">
+            <b>User:</b> {node.user}
+          </Typography>
+          {node.identity_file && (
+            <Typography level="body-sm">
+              <b>Identity File:</b> {node.identity_file}
+            </Typography>
+          )}
+          {node.password && (
+            <Typography level="body-sm">
+              <b>Password:</b> ****
+            </Typography>
+          )}
+        </Box>
+      }
+      variant="soft"
+      size="sm"
+      arrow
+    >
+      <Box
+        sx={{
+          width: 12,
+          height: 12,
+          backgroundColor: "#3b82f6",
+          borderRadius: "2px",
+          margin: "1px",
+          transition: "all 0.2s ease",
+          cursor: "pointer",
+          boxSizing: "border-box",
+          "&:hover": {
+            transform: "scale(1.2)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          },
+        }}
+      />
+    </Tooltip>
+  );
 
   return (
     <Box
@@ -329,7 +409,7 @@ const Nodes: React.FC = () => {
       <Box sx={{ mb: 4 }}>
         <Typography level="h2">Square Bank's Nodes</Typography>
       </Box>
-
+      {/* Existing Node Pools/Clusters UI */}
       {selectedCluster ? (
         <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
           <Button
@@ -342,7 +422,6 @@ const Nodes: React.FC = () => {
           <Typography level="h3" sx={{ mb: 2 }}>
             {selectedCluster.name} - Instances
           </Typography>
-
           <Table size="sm" variant="outlined" borderAxis="both" stickyHeader>
             <thead>
               <tr>
@@ -387,6 +466,196 @@ const Nodes: React.FC = () => {
           </div>
         ))
       )}
+      {/* --- Clouds Section --- */}
+      <Box sx={{ mt: 6 }}>
+        <Typography level="h3" sx={{ mb: 2 }}>
+          Cloud Clusters
+        </Typography>
+        {isLoading || loadingClusters ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography level="body-md" sx={{ color: "text.secondary" }}>
+              Loading cloud clusters...
+            </Typography>
+          </Box>
+        ) : (
+          Object.entries(clusterDetails).map(([name, cluster]) => {
+            const isExpanded = expandedCloudCluster === name;
+            return (
+              <Card
+                key={name}
+                sx={{
+                  mb: 3,
+                  cursor: "pointer",
+                  border: isExpanded ? "2px solid #3b82f6" : undefined,
+                }}
+                onClick={(e) => {
+                  // Only toggle if the card itself is clicked, not the grid
+                  if (
+                    (e.target as HTMLElement).getAttribute(
+                      "data-cluster-card"
+                    ) === "true"
+                  ) {
+                    setExpandedCloudCluster(isExpanded ? null : name);
+                    // Clear selected node for all clusters except the one being expanded
+                    setSelectedCloudNode((prev) =>
+                      isExpanded ? prev : { [name]: null }
+                    );
+                  }
+                }}
+              >
+                <Typography level="h4" sx={{ mb: 1 }} data-cluster-card="true">
+                  {name}
+                </Typography>
+                {/* Node grid is always visible */}
+                {cluster &&
+                Array.isArray(cluster.nodes) &&
+                cluster.nodes.length > 0 ? (
+                  <>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "1px",
+                        p: 2,
+                        backgroundColor: "background.level1",
+                        borderRadius: "md",
+                        maxHeight: 200,
+                        overflow: "auto",
+                      }}
+                      onClick={(e) => e.stopPropagation()} // Prevent card click when clicking node
+                    >
+                      {cluster.nodes.map((node: any, idx: number) => {
+                        const isSelected = selectedCloudNode[name] === idx;
+                        return (
+                          <Box
+                            key={idx}
+                            onClick={() => {
+                              setSelectedCloudNode((prev) => ({
+                                ...prev,
+                                [name]: idx,
+                              }));
+                              setExpandedCloudCluster(null);
+                            }}
+                            sx={{
+                              cursor: "pointer",
+                              border: isSelected
+                                ? "2px solid #f59e42"
+                                : "2px solid #3b82f6",
+                              borderRadius: "4px",
+                              boxShadow: isSelected
+                                ? "0 0 0 2px #f59e42"
+                                : undefined,
+                              m: 0.5,
+                              transition: "border 0.2s, box-shadow 0.2s",
+                              "&:hover": {
+                                border: "2px solid #f59e42",
+                                boxShadow: "0 0 0 2px #f59e42",
+                              },
+                            }}
+                          >
+                            <NodeSquare node={node} />
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                    {/* Table for selected node */}
+                    {selectedCloudNode[name] != null &&
+                      cluster.nodes[selectedCloudNode[name]] && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography level="h4" sx={{ mb: 1 }}>
+                            Node Details
+                          </Typography>
+                          <Table
+                            size="sm"
+                            variant="outlined"
+                            borderAxis="both"
+                            stickyHeader
+                          >
+                            <thead>
+                              <tr>
+                                <th>IP Address</th>
+                                <th>User</th>
+                                <th>Identity File</th>
+                                <th>Password</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td>
+                                  {cluster.nodes[selectedCloudNode[name]].ip ||
+                                    "-"}
+                                </td>
+                                <td>
+                                  {cluster.nodes[selectedCloudNode[name]]
+                                    .user || "-"}
+                                </td>
+                                <td>
+                                  {cluster.nodes[selectedCloudNode[name]]
+                                    .identity_file || "-"}
+                                </td>
+                                <td>
+                                  {cluster.nodes[selectedCloudNode[name]]
+                                    .password
+                                    ? "****"
+                                    : "-"}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </Table>
+                        </Box>
+                      )}
+                    {/* Table of all nodes, toggled by card click */}
+                    {isExpanded && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography level="h4" sx={{ mb: 1 }}>
+                          All Nodes
+                        </Typography>
+                        <Table
+                          size="sm"
+                          variant="outlined"
+                          borderAxis="both"
+                          stickyHeader
+                        >
+                          <thead>
+                            <tr>
+                              <th>IP Address</th>
+                              <th>User</th>
+                              <th>Identity File</th>
+                              <th>Password</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cluster.nodes.map((node: any, idx: number) => (
+                              <tr
+                                key={idx}
+                                style={{
+                                  background:
+                                    selectedCloudNode[name] === idx
+                                      ? "#f5f5f5"
+                                      : undefined,
+                                }}
+                              >
+                                <td>{node.ip || "-"}</td>
+                                <td>{node.user || "-"}</td>
+                                <td>{node.identity_file || "-"}</td>
+                                <td>{node.password ? "****" : "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      </Box>
+                    )}
+                  </>
+                ) : (
+                  <Typography level="body-md" sx={{ color: "text.secondary" }}>
+                    No nodes in this cluster.
+                  </Typography>
+                )}
+              </Card>
+            );
+          })
+        )}
+      </Box>
     </Box>
   );
 };
