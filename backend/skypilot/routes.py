@@ -34,6 +34,11 @@ from skypilot.utils import (
     down_cluster_with_skypilot,
     fetch_and_parse_gpu_resources,
 )
+from skypilot.runpod_utils import (
+    verify_runpod_setup,
+    get_runpod_gpu_types,
+    setup_runpod_config,
+)
 from clusters.utils import is_ssh_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
 from auth.utils import verify_auth
@@ -410,4 +415,41 @@ async def get_ssh_node_info(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to load SSH node info: {str(e)}"
+        )
+
+
+@router.get("/runpod/setup")
+async def setup_runpod(request: Request, response: Response):
+    """Setup RunPod configuration"""
+    user = verify_auth(request, response)
+    try:
+        setup_runpod_config()
+        return {"message": "RunPod configuration setup successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to setup RunPod: {str(e)}")
+
+
+@router.get("/runpod/verify")
+async def verify_runpod(request: Request, response: Response):
+    """Verify RunPod setup"""
+    user = verify_auth(request, response)
+    try:
+        is_valid = verify_runpod_setup()
+        return {"valid": is_valid}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to verify RunPod setup: {str(e)}"
+        )
+
+
+@router.get("/runpod/gpu-types")
+async def get_runpod_gpu_types_route(request: Request, response: Response):
+    """Get available GPU types from RunPod"""
+    user = verify_auth(request, response)
+    try:
+        gpu_types = get_runpod_gpu_types()
+        return {"gpu_types": gpu_types}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get RunPod GPU types: {str(e)}"
         )

@@ -98,6 +98,9 @@ RUN sky --version || (echo "Skypilot not installed, skipping..." && exit 0)
 # Run a sky check to see if something else needs to be installed for ssh
 RUN sky check || (echo "Sky check failed, printing log file contents:" && cat ~/.sky/api_server/server.log 2>/dev/null || echo "Log file not found or empty")
 
+# Create RunPod config directory
+RUN mkdir -p /root/.runpod
+
 # # Make file at /root/.sky/ssh_node_pools.yaml
 # RUN mkdir -p /root/.sky && touch /root/.sky/ssh_node_pools.yaml
 

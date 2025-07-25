@@ -122,6 +122,22 @@ def launch_cluster_with_skypilot(
     try:
         import subprocess
 
+        # Handle RunPod setup
+        if cloud and cloud.lower() == "runpod":
+            from .runpod_utils import setup_runpod_config, verify_runpod_setup
+
+            try:
+                setup_runpod_config()
+                if not verify_runpod_setup():
+                    raise HTTPException(
+                        status_code=500,
+                        detail="RunPod setup verification failed. Please check your RUNPOD_API_KEY.",
+                    )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+                )
+
         if cloud and cloud.lower() == "ssh":
             from utils.file_utils import load_ssh_node_pools
 
@@ -139,18 +155,13 @@ def launch_cluster_with_skypilot(
                 request_id = sky.client.sdk.ssh_up(infra=cluster_name)
                 result = sky.get(request_id)
                 print(f"[SkyPilot][ssh up result]:\n{result}")
-            # except subprocess.CalledProcessError as e:
-            #     print(f"[SkyPilot][ssh up failed]: {e.stderr}")
-            #     raise HTTPException(
-            #         status_code=500,
-            #         detail=f"sky ssh up failed for cluster '{cluster_name}': {e.stderr or e.stdout or str(e)}",
-            #     )
             except Exception as e:
                 print(f"[SkyPilot][ssh up error]: {str(e)}")
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}",
                 )
+
         task = sky.Task(
             name=f"lattice-task-{cluster_name}",
             run=command,
@@ -158,14 +169,16 @@ def launch_cluster_with_skypilot(
         )
         if file_mounts:
             task.set_file_mounts(file_mounts)
-        # if workdir:
-        #     task.set_workdir(workdir)
+
         resources_kwargs = {}
         if cloud:
             if cloud.lower() == "ssh":
                 resources_kwargs["infra"] = "ssh"
+            elif cloud.lower() == "runpod":
+                resources_kwargs["cloud"] = "runpod"
             else:
                 resources_kwargs["infra"] = cloud
+
         if instance_type:
             resources_kwargs["instance_type"] = instance_type
         if cpus:
@@ -178,11 +191,13 @@ def launch_cluster_with_skypilot(
             resources_kwargs["region"] = region
         if zone:
             resources_kwargs["zone"] = zone
-        if use_spot and cloud and cloud.lower() != "ssh":
+        if use_spot and cloud and cloud.lower() not in ["ssh", "runpod"]:
             resources_kwargs["use_spot"] = use_spot
+
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
+
         request_id = sky.launch(
             task,
             cluster_name=cluster_name,
