@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
-import ClusterManagement from "../ClusterManagement";
-import { buildApiUrl } from "../../utils/api";
+import ClusterManagement from "../../ClusterManagement";
+import { buildApiUrl } from "../../../utils/api";
 
 const GettingStarted: React.FC = () => {
   // Remove all state and logic related to cluster creation steps
