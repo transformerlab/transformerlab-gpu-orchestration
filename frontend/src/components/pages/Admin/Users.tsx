@@ -47,8 +47,7 @@ const Users: React.FC = () => {
       <Table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
+            <th>User</th>
             <th>Groups</th>
           </tr>
         </thead>
@@ -58,10 +57,17 @@ const Users: React.FC = () => {
               <td>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Avatar src={user.avatar} alt={user.name} size="sm" />
-                  {user.name}
+                  <Box>
+                    <Typography level="body-md">{user.name}</Typography>
+                    <Typography
+                      level="body-sm"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {user.email}
+                    </Typography>
+                  </Box>
                 </Box>
               </td>
-              <td>{user.email}</td>
               <td>
                 {user.groups.map((group) => (
                   <Chip key={group} size="sm" sx={{ mr: 0.5 }}>
