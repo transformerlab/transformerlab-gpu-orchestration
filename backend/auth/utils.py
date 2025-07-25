@@ -1,6 +1,7 @@
 from fastapi import HTTPException, Request, Response
 from config import WORKOS_COOKIE_PASSWORD
 from . import workos_client
+import logging
 
 
 def get_current_user(request: Request, response: Response = None):
@@ -13,26 +14,22 @@ def get_current_user(request: Request, response: Response = None):
             sealed_session=session_cookie,
             cookie_password=WORKOS_COOKIE_PASSWORD,
         )
-        try:
-            auth_response = session.authenticate()
-        except Exception as e:
-            # Try to refresh session if access token expired
-            try:
-                refreshed_session = session.refresh()
-                if response is not None:
-                    response.set_cookie(
-                        "wos_session",
-                        refreshed_session.sealed_session,
-                        secure=False,
-                        httponly=True,
-                        samesite="lax",
-                        max_age=86400 * 7,
-                        path="/",
-                    )
-                auth_response = refreshed_session.authenticate()
-            except Exception as refresh_e:
-                print(f"Error refreshing session: {refresh_e}")
-                return None
+        auth_response = session.authenticate()
+        if not auth_response.authenticated:
+            logging.info("Auth failed, refreshing session...")
+            refreshed_session = session.refresh()
+            if refreshed_session.authenticated and response is not None:
+                response.set_cookie(
+                    key="wos_session",
+                    value=refreshed_session.sealed_session,
+                    httponly=True,
+                    secure=False,
+                    samesite="lax",
+                    max_age=86400 * 7,
+                    path="/",
+                )
+                logging.info("Session refreshed successfully")
+                return refreshed_session.user
         if auth_response.authenticated:
             return auth_response.user
         return None
