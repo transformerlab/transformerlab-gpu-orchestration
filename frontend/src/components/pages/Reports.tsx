@@ -1,90 +1,79 @@
-import React, { useState, useEffect } from "react";
-import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
-import { Monitor, Plus, Settings } from "lucide-react";
-import ClusterManagement from "../ClusterManagement";
-import { buildApiUrl } from "../../utils/api";
+import React from "react";
+import { Box, Card, Typography, Stack, Chip } from "@mui/joy";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
-interface Node {
-  id: string;
-  status: "healthy" | "warning" | "error";
-}
-
-interface Cluster {
+interface Report {
   id: string;
   name: string;
-  nodes: Node[];
+  data: Array<{ date: string; value: number }>;
+  color: string;
+  yAxisLabel: string;
 }
 
-const generateRandomNodes = (count: number): Node[] => {
-  const statuses: ("healthy" | "warning" | "error")[] = [
-    "healthy",
-    "warning",
-    "error",
-  ];
-  return Array.from({ length: count }, (_, i) => ({
-    id: `node-${i}`,
-    status: statuses[Math.floor(Math.random() * statuses.length)],
-  }));
+// Sample data for the charts
+const generateSampleData = (baseValue: number, variance: number) => {
+  const data = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    const value = Math.max(0, baseValue + (Math.random() - 0.5) * variance);
+    data.push({
+      date: date.toISOString().split("T")[0],
+      value: Math.round(value * 100) / 100,
+    });
+  }
+  return data;
 };
 
-const mockClusters: Cluster[] = [
+// Color mapping for chart lines
+const getColorHex = (colorName: string): string => {
+  const colors: Record<string, string> = {
+    blue: "#3b82f6",
+    emerald: "#10b981",
+    violet: "#8b5cf6",
+    red: "#ef4444",
+    yellow: "#f59e0b",
+    indigo: "#6366f1",
+  };
+  return colors[colorName] || "#3b82f6";
+};
+
+const reports: Report[] = [
   {
-    id: "cluster-1",
-    name: "Production Cluster",
-    nodes: generateRandomNodes(165),
+    id: "1",
+    name: "Usage (past 30 days)",
+    data: generateSampleData(10, 2),
+    color: "blue",
+    yAxisLabel: "Usage %",
   },
   {
-    id: "cluster-2",
-    name: "Development Cluster",
-    nodes: generateRandomNodes(48),
+    id: "2",
+    name: "Availability (past 30 days)",
+    data: generateSampleData(95, 15),
+    color: "emerald",
+    yAxisLabel: "Availability %",
   },
   {
-    id: "cluster-3",
-    name: "Testing Cluster",
-    nodes: generateRandomNodes(278),
+    id: "3",
+    name: "Job Success (past 30 days)",
+    data: generateSampleData(85, 20),
+    color: "violet",
+    yAxisLabel: "Success Rate %",
   },
 ];
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "healthy":
-      return "#10b981"; // emerald-500
-    case "warning":
-      return "#f59e0b"; // amber-500
-    case "error":
-      return "#ef4444"; // red-500
-    default:
-      return "#6b7280"; // gray-500
-  }
-};
-
-const NodeSquare: React.FC<{ node: Node }> = ({ node }) => (
-  <Box
-    sx={{
-      width: 12,
-      height: 12,
-      backgroundColor: getStatusColor(node.status),
-      borderRadius: "2px",
-      margin: "1px",
-      transition: "all 0.2s ease",
-      cursor: "pointer",
-      "&:hover": {
-        transform: "scale(1.2)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-      },
-    }}
-  />
-);
-
-const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
-  const healthyCount = cluster.nodes.filter(
-    (n) => n.status === "healthy"
-  ).length;
-  const warningCount = cluster.nodes.filter(
-    (n) => n.status === "warning"
-  ).length;
-  const errorCount = cluster.nodes.filter((n) => n.status === "error").length;
-
+const ReportCard: React.FC<{ report: Report }> = ({ report }) => {
   return (
     <Card
       variant="outlined"
@@ -94,42 +83,29 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
         transition: "all 0.2s ease",
         "&:hover": {
           boxShadow: "md",
-          transform: "translateY(-2px)",
         },
       }}
     >
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography level="h4" sx={{ mb: 1 }}>
-          {cluster.name}
+          {report.name}
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          <Chip size="sm" color="success" variant="soft">
-            {healthyCount} Healthy
-          </Chip>
-          <Chip size="sm" color="warning" variant="soft">
-            {warningCount} Warning
-          </Chip>
-          <Chip size="sm" color="danger" variant="soft">
-            {errorCount} Error
-          </Chip>
-        </Stack>
       </Box>
 
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "1px",
-          p: 2,
-          backgroundColor: "background.level1",
-          borderRadius: "md",
-          maxHeight: 200,
-          overflow: "auto",
-        }}
-      >
-        {cluster.nodes.map((node) => (
-          <NodeSquare key={node.id} node={node} />
-        ))}
+      <Box sx={{ height: 300, width: "100%" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={report.data}>
+            {/* <CartesianGrid strokeDasharray="3 3" /> */}
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke={getColorHex(report.color)}
+              fill={getColorHex(report.color)}
+              fillOpacity={0.3}
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </Box>
     </Card>
   );
@@ -149,12 +125,12 @@ const Reports: React.FC = () => {
           Reports
         </Typography>
         <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Visual representation of nodes across your clusters
+          View who did what
         </Typography>
       </Box>
 
-      {mockClusters.map((cluster) => (
-        <ClusterCard key={cluster.id} cluster={cluster} />
+      {reports.map((report) => (
+        <ReportCard key={report.id} report={report} />
       ))}
     </Box>
   );

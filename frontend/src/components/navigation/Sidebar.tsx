@@ -90,7 +90,11 @@ export default function Sidebar() {
   return (
     <List
       size="sm"
-      sx={{ "--ListItem-radius": "var(--joy-radius-sm)", "--List-gap": "4px" }}
+      sx={{
+        "--ListItem-radius": "var(--joy-radius-sm)",
+        "--List-gap": "4px",
+        ml: 2,
+      }}
     >
       <ListItem nested>
         <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
