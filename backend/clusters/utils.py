@@ -55,9 +55,11 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
     pools[cluster_name]["hosts"].append(node_dict)
     save_ssh_node_pools(pools)
 
-    async def update_gpu_info_thread():
+    def update_gpu_info_thread():
+        import asyncio
+
         try:
-            gpu_info = await fetch_and_parse_gpu_resources(cluster_name)
+            gpu_info = asyncio.run(fetch_and_parse_gpu_resources(cluster_name))
             node_info = load_ssh_node_info()
             node_info[node.ip] = {"gpu_resources": gpu_info}
             save_ssh_node_info(node_info)
