@@ -327,7 +327,7 @@ const Nodes: React.FC = () => {
       }}
     >
       <Box sx={{ mb: 4 }}>
-        <Typography level="h2">Nodes</Typography>
+        <Typography level="h2">Square Bank's Nodes</Typography>
       </Box>
 
       {selectedCluster ? (

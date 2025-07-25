@@ -20,7 +20,7 @@ const Dashboard: React.FC = () => {
         width: "100dvw",
         overflow: "hidden",
         gridTemplateColumns: "180px 1fr",
-        gridTemplateRows: "80px 5fr",
+        gridTemplateRows: "60px 5fr",
         gridTemplateAreas: `
           "header header"
           "sidebar main"
