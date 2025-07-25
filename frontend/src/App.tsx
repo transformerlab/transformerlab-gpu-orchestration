@@ -9,7 +9,7 @@ import { CssVarsProvider } from "@mui/joy/styles";
 import CssBaseline from "@mui/joy/CssBaseline";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./components/LoginPage";
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./components/navigation/MainPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import customTheme from "./utils/theme";

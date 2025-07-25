@@ -1,13 +1,13 @@
 import React from "react";
 import { Box, Card, Typography } from "@mui/joy";
 import { Routes, Route, Navigate } from "react-router-dom";
-import GettingStarted from "./pages/GettingStarted";
-import Nodes from "./pages/Nodes";
+import GettingStarted from "../pages/GettingStarted";
+import Nodes from "../pages/Nodes";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Admin from "./pages/Admin";
-import Jobs from "./pages/Jobs";
-import Reports from "./pages/Reports";
+import Admin from "../pages/Admin";
+import Jobs from "../pages/Jobs";
+import Reports from "../pages/Reports";
 
 const Dashboard: React.FC = () => {
   return (
