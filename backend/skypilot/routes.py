@@ -394,12 +394,134 @@ async def submit_job_to_cluster(
             zone=zone,
             job_name=job_name,
         )
+
         return {
             "request_id": request_id,
             "message": f"Job submitted to cluster '{cluster_name}'",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
+
+
+@router.post("/interactive/{cluster_name}/launch")
+async def launch_interactive_task(
+    request: Request,
+    response: Response,
+    cluster_name: str,
+    task_type: str = Form(...),
+    jupyter_port: Optional[int] = Form(8888),
+    vscode_port: Optional[int] = Form(8888),
+):
+    """Launch interactive development tasks directly on existing clusters."""
+    try:
+        import subprocess
+        import threading
+        import time
+
+        print("Launching interactive task...")
+
+        # Get the command based on task type
+        if task_type == "vscode":
+            command = f"""# Install code-server if not already installed
+curl -fsSL https://code-server.dev/install.sh | bash
+# Start code-server
+code-server . --port {vscode_port} --host 0.0.0.0 --auth none"""
+            remote_port = vscode_port
+        else:
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported task type: {task_type}"
+            )
+
+        # Launch the interactive task in background
+        def run_interactive_task():
+            try:
+                # Build SSH command with port forwarding first, then run the command
+                ssh_cmd = [
+                    "ssh",
+                    "-o",
+                    "ConnectTimeout=30",
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                ]
+
+                # Add port forwarding for VSCode
+                if task_type == "vscode" and remote_port:
+                    ssh_cmd.extend(["-L", f"{remote_port}:localhost:{remote_port}"])
+
+                ssh_cmd.extend([cluster_name, command])
+
+                print(f"Running interactive task: {' '.join(ssh_cmd)}")
+
+                # Run the SSH command (this establishes port forwarding and runs the command)
+                process = subprocess.Popen(
+                    ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                )
+
+                # For interactive tasks, we don't wait for completion since they keep running
+                # Just check if the SSH connection was established successfully
+                time.sleep(2)
+
+                if process.poll() is None:
+                    # Try to read any available output without waiting for completion
+                    try:
+                        import select
+
+                        # Check if there's any output available (non-blocking)
+                        ready_to_read, _, _ = select.select(
+                            [process.stdout, process.stderr], [], [], 0.1
+                        )
+
+                        stdout_data = ""
+                        stderr_data = ""
+
+                        if process.stdout in ready_to_read:
+                            stdout_data = process.stdout.read()
+                        if process.stderr in ready_to_read:
+                            stderr_data = process.stderr.read()
+
+                        if stdout_data:
+                            print(f"Interactive task stdout: {stdout_data}")
+                        if stderr_data:
+                            print(f"Interactive task stderr: {stderr_data}")
+                    except Exception as e:
+                        print(f"Could not read output: {e}")
+
+                    print(
+                        f"Interactive {task_type} task started successfully on {cluster_name}"
+                    )
+                else:
+                    stdout, stderr = process.communicate()
+                    print(f"Interactive task failed: {stderr}")
+
+            except Exception as e:
+                print(f"Error running interactive task: {e}")
+
+        # Start the task in a background thread
+        print("Starting task in background thread...")
+        task_thread = threading.Thread(target=run_interactive_task)
+        task_thread.daemon = True
+        task_thread.start()
+        print("Task started in background thread")
+
+        # Create port forwarding info for response
+        port_forward_info = None
+        if task_type == "vscode" and remote_port:
+            port_forward_info = {
+                "local_port": remote_port,
+                "remote_port": remote_port,
+                "service_type": task_type,
+                "access_url": f"http://localhost:{remote_port}",
+            }
+
+        return {
+            "message": f"Interactive {task_type} task launched on cluster '{cluster_name}'",
+            "port_forward_info": port_forward_info,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch interactive task: {str(e)}"
+        )
 
 
 @router.get("/ssh-node-info")
