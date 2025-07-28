@@ -41,16 +41,15 @@ from skypilot.runpod_utils import (
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
-from auth.utils import verify_auth
+from auth.utils import get_current_user
 from typing import Optional
 import asyncio
 
-router = APIRouter(prefix="/skypilot")
+router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_current_user)])
 
 
 @router.get("/ssh-clusters")
 async def list_ssh_clusters(request: Request, response: Response):
-    user = verify_auth(request, response)
     try:
         pools = load_ssh_node_pools()
         ssh_clusters = []
@@ -81,7 +80,6 @@ async def fetch_cluster_resources(
     Returns GPU info under 'gpu_resources'.
     Also updates ~/.sky/lattice_data/ssh_node_info.json for all nodes in the cluster.
     """
-    user = verify_auth(request, response)
     try:
         gpu_info = await fetch_and_parse_gpu_resources(cluster_name)
         # Update persistent file for all node IPs in node_gpus
@@ -103,8 +101,6 @@ async def fetch_cluster_resources(
 
 @router.get("/stream-logs/{logfile}")
 async def stream_skypilot_logs(logfile: str, request: Request, response: Response):
-    user = verify_auth(request, response)
-
     async def log_streamer():
         cmd = ["sky", "api", "logs", "-l", logfile]
         process = await asyncio.create_subprocess_exec(
@@ -147,7 +143,6 @@ async def launch_skypilot_cluster(
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file: Optional[UploadFile] = File(None),
 ):
-    user = verify_auth(request, response)
     try:
         file_mounts = None
         workdir = None
@@ -194,7 +189,6 @@ async def get_skypilot_cluster_status(
     response: Response,
     cluster_names: Optional[str] = None,
 ):
-    user = verify_auth(request, response)
     try:
         cluster_list = None
         if cluster_names:
@@ -224,7 +218,6 @@ async def get_skypilot_cluster_status(
 async def get_skypilot_request_status(
     request_id: str, request: Request, response: Response
 ):
-    user = verify_auth(request, response)
     import sky
 
     try:
@@ -240,7 +233,6 @@ async def get_skypilot_request_status(
 
 @router.get("/jobs/{cluster_name}", response_model=JobQueueResponse)
 async def get_cluster_jobs(cluster_name: str, request: Request, response: Response):
-    user = verify_auth(request, response)
     try:
         job_records = get_cluster_job_queue(cluster_name)
         jobs = []
@@ -273,7 +265,6 @@ async def get_cluster_job_logs(
     response: Response,
     tail_lines: int = 50,
 ):
-    user = verify_auth(request, response)
     try:
         logs = get_job_logs(cluster_name, job_id, tail_lines)
         return JobLogsResponse(job_id=job_id, logs=logs)
@@ -288,7 +279,6 @@ async def stop_skypilot_cluster(
     response: Response,
     stop_request: StopClusterRequest,
 ):
-    user = verify_auth(request, response)
     try:
         cluster_name = stop_request.cluster_name
         if is_down_only_cluster(cluster_name):
@@ -315,7 +305,6 @@ async def down_skypilot_cluster(
     response: Response,
     down_request: DownClusterRequest,
 ):
-    user = verify_auth(request, response)
     try:
         cluster_name = down_request.cluster_name
         request_id = down_cluster_with_skypilot(cluster_name)
@@ -330,7 +319,6 @@ async def down_skypilot_cluster(
 
 @router.get("/cluster-type/{cluster_name}")
 async def get_cluster_type(cluster_name: str, request: Request, response: Response):
-    user = verify_auth(request, response)
     try:
         is_ssh = is_ssh_cluster(cluster_name)
         is_down_only = is_down_only_cluster(cluster_name)
@@ -369,7 +357,6 @@ async def submit_job_to_cluster(
     job_name: Optional[str] = Form(None),
     python_file: Optional[UploadFile] = File(None),
 ):
-    user = verify_auth(request, response)
     try:
         file_mounts = None
         python_filename = None
@@ -410,7 +397,6 @@ async def submit_job_to_cluster(
 
 @router.get("/ssh-node-info")
 async def get_ssh_node_info(request: Request, response: Response):
-    user = verify_auth(request, response)
     try:
         node_info = load_ssh_node_info()
         return node_info
@@ -423,7 +409,6 @@ async def get_ssh_node_info(request: Request, response: Response):
 @router.get("/runpod/setup")
 async def setup_runpod(request: Request, response: Response):
     """Setup RunPod configuration"""
-    user = verify_auth(request, response)
     try:
         setup_runpod_config()
         return {"message": "RunPod configuration setup successfully"}
@@ -434,7 +419,6 @@ async def setup_runpod(request: Request, response: Response):
 @router.get("/runpod/verify")
 async def verify_runpod(request: Request, response: Response):
     """Verify RunPod setup"""
-    user = verify_auth(request, response)
     try:
         is_valid = verify_runpod_setup()
         return {"valid": is_valid}
@@ -447,7 +431,6 @@ async def verify_runpod(request: Request, response: Response):
 @router.get("/runpod/gpu-types")
 async def get_runpod_gpu_types_route(request: Request, response: Response):
     """Get available GPU types from RunPod"""
-    user = verify_auth(request, response)
     try:
         gpu_types = get_runpod_gpu_types()
         return {"gpu_types": gpu_types}

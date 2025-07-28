@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from models import UserResponse
-from auth.utils import get_current_user, verify_auth
+from auth.utils import get_current_user
 from config import WORKOS_COOKIE_PASSWORD
 import os
 from . import workos_client
@@ -69,8 +69,9 @@ async def auth_callback(request: Request, code: str):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(request: Request, response: Response):
-    user = verify_auth(request, response)
+async def get_current_user_info(
+    request: Request, response: Response, user=Depends(get_current_user)
+):
     return UserResponse(
         id=user.id,
         email=user.email,
@@ -117,8 +118,9 @@ async def logout(request: Request):
 
 
 @router.get("/check")
-async def check_auth(request: Request, response: Response):
-    user = get_current_user(request, response)
+async def check_auth(
+    request: Request, response: Response, user=Depends(get_current_user)
+):
     if user:
         return {"authenticated": True, "user": {"id": user.id, "email": user.email}}
     return {"authenticated": False}

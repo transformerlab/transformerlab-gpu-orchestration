@@ -1,11 +1,11 @@
-from fastapi import HTTPException, Request, Response
+from fastapi import HTTPException, Request, Response, Depends, status
 from config import WORKOS_COOKIE_PASSWORD
 from . import workos_client
 import logging
 
 
-def get_current_user(request: Request, response: Response = None):
-    """Get current user from WorkOS session, refresh session if needed"""
+def get_auth_info(request: Request, response: Response = None):
+    """Get auth info from WorkOS session, refresh session if needed"""
     try:
         session_cookie = request.cookies.get("wos_session")
         if not session_cookie:
@@ -29,18 +29,40 @@ def get_current_user(request: Request, response: Response = None):
                     path="/",
                 )
                 logging.info("Session refreshed successfully")
-                return refreshed_session.user
+                return refreshed_session
         if auth_response.authenticated:
-            return auth_response.user
+            return auth_response
         return None
     except Exception as e:
-        print(f"Error getting current user: {e}")
+        print(f"Error getting auth info: {e}")
         return None
 
 
 def verify_auth(request: Request, response: Response = None):
     """Dependency to verify user is authenticated, refresh session if needed"""
-    user = get_current_user(request, response)
-    if not user:
+    auth_info = get_auth_info(request, response)
+    if not auth_info or not auth_info.authenticated:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return user
+    return auth_info
+
+
+def get_current_user(request: Request, response: Response = None):
+    """FastAPI dependency for getting the current authenticated user"""
+    return verify_auth(request, response).user
+
+
+class RoleChecker:
+    def __init__(self, required_role: str):
+        self.required_role = required_role
+
+    def __call__(self, auth_info=Depends(verify_auth)):
+        if not hasattr(auth_info, "role") or auth_info.role != self.required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action.",
+            )
+        return auth_info.user
+
+
+requires_admin = RoleChecker(required_role="admin")
+requires_member = RoleChecker(required_role="member")

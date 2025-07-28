@@ -17,15 +17,14 @@ from utils.file_utils import (
     save_identity_file,
     get_identity_files_dir,
 )
-from auth.utils import verify_auth
+from auth.utils import get_current_user
 from typing import Optional
 
-router = APIRouter(prefix="/clusters")
+router = APIRouter(prefix="/clusters", dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=ClustersListResponse)
 async def list_clusters(request: Request, response: Response):
-    user = verify_auth(request, response)
     pools = load_ssh_node_pools()
     return ClustersListResponse(clusters=list(pools.keys()))
 
@@ -39,7 +38,6 @@ async def create_cluster(
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
 ):
-    current_user = verify_auth(request, response)
     identity_file_path = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
@@ -55,7 +53,6 @@ async def create_cluster(
 
 @router.get("/{cluster_name}", response_model=ClusterResponse)
 async def get_cluster(cluster_name: str, request: Request, response: Response):
-    user = verify_auth(request, response)
     pools = load_ssh_node_pools()
     if cluster_name not in pools:
         raise HTTPException(
@@ -85,7 +82,6 @@ async def add_node(
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
 ):
-    current_user = verify_auth(request, response)
     identity_file_path = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
@@ -108,7 +104,6 @@ async def add_node(
 
 @router.delete("/{cluster_name}")
 async def delete_cluster(cluster_name: str, request: Request, response: Response):
-    user = verify_auth(request, response)
     pools = load_ssh_node_pools()
     if cluster_name not in pools:
         raise HTTPException(
@@ -129,7 +124,6 @@ async def delete_cluster(cluster_name: str, request: Request, response: Response
 async def remove_node(
     cluster_name: str, node_ip: str, request: Request, response: Response
 ):
-    user = verify_auth(request, response)
     pools = load_ssh_node_pools()
     if cluster_name not in pools:
         raise HTTPException(
@@ -158,7 +152,6 @@ async def remove_node(
 
 @router.get("/identity-files")
 async def list_identity_files(request: Request, response: Response):
-    user = verify_auth(request, response)
     try:
         identity_dir = get_identity_files_dir()
         files = []
