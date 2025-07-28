@@ -10,14 +10,28 @@ import {
   Box,
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
+import { ClipboardCopyIcon, KeyRoundIcon, SettingsIcon } from "lucide-react";
 
 const UserDropdown: React.FC = () => {
   const { user, logout } = useAuth();
+  const [apiKeyCopied, setApiKeyCopied] = React.useState(false);
 
   if (!user) return null;
 
+  const handleCopyApiKey = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText("API123456789");
+      setApiKeyCopied(true);
+      setTimeout(() => setApiKeyCopied(false), 3000);
+    } catch (err) {
+      console.error("Failed to copy API key:", err);
+    }
+  };
+
   return (
-    <Dropdown>
+    <Dropdown open={apiKeyCopied || undefined}>
       <MenuButton
         variant="plain"
         sx={{
@@ -73,6 +87,34 @@ const UserDropdown: React.FC = () => {
               {user.id}
             </Typography>
           </Box>
+        </MenuItem>
+        <MenuItem onMouseDown={handleCopyApiKey}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography
+              level="body-sm"
+              sx={{ fontWeight: "bold" }}
+              startDecorator={
+                apiKeyCopied ? (
+                  <ClipboardCopyIcon size="16px" />
+                ) : (
+                  <KeyRoundIcon size="16px" />
+                )
+              }
+              color={apiKeyCopied ? "success" : "neutral"}
+            >
+              {apiKeyCopied ? "API key copied to clipboard!" : "Your API Key"}
+            </Typography>
+            {!apiKeyCopied && (
+              <Typography level="body-xs" sx={{ color: "text.secondary" }}>
+                Copy your API key to the clipboard
+              </Typography>
+            )}
+          </Box>
+        </MenuItem>
+        <MenuItem onClick={() => console.log("Settings clicked")}>
+          <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
+            More Settings
+          </Typography>
         </MenuItem>
         <ListDivider />
         <MenuItem onClick={logout} color="danger">
