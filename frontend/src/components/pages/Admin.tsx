@@ -50,9 +50,6 @@ const Admin: React.FC = () => {
           backgroundColor: "background.body",
         }}
       >
-        <Typography level="h4" sx={{ mb: 2 }}>
-          Admin Sections
-        </Typography>
         <List>
           <ListItem>
             <ListItemButton

@@ -31,6 +31,7 @@ import { buildApiUrl } from "../../utils/api";
 import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
+import NodeSquare from "../NodeSquare";
 
 interface Node {
   id: string;
@@ -146,6 +147,23 @@ const generateRandomNodes = (count: number): Node[] => {
   });
 };
 
+const getStatusOrder = (status: string, type: string): number => {
+  let sort1 = 0;
+  let sort2 = 0;
+
+  // Then by type
+  if (type === "dedicated") sort1 = 1;
+  if (type === "on-demand") sort1 = 2;
+  if (type === "spot") sort1 = 3;
+
+  // First sort by status priority
+  if (status === "active") sort2 = 1;
+  if (status === "inactive") sort2 = 2;
+  if (status === "unhealthy") sort2 = 3;
+
+  return sort1 * 10 + sort2;
+};
+
 const mockClusters: Cluster[] = [
   {
     id: "cluster-1",
@@ -168,107 +186,6 @@ const mockClusters: Cluster[] = [
     nodes: generateRandomNodes(278),
   },
 ];
-
-const getStatusBackground = (status: string, type: string) => {
-  // Background based on status
-  if (status === "active") return "#10b981"; // green
-  if (status === "inactive") return "unset"; // grey
-  if (status === "unhealthy") return "#f59e0b"; // orange
-  return "#6b7280"; // default grey
-};
-
-const getStatusBorderColor = (status: string, type: string) => {
-  // Border based on status
-  if (status === "active") return "#10b981"; // green
-  if (status === "inactive") return "#6b7280"; // grey
-  if (status === "unhealthy") return "#f59e0b"; // red
-  return "#6b7280"; // default grey
-};
-
-const getStatusOrder = (status: string, type: string): number => {
-  let sort1 = 0;
-  let sort2 = 0;
-
-  // Then by type
-  if (type === "dedicated") sort1 = 1;
-  if (type === "on-demand") sort1 = 2;
-  if (type === "spot") sort1 = 3;
-
-  // First sort by status priority
-  if (status === "active") sort2 = 1;
-  if (status === "inactive") sort2 = 2;
-  if (status === "unhealthy") sort2 = 3;
-
-  return sort1 * 10 + sort2;
-};
-
-const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
-  <Tooltip
-    title={
-      <Box>
-        <Typography level="body-sm">
-          <b>Type:</b> {node.type}
-        </Typography>
-        <Typography level="body-sm">
-          <b>Status:</b> {node.status}
-        </Typography>
-        <Typography level="body-sm">
-          <b>IP:</b> {node.ip}
-        </Typography>
-        <Typography level="body-sm">
-          <b>User:</b> {node.user || "Unassigned"}
-        </Typography>
-        {node.identity_file && (
-          <Typography level="body-sm">
-            <b>Identity File:</b> {node.identity_file}
-          </Typography>
-        )}
-        {node.password && (
-          <Typography level="body-sm">
-            <b>Password:</b> ****
-          </Typography>
-        )}
-      </Box>
-    }
-    variant="soft"
-    size="sm"
-    arrow
-  >
-    <Box
-      sx={{
-        width: 12,
-        height: 26,
-        backgroundColor: getStatusBackground(node.status, node.type),
-        borderRadius: "2px",
-        margin: "1px",
-        transition: "all 0.2s ease",
-        cursor: "pointer",
-        border: `2px solid ${getStatusBorderColor(node.status, node.type)}`,
-        boxSizing: "border-box",
-        position: "relative",
-        "&:hover": {
-          transform: "scale(1.2)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        },
-      }}
-    >
-      {node.user === "ali" && (
-        <Box
-          sx={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            backgroundColor: "#1a2f5dff",
-          }}
-        />
-      )}
-    </Box>
-  </Tooltip>
-);
 
 const ClusterCard: React.FC<{
   cluster: Cluster;
@@ -400,7 +317,7 @@ const ClusterCard: React.FC<{
                   }}
                 >
                   {nodesOfType.map((node) => (
-                    <NodeSquare key={node.id} node={node} />
+                    <NodeSquare key={node.id} node={node} variant="mock" />
                   ))}
                 </Box>
               </Box>
@@ -472,75 +389,6 @@ const Nodes: React.FC = () => {
       .then((data) => setNodeGpuInfo(data))
       .catch(() => setNodeGpuInfo({}));
   }, []);
-
-  // NodeSquare for SSHNode
-  const NodeSquare: React.FC<{ node: any }> = ({ node }) => {
-    let gpuDisplay = "-";
-    const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
-    if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
-      gpuDisplay = gpuInfo.gpus
-        .map((g: any) => {
-          const qty = g.requestable_qty_per_node;
-          if (qty && /^\d+$/.test(qty.trim())) {
-            return `${g.gpu} (x${qty.trim()})`;
-          } else if (qty && qty.trim().length > 0) {
-            return `${g.gpu} (${qty.trim()})`;
-          } else {
-            return g.gpu;
-          }
-        })
-        .join(", ");
-    } else if (node.gpuType) {
-      gpuDisplay = node.gpuType;
-    }
-    return (
-      <Tooltip
-        title={
-          <Box>
-            <Typography level="body-sm">
-              <b>IP:</b> {node.ip}
-            </Typography>
-            <Typography level="body-sm">
-              <b>User:</b> {node.user}
-            </Typography>
-            {node.identity_file && (
-              <Typography level="body-sm">
-                <b>Identity File:</b> {node.identity_file}
-              </Typography>
-            )}
-            {node.password && (
-              <Typography level="body-sm">
-                <b>Password:</b> ****
-              </Typography>
-            )}
-            <Typography level="body-sm">
-              <b>GPUs:</b> {gpuDisplay}
-            </Typography>
-          </Box>
-        }
-        variant="soft"
-        size="sm"
-        arrow
-      >
-        <Box
-          sx={{
-            width: 12,
-            height: 12,
-            backgroundColor: "#3b82f6",
-            borderRadius: "2px",
-            margin: "1px",
-            transition: "all 0.2s ease",
-            cursor: "pointer",
-            boxSizing: "border-box",
-            "&:hover": {
-              transform: "scale(1.2)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            },
-          }}
-        />
-      </Tooltip>
-    );
-  };
 
   return (
     <Box
@@ -718,7 +566,11 @@ const Nodes: React.FC = () => {
                               },
                             }}
                           >
-                            <NodeSquare node={node} />
+                            <NodeSquare
+                              node={node}
+                              nodeGpuInfo={nodeGpuInfo}
+                              variant="ssh"
+                            />
                           </Box>
                         );
                       })}

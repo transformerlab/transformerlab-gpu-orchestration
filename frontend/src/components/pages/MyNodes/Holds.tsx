@@ -27,6 +27,21 @@ import {
 } from "lucide-react";
 import { buildApiUrl } from "../../../utils/api";
 import InteractiveTaskModal from "../../InteractiveTaskModal";
+import { useNavigate } from "react-router-dom";
+import NodeSquare from "../../NodeSquare";
+
+// Add a mock status generator for demonstration
+const statuses = ["provisioning", "running", "deallocating", "held"];
+function randomStatus(id: string) {
+  // Simple deterministic hash based on id
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % statuses.length;
+  return statuses[idx];
+}
 
 interface Cluster {
   cluster_name: string;
@@ -41,9 +56,17 @@ interface Cluster {
 interface HeldProps {
   skypilotLoading: boolean;
   myClusters: Cluster[];
+  groupedByExperiment?: { [key: string]: any[] };
+  nodes?: any[];
 }
 
-const Held: React.FC<HeldProps> = ({ skypilotLoading, myClusters }) => {
+const Held: React.FC<HeldProps> = ({
+  skypilotLoading,
+  myClusters,
+  groupedByExperiment = {},
+  nodes = [],
+}) => {
+  const navigate = useNavigate();
   const [operationLoading, setOperationLoading] = React.useState<{
     [key: string]: boolean;
   }>({});
@@ -134,6 +157,14 @@ const Held: React.FC<HeldProps> = ({ skypilotLoading, myClusters }) => {
     });
   };
 
+  const handleRowClick = (node: any, event: React.MouseEvent) => {
+    // Don't navigate if clicking on the dropdown menu
+    if ((event.target as HTMLElement).closest('[role="button"]')) {
+      return;
+    }
+    navigate(`/dashboard/nodes/node/${node.id}`);
+  };
+
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();
     if (statusLower.includes("up") || statusLower.includes("running")) {
@@ -172,6 +203,178 @@ const Held: React.FC<HeldProps> = ({ skypilotLoading, myClusters }) => {
     );
   }
 
+  // If we have grouped experiments, show the node-based view
+  if (Object.keys(groupedByExperiment).length > 0) {
+    return (
+      <>
+        {Object.entries(groupedByExperiment).map(([expName, nodes]) => (
+          <Box key={expName} sx={{ mb: 4 }}>
+            <Typography level="h4" sx={{ mb: 1 }}>
+              Experiment: {expName}
+            </Typography>
+            <Table>
+              <thead>
+                <tr>
+                  <th style={{ width: "150px" }}>&nbsp;</th>
+                  <th>Status</th>
+                  <th>Cluster</th>
+                  <th>Name/IP</th>
+                  <th>Running for</th>
+                  <th>Resources (GPU/CPU)</th>
+                  <th>Job/Experiment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nodes.map((node) => {
+                  const statusValue = randomStatus(node.id);
+                  return (
+                    <tr
+                      key={node.id}
+                      onClick={(event) => handleRowClick(node, event)}
+                      style={{
+                        cursor: "pointer",
+                        transition: "background-color 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor =
+                          "rgba(0, 0, 0, 0.04)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "";
+                      }}
+                    >
+                      <td>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <NodeSquare
+                            node={{
+                              id: node.id,
+                              ip: node.ip || "unknown",
+                              status:
+                                statusValue === "running"
+                                  ? "active"
+                                  : statusValue === "held"
+                                  ? "inactive"
+                                  : "unhealthy",
+                              type: "dedicated", // Default type for holds
+                              user: "ali", // Assuming these are user's nodes
+                              gpuType: node.gpuType,
+                            }}
+                            variant="mock"
+                          />
+                          {node?.id}
+                          {(statusValue === "running" ||
+                            statusValue === "provisioning") && (
+                            <Dropdown>
+                              <MenuButton
+                                variant="plain"
+                                size="sm"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ChevronDownIcon size="16px" />
+                              </MenuButton>
+                              <Menu size="sm" variant="soft">
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  <ListItemDecorator>
+                                    <StopCircleIcon />
+                                  </ListItemDecorator>
+                                  Stop
+                                </MenuItem>
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  <ListItemDecorator>
+                                    <Trash2Icon />
+                                  </ListItemDecorator>
+                                  Deallocate
+                                </MenuItem>
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  <ListItemDecorator>
+                                    <RotateCcwIcon />
+                                  </ListItemDecorator>
+                                  Restart
+                                </MenuItem>
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  <ListItemDecorator>
+                                    <TextIcon />
+                                  </ListItemDecorator>
+                                  Logs
+                                </MenuItem>
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  Metrics
+                                </MenuItem>
+                                <Divider />
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  <ListItemDecorator>
+                                    <TerminalIcon />
+                                  </ListItemDecorator>
+                                  SSH
+                                </MenuItem>
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  VSCode
+                                </MenuItem>
+                              </Menu>
+                            </Dropdown>
+                          )}
+                        </Box>
+                      </td>
+                      <td>
+                        <Chip
+                          size="sm"
+                          color={getStatusColor(statusValue)}
+                          variant="soft"
+                          startDecorator={
+                            statusValue === "provisioning" && (
+                              <CircularProgress
+                                size="sm"
+                                sx={{
+                                  "--CircularProgress-size": "10px",
+                                  "--CircularProgress-trackThickness": "2px",
+                                  "--CircularProgress-progressThickness": "2px",
+                                }}
+                              />
+                            )
+                          }
+                        >
+                          {statusValue}
+                        </Chip>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {node.cluster || "-"}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {node.name || node.ip || "-"}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {node.runningFor || "-"}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {node.resources || "-"}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {node.jobName || node.experimentName || "-"}
+                        </Typography>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </Box>
+        ))}
+      </>
+    );
+  }
+
+  // If we have clusters, show the cluster-based view
   if (myClusters.length === 0) {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
