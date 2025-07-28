@@ -51,7 +51,7 @@ interface SSHCluster {
   has_defaults: boolean;
 }
 
-type LaunchMode = "custom" | "jupyter" | "ssh" | "vscode";
+type LaunchMode = "custom" | "jupyter" | "vscode" | "ssh";
 
 const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   onClusterLaunched,
@@ -383,20 +383,20 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                   Jupyter Notebook
                 </Button>
                 <Button
-                  variant={launchMode === "ssh" ? "solid" : "outlined"}
-                  onClick={() => setLaunchMode("ssh")}
-                  sx={{ flex: 1 }}
-                  startDecorator={<Terminal size={16} />}
-                >
-                  SSH Access
-                </Button>
-                <Button
                   variant={launchMode === "vscode" ? "solid" : "outlined"}
                   onClick={() => setLaunchMode("vscode")}
                   sx={{ flex: 1 }}
                   startDecorator={<Code size={16} />}
                 >
                   VSCode Server
+                </Button>
+                <Button
+                  variant={launchMode === "ssh" ? "solid" : "outlined"}
+                  onClick={() => setLaunchMode("ssh")}
+                  sx={{ flex: 1 }}
+                  startDecorator={<Terminal size={16} />}
+                >
+                  SSH Access
                 </Button>
               </Stack>
             </Card>
