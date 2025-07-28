@@ -1,12 +1,13 @@
 import React from "react";
-import { Box, Typography } from "@mui/joy";
+import { Box, Typography, Divider } from "@mui/joy";
 import SSHClusterAdmin from "../SSHClusterAdmin";
+import IdentityFileManager from "../IdentityFileManager";
 
 const Admin: React.FC = () => {
   return (
     <Box
       sx={{
-        maxWidth: 1000,
+        maxWidth: 1200,
         mx: "auto",
         p: 2,
       }}
@@ -16,13 +17,19 @@ const Admin: React.FC = () => {
           Admin
         </Typography>
         <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Admin stuff
+          Manage SSH clusters and identity files
         </Typography>
       </Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h3" sx={{ mb: 2 }}>
-          Add Cloud Provider
-        </Typography>
+
+      {/* Identity Files Section */}
+      <Box sx={{ mb: 6 }}>
+        <IdentityFileManager />
+      </Box>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* SSH Clusters Section */}
+      <Box>
         <SSHClusterAdmin />
       </Box>
     </Box>

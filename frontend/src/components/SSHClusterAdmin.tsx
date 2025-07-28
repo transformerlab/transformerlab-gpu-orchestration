@@ -14,6 +14,8 @@ import {
   Table,
   Chip,
   IconButton,
+  Select,
+  Option,
 } from "@mui/joy";
 import { Plus, Trash2, Monitor } from "lucide-react";
 import { buildApiUrl } from "../utils/api";
@@ -30,6 +32,15 @@ interface Cluster {
   nodes: SSHNode[];
 }
 
+interface IdentityFile {
+  path: string;
+  display_name: string;
+  original_filename: string;
+  size: number;
+  permissions: string;
+  created: number;
+}
+
 const SSHClusterAdmin: React.FC = () => {
   const [clusters, setClusters] = useState<string[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
@@ -42,19 +53,34 @@ const SSHClusterAdmin: React.FC = () => {
   const [newClusterName, setNewClusterName] = useState("");
   const [newClusterUser, setNewClusterUser] = useState("");
   const [newClusterIdentityFile, setNewClusterIdentityFile] =
-    useState<File | null>(null);
+    useState<string>("");
   const [newClusterPassword, setNewClusterPassword] = useState("");
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
-  const [newNodeIdentityFile, setNewNodeIdentityFile] = useState<File | null>(
-    null
-  );
+  const [newNodeIdentityFile, setNewNodeIdentityFile] = useState<string>("");
   const [newNodePassword, setNewNodePassword] = useState("");
+
+  const [identityFiles, setIdentityFiles] = useState<IdentityFile[]>([]);
 
   useEffect(() => {
     fetchClusters();
+    fetchIdentityFiles();
   }, []);
+
+  const fetchIdentityFiles = async () => {
+    try {
+      const response = await fetch(buildApiUrl("clusters/identity-files"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setIdentityFiles(data.identity_files);
+      }
+    } catch (err) {
+      console.error("Error fetching identity files:", err);
+    }
+  };
 
   const fetchClusters = async () => {
     try {
@@ -102,7 +128,7 @@ const SSHClusterAdmin: React.FC = () => {
       if (newClusterUser) formData.append("user", newClusterUser);
       if (newClusterPassword) formData.append("password", newClusterPassword);
       if (newClusterIdentityFile)
-        formData.append("identity_file", newClusterIdentityFile);
+        formData.append("identity_file_path", newClusterIdentityFile);
       const response = await fetch(buildApiUrl("clusters"), {
         method: "POST",
         credentials: "include",
@@ -112,7 +138,7 @@ const SSHClusterAdmin: React.FC = () => {
         setShowCreateModal(false);
         setNewClusterName("");
         setNewClusterUser("");
-        setNewClusterIdentityFile(null);
+        setNewClusterIdentityFile("");
         setNewClusterPassword("");
         fetchClusters();
       } else {
@@ -135,7 +161,7 @@ const SSHClusterAdmin: React.FC = () => {
       formData.append("user", newNodeUser);
       if (newNodePassword) formData.append("password", newNodePassword);
       if (newNodeIdentityFile)
-        formData.append("identity_file", newNodeIdentityFile);
+        formData.append("identity_file_path", newNodeIdentityFile);
       const response = await fetch(
         buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
         {
@@ -148,7 +174,7 @@ const SSHClusterAdmin: React.FC = () => {
         setShowAddNodeModal(false);
         setNewNodeIp("");
         setNewNodeUser("");
-        setNewNodeIdentityFile(null);
+        setNewNodeIdentityFile("");
         setNewNodePassword("");
         fetchClusterDetails(selectedCluster.cluster_name);
       } else {
@@ -396,25 +422,29 @@ const SSHClusterAdmin: React.FC = () => {
             </FormControl>
             <FormControl>
               <FormLabel>Default Identity File (optional)</FormLabel>
-              <Input
-                type="file"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setNewClusterIdentityFile(file);
-                }}
-              />
+              <Select
+                value={newClusterIdentityFile}
+                onChange={(_, value) => setNewClusterIdentityFile(value || "")}
+                placeholder="Select an identity file"
+              >
+                {identityFiles.map((file) => (
+                  <Option key={file.path} value={file.path}>
+                    {file.display_name}
+                  </Option>
+                ))}
+              </Select>
               {newClusterIdentityFile && (
                 <Typography
                   level="body-sm"
                   sx={{ mt: 0.5, color: "text.secondary" }}
                 >
-                  Selected: {newClusterIdentityFile.name}
+                  Selected:{" "}
+                  {
+                    identityFiles.find((f) => f.path === newClusterIdentityFile)
+                      ?.display_name
+                  }
                 </Typography>
               )}
-              <Typography level="body-xs" color="neutral">
-                Allowed: .pem, .key, .rsa, .pub, or files with no extension
-                (e.g., id_rsa)
-              </Typography>
             </FormControl>
             <FormControl>
               <FormLabel>Default Password (optional)</FormLabel>
@@ -465,25 +495,29 @@ const SSHClusterAdmin: React.FC = () => {
             </FormControl>
             <FormControl>
               <FormLabel>Identity File (optional)</FormLabel>
-              <Input
-                type="file"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setNewNodeIdentityFile(file);
-                }}
-              />
+              <Select
+                value={newNodeIdentityFile}
+                onChange={(_, value) => setNewNodeIdentityFile(value || "")}
+                placeholder="Select an identity file"
+              >
+                {identityFiles.map((file) => (
+                  <Option key={file.path} value={file.path}>
+                    {file.display_name}
+                  </Option>
+                ))}
+              </Select>
               {newNodeIdentityFile && (
                 <Typography
                   level="body-sm"
                   sx={{ mt: 0.5, color: "text.secondary" }}
                 >
-                  Selected: {newNodeIdentityFile.name}
+                  Selected:{" "}
+                  {
+                    identityFiles.find((f) => f.path === newNodeIdentityFile)
+                      ?.display_name
+                  }
                 </Typography>
               )}
-              <Typography level="body-xs" color="neutral">
-                Allowed: .pem, .key, .rsa, .pub, or files with no extension
-                (e.g., id_rsa)
-              </Typography>
             </FormControl>
             <FormControl>
               <FormLabel>Password (optional)</FormLabel>

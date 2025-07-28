@@ -15,6 +15,10 @@ from utils.file_utils import (
     save_ssh_node_pools,
     cleanup_identity_file,
     save_identity_file,
+    save_named_identity_file,
+    get_available_identity_files,
+    delete_named_identity_file,
+    rename_identity_file,
     get_identity_files_dir,
 )
 from auth.utils import get_current_user
@@ -37,18 +41,103 @@ async def create_cluster(
     user: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
+    identity_file_path: Optional[str] = Form(None),
 ):
-    identity_file_path = None
+    identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path = save_identity_file(file_content, identity_file.filename)
+        identity_file_path_final = save_identity_file(
+            file_content, identity_file.filename
+        )
+    elif identity_file_path:
+        # Use the selected identity file path
+        identity_file_path_final = identity_file_path
     create_cluster_in_pools(
         cluster_name,
         user,
-        identity_file_path,
+        identity_file_path_final,
         password,
     )
     return ClusterResponse(cluster_name=cluster_name, nodes=[])
+
+
+@router.get("/identity-files")
+async def list_identity_files(request: Request, response: Response):
+    try:
+        files = get_available_identity_files()
+        return {"identity_files": files}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list identity files: {str(e)}"
+        )
+
+
+@router.post("/identity-files")
+async def upload_identity_file(
+    request: Request,
+    response: Response,
+    display_name: str = Form(...),
+    identity_file: UploadFile = Form(...),
+):
+    try:
+        if not identity_file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+
+        file_content = await identity_file.read()
+        file_path = save_named_identity_file(
+            file_content, identity_file.filename, display_name
+        )
+
+        return {
+            "message": "Identity file uploaded successfully",
+            "file_path": file_path,
+            "display_name": display_name,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to upload identity file: {str(e)}"
+        )
+
+
+@router.delete("/identity-files/{file_path:path}")
+async def delete_identity_file(
+    request: Request,
+    response: Response,
+    file_path: str,
+):
+    try:
+        # URL decode the file path
+        import urllib.parse
+
+        decoded_path = urllib.parse.unquote(file_path)
+
+        delete_named_identity_file(decoded_path)
+        return {"message": "Identity file deleted successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete identity file: {str(e)}"
+        )
+
+
+@router.put("/identity-files/{file_path:path}")
+async def rename_identity_file_route(
+    request: Request,
+    response: Response,
+    file_path: str,
+    new_display_name: str = Form(...),
+):
+    try:
+        # URL decode the file path
+        import urllib.parse
+
+        decoded_path = urllib.parse.unquote(file_path)
+
+        rename_identity_file(decoded_path, new_display_name)
+        return {"message": "Identity file renamed successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to rename identity file: {str(e)}"
+        )
 
 
 @router.get("/{cluster_name}", response_model=ClusterResponse)
@@ -81,13 +170,19 @@ async def add_node(
     user: str = Form(...),
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
+    identity_file_path: Optional[str] = Form(None),
 ):
-    identity_file_path = None
+    identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path = save_identity_file(file_content, identity_file.filename)
+        identity_file_path_final = save_identity_file(
+            file_content, identity_file.filename
+        )
+    elif identity_file_path:
+        # Use the selected identity file path
+        identity_file_path_final = identity_file_path
     node = SSHNode(
-        ip=ip, user=user, identity_file=identity_file_path, password=password
+        ip=ip, user=user, identity_file=identity_file_path_final, password=password
     )
     cluster_config = add_node_to_cluster(cluster_name, node, background_tasks)
     nodes = []
@@ -148,27 +243,3 @@ async def remove_node(
     return {
         "message": f"Node with IP '{node_ip}' removed from cluster '{cluster_name}' successfully"
     }
-
-
-@router.get("/identity-files")
-async def list_identity_files(request: Request, response: Response):
-    try:
-        identity_dir = get_identity_files_dir()
-        files = []
-        for file_path in identity_dir.iterdir():
-            if file_path.is_file():
-                stat_info = file_path.stat()
-                files.append(
-                    {
-                        "filename": file_path.name,
-                        "path": str(file_path),
-                        "size": stat_info.st_size,
-                        "permissions": oct(stat_info.st_mode)[-3:],
-                        "created": stat_info.st_ctime,
-                    }
-                )
-        return {"identity_files": files}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list identity files: {str(e)}"
-        )
