@@ -251,6 +251,12 @@ const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
           boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
         },
       }}
+      onClick={(e) => {
+        e.stopPropagation();
+        window.location.href = `/dashboard/nodes/node/${encodeURIComponent(
+          node.id
+        )}`;
+      }}
     >
       {node.user === "ali" && (
         <Box

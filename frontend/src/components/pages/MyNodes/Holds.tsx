@@ -21,6 +21,7 @@ import {
   TextIcon,
   Trash2Icon,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Add a mock status generator for demonstration
 const statuses = ["provisioning", "running", "deallocating", "held"];
@@ -55,6 +56,15 @@ const Jobs: React.FC<HeldProps> = ({
   skypilotLoading,
   myClusters,
 }) => {
+  const navigate = useNavigate();
+
+  const handleRowClick = (node: any, event: React.MouseEvent) => {
+    // Don't navigate if clicking on the dropdown menu
+    if ((event.target as HTMLElement).closest('[role="button"]')) {
+      return;
+    }
+    navigate(`/dashboard/nodes/node/${node.id}`);
+  };
   return (
     <>
       {Object.entries(groupedByExperiment).map(([expName, nodes]) => (
@@ -65,7 +75,7 @@ const Jobs: React.FC<HeldProps> = ({
           <Table>
             <thead>
               <tr>
-                <th width="100px">&nbsp;</th>
+                <th style={{ width: "100px" }}>&nbsp;</th>
                 <th>Status</th>
                 <th>Cluster</th>
                 <th>Name/IP</th>
@@ -78,49 +88,71 @@ const Jobs: React.FC<HeldProps> = ({
               {nodes.map((node) => {
                 const statusValue = randomStatus(node.id);
                 return (
-                  <tr key={node.id}>
+                  <tr
+                    key={node.id}
+                    onClick={(event) => handleRowClick(node, event)}
+                    style={{
+                      cursor: "pointer",
+                      transition: "background-color 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "rgba(0, 0, 0, 0.04)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "";
+                    }}
+                  >
                     <td>
                       <ComputerIcon />
                       {(statusValue === "running" ||
                         statusValue === "provisioning") && (
                         <Dropdown>
-                          <MenuButton variant="plain" size="sm">
+                          <MenuButton
+                            variant="plain"
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <ChevronDownIcon />
                           </MenuButton>
                           <Menu size="sm" variant="soft">
-                            <MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
                               <ListItemDecorator>
                                 <StopCircleIcon />
                               </ListItemDecorator>
                               Stop
                             </MenuItem>
-                            <MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
                               <ListItemDecorator>
                                 <Trash2Icon />
                               </ListItemDecorator>
                               Deallocate
                             </MenuItem>
-                            <MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
                               <ListItemDecorator>
                                 <RotateCcwIcon />
                               </ListItemDecorator>
                               Restart
                             </MenuItem>
-                            <MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
                               <ListItemDecorator>
                                 <TextIcon />
                               </ListItemDecorator>
                               Logs
                             </MenuItem>
-                            <MenuItem>Metrics</MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
+                              Metrics
+                            </MenuItem>
                             <Divider />
-                            <MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
                               <ListItemDecorator>
                                 <TerminalIcon />
                               </ListItemDecorator>
                               SSH
                             </MenuItem>
-                            <MenuItem>VSCode</MenuItem>
+                            <MenuItem onClick={(e) => e.stopPropagation()}>
+                              VSCode
+                            </MenuItem>
                           </Menu>
                         </Dropdown>
                       )}

@@ -10,6 +10,7 @@ import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
 import MyNodes from "../pages/MyNodes";
 import Users from "../pages/Admin/Users";
+import NodeDetails from "../pages/MyNodes/NodeDetails";
 
 const Dashboard: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const Dashboard: React.FC = () => {
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/nodes" element={<Nodes />} />
           <Route path="/my-nodes" element={<MyNodes />} />
+          <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />
