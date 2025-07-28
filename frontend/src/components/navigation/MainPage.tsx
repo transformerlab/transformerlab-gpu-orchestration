@@ -5,7 +5,7 @@ import GettingStarted from "../pages/Admin/GettingStarted";
 import Nodes from "../pages/Nodes";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Admin from "../pages/Admin";
+import Admin from "../pages/Admin/Admin";
 import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
 import MyNodes from "../pages/MyNodes";

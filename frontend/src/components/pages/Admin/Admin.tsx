@@ -8,23 +8,31 @@ import {
   ListItemContent,
   Sheet,
 } from "@mui/joy";
-import SSHClusterAdmin from "./Admin/SSHClusterAdmin";
-import Users from "./Admin/Users";
-import IdentityFileManager from "./Admin/IdentityFileManager";
+import SSHClusterAdmin from "./SSHClusterAdmin";
+import Users from "./Users";
+import IdentityFileManager from "./IdentityFileManager";
+import Teams from "./Teams";
+import ObjectStorage from "./ObjectStorage";
 
 const Admin: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<
-    "team" | "clusters" | "identity"
+    "team" | "teams" | "clouds" | "identity" | "objectStorage" | "volumes"
   >("team");
 
   const renderContent = () => {
     switch (selectedSection) {
       case "team":
         return <Users />;
-      case "clusters":
+      case "teams":
+        return <Teams />;
+      case "clouds":
         return <SSHClusterAdmin />;
       case "identity":
         return <IdentityFileManager />;
+      case "objectStorage":
+        return <ObjectStorage />;
+      case "volumes":
+        return <Typography>Volumes</Typography>;
       default:
         return null;
     }
@@ -47,7 +55,6 @@ const Admin: React.FC = () => {
           p: 2,
           borderRadius: "md",
           height: "fit-content",
-          backgroundColor: "background.body",
         }}
       >
         <List>
@@ -56,15 +63,23 @@ const Admin: React.FC = () => {
               selected={selectedSection === "team"}
               onClick={() => setSelectedSection("team")}
             >
-              <ListItemContent>Team</ListItemContent>
+              <ListItemContent>Users</ListItemContent>
             </ListItemButton>
           </ListItem>
           <ListItem>
             <ListItemButton
-              selected={selectedSection === "clusters"}
-              onClick={() => setSelectedSection("clusters")}
+              selected={selectedSection === "teams"}
+              onClick={() => setSelectedSection("teams")}
             >
-              <ListItemContent>Clusters</ListItemContent>
+              <ListItemContent>Teams</ListItemContent>
+            </ListItemButton>
+          </ListItem>
+          <ListItem>
+            <ListItemButton
+              selected={selectedSection === "clouds"}
+              onClick={() => setSelectedSection("clouds")}
+            >
+              <ListItemContent>Clouds</ListItemContent>
             </ListItemButton>
           </ListItem>
           <ListItem>
@@ -72,7 +87,23 @@ const Admin: React.FC = () => {
               selected={selectedSection === "identity"}
               onClick={() => setSelectedSection("identity")}
             >
-              <ListItemContent>Identity Files</ListItemContent>
+              <ListItemContent>SSH Identity Files</ListItemContent>
+            </ListItemButton>
+          </ListItem>
+          <ListItem>
+            <ListItemButton
+              selected={selectedSection === "objectStorage"}
+              onClick={() => setSelectedSection("objectStorage")}
+            >
+              <ListItemContent>Object Storage</ListItemContent>
+            </ListItemButton>
+          </ListItem>
+          <ListItem>
+            <ListItemButton
+              selected={selectedSection === "volumes"}
+              onClick={() => setSelectedSection("volumes")}
+            >
+              <ListItemContent>Volumes</ListItemContent>
             </ListItemButton>
           </ListItem>
         </List>
