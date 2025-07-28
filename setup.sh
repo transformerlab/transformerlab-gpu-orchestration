@@ -24,7 +24,7 @@ echo "📦 Creating Python virtual environment with uv..."
 cd backend || exit
 echo "📦 Installing backend dependencies with uv..."
 uv venv --seed --python 3.10
-# source .venv/bin/activate # Not necessary since uv handles this
+source .venv/bin/activate
 uv pip install -r requirements.txt
 uv pip install --upgrade uvicorn
 uv pip install "skypilot[kubernetes,runpod]"
