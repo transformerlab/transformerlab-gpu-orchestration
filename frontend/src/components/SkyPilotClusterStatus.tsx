@@ -84,7 +84,6 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [submitJobModalOpen, setSubmitJobModalOpen] = useState(false);
   const [jobModalCluster, setJobModalCluster] = useState<string>("");
   const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState<string>("");
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
@@ -93,6 +92,12 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [portForwards, setPortForwards] = useState<PortForward[]>([]);
   const [portForwardsLoading, setPortForwardsLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [jobsWithPortForward, setJobsWithPortForward] = useState<Set<string>>(
+    new Set()
+  );
+  const [portForwardLoading, setPortForwardLoading] = useState<{
     [key: string]: boolean;
   }>({});
 
@@ -104,6 +109,13 @@ const SkyPilotClusterStatus: React.FC = () => {
   );
 
   const clusters = data?.clusters || [];
+
+  // SWR for job monitoring when a cluster is expanded
+  const { data: jobsData, mutate: mutateJobs } = useSWR(
+    expandedCluster ? buildApiUrl(`skypilot/jobs/${expandedCluster}`) : null,
+    fetcher,
+    { refreshInterval: 5000 }
+  );
 
   // Fetch cluster type info for each cluster
   useEffect(() => {
@@ -155,35 +167,50 @@ const SkyPilotClusterStatus: React.FC = () => {
     }
   };
 
-  // Fetch jobs for a cluster
-  const fetchJobs = async (clusterName: string) => {
-    setJobsLoading(true);
-    setJobsError("");
-    try {
-      const response = await fetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}`),
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch jobs: ${response.statusText}`);
-      }
-      const data = await response.json();
-      setJobs(data.jobs || []);
-    } catch (err) {
-      setJobsError(err instanceof Error ? err.message : "Failed to fetch jobs");
-    } finally {
-      setJobsLoading(false);
-    }
-  };
-
-  // Fetch jobs when a cluster is expanded
+  // Monitor job status changes using SWR data
   useEffect(() => {
-    if (expandedCluster) {
-      fetchJobs(expandedCluster);
-    }
-  }, [expandedCluster, submitJobModalOpen]);
+    if (!expandedCluster || !jobsData) return;
+
+    const currentJobs = jobsData.jobs || [];
+
+    // Check for jobs that just started running and need port forwarding
+    currentJobs.forEach((job: any) => {
+      const jobKey = `${expandedCluster}_${job.job_id}`;
+
+      if (
+        job.status === "JobStatus.RUNNING" &&
+        job.job_name &&
+        !jobsWithPortForward.has(jobKey)
+      ) {
+        // Check if this is a Jupyter job
+        if (job.job_name.includes("-jupyter-")) {
+          const portMatch = job.job_name.match(/port(\d+)/);
+          const port = portMatch ? parseInt(portMatch[1]) : 8888;
+          console.log(
+            `Setting up port forwarding for Jupyter job ${job.job_id} on port ${port}`
+          );
+          setupJobPortForward(expandedCluster, job.job_id, "jupyter", port);
+          setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
+        }
+        // Check if this is a VSCode job
+        else if (job.job_name.includes("-vscode-")) {
+          const portMatch = job.job_name.match(/port(\d+)/);
+          const port = portMatch ? parseInt(portMatch[1]) : 8888;
+          console.log(
+            `Setting up port forwarding for VSCode job ${job.job_id} on port ${port}`
+          );
+          setupJobPortForward(
+            expandedCluster,
+            job.job_id,
+            "vscode",
+            undefined,
+            port
+          );
+          setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
+        }
+      }
+    });
+  }, [expandedCluster, jobsData, jobsWithPortForward]);
 
   // Fetch logs for a job
   const fetchJobLogs = async (clusterName: string, jobId: number) => {
@@ -229,12 +256,53 @@ const SkyPilotClusterStatus: React.FC = () => {
       console.log("Job cancelled successfully:", data);
       // Refresh the jobs list to show updated status
       if (expandedCluster === clusterName) {
-        fetchJobs(clusterName);
+        mutateJobs();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel job");
     } finally {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
+    }
+  };
+
+  // Setup port forwarding for a job
+  const setupJobPortForward = async (
+    clusterName: string,
+    jobId: number,
+    jobType: string,
+    jupyterPort?: number,
+    vscodePort?: number
+  ) => {
+    console.log(
+      `Setting up port forwarding for ${jobType} job ${jobId} on cluster ${clusterName}`
+    );
+    try {
+      const formData = new FormData();
+      formData.append("job_type", jobType);
+      if (jupyterPort) formData.append("jupyter_port", jupyterPort.toString());
+      if (vscodePort) formData.append("vscode_port", vscodePort.toString());
+
+      const response = await fetch(
+        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/setup-port-forward`),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Port forwarding setup successfully:", data);
+        // Refresh port forwards list
+        fetchPortForwards();
+      } else {
+        console.error("Failed to setup port forwarding for job:", jobId);
+        const errorData = await response.json();
+        console.error("Error details:", errorData);
+      }
+    } catch (err) {
+      console.error("Error setting up port forwarding for job:", err);
     }
   };
 
@@ -689,7 +757,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                               {jobsError}
                             </Alert>
                           )}
-                          {jobsLoading ? (
+                          {!jobsData ? (
                             <Box
                               sx={{
                                 display: "flex",
@@ -701,7 +769,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                             </Box>
                           ) : (
                             <List sx={{ maxHeight: "40vh", overflow: "auto" }}>
-                              {jobs.length === 0 ? (
+                              {!jobsData.jobs || jobsData.jobs.length === 0 ? (
                                 <ListItem>
                                   <Typography
                                     level="body-sm"
@@ -711,53 +779,33 @@ const SkyPilotClusterStatus: React.FC = () => {
                                   </Typography>
                                 </ListItem>
                               ) : (
-                                jobs.map((job, idx) => (
-                                  <React.Fragment key={job.job_id}>
-                                    {idx > 0 && <ListDivider />}
-                                    <ListItem>
-                                      <Box sx={{ width: "100%" }}>
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "flex-start",
-                                            mb: 1,
-                                          }}
-                                        >
-                                          <Typography level="title-sm">
-                                            {job.job_name}
-                                          </Typography>
-                                          <Chip
-                                            size="sm"
-                                            color={getJobStatusColor(
-                                              job.status
-                                            )}
-                                            variant="soft"
+                                jobsData.jobs.map(
+                                  (job: JobRecord, idx: number) => (
+                                    <React.Fragment key={job.job_id}>
+                                      {idx > 0 && <ListDivider />}
+                                      <ListItem>
+                                        <Box sx={{ width: "100%" }}>
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              justifyContent: "space-between",
+                                              alignItems: "flex-start",
+                                              mb: 1,
+                                            }}
                                           >
-                                            {getJobStatusLabel(job.status)}
-                                          </Chip>
-                                        </Box>
-                                        <Typography
-                                          level="body-xs"
-                                          sx={{
-                                            color: "text.secondary",
-                                            mb: 1,
-                                          }}
-                                        >
-                                          Job ID: {job.job_id} | User:{" "}
-                                          {job.username}
-                                        </Typography>
-                                        <Typography
-                                          level="body-xs"
-                                          sx={{
-                                            color: "text.secondary",
-                                            mb: 1,
-                                          }}
-                                        >
-                                          Submitted:{" "}
-                                          {formatTimestamp(job.submitted_at)}
-                                        </Typography>
-                                        {job.start_at && (
+                                            <Typography level="title-sm">
+                                              {job.job_name}
+                                            </Typography>
+                                            <Chip
+                                              size="sm"
+                                              color={getJobStatusColor(
+                                                job.status
+                                              )}
+                                              variant="soft"
+                                            >
+                                              {getJobStatusLabel(job.status)}
+                                            </Chip>
+                                          </Box>
                                           <Typography
                                             level="body-xs"
                                             sx={{
@@ -765,11 +813,9 @@ const SkyPilotClusterStatus: React.FC = () => {
                                               mb: 1,
                                             }}
                                           >
-                                            Started:{" "}
-                                            {formatTimestamp(job.start_at)}
+                                            Job ID: {job.job_id} | User:{" "}
+                                            {job.username}
                                           </Typography>
-                                        )}
-                                        {job.end_at && (
                                           <Typography
                                             level="body-xs"
                                             sx={{
@@ -777,105 +823,160 @@ const SkyPilotClusterStatus: React.FC = () => {
                                               mb: 1,
                                             }}
                                           >
-                                            Ended: {formatTimestamp(job.end_at)}
+                                            Submitted:{" "}
+                                            {formatTimestamp(job.submitted_at)}
                                           </Typography>
-                                        )}
-                                        <Typography
-                                          level="body-xs"
-                                          sx={{
-                                            color: "text.secondary",
-                                            mb: 1,
-                                          }}
-                                        >
-                                          Resources: {job.resources}
-                                        </Typography>
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            gap: 1,
-                                            mt: 1,
-                                          }}
-                                        >
-                                          <Button
-                                            size="sm"
-                                            variant="outlined"
-                                            onClick={() =>
-                                              fetchJobLogs(
-                                                cluster.cluster_name,
-                                                job.job_id
-                                              )
-                                            }
+                                          {job.start_at && (
+                                            <Typography
+                                              level="body-xs"
+                                              sx={{
+                                                color: "text.secondary",
+                                                mb: 1,
+                                              }}
+                                            >
+                                              Started:{" "}
+                                              {formatTimestamp(job.start_at)}
+                                            </Typography>
+                                          )}
+                                          {job.end_at && (
+                                            <Typography
+                                              level="body-xs"
+                                              sx={{
+                                                color: "text.secondary",
+                                                mb: 1,
+                                              }}
+                                            >
+                                              Ended:{" "}
+                                              {formatTimestamp(job.end_at)}
+                                            </Typography>
+                                          )}
+                                          <Typography
+                                            level="body-xs"
+                                            sx={{
+                                              color: "text.secondary",
+                                              mb: 1,
+                                            }}
                                           >
-                                            View Logs
-                                          </Button>
-                                          {/* Show cancel button only for running jobs */}
-                                          {(job.status ===
-                                            "JobStatus.RUNNING" ||
-                                            job.status ===
-                                              "JobStatus.PENDING" ||
-                                            job.status ===
-                                              "JobStatus.SETTING_UP") && (
+                                            Resources: {job.resources}
+                                          </Typography>
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              gap: 1,
+                                              mt: 1,
+                                            }}
+                                          >
                                             <Button
                                               size="sm"
                                               variant="outlined"
-                                              color="danger"
-                                              startDecorator={<X size={14} />}
                                               onClick={() =>
-                                                cancelJob(
+                                                fetchJobLogs(
                                                   cluster.cluster_name,
                                                   job.job_id
                                                 )
                                               }
-                                              loading={
-                                                cancelLoading[
-                                                  `${cluster.cluster_name}_${job.job_id}`
-                                                ]
-                                              }
-                                              disabled={
-                                                cancelLoading[
-                                                  `${cluster.cluster_name}_${job.job_id}`
-                                                ]
-                                              }
                                             >
-                                              Cancel
+                                              View Logs
                                             </Button>
+                                            {/* Show cancel button only for running jobs */}
+                                            {(job.status ===
+                                              "JobStatus.RUNNING" ||
+                                              job.status ===
+                                                "JobStatus.PENDING" ||
+                                              job.status ===
+                                                "JobStatus.SETTING_UP") && (
+                                              <Button
+                                                size="sm"
+                                                variant="outlined"
+                                                color="danger"
+                                                startDecorator={<X size={14} />}
+                                                onClick={() =>
+                                                  cancelJob(
+                                                    cluster.cluster_name,
+                                                    job.job_id
+                                                  )
+                                                }
+                                                loading={
+                                                  cancelLoading[
+                                                    `${cluster.cluster_name}_${job.job_id}`
+                                                  ]
+                                                }
+                                                disabled={
+                                                  cancelLoading[
+                                                    `${cluster.cluster_name}_${job.job_id}`
+                                                  ]
+                                                }
+                                              >
+                                                Cancel
+                                              </Button>
+                                            )}
+                                            {/* Show port forward button for Jupyter jobs */}
+                                            {job.status ===
+                                              "JobStatus.RUNNING" &&
+                                              job.job_name &&
+                                              job.job_name.includes(
+                                                "-jupyter-"
+                                              ) && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="outlined"
+                                                  color="primary"
+                                                  onClick={() => {
+                                                    const portMatch =
+                                                      job.job_name.match(
+                                                        /port(\d+)/
+                                                      );
+                                                    const port = portMatch
+                                                      ? parseInt(portMatch[1])
+                                                      : 8888;
+                                                    setupJobPortForward(
+                                                      cluster.cluster_name,
+                                                      job.job_id,
+                                                      "jupyter",
+                                                      port
+                                                    );
+                                                  }}
+                                                >
+                                                  Setup Port Forward
+                                                </Button>
+                                              )}
+                                          </Box>
+                                          {selectedJobId === job.job_id && (
+                                            <Box sx={{ mt: 2 }}>
+                                              <Typography
+                                                level="body-xs"
+                                                sx={{ mb: 1 }}
+                                              >
+                                                Logs:
+                                              </Typography>
+                                              {logsLoading ? (
+                                                <CircularProgress size="sm" />
+                                              ) : (
+                                                <Textarea
+                                                  value={
+                                                    selectedJobLogs ||
+                                                    "No logs available"
+                                                  }
+                                                  readOnly
+                                                  minRows={8}
+                                                  maxRows={12}
+                                                  sx={{
+                                                    fontFamily: "monospace",
+                                                    fontSize: "sm",
+                                                    width: "100%",
+                                                    "& textarea": {
+                                                      resize: "none",
+                                                    },
+                                                  }}
+                                                />
+                                              )}
+                                            </Box>
                                           )}
                                         </Box>
-                                        {selectedJobId === job.job_id && (
-                                          <Box sx={{ mt: 2 }}>
-                                            <Typography
-                                              level="body-xs"
-                                              sx={{ mb: 1 }}
-                                            >
-                                              Logs:
-                                            </Typography>
-                                            {logsLoading ? (
-                                              <CircularProgress size="sm" />
-                                            ) : (
-                                              <Textarea
-                                                value={
-                                                  selectedJobLogs ||
-                                                  "No logs available"
-                                                }
-                                                readOnly
-                                                minRows={8}
-                                                maxRows={12}
-                                                sx={{
-                                                  fontFamily: "monospace",
-                                                  fontSize: "sm",
-                                                  width: "100%",
-                                                  "& textarea": {
-                                                    resize: "none",
-                                                  },
-                                                }}
-                                              />
-                                            )}
-                                          </Box>
-                                        )}
-                                      </Box>
-                                    </ListItem>
-                                  </React.Fragment>
-                                ))
+                                      </ListItem>
+                                    </React.Fragment>
+                                  )
+                                )
                               )}
                             </List>
                           )}
@@ -976,7 +1077,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         onClose={handleCloseSubmitJobModal}
         clusterName={jobModalCluster}
         onJobSubmitted={() => {
-          if (expandedCluster) fetchJobs(expandedCluster);
+          if (expandedCluster) mutateJobs();
         }}
         isClusterLaunching={
           clusters

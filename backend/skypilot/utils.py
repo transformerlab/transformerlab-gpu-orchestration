@@ -325,10 +325,22 @@ def submit_job_to_existing_cluster(
     region: Optional[str] = None,
     zone: Optional[str] = None,
     job_name: Optional[str] = None,
+    job_type: Optional[str] = None,
+    jupyter_port: Optional[int] = None,
+    vscode_port: Optional[int] = None,
 ):
     try:
+        # Create job name with metadata if it's a special job type
+        final_job_name = job_name if job_name else f"lattice-job-{cluster_name}"
+        if job_type and job_type != "custom":
+            final_job_name = f"{final_job_name}-{job_type}"
+            if job_type == "jupyter" and jupyter_port:
+                final_job_name = f"{final_job_name}-port{jupyter_port}"
+            elif job_type == "vscode" and vscode_port:
+                final_job_name = f"{final_job_name}-port{vscode_port}"
+
         task = sky.Task(
-            name=job_name if job_name else f"lattice-job-{cluster_name}",
+            name=final_job_name,
             run=command,
             setup=setup,
         )
@@ -349,10 +361,16 @@ def submit_job_to_existing_cluster(
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
+
         request_id = sky.exec(
             task,
             cluster_name=cluster_name,
         )
+
+        # Note: Port forwarding for Jupyter jobs is handled separately
+        # when the job actually starts running, not at submission time
+        # since jobs may be queued and not start immediately
+
         return request_id
     except Exception as e:
         from fastapi import HTTPException

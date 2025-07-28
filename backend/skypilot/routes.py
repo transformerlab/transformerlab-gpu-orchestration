@@ -299,8 +299,44 @@ async def cancel_cluster_job(
             "result": result["result"],
         }
     except Exception as e:
-        print(f"Failed to cancel job: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
+
+
+@router.post("/jobs/{cluster_name}/{job_id}/setup-port-forward")
+async def setup_job_port_forward(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+    job_type: str = Form(...),
+    jupyter_port: Optional[int] = Form(None),
+    vscode_port: Optional[int] = Form(None),
+):
+    """Setup port forwarding for a specific job (typically called when job starts running)."""
+    try:
+        from .port_forwarding import setup_port_forwarding_async
+
+        # Setup port forwarding asynchronously
+        result = await setup_port_forwarding_async(
+            cluster_name, job_type, jupyter_port, vscode_port
+        )
+
+        if result:
+            return {
+                "job_id": job_id,
+                "cluster_name": cluster_name,
+                "message": f"Port forwarding setup successfully for job {job_id}",
+                "port_forward_info": result,
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to setup port forwarding for job {job_id}",
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to setup port forwarding: {str(e)}"
+        )
 
 
 @router.post("/stop", response_model=StopClusterResponse)
@@ -386,6 +422,9 @@ async def submit_job_to_cluster(
     zone: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
     python_file: Optional[UploadFile] = File(None),
+    job_type: Optional[str] = Form(None),
+    jupyter_port: Optional[int] = Form(None),
+    vscode_port: Optional[int] = Form(None),
 ):
     try:
         file_mounts = None
@@ -416,6 +455,9 @@ async def submit_job_to_cluster(
             region=region,
             zone=zone,
             job_name=job_name,
+            job_type=job_type,
+            jupyter_port=jupyter_port,
+            vscode_port=vscode_port,
         )
 
         return {

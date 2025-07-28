@@ -144,7 +144,12 @@ echo "c.NotebookApp.token = ''" >> ~/.jupyter/jupyter_notebook_config.py
 echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"
 jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser`
         );
-        formData.append("job_name", `jupyter-${clusterName}`);
+        formData.append(
+          "job_name",
+          `jupyter-${clusterName}-port${jupyterPort}`
+        );
+        formData.append("job_type", "jupyter");
+        formData.append("jupyter_port", jupyterPort);
 
         const response = await fetch(
           buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
@@ -164,6 +169,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
             successMessage += `\n\n📋 Job ID: ${data.request_id}`;
             successMessage += `\n🔗 Jupyter will be available at http://localhost:${jupyterPort}`;
             successMessage += `\n📝 Check the Jobs tab to monitor the Jupyter job status`;
+            successMessage += `\n✅ Port forwarding will be set up automatically when the job starts running`;
           }
 
           setSuccess(successMessage);
@@ -196,12 +202,14 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
             <br />
             ✅ Jupyter will be submitted as a job to the cluster
             <br />
-            🔗 Once the job starts running, you can access Jupyter via SSH port
-            forwarding
+            🔗 Once the job starts running, port forwarding will be set up
+            automatically
             <br />
             📝 Check the Jobs tab to monitor the Jupyter job status
             <br />
-            🔗 To access Jupyter:{" "}
+            ✅ You'll see a "Setup Port Forward" button when the job is running
+            <br />
+            🔗 Manual access:{" "}
             <code>
               ssh -L {jupyterPort}:localhost:{jupyterPort} {clusterName}
             </code>
