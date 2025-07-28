@@ -33,6 +33,7 @@ from skypilot.utils import (
     stop_cluster_with_skypilot,
     down_cluster_with_skypilot,
     fetch_and_parse_gpu_resources,
+    cancel_job_with_skypilot,
 )
 from skypilot.port_forwarding import port_forward_manager
 from skypilot.runpod_utils import (
@@ -278,6 +279,28 @@ async def get_cluster_job_logs(
     except Exception as e:
         print(f"Failed to get job logs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
+
+
+@router.post("/jobs/{cluster_name}/{job_id}/cancel")
+async def cancel_cluster_job(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+):
+    """Cancel a job on a SkyPilot cluster."""
+    try:
+        result = cancel_job_with_skypilot(cluster_name, job_id)
+        return {
+            "request_id": result["request_id"],
+            "job_id": job_id,
+            "cluster_name": cluster_name,
+            "message": result["message"],
+            "result": result["result"],
+        }
+    except Exception as e:
+        print(f"Failed to cancel job: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
 
 
 @router.post("/stop", response_model=StopClusterResponse)

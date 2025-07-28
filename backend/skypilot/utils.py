@@ -358,3 +358,24 @@ def submit_job_to_existing_cluster(
         from fastapi import HTTPException
 
         raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
+
+
+def cancel_job_with_skypilot(cluster_name: str, job_id: int):
+    """Cancel a job on a SkyPilot cluster using the SkyPilot SDK."""
+    try:
+        import sky
+
+        # Use sky.cancel to cancel the job
+        # The job_id should be passed as a string to match the expected format
+        request_id = sky.cancel(cluster_name=cluster_name, job_ids=[str(job_id)])
+
+        # Wait for the cancel operation to complete
+        result = sky.get(request_id)
+
+        return {
+            "request_id": request_id,
+            "result": result,
+            "message": f"Job {job_id} cancellation initiated successfully",
+        }
+    except Exception as e:
+        raise Exception(f"Failed to cancel job {job_id}: {str(e)}")

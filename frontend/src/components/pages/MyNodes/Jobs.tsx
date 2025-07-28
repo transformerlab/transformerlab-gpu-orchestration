@@ -6,7 +6,9 @@ import {
   CircularProgress,
   Chip,
   Textarea,
+  Button,
 } from "@mui/joy";
+import { X } from "lucide-react";
 import { buildApiUrl } from "../../../utils/api";
 
 interface Job {
@@ -49,6 +51,10 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch jobs for each cluster
   useEffect(() => {
@@ -115,6 +121,50 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       setSelectedJobLogs("Error fetching logs");
     } finally {
       setLogsLoading(false);
+    }
+  };
+
+  // Cancel a job
+  const cancelJob = async (clusterName: string, jobId: number) => {
+    const cancelKey = `${clusterName}_${jobId}`;
+    try {
+      setCancelLoading((prev) => ({ ...prev, [cancelKey]: true }));
+      setError(null);
+
+      const response = await fetch(
+        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to cancel job: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("Job cancelled successfully:", data);
+
+      // Refresh the jobs for this cluster
+      const updatedClusters = clustersWithJobs.map((cluster) => {
+        if (cluster.cluster_name === clusterName) {
+          return {
+            ...cluster,
+            jobs: cluster.jobs.map((job) =>
+              job.job_id === jobId
+                ? { ...job, status: "JobStatus.CANCELLED" }
+                : job
+            ),
+          };
+        }
+        return cluster;
+      });
+      setClustersWithJobs(updatedClusters);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel job");
+    } finally {
+      setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
     }
   };
 
@@ -189,6 +239,12 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
         Cloud Node Pools
       </Typography>
 
+      {error && (
+        <Box sx={{ mb: 2, p: 2, bgcolor: "danger.50", borderRadius: 1 }}>
+          <Typography color="danger">{error}</Typography>
+        </Box>
+      )}
+
       {clustersWithJobs.map((cluster) => (
         <Box key={cluster.cluster_name} sx={{ mb: 4 }}>
           <Typography level="h4" sx={{ mb: 2 }}>
@@ -260,19 +316,43 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                       </Typography>
                     </td>
                     <td>
-                      <Typography
-                        level="body-sm"
-                        sx={{
-                          cursor: "pointer",
-                          color: "primary.500",
-                          textDecoration: "underline",
-                        }}
-                        onClick={() =>
-                          fetchJobLogs(cluster.cluster_name, job.job_id)
-                        }
-                      >
-                        View Logs
-                      </Typography>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          onClick={() =>
+                            fetchJobLogs(cluster.cluster_name, job.job_id)
+                          }
+                        >
+                          View Logs
+                        </Button>
+                        {/* Show cancel button only for running jobs */}
+                        {(job.status === "JobStatus.RUNNING" ||
+                          job.status === "JobStatus.PENDING" ||
+                          job.status === "JobStatus.SETTING_UP") && (
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            color="danger"
+                            startDecorator={<X size={14} />}
+                            onClick={() =>
+                              cancelJob(cluster.cluster_name, job.job_id)
+                            }
+                            loading={
+                              cancelLoading[
+                                `${cluster.cluster_name}_${job.job_id}`
+                              ]
+                            }
+                            disabled={
+                              cancelLoading[
+                                `${cluster.cluster_name}_${job.job_id}`
+                              ]
+                            }
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </Box>
                     </td>
                   </tr>
                 ))}
