@@ -15,8 +15,9 @@ import {
   Select,
   Option,
   Checkbox,
+  Alert,
 } from "@mui/joy";
-import { Play, Rocket } from "lucide-react";
+import { Play, Rocket, Terminal, Code, BookOpen } from "lucide-react";
 import { buildApiUrl, runpodApi } from "../utils/api";
 
 interface LaunchClusterRequest {
@@ -50,6 +51,8 @@ interface SSHCluster {
   has_defaults: boolean;
 }
 
+type LaunchMode = "custom" | "jupyter" | "ssh" | "vscode";
+
 const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   onClusterLaunched,
 }) => {
@@ -61,6 +64,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   // Form states
   const [clusterName, setClusterName] = useState("");
+  const [launchMode, setLaunchMode] = useState<LaunchMode>("custom");
   const [command, setCommand] = useState("echo 'Hello SkyPilot'");
   const [setup, setSetup] = useState("");
   const [cloud, setCloud] = useState("");
@@ -74,6 +78,11 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [pythonFile, setPythonFile] = useState<File | null>(null);
 
+  // Interactive development specific states
+  const [jupyterPort, setJupyterPort] = useState("8888");
+  const [jupyterPassword, setJupyterPassword] = useState("");
+  const [vscodePort, setVscodePort] = useState("8888");
+
   // RunPod specific state
   const [runpodGpuTypes, setRunpodGpuTypes] = useState<string[]>([]);
   const [runpodSetupStatus, setRunpodSetupStatus] = useState<
@@ -82,6 +91,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   const resetForm = () => {
     setClusterName("");
+    setLaunchMode("custom");
     setCommand("echo 'Hello SkyPilot'");
     setSetup("");
     setCloud("");
@@ -94,6 +104,9 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     setUseSpot(false);
     setIdleMinutesToAutostop("");
     setPythonFile(null);
+    setJupyterPort("8888");
+    setJupyterPassword("");
+    setVscodePort("8888");
   };
 
   const fetchSSHClusters = async () => {
@@ -117,6 +130,38 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
       setupRunPod();
     }
   }, [cloud]);
+
+  // Update command and setup based on launch mode
+  useEffect(() => {
+    switch (launchMode) {
+      case "jupyter":
+        setCommand(
+          `jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --allow-root --no-browser`
+        );
+        setSetup(`pip install jupyter
+echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
+        break;
+      case "ssh":
+        setCommand("echo 'SSH cluster ready for connection'");
+        setSetup(
+          "echo 'SSH cluster is ready. Use: ssh " +
+            (clusterName || "your-cluster-name") +
+            "'"
+        );
+        break;
+      case "vscode":
+        setCommand(
+          `code-server --port ${vscodePort} --host 0.0.0.0 --auth none`
+        );
+        setSetup(`curl -fsSL https://code-server.dev/install.sh | sh
+echo "VSCode server will be available at http://localhost:${vscodePort}"`);
+        break;
+      case "custom":
+        setCommand("echo 'Hello SkyPilot'");
+        setSetup("");
+        break;
+    }
+  }, [launchMode, jupyterPort, vscodePort, clusterName]);
 
   const setupRunPod = async () => {
     try {
@@ -185,6 +230,65 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     }
   };
 
+  const getConnectionInstructions = () => {
+    if (!clusterName) return null;
+
+    switch (launchMode) {
+      case "jupyter":
+        return (
+          <Alert color="primary" sx={{ mt: 2 }}>
+            <Typography level="body-sm">
+              <strong>After launch, connect to Jupyter:</strong>
+              <br />
+              1. SSH to the cluster: <code>ssh {clusterName}</code>
+              <br />
+              2. Forward the port:{" "}
+              <code>
+                ssh -L {jupyterPort}:localhost:{jupyterPort} {clusterName}
+              </code>
+              <br />
+              3. Open <code>http://localhost:{jupyterPort}</code> in your
+              browser
+            </Typography>
+          </Alert>
+        );
+      case "ssh":
+        return (
+          <Alert color="primary" sx={{ mt: 2 }}>
+            <Typography level="body-sm">
+              <strong>SSH Connection:</strong>
+              <br />
+              Use: <code>ssh {clusterName}</code>
+              <br />
+              The cluster will be ready for direct SSH access.
+            </Typography>
+          </Alert>
+        );
+      case "vscode":
+        return (
+          <Alert color="primary" sx={{ mt: 2 }}>
+            <Typography level="body-sm">
+              <strong>VSCode Remote Connection:</strong>
+              <br />
+              1. SSH to the cluster: <code>ssh {clusterName}</code>
+              <br />
+              2. Forward the port:{" "}
+              <code>
+                ssh -L {vscodePort}:localhost:{vscodePort} {clusterName}
+              </code>
+              <br />
+              3. Open <code>http://localhost:{vscodePort}</code> in your browser
+              <br />
+              4. Or use VSCode Remote-SSH extension:{" "}
+              <code>ssh {clusterName}</code>
+            </Typography>
+          </Alert>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Box>
       {error && (
@@ -226,7 +330,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
           disabled={loading}
           color="success"
         >
-          Select Cloud Instance to Launch
+          Launch Interactive Development Environment
         </Button>
       </Box>
 
@@ -236,17 +340,58 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
           size="lg"
           sx={{
             width: "90vw",
-            maxWidth: "800px",
+            maxWidth: "900px",
             maxHeight: "90vh",
             overflowY: "auto",
           }}
         >
           <ModalClose />
           <Typography level="h4" sx={{ mb: 2 }}>
-            Select Cloud Instance to Launch
+            Launch Interactive Development Environment
           </Typography>
 
           <Stack spacing={3}>
+            {/* Launch Mode Selection */}
+            <Card variant="outlined">
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Development Environment Type
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ width: "100%" }}>
+                <Button
+                  variant={launchMode === "custom" ? "solid" : "outlined"}
+                  onClick={() => setLaunchMode("custom")}
+                  sx={{ flex: 1 }}
+                  startDecorator={<Terminal size={16} />}
+                >
+                  Custom Command
+                </Button>
+                <Button
+                  variant={launchMode === "jupyter" ? "solid" : "outlined"}
+                  onClick={() => setLaunchMode("jupyter")}
+                  sx={{ flex: 1 }}
+                  startDecorator={<BookOpen size={16} />}
+                >
+                  Jupyter Notebook
+                </Button>
+                <Button
+                  variant={launchMode === "ssh" ? "solid" : "outlined"}
+                  onClick={() => setLaunchMode("ssh")}
+                  sx={{ flex: 1 }}
+                  startDecorator={<Terminal size={16} />}
+                >
+                  SSH Access
+                </Button>
+                <Button
+                  variant={launchMode === "vscode" ? "solid" : "outlined"}
+                  onClick={() => setLaunchMode("vscode")}
+                  sx={{ flex: 1 }}
+                  startDecorator={<Code size={16} />}
+                >
+                  VSCode Server
+                </Button>
+              </Stack>
+            </Card>
+
             {/* Resource Configuration */}
             <Card variant="outlined">
               <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -394,7 +539,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
             {/* Basic Configuration */}
             <Card variant="outlined">
               <Typography level="title-sm" sx={{ mb: 2 }}>
-                Launch Task Configuration
+                Launch Configuration
               </Typography>
               <Stack spacing={2}>
                 <FormControl required>
@@ -415,7 +560,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                     <Input
                       value={clusterName}
                       onChange={(e) => setClusterName(e.target.value)}
-                      placeholder="my-skypilot-cluster"
+                      placeholder="my-dev-cluster"
                     />
                   )}
                   {cloud === "ssh" && sshClusters.length === 0 && (
@@ -426,46 +571,113 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
                   )}
                 </FormControl>
 
-                <FormControl required>
-                  <FormLabel>Run Command</FormLabel>
-                  <Textarea
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    placeholder="echo 'Hello SkyPilot'"
-                    minRows={2}
-                  />
-                </FormControl>
+                {/* Interactive Development Options */}
+                {launchMode === "jupyter" && (
+                  <Box sx={{ display: "flex", gap: 2 }}>
+                    <FormControl sx={{ flex: 1 }}>
+                      <FormLabel>Jupyter Port</FormLabel>
+                      <Input
+                        value={jupyterPort}
+                        onChange={(e) => setJupyterPort(e.target.value)}
+                        placeholder="8888"
+                      />
+                    </FormControl>
+                    <FormControl sx={{ flex: 1 }}>
+                      <FormLabel>Password (optional)</FormLabel>
+                      <Input
+                        value={jupyterPassword}
+                        onChange={(e) => setJupyterPassword(e.target.value)}
+                        placeholder="Leave empty for token auth"
+                        type="password"
+                      />
+                    </FormControl>
+                  </Box>
+                )}
 
-                <FormControl>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setup}
-                    onChange={(e) => setSetup(e.target.value)}
-                    placeholder="pip install -r requirements.txt"
-                    minRows={2}
-                  />
-                </FormControl>
+                {launchMode === "vscode" && (
+                  <FormControl>
+                    <FormLabel>VSCode Server Port</FormLabel>
+                    <Input
+                      value={vscodePort}
+                      onChange={(e) => setVscodePort(e.target.value)}
+                      placeholder="8888"
+                    />
+                  </FormControl>
+                )}
 
-                <FormControl>
-                  <FormLabel>Attach Python file (optional)</FormLabel>
-                  <input
-                    type="file"
-                    accept=".py"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files.length > 0) {
-                        setPythonFile(e.target.files[0]);
-                      } else {
-                        setPythonFile(null);
-                      }
-                    }}
-                    style={{ marginTop: 8 }}
-                  />
-                  {pythonFile && (
-                    <Typography level="body-xs" color="primary">
-                      Selected: {pythonFile.name}
-                    </Typography>
-                  )}
-                </FormControl>
+                {/* Custom Command Section - only show for custom mode */}
+                {launchMode === "custom" && (
+                  <>
+                    <FormControl required>
+                      <FormLabel>Run Command</FormLabel>
+                      <Textarea
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        placeholder="echo 'Hello SkyPilot'"
+                        minRows={2}
+                      />
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel>Setup Command (optional)</FormLabel>
+                      <Textarea
+                        value={setup}
+                        onChange={(e) => setSetup(e.target.value)}
+                        placeholder="pip install -r requirements.txt"
+                        minRows={2}
+                      />
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel>Attach Python file (optional)</FormLabel>
+                      <input
+                        type="file"
+                        accept=".py"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            setPythonFile(e.target.files[0]);
+                          } else {
+                            setPythonFile(null);
+                          }
+                        }}
+                        style={{ marginTop: 8 }}
+                      />
+                      {pythonFile && (
+                        <Typography level="body-xs" color="primary">
+                          Selected: {pythonFile.name}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  </>
+                )}
+
+                {/* Show generated command/setup for interactive modes */}
+                {launchMode !== "custom" && (
+                  <>
+                    <FormControl>
+                      <FormLabel>Generated Command</FormLabel>
+                      <Textarea
+                        value={command}
+                        readOnly
+                        minRows={2}
+                        sx={{ fontFamily: "monospace" }}
+                      />
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel>Generated Setup</FormLabel>
+                      <Textarea
+                        value={setup}
+                        readOnly
+                        minRows={2}
+                        sx={{ fontFamily: "monospace" }}
+                      />
+                    </FormControl>
+                  </>
+                )}
+
+                {/* Connection Instructions */}
+                {getConnectionInstructions()}
               </Stack>
             </Card>
 
@@ -520,11 +732,18 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
               </Button>
               <Button
                 onClick={launchCluster}
-                disabled={!clusterName || !command || loading}
+                disabled={!clusterName || loading}
                 loading={loading}
                 startDecorator={<Play size={16} />}
               >
-                Launch Cluster
+                Launch{" "}
+                {launchMode === "jupyter"
+                  ? "Jupyter"
+                  : launchMode === "ssh"
+                  ? "SSH Cluster"
+                  : launchMode === "vscode"
+                  ? "VSCode Server"
+                  : "Cluster"}
               </Button>
             </Box>
           </Stack>
