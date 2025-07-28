@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography, Table, Avatar, Chip, Button } from "@mui/joy";
+import { Plus } from "lucide-react";
 
 const fakeUsers = [
   {
@@ -28,19 +29,27 @@ const Users: React.FC = () => {
       sx={{
         maxWidth: 1000,
         mx: "auto",
-        p: 2,
       }}
     >
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h2" sx={{ mb: 1 }}>
-          Users
-        </Typography>
-        <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          All users at Square Bank
-        </Typography>
-      </Box>
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button variant="solid" color="primary">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+        }}
+      >
+        <Box>
+          <Typography level="h2">Users</Typography>
+          <Typography level="body-lg" sx={{ color: "text.secondary" }}>
+            All users at Square Bank
+          </Typography>
+        </Box>
+        <Button
+          variant="solid"
+          color="primary"
+          startDecorator={<Plus size={16} />}
+        >
           Add User
         </Button>
       </Box>
