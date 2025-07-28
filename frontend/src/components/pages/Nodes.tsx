@@ -34,8 +34,9 @@ import SubmitJobModal from "../SubmitJobModal";
 
 interface Node {
   id: string;
-  status: "reserved" | "requestable" | "active" | "unhealthy";
-  user?: string; // allow string for user
+  type: "dedicated" | "on-demand" | "spot"; // Node type
+  status: "active" | "inactive" | "unhealthy"; // Node status
+  user?: string; // User assignment
   gpuType?: string;
   cpuType?: string;
   vcpus?: number;
@@ -43,8 +44,8 @@ interface Node {
   ip: string;
   jobName?: string;
   experimentName?: string;
-  identity_file?: string; // add this
-  password?: string; // add this
+  identity_file?: string;
+  password?: string;
 }
 
 interface Cluster {
@@ -89,32 +90,49 @@ function randomIp() {
 
 const generateRandomNodes = (count: number): Node[] => {
   const users = ["ali", "bob", "catherine"];
+  const types: ("dedicated" | "on-demand" | "spot")[] = [
+    "dedicated",
+    "on-demand",
+    "spot",
+  ];
+  const statuses: ("active" | "inactive" | "unhealthy")[] = [
+    "active",
+    "inactive",
+    "unhealthy",
+  ];
+
   return Array.from({ length: count }, (_, i) => {
-    const rand = Math.random();
-    let status: "reserved" | "requestable" | "active" | "unhealthy";
+    const type = types[Math.floor(Math.random() * types.length)];
+    const statusRand = Math.random();
+    let status: "active" | "inactive" | "unhealthy";
     let user: string | undefined;
     let jobName: string | undefined;
     let experimentName: string | undefined;
-    if (rand < 0.5) {
-      status = "reserved";
-    } else if (rand < 0.75) {
-      status = "requestable";
-    } else if (rand < 0.95) {
+
+    if (statusRand < 0.6) {
       status = "active";
-      user = users[Math.floor(Math.random() * users.length)];
-      jobName = jobNames[Math.floor(Math.random() * jobNames.length)];
-      experimentName =
-        experimentNames[Math.floor(Math.random() * experimentNames.length)];
+      // Assign user if active
+      if (Math.random() < 0.7) {
+        user = users[Math.floor(Math.random() * users.length)];
+        jobName = jobNames[Math.floor(Math.random() * jobNames.length)];
+        experimentName =
+          experimentNames[Math.floor(Math.random() * experimentNames.length)];
+      }
+    } else if (statusRand < 0.9) {
+      status = "inactive";
     } else {
       status = "unhealthy";
     }
+
     const gpuType = gpuTypes[Math.floor(Math.random() * gpuTypes.length)];
     const cpuType = cpuTypes[Math.floor(Math.random() * cpuTypes.length)];
     const vcpus = [4, 8, 16, 32, 64][Math.floor(Math.random() * 5)];
     const vgpus = [1, 2, 4, 8][Math.floor(Math.random() * 4)];
     const ip = randomIp();
+
     return {
       id: `node-${i}`,
+      type,
       status,
       ...(user ? { user } : {}),
       ...(jobName ? { jobName } : {}),
@@ -151,34 +169,37 @@ const mockClusters: Cluster[] = [
   },
 ];
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "reserved":
-      return "#10b981"; // emerald-500
-    case "requestable":
-      return "#6b7280"; // gray-500
-    case "active":
-      return "#3b82f6"; // blue-500 (light blue)
-    case "unhealthy":
-      return "#ef4444"; // red-500
-    default:
-      return "#6b7280"; // gray-500
-  }
+const getStatusBackground = (status: string, type: string) => {
+  // Background based on status
+  if (status === "active") return "#10b981"; // green
+  if (status === "inactive") return "unset"; // grey
+  if (status === "unhealthy") return "#f59e0b"; // orange
+  return "#6b7280"; // default grey
 };
 
-const getStatusOrder = (status: string): number => {
-  switch (status) {
-    case "active":
-      return 1;
-    case "reserved":
-      return 2;
-    case "requestable":
-      return 3;
-    case "unhealthy":
-      return 4;
-    default:
-      return 5;
-  }
+const getStatusBorderColor = (status: string, type: string) => {
+  // Border based on status
+  if (status === "active") return "#10b981"; // green
+  if (status === "inactive") return "#6b7280"; // grey
+  if (status === "unhealthy") return "#f59e0b"; // red
+  return "#6b7280"; // default grey
+};
+
+const getStatusOrder = (status: string, type: string): number => {
+  let sort1 = 0;
+  let sort2 = 0;
+
+  // Then by type
+  if (type === "dedicated") sort1 = 1;
+  if (type === "on-demand") sort1 = 2;
+  if (type === "spot") sort1 = 3;
+
+  // First sort by status priority
+  if (status === "active") sort2 = 1;
+  if (status === "inactive") sort2 = 2;
+  if (status === "unhealthy") sort2 = 3;
+
+  return sort1 * 10 + sort2;
 };
 
 const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
@@ -186,10 +207,16 @@ const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
     title={
       <Box>
         <Typography level="body-sm">
+          <b>Type:</b> {node.type}
+        </Typography>
+        <Typography level="body-sm">
+          <b>Status:</b> {node.status}
+        </Typography>
+        <Typography level="body-sm">
           <b>IP:</b> {node.ip}
         </Typography>
         <Typography level="body-sm">
-          <b>User:</b> {node.user}
+          <b>User:</b> {node.user || "Unassigned"}
         </Typography>
         {node.identity_file && (
           <Typography level="body-sm">
@@ -210,37 +237,36 @@ const NodeSquare: React.FC<{ node: any }> = ({ node }) => (
     <Box
       sx={{
         width: 12,
-        height: 12,
-        backgroundColor:
-          node.user === "ali" ? "#3b83f61e" : getStatusColor(node.status),
+        height: 26,
+        backgroundColor: getStatusBackground(node.status, node.type),
         borderRadius: "2px",
         margin: "1px",
         transition: "all 0.2s ease",
         cursor: "pointer",
-        border: node.user === "ali" ? "2px solid #3b82f6" : undefined,
+        border: `2px solid ${getStatusBorderColor(node.status, node.type)}`,
         boxSizing: "border-box",
+        position: "relative",
         "&:hover": {
           transform: "scale(1.2)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
         },
-        ...(node.user === "ali"
-          ? {
-              animation: "pulseFill 2.5s infinite",
-              "@keyframes pulseFill": {
-                "0%": {
-                  backgroundColor: "#3b83f61e",
-                },
-                "50%": {
-                  backgroundColor: "#3b83f666",
-                },
-                "100%": {
-                  backgroundColor: "#3b83f61e",
-                },
-              },
-            }
-          : {}),
       }}
-    />
+    >
+      {node.user === "ali" && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            backgroundColor: "#1a2f5dff",
+          }}
+        />
+      )}
+    </Box>
   </Tooltip>
 );
 
@@ -248,12 +274,13 @@ const ClusterCard: React.FC<{
   cluster: Cluster;
   setSelectedCluster: React.Dispatch<React.SetStateAction<Cluster | null>>;
 }> = ({ cluster, setSelectedCluster }) => {
-  const reservedCount = cluster.nodes.filter(
-    (n) => n.status === "reserved"
+  const dedicatedCount = cluster.nodes.filter(
+    (n) => n.type === "dedicated"
   ).length;
-  const requestableCount = cluster.nodes.filter(
-    (n) => n.status === "requestable"
+  const onDemandCount = cluster.nodes.filter(
+    (n) => n.type === "on-demand"
   ).length;
+  const spotCount = cluster.nodes.filter((n) => n.type === "spot").length;
   const activeCount = cluster.nodes.filter((n) => n.status === "active").length;
   const unhealthyCount = cluster.nodes.filter(
     (n) => n.status === "unhealthy"
@@ -263,7 +290,8 @@ const ClusterCard: React.FC<{
   ).length;
 
   const sortedNodes = [...cluster.nodes].sort(
-    (a, b) => getStatusOrder(a.status) - getStatusOrder(b.status)
+    (a, b) =>
+      getStatusOrder(a.status, a.type) - getStatusOrder(b.status, b.type)
   );
 
   return (
@@ -307,19 +335,11 @@ const ClusterCard: React.FC<{
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
               <Chip size="sm" color="primary" variant="soft">
-                {assignedToYouCount} Assigned To You
+                {assignedToYouCount} Nodes Assigned To You
               </Chip>
               <Chip size="sm" color="success" variant="soft">
-                {reservedCount} Reserved
-              </Chip>
-              <Chip size="sm" color="neutral" variant="soft">
-                {requestableCount} Requestable
-              </Chip>
-              <Chip size="sm" color="warning" variant="soft">
-                {activeCount} Active
-              </Chip>
-              <Chip size="sm" color="danger" variant="soft">
-                {unhealthyCount} Unhealthy
+                {Math.round((activeCount / cluster.nodes.length) * 100)}% Total
+                Capacity In Use
               </Chip>
             </Stack>
           </Box>
@@ -328,22 +348,67 @@ const ClusterCard: React.FC<{
           </div>
         </Button>
       </Box>
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "1px",
-          p: 2,
-          backgroundColor: "background.level1",
-          borderRadius: "md",
-          maxHeight: 200,
-          overflow: "auto",
-        }}
-      >
-        {sortedNodes.map((node) => (
-          <NodeSquare key={node.id} node={node} />
-        ))}
+
+      {/* Group nodes by type, display in two columns */}
+      <Box sx={{ mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 3,
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+          }}
+        >
+          {["dedicated", "on-demand", "spot"].map((nodeType, idx) => {
+            const nodesOfType = sortedNodes.filter(
+              (node) => node.type === nodeType
+            );
+            if (nodesOfType.length === 0) return null;
+
+            // Distribute node types into two columns: 0,2 left; 1 right
+            const isLeftColumn = idx % 2 === 0;
+
+            return (
+              <Box
+                key={nodeType}
+                sx={{
+                  flex: "1 1 0",
+                  minWidth: 0,
+                  maxWidth: "50%",
+                  mb: 3,
+                }}
+              >
+                <Typography
+                  level="title-sm"
+                  sx={{ mb: 1, textTransform: "capitalize" }}
+                >
+                  {nodeType === "on-demand"
+                    ? "On-Demand"
+                    : nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}{" "}
+                  Nodes ({nodesOfType.length})
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "1px",
+                    p: 2,
+                    backgroundColor: "background.level1",
+                    borderRadius: "md",
+                    maxHeight: 200,
+                    overflow: "auto",
+                  }}
+                >
+                  {nodesOfType.map((node) => (
+                    <NodeSquare key={node.id} node={node} />
+                  ))}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
       </Box>
+
       <Stack direction="row" spacing={1}>
         <Button variant="plain">Reserve a Node</Button>
         <Button variant="plain">Start a Job</Button>
@@ -505,6 +570,7 @@ const Nodes: React.FC = () => {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Type</th>
                 <th>Status</th>
                 <th>User</th>
                 <th>GPU</th>
@@ -539,6 +605,7 @@ const Nodes: React.FC = () => {
                 return (
                   <tr key={node.id}>
                     <td>{node.id}</td>
+                    <td>{node.type}</td>
                     <td>{node.status}</td>
                     <td>{node.user ?? "-"}</td>
                     <td>{gpuDisplay}</td>
