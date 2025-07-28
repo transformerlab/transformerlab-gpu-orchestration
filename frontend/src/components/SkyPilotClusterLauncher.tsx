@@ -159,13 +159,9 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         break;
       case "vscode":
         setCommand(
-          `$HOME/.local/bin/code-server --port ${vscodePort} --host 0.0.0.0 --auth none`
+          `code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`
         );
-        setSetup(`# Install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-# Ensure code-server is in PATH for the run command
-export PATH="$HOME/.local/bin:$PATH"
-echo "VSCode server will be available at http://localhost:${vscodePort}"`);
+        setSetup(`curl -fsSL https://code-server.dev/install.sh | bash`);
         break;
       case "custom":
         setCommand("echo 'Hello SkyPilot'");
