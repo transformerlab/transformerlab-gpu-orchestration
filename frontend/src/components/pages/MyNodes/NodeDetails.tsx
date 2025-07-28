@@ -22,6 +22,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
+import NodeSquare from "../../NodeSquare";
 
 const NodeDetails: React.FC = () => {
   const { nodeId } = useParams<{ nodeId: string }>();
@@ -58,8 +59,7 @@ const NodeDetails: React.FC = () => {
         >
           Back
         </Button>
-        <ComputerIcon size={24} />
-        <Typography level="h2" sx={{ ml: 1 }}>
+        <Typography level="h2" sx={{ ml: 0 }}>
           Node Details: {node.id}
         </Typography>
         <Chip size="sm" color="success" variant="soft" sx={{ ml: 2 }}>

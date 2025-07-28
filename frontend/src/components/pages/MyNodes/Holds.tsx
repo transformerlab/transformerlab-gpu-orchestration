@@ -22,6 +22,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import NodeSquare from "../../NodeSquare";
 
 // Add a mock status generator for demonstration
 const statuses = ["provisioning", "running", "deallocating", "held"];
@@ -75,7 +76,7 @@ const Jobs: React.FC<HeldProps> = ({
           <Table>
             <thead>
               <tr>
-                <th style={{ width: "100px" }}>&nbsp;</th>
+                <th style={{ width: "150px" }}>&nbsp;</th>
                 <th>Status</th>
                 <th>Cluster</th>
                 <th>Name/IP</th>
@@ -104,58 +105,78 @@ const Jobs: React.FC<HeldProps> = ({
                     }}
                   >
                     <td>
-                      <ComputerIcon />
-                      {(statusValue === "running" ||
-                        statusValue === "provisioning") && (
-                        <Dropdown>
-                          <MenuButton
-                            variant="plain"
-                            size="sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ChevronDownIcon />
-                          </MenuButton>
-                          <Menu size="sm" variant="soft">
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              <ListItemDecorator>
-                                <StopCircleIcon />
-                              </ListItemDecorator>
-                              Stop
-                            </MenuItem>
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              <ListItemDecorator>
-                                <Trash2Icon />
-                              </ListItemDecorator>
-                              Deallocate
-                            </MenuItem>
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              <ListItemDecorator>
-                                <RotateCcwIcon />
-                              </ListItemDecorator>
-                              Restart
-                            </MenuItem>
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              <ListItemDecorator>
-                                <TextIcon />
-                              </ListItemDecorator>
-                              Logs
-                            </MenuItem>
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              Metrics
-                            </MenuItem>
-                            <Divider />
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              <ListItemDecorator>
-                                <TerminalIcon />
-                              </ListItemDecorator>
-                              SSH
-                            </MenuItem>
-                            <MenuItem onClick={(e) => e.stopPropagation()}>
-                              VSCode
-                            </MenuItem>
-                          </Menu>
-                        </Dropdown>
-                      )}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <NodeSquare
+                          node={{
+                            id: node.id,
+                            ip: node.ip || "unknown",
+                            status:
+                              statusValue === "running"
+                                ? "active"
+                                : statusValue === "held"
+                                ? "inactive"
+                                : "unhealthy",
+                            type: "dedicated", // Default type for holds
+                            user: "ali", // Assuming these are user's nodes
+                            gpuType: node.gpuType,
+                          }}
+                          variant="mock"
+                        />
+                        {node?.id}
+                        {(statusValue === "running" ||
+                          statusValue === "provisioning") && (
+                          <Dropdown>
+                            <MenuButton
+                              variant="plain"
+                              size="sm"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ChevronDownIcon size="16px" />
+                            </MenuButton>
+                            <Menu size="sm" variant="soft">
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <ListItemDecorator>
+                                  <StopCircleIcon />
+                                </ListItemDecorator>
+                                Stop
+                              </MenuItem>
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <ListItemDecorator>
+                                  <Trash2Icon />
+                                </ListItemDecorator>
+                                Deallocate
+                              </MenuItem>
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <ListItemDecorator>
+                                  <RotateCcwIcon />
+                                </ListItemDecorator>
+                                Restart
+                              </MenuItem>
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <ListItemDecorator>
+                                  <TextIcon />
+                                </ListItemDecorator>
+                                Logs
+                              </MenuItem>
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                Metrics
+                              </MenuItem>
+                              <Divider />
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <ListItemDecorator>
+                                  <TerminalIcon />
+                                </ListItemDecorator>
+                                SSH
+                              </MenuItem>
+                              <MenuItem onClick={(e) => e.stopPropagation()}>
+                                VSCode
+                              </MenuItem>
+                            </Menu>
+                          </Dropdown>
+                        )}
+                      </Box>
                     </td>
                     <td>
                       <Chip
