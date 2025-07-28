@@ -395,7 +395,7 @@ const ClusterCard: React.FC<{
                     p: 2,
                     backgroundColor: "background.level1",
                     borderRadius: "md",
-                    maxHeight: 200,
+                    maxHeight: 1000,
                     overflow: "auto",
                   }}
                 >
