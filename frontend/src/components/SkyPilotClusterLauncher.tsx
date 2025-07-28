@@ -136,9 +136,17 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     switch (launchMode) {
       case "jupyter":
         setCommand(
-          `jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --allow-root --no-browser`
+          `jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser`
         );
-        setSetup(`pip install jupyter
+        setSetup(`# Install jupyter
+pip install jupyter
+# Create jupyter config to allow external connections
+jupyter notebook --generate-config
+echo "c.NotebookApp.ip = '0.0.0.0'" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.allow_root = True" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.open_browser = False" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.password = ''" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.token = ''" >> ~/.jupyter/jupyter_notebook_config.py
 echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         break;
       case "ssh":
@@ -151,9 +159,12 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         break;
       case "vscode":
         setCommand(
-          `code-server --port ${vscodePort} --host 0.0.0.0 --auth none`
+          `$HOME/.local/bin/code-server --port ${vscodePort} --host 0.0.0.0 --auth none`
         );
-        setSetup(`curl -fsSL https://code-server.dev/install.sh | sh
+        setSetup(`# Install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+# Ensure code-server is in PATH for the run command
+export PATH="$HOME/.local/bin:$PATH"
 echo "VSCode server will be available at http://localhost:${vscodePort}"`);
         break;
       case "custom":

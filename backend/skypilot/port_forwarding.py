@@ -184,6 +184,49 @@ def wait_for_cluster_ready(cluster_name: str, timeout: int = 300) -> bool:
     return False
 
 
+def check_service_running(cluster_name: str, service_type: str, port: int) -> bool:
+    """Check if the service is running on the cluster."""
+    try:
+        if service_type == "jupyter":
+            # Check if jupyter is running
+            result = subprocess.run(
+                [
+                    "ssh",
+                    "-o",
+                    "ConnectTimeout=10",
+                    cluster_name,
+                    "pgrep",
+                    "-f",
+                    "jupyter",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            return result.returncode == 0
+        elif service_type == "vscode":
+            # Check if code-server is running
+            result = subprocess.run(
+                [
+                    "ssh",
+                    "-o",
+                    "ConnectTimeout=10",
+                    cluster_name,
+                    "pgrep",
+                    "-f",
+                    "code-server",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            return result.returncode == 0
+        return False
+    except Exception as e:
+        logger.error(f"Error checking service status: {e}")
+        return False
+
+
 async def setup_port_forwarding_async(
     cluster_name: str,
     launch_mode: str,
@@ -196,7 +239,39 @@ async def setup_port_forwarding_async(
     # Wait for cluster to be ready
     ready = await loop.run_in_executor(None, wait_for_cluster_ready, cluster_name)
     if not ready:
+        logger.error(f"Cluster {cluster_name} not ready for port forwarding")
         return None
+
+    # Wait for service to be running (up to 2 minutes)
+    service_ready = False
+    service_type = "jupyter" if launch_mode == "jupyter" else "vscode"
+    port = jupyter_port if launch_mode == "jupyter" else vscode_port
+
+    for _ in range(12):  # Check for 2 minutes (12 * 10 seconds)
+        service_ready = await loop.run_in_executor(
+            None, check_service_running, cluster_name, service_type, port
+        )
+        if service_ready:
+            logger.info(f"Service {service_type} is running on cluster {cluster_name}")
+            break
+        logger.info(
+            f"Waiting for {service_type} service to start on cluster {cluster_name}..."
+        )
+        await asyncio.sleep(10)
+
+    if not service_ready:
+        logger.warning(
+            f"Service {service_type} not running on cluster {cluster_name} after 2 minutes"
+        )
+        # Still try to setup port forwarding in case the service starts later
+        return await loop.run_in_executor(
+            None,
+            setup_port_forwarding_for_cluster,
+            cluster_name,
+            launch_mode,
+            jupyter_port,
+            vscode_port,
+        )
 
     # Setup port forwarding
     return await loop.run_in_executor(
