@@ -73,7 +73,7 @@ const Held: React.FC<HeldProps> = ({
   const [interactiveTaskModal, setInteractiveTaskModal] = React.useState<{
     open: boolean;
     clusterName: string;
-    taskType: "vscode";
+    taskType: "vscode" | "jupyter";
   }>({
     open: false,
     clusterName: "",
@@ -140,7 +140,7 @@ const Held: React.FC<HeldProps> = ({
 
   const openInteractiveTaskModal = (
     clusterName: string,
-    taskType: "vscode"
+    taskType: "vscode" | "jupyter"
   ) => {
     setInteractiveTaskModal({
       open: true,
@@ -312,6 +312,9 @@ const Held: React.FC<HeldProps> = ({
                                 <MenuItem onClick={(e) => e.stopPropagation()}>
                                   VSCode
                                 </MenuItem>
+                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                  Jupyter
+                                </MenuItem>
                               </Menu>
                             </Dropdown>
                           )}
@@ -455,6 +458,19 @@ const Held: React.FC<HeldProps> = ({
                         <CodeIcon />
                       </ListItemDecorator>
                       VSCode
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() =>
+                        openInteractiveTaskModal(
+                          cluster.cluster_name,
+                          "jupyter"
+                        )
+                      }
+                    >
+                      <ListItemDecorator>
+                        <BookOpenIcon />
+                      </ListItemDecorator>
+                      Jupyter
                     </MenuItem>
                     <Divider />
                     <MenuItem>
