@@ -410,8 +410,8 @@ const ClusterCard: React.FC<{
       </Box>
 
       <Stack direction="row" spacing={1}>
-        <Button variant="plain">Reserve a Node</Button>
-        <Button variant="plain">Start a Job</Button>
+        <Button variant="outlined">Reserve a Node</Button>
+        <Button variant="outlined">Start a Job</Button>
       </Stack>
     </Card>
   );
