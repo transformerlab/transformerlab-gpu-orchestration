@@ -1,11 +1,9 @@
-import React, { useState } from "react";
-import { Box, Typography, Tabs, TabList, Tab, TabPanel } from "@mui/joy";
+import React from "react";
+import { Box, Typography, Divider } from "@mui/joy";
 import SSHClusterAdmin from "../SSHClusterAdmin";
 import IdentityFileManager from "../IdentityFileManager";
 
 const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
-
   return (
     <Box
       sx={{
@@ -23,23 +21,17 @@ const Admin: React.FC = () => {
         </Typography>
       </Box>
 
-      <Tabs
-        value={activeTab}
-        onChange={(_, value) => setActiveTab(value as number)}
-      >
-        <TabList>
-          <Tab>SSH Clusters</Tab>
-          <Tab>Identity Files</Tab>
-        </TabList>
+      {/* Identity Files Section */}
+      <Box sx={{ mb: 6 }}>
+        <IdentityFileManager />
+      </Box>
 
-        <TabPanel value={0}>
-          <SSHClusterAdmin />
-        </TabPanel>
+      <Divider sx={{ my: 4 }} />
 
-        <TabPanel value={1}>
-          <IdentityFileManager />
-        </TabPanel>
-      </Tabs>
+      {/* SSH Clusters Section */}
+      <Box>
+        <SSHClusterAdmin />
+      </Box>
     </Box>
   );
 };
