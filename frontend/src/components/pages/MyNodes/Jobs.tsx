@@ -514,12 +514,20 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                             const isLoading = portForwardLoading[jobKey];
 
                             if (hasPortForward) {
+                              const portMatch = job.job_name.match(/port(\d+)/);
+                              const port = portMatch
+                                ? parseInt(portMatch[1])
+                                : 8888;
+                              const localhostUrl = `http://localhost:${port}`;
+
                               return (
                                 <Button
                                   size="sm"
                                   variant="soft"
                                   color="success"
-                                  disabled
+                                  onClick={() => {
+                                    window.open(localhostUrl, "_blank");
+                                  }}
                                 >
                                   ✅ Localhost Access Active
                                 </Button>
