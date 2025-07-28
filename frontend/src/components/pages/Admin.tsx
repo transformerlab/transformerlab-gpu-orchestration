@@ -35,9 +35,8 @@ const Admin: React.FC = () => {
       sx={{
         maxWidth: 1200,
         mx: "auto",
-        p: 2,
         display: "flex",
-        gap: 3,
+        gap: 1,
       }}
     >
       {/* Left Navigation */}
@@ -86,7 +85,7 @@ const Admin: React.FC = () => {
       <Box
         sx={{
           flex: 1,
-          p: 3,
+          p: 2,
         }}
       >
         {renderContent()}
