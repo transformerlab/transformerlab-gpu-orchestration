@@ -16,7 +16,7 @@ import {
   Chip,
 } from "@mui/joy";
 import { Plus, Trash2, Edit, Key } from "lucide-react";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl } from "../../../utils/api";
 
 interface IdentityFile {
   path: string;
@@ -172,7 +172,7 @@ const IdentityFileManager: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       {error && (
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>

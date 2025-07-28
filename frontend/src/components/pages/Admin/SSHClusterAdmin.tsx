@@ -18,7 +18,7 @@ import {
   Option,
 } from "@mui/joy";
 import { Plus, Trash2, Monitor } from "lucide-react";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl } from "../../../utils/api";
 
 interface SSHNode {
   ip: string;
@@ -244,7 +244,7 @@ const SSHClusterAdmin: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       {error && (
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
