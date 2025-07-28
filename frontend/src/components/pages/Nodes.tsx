@@ -289,6 +289,9 @@ const ClusterCard: React.FC<{
             padding: 0,
             margin: 0,
             mb: 1,
+            "&:hover": {
+              backgroundColor: "unset",
+            },
           }}
           variant="plain"
         >
@@ -553,7 +556,7 @@ const Nodes: React.FC = () => {
         </Sheet>
       ) : (
         mockClusters.map((cluster) => (
-          <div key={cluster.id} style={{ cursor: "pointer" }}>
+          <div key={cluster.id}>
             <ClusterCard
               cluster={cluster}
               setSelectedCluster={setSelectedCluster}
