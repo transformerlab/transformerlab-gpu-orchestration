@@ -292,28 +292,38 @@ const ClusterCard: React.FC<{
           }}
           variant="plain"
         >
-          <Typography level="h4">{cluster.name}</Typography>
-          <>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+            }}
+          >
+            <Typography level="h4" mb={0.5}>
+              {cluster.name}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
+              <Chip size="sm" color="primary" variant="soft">
+                {assignedToYouCount} Assigned To You
+              </Chip>
+              <Chip size="sm" color="success" variant="soft">
+                {reservedCount} Reserved
+              </Chip>
+              <Chip size="sm" color="neutral" variant="soft">
+                {requestableCount} Requestable
+              </Chip>
+              <Chip size="sm" color="warning" variant="soft">
+                {activeCount} Active
+              </Chip>
+              <Chip size="sm" color="danger" variant="soft">
+                {unhealthyCount} Unhealthy
+              </Chip>
+            </Stack>
+          </Box>
+          <div>
             <ChevronRightIcon />
-          </>
+          </div>
         </Button>
-        <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
-          <Chip size="sm" color="primary" variant="plain">
-            {assignedToYouCount} Assigned To You
-          </Chip>
-          <Chip size="sm" color="success" variant="soft">
-            {reservedCount} Reserved
-          </Chip>
-          <Chip size="sm" color="neutral" variant="soft">
-            {requestableCount} Requestable
-          </Chip>
-          <Chip size="sm" color="warning" variant="soft">
-            {activeCount} Active
-          </Chip>
-          <Chip size="sm" color="danger" variant="soft">
-            {unhealthyCount} Unhealthy
-          </Chip>
-        </Stack>
       </Box>
       <Box
         sx={{
