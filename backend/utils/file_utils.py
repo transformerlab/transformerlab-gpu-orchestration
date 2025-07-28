@@ -112,7 +112,7 @@ def save_named_identity_file(
         safe_name = safe_name.replace(" ", "_")
 
         # Add unique suffix to avoid conflicts
-        unique_filename = f"{safe_name}_{uuid.uuid4().hex[:8]}{file_extension}"
+        unique_filename = f"{safe_name}_{uuid.uuid4().hex[:4]}{file_extension}"
         file_path = identity_dir / unique_filename
 
         with open(file_path, "wb") as f:
