@@ -205,6 +205,15 @@ echo "VSCode server will be available at http://localhost:${vscodePort}"`);
       if (pythonFile) {
         formData.append("python_file", pythonFile);
       }
+
+      // Add interactive development parameters
+      formData.append("launch_mode", launchMode);
+      if (launchMode === "jupyter" && jupyterPort) {
+        formData.append("jupyter_port", jupyterPort);
+      }
+      if (launchMode === "vscode" && vscodePort) {
+        formData.append("vscode_port", vscodePort);
+      }
       const response = await fetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
         credentials: "include",
@@ -238,17 +247,14 @@ echo "VSCode server will be available at http://localhost:${vscodePort}"`);
         return (
           <Alert color="primary" sx={{ mt: 2 }}>
             <Typography level="body-sm">
-              <strong>After launch, connect to Jupyter:</strong>
+              <strong>Automatic Port Forwarding:</strong>
               <br />
-              1. SSH to the cluster: <code>ssh {clusterName}</code>
+              ✅ Port forwarding will be set up automatically by the backend
               <br />
-              2. Forward the port:{" "}
-              <code>
-                ssh -L {jupyterPort}:localhost:{jupyterPort} {clusterName}
-              </code>
+              🔗 Once the cluster is ready, you'll be able to access Jupyter at
+              the forwarded URL
               <br />
-              3. Open <code>http://localhost:{jupyterPort}</code> in your
-              browser
+              📝 You can also SSH directly: <code>ssh {clusterName}</code>
             </Typography>
           </Alert>
         );
@@ -268,18 +274,14 @@ echo "VSCode server will be available at http://localhost:${vscodePort}"`);
         return (
           <Alert color="primary" sx={{ mt: 2 }}>
             <Typography level="body-sm">
-              <strong>VSCode Remote Connection:</strong>
+              <strong>Automatic Port Forwarding:</strong>
               <br />
-              1. SSH to the cluster: <code>ssh {clusterName}</code>
+              ✅ Port forwarding will be set up automatically by the backend
               <br />
-              2. Forward the port:{" "}
-              <code>
-                ssh -L {vscodePort}:localhost:{vscodePort} {clusterName}
-              </code>
+              🔗 Once the cluster is ready, you'll be able to access VSCode at
+              the forwarded URL
               <br />
-              3. Open <code>http://localhost:{vscodePort}</code> in your browser
-              <br />
-              4. Or use VSCode Remote-SSH extension:{" "}
+              📝 You can also use VSCode Remote-SSH extension:{" "}
               <code>ssh {clusterName}</code>
             </Typography>
           </Alert>

@@ -13,7 +13,14 @@ import {
   ListDivider,
   Textarea,
 } from "@mui/joy";
-import { RefreshCw, Monitor, Square, Trash2 } from "lucide-react";
+import {
+  RefreshCw,
+  Monitor,
+  Square,
+  Trash2,
+  ExternalLink,
+  X,
+} from "lucide-react";
 import SubmitJobModal from "./SubmitJobModal";
 import { buildApiUrl } from "../utils/api";
 import useSWR from "swr";
@@ -55,6 +62,14 @@ interface JobRecord {
   log_path: string;
 }
 
+interface PortForward {
+  cluster_name: string;
+  local_port: number;
+  remote_port: number;
+  service_type: string;
+  access_url: string;
+}
+
 const fetcher = (url: string) =>
   fetch(url, { credentials: "include" }).then((res) => res.json());
 
@@ -75,6 +90,8 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [portForwards, setPortForwards] = useState<PortForward[]>([]);
+  const [portForwardsLoading, setPortForwardsLoading] = useState(false);
 
   // SWR for cluster status
   const { data, isLoading, mutate } = useSWR(
@@ -332,6 +349,49 @@ const SkyPilotClusterStatus: React.FC = () => {
   const handleToggleExpandCluster = (clusterName: string) => {
     setExpandedCluster((prev) => (prev === clusterName ? null : clusterName));
   };
+
+  // Port forwarding functions
+  const fetchPortForwards = async () => {
+    try {
+      setPortForwardsLoading(true);
+      const response = await fetch(buildApiUrl("skypilot/port-forwards"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPortForwards(data.port_forwards || []);
+      }
+    } catch (err) {
+      console.error("Error fetching port forwards:", err);
+    } finally {
+      setPortForwardsLoading(false);
+    }
+  };
+
+  const stopPortForward = async (clusterName: string) => {
+    try {
+      const response = await fetch(
+        buildApiUrl(`skypilot/port-forwards/${clusterName}/stop`),
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+      if (response.ok) {
+        // Refresh port forwards
+        fetchPortForwards();
+      }
+    } catch (err) {
+      console.error("Error stopping port forward:", err);
+    }
+  };
+
+  // Fetch port forwards on component mount and periodically
+  useEffect(() => {
+    fetchPortForwards();
+    const interval = setInterval(fetchPortForwards, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Box>
@@ -761,6 +821,87 @@ const SkyPilotClusterStatus: React.FC = () => {
           </Table>
         )}
       </Card>
+
+      {/* Port Forwarding Section */}
+      {portForwards.length > 0 && (
+        <Card sx={{ mt: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            <ExternalLink size={20} />
+            <Typography level="h4">Active Port Forwards</Typography>
+            {portForwardsLoading && <CircularProgress size="sm" />}
+          </Box>
+          <Table>
+            <thead>
+              <tr>
+                <th>Cluster</th>
+                <th>Service</th>
+                <th>Local Port</th>
+                <th>Remote Port</th>
+                <th>Access URL</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {portForwards.map((forward, index) => (
+                <tr key={index}>
+                  <td>
+                    <Typography level="body-sm">
+                      {forward.cluster_name}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      color={
+                        forward.service_type === "jupyter"
+                          ? "primary"
+                          : "success"
+                      }
+                      variant="soft"
+                    >
+                      {forward.service_type === "jupyter"
+                        ? "Jupyter"
+                        : "VSCode"}
+                    </Chip>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">
+                      {forward.local_port}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">
+                      {forward.remote_port}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="outlined"
+                      startDecorator={<ExternalLink size={14} />}
+                      onClick={() => window.open(forward.access_url, "_blank")}
+                    >
+                      Open
+                    </Button>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="outlined"
+                      color="danger"
+                      startDecorator={<X size={14} />}
+                      onClick={() => stopPortForward(forward.cluster_name)}
+                    >
+                      Stop
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+
       {/* SubmitJobModal rendered at root level */}
       <SubmitJobModal
         open={submitJobModalOpen}

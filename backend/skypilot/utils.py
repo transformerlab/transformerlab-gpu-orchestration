@@ -118,6 +118,9 @@ def launch_cluster_with_skypilot(
     idle_minutes_to_autostop=None,
     file_mounts: Optional[dict] = None,
     workdir: Optional[str] = None,
+    launch_mode: Optional[str] = None,
+    jupyter_port: Optional[int] = None,
+    vscode_port: Optional[int] = None,
 ):
     try:
         # Handle RunPod setup
@@ -201,6 +204,40 @@ def launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
+
+        # Setup port forwarding for interactive development modes
+        if launch_mode in ["jupyter", "vscode"]:
+            import threading
+            from .port_forwarding import setup_port_forwarding_async
+
+            def setup_port_forward():
+                import asyncio
+
+                try:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    result = loop.run_until_complete(
+                        setup_port_forwarding_async(
+                            cluster_name, launch_mode, jupyter_port, vscode_port
+                        )
+                    )
+                    if result:
+                        print(f"Port forwarding setup successfully: {result}")
+                    else:
+                        print(
+                            f"Port forwarding setup failed for cluster {cluster_name}"
+                        )
+                except Exception as e:
+                    print(f"Error in port forwarding setup: {e}")
+                finally:
+                    loop.close()
+
+            # Start port forwarding in background thread
+            port_forward_thread = threading.Thread(
+                target=setup_port_forward, daemon=True
+            )
+            port_forward_thread.start()
+
         return request_id
     except Exception as e:
         raise HTTPException(
