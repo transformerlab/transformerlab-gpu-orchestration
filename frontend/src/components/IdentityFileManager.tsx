@@ -219,8 +219,6 @@ const IdentityFileManager: React.FC = () => {
               <tr>
                 <th>Display Name</th>
                 <th>Original Filename</th>
-                <th>Size</th>
-                <th>Permissions</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -237,14 +235,20 @@ const IdentityFileManager: React.FC = () => {
                     </Box>
                   </td>
                   <td>
-                    <Chip size="sm" variant="soft">
+                    <Chip
+                      size="sm"
+                      variant="soft"
+                      title={file.original_filename} // Show full name on hover
+                      sx={{
+                        maxWidth: 200,
+                        "& .MuiChip-label": {
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        },
+                      }}
+                    >
                       {file.original_filename}
-                    </Chip>
-                  </td>
-                  <td>{formatFileSize(file.size)}</td>
-                  <td>
-                    <Chip size="sm" variant="outlined">
-                      {file.permissions}
                     </Chip>
                   </td>
                   <td>{formatDate(file.created)}</td>
