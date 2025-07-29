@@ -13,6 +13,9 @@ interface User {
   first_name?: string;
   last_name?: string;
   profile_picture_url?: string;
+  organization_id?: string;
+  organization_name?: string;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -53,14 +56,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, []);
 
+  const fetchOrganizations = async (userId: string) => {
+    try {
+      const response = await api.get("/auth/orgs");
+      const { organizations, current_organization_id } = response.data;
+      const currentOrg = organizations.find(
+        (org: any) => org.id === current_organization_id
+      );
+      return {
+        organization_id: current_organization_id,
+        organization_name: currentOrg?.name,
+      };
+    } catch (error) {
+      console.error("Failed to fetch organizations:", error);
+      return {
+        organization_id: undefined,
+        organization_name: undefined,
+      };
+    }
+  };
+
   const checkAuth = async () => {
     try {
       console.log("AuthContext: Checking authentication...");
       const response = await api.get("/auth/check");
       console.log("AuthContext: Auth check response:", response.data);
       if (response.data.authenticated) {
-        setUser(response.data.user);
-        console.log("AuthContext: User authenticated:", response.data.user);
+        const userData = response.data.user;
+        const orgInfo = await fetchOrganizations(userData.id);
+        const userWithOrgs = {
+          ...userData,
+          ...orgInfo,
+        };
+        setUser(userWithOrgs);
+        console.log("AuthContext: User authenticated with orgs:", userWithOrgs);
       } else {
         setUser(null);
         console.log("AuthContext: User not authenticated");
