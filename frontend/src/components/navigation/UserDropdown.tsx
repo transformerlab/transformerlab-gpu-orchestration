@@ -62,7 +62,7 @@ const UserDropdown: React.FC = () => {
                 : user.email}
             </Typography>
             <Typography level="body-xs" sx={{ color: "text.secondary" }}>
-              Square Bank
+              {user.organization_name}
             </Typography>
           </Box>
         </MenuButton>

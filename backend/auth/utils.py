@@ -48,7 +48,17 @@ def verify_auth(request: Request, response: Response = None):
 
 def get_current_user(request: Request, response: Response = None):
     """FastAPI dependency for getting the current authenticated user"""
-    return verify_auth(request, response).user
+    auth_info = verify_auth(request, response)
+    user = auth_info.user
+    return {
+        "id": user.id,
+        "email": user.email,
+        "profile_picture_url": user.profile_picture_url,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "role": auth_info.role,
+        "organization_id": auth_info.organization_id,
+    }
 
 
 class RoleChecker:

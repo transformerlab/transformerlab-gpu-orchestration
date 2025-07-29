@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Typography, Table, Avatar, Chip, Button } from "@mui/joy";
 import { Plus } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
+import { useAuth } from "../../../context/AuthContext";
 
 const fakeUsers = [
   {
@@ -25,10 +26,11 @@ const fakeUsers = [
 ];
 
 const Users: React.FC = () => {
+  const { user } = useAuth();
   return (
     <PageWithTitle
       title="Users"
-      subtitle="All users at Square Bank"
+      subtitle={`All users at ${user?.organization_name}`}
       button={
         <Button
           variant="solid"

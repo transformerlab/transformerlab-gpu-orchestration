@@ -22,6 +22,7 @@ class Organization(BaseModel):
 
 class OrganizationsResponse(BaseModel):
     organizations: List[Organization]
+    current_organization_id: Optional[str] = None
 
 
 class SSHNode(BaseModel):

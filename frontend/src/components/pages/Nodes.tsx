@@ -41,6 +41,7 @@ import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../NodeSquare";
 import PageWithTitle from "../pages/templates/PageWithTitle";
+import { useAuth } from "../../context/AuthContext";
 
 interface Node {
   id: string;
@@ -1108,9 +1109,10 @@ const Nodes: React.FC = () => {
       .then((data) => setNodeGpuInfo(data))
       .catch(() => setNodeGpuInfo({}));
   }, []);
+  const { user } = useAuth();
 
   return (
-    <PageWithTitle title="Square Bank's Node Pool">
+    <PageWithTitle title={`${user?.organization_name}'s Node Pool`}>
       {/* Existing Node Pools/Clusters UI */}
       {selectedCluster ? (
         <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
