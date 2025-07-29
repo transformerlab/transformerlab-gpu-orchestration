@@ -56,12 +56,24 @@ class LaunchClusterRequest(BaseModel):
     use_spot: bool = False
     idle_minutes_to_autostop: Optional[int] = None
     python_filename: Optional[str] = None
+    launch_mode: Optional[str] = None  # "jupyter", "vscode", "ssh", "custom"
+    jupyter_port: Optional[int] = None
+    vscode_port: Optional[int] = None
 
 
 class LaunchClusterResponse(BaseModel):
     request_id: str
     cluster_name: str
     message: str
+    port_forward_info: Optional[dict] = None
+
+
+class PortForwardInfo(BaseModel):
+    cluster_name: str
+    local_port: int
+    remote_port: int
+    service_type: str  # "jupyter", "vscode"
+    access_url: str
 
 
 class ClusterStatusResponse(BaseModel):

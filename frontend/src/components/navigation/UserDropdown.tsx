@@ -43,10 +43,7 @@ const UserDropdown: React.FC = () => {
           mr: 1,
         }}
       >
-        <Avatar
-          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&dpr=2"
-          size="md"
-        >
+        <Avatar src={user.profile_picture_url} size="md">
           {/* fallback initials logic can be removed if always using src */}
         </Avatar>
         <Box
@@ -66,8 +63,14 @@ const UserDropdown: React.FC = () => {
           </Typography>
         </Box>
       </MenuButton>
-      <Menu placement="bottom-end" sx={{ minWidth: 220 }}>
-        <Box sx={{ p: 2, pb: 1 }}>
+      <Menu
+        placement="bottom-end"
+        sx={{
+          minWidth: 220,
+          "--ListItem-paddingY": "0.5rem",
+        }}
+      >
+        <Box sx={{ px: 2, py: 1 }}>
           <Typography level="title-md" sx={{ fontWeight: "bold" }}>
             {user.first_name || user.last_name
               ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
@@ -80,9 +83,7 @@ const UserDropdown: React.FC = () => {
         <ListDivider />
         <MenuItem disabled sx={{ cursor: "default" }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            <Typography level="body-xs" sx={{ fontWeight: "bold" }}>
-              User ID
-            </Typography>
+            <Typography level="title-sm">User ID</Typography>
             <Typography level="body-xs" sx={{ fontFamily: "monospace" }}>
               {user.id}
             </Typography>
@@ -91,8 +92,7 @@ const UserDropdown: React.FC = () => {
         <MenuItem onMouseDown={handleCopyApiKey}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Typography
-              level="body-sm"
-              sx={{ fontWeight: "bold" }}
+              level="title-sm"
               startDecorator={
                 apiKeyCopied ? (
                   <ClipboardCopyIcon size="16px" />
@@ -100,21 +100,19 @@ const UserDropdown: React.FC = () => {
                   <KeyRoundIcon size="16px" />
                 )
               }
-              color={apiKeyCopied ? "success" : "neutral"}
+              color={apiKeyCopied ? "success" : "primary"}
             >
-              {apiKeyCopied ? "API key copied to clipboard!" : "Your API Key"}
+              {apiKeyCopied ? "API key copied to clipboard!" : "API Key"}
             </Typography>
             {!apiKeyCopied && (
-              <Typography level="body-xs" sx={{ color: "text.secondary" }}>
+              <Typography level="body-xs">
                 Copy your API key to the clipboard
               </Typography>
             )}
           </Box>
         </MenuItem>
         <MenuItem onClick={() => console.log("Settings clicked")}>
-          <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
-            More Settings
-          </Typography>
+          <Typography level="title-sm">Profile Settings</Typography>
         </MenuItem>
         <ListDivider />
         <MenuItem onClick={logout} color="danger">

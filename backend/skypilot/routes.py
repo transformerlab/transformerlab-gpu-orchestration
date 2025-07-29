@@ -33,7 +33,9 @@ from skypilot.utils import (
     stop_cluster_with_skypilot,
     down_cluster_with_skypilot,
     fetch_and_parse_gpu_resources,
+    cancel_job_with_skypilot,
 )
+from skypilot.port_forwarding import port_forward_manager
 from skypilot.runpod_utils import (
     verify_runpod_setup,
     get_runpod_gpu_types,
@@ -142,6 +144,9 @@ async def launch_skypilot_cluster(
     use_spot: bool = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file: Optional[UploadFile] = File(None),
+    launch_mode: Optional[str] = Form(None),
+    jupyter_port: Optional[int] = Form(None),
+    vscode_port: Optional[int] = Form(None),
 ):
     try:
         file_mounts = None
@@ -171,6 +176,9 @@ async def launch_skypilot_cluster(
             idle_minutes_to_autostop=idle_minutes_to_autostop,
             file_mounts=file_mounts,
             workdir=None,
+            launch_mode=launch_mode,
+            jupyter_port=jupyter_port,
+            vscode_port=vscode_port,
         )
         return LaunchClusterResponse(
             request_id=request_id,
@@ -273,6 +281,64 @@ async def get_cluster_job_logs(
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
 
 
+@router.post("/jobs/{cluster_name}/{job_id}/cancel")
+async def cancel_cluster_job(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+):
+    """Cancel a job on a SkyPilot cluster."""
+    try:
+        result = cancel_job_with_skypilot(cluster_name, job_id)
+        return {
+            "request_id": result["request_id"],
+            "job_id": job_id,
+            "cluster_name": cluster_name,
+            "message": result["message"],
+            "result": result["result"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
+
+
+@router.post("/jobs/{cluster_name}/{job_id}/setup-port-forward")
+async def setup_job_port_forward(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+    job_type: str = Form(...),
+    jupyter_port: Optional[int] = Form(None),
+    vscode_port: Optional[int] = Form(None),
+):
+    """Setup port forwarding for a specific job (typically called when job starts running)."""
+    try:
+        from .port_forwarding import setup_port_forwarding_async
+
+        # Setup port forwarding asynchronously
+        result = await setup_port_forwarding_async(
+            cluster_name, job_type, jupyter_port, vscode_port
+        )
+
+        if result:
+            return {
+                "job_id": job_id,
+                "cluster_name": cluster_name,
+                "message": f"Port forwarding setup successfully for job {job_id}",
+                "port_forward_info": result,
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to setup port forwarding for job {job_id}",
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to setup port forwarding: {str(e)}"
+        )
+
+
 @router.post("/stop", response_model=StopClusterResponse)
 async def stop_skypilot_cluster(
     request: Request,
@@ -356,6 +422,9 @@ async def submit_job_to_cluster(
     zone: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
     python_file: Optional[UploadFile] = File(None),
+    job_type: Optional[str] = Form(None),
+    jupyter_port: Optional[int] = Form(None),
+    vscode_port: Optional[int] = Form(None),
 ):
     try:
         file_mounts = None
@@ -386,13 +455,138 @@ async def submit_job_to_cluster(
             region=region,
             zone=zone,
             job_name=job_name,
+            job_type=job_type,
+            jupyter_port=jupyter_port,
+            vscode_port=vscode_port,
         )
+
         return {
             "request_id": request_id,
             "message": f"Job submitted to cluster '{cluster_name}'",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
+
+
+@router.post("/interactive/{cluster_name}/launch")
+async def launch_interactive_task(
+    request: Request,
+    response: Response,
+    cluster_name: str,
+    task_type: str = Form(...),
+    jupyter_port: Optional[int] = Form(8888),
+    vscode_port: Optional[int] = Form(8888),
+):
+    """Launch interactive development tasks directly on existing clusters."""
+    try:
+        import subprocess
+        import threading
+        import time
+
+        print("Launching interactive task...")
+
+        # Get the command based on task type
+        if task_type == "vscode":
+            command = f"""# Install code-server if not already installed
+curl -fsSL https://code-server.dev/install.sh | bash
+# Start code-server
+code-server . --port {vscode_port} --host 0.0.0.0 --auth none"""
+            remote_port = vscode_port
+        else:
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported task type: {task_type}"
+            )
+
+        # Launch the interactive task in background
+        def run_interactive_task():
+            try:
+                # Build SSH command with port forwarding first, then run the command
+                ssh_cmd = [
+                    "ssh",
+                    "-o",
+                    "ConnectTimeout=30",
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                ]
+
+                # Add port forwarding for VSCode
+                if task_type == "vscode" and remote_port:
+                    ssh_cmd.extend(["-L", f"{remote_port}:localhost:{remote_port}"])
+
+                ssh_cmd.extend([cluster_name, command])
+
+                print(f"Running interactive task: {' '.join(ssh_cmd)}")
+
+                # Run the SSH command (this establishes port forwarding and runs the command)
+                process = subprocess.Popen(
+                    ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                )
+
+                # For interactive tasks, we don't wait for completion since they keep running
+                # Just check if the SSH connection was established successfully
+                time.sleep(2)
+
+                if process.poll() is None:
+                    # Try to read any available output without waiting for completion
+                    try:
+                        import select
+
+                        # Check if there's any output available (non-blocking)
+                        ready_to_read, _, _ = select.select(
+                            [process.stdout, process.stderr], [], [], 0.1
+                        )
+
+                        stdout_data = ""
+                        stderr_data = ""
+
+                        if process.stdout in ready_to_read:
+                            stdout_data = process.stdout.read()
+                        if process.stderr in ready_to_read:
+                            stderr_data = process.stderr.read()
+
+                        if stdout_data:
+                            print(f"Interactive task stdout: {stdout_data}")
+                        if stderr_data:
+                            print(f"Interactive task stderr: {stderr_data}")
+                    except Exception as e:
+                        print(f"Could not read output: {e}")
+
+                    print(
+                        f"Interactive {task_type} task started successfully on {cluster_name}"
+                    )
+                else:
+                    stdout, stderr = process.communicate()
+                    print(f"Interactive task failed: {stderr}")
+
+            except Exception as e:
+                print(f"Error running interactive task: {e}")
+
+        # Start the task in a background thread
+        print("Starting task in background thread...")
+        task_thread = threading.Thread(target=run_interactive_task)
+        task_thread.daemon = True
+        task_thread.start()
+        print("Task started in background thread")
+
+        # Create port forwarding info for response
+        port_forward_info = None
+        if task_type == "vscode" and remote_port:
+            port_forward_info = {
+                "local_port": remote_port,
+                "remote_port": remote_port,
+                "service_type": task_type,
+                "access_url": f"http://localhost:{remote_port}",
+            }
+
+        return {
+            "message": f"Interactive {task_type} task launched on cluster '{cluster_name}'",
+            "port_forward_info": port_forward_info,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch interactive task: {str(e)}"
+        )
 
 
 @router.get("/ssh-node-info")
@@ -437,4 +631,34 @@ async def get_runpod_gpu_types_route(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get RunPod GPU types: {str(e)}"
+        )
+
+
+@router.get("/port-forwards")
+async def get_active_port_forwards(request: Request, response: Response):
+    """Get list of active port forwards."""
+    try:
+        active_forwards = port_forward_manager.get_active_forwards()
+        return {"port_forwards": active_forwards}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get active port forwards: {str(e)}"
+        )
+
+
+@router.post("/port-forwards/{cluster_name}/stop")
+async def stop_port_forward(request: Request, response: Response, cluster_name: str):
+    """Stop port forwarding for a specific cluster."""
+    try:
+        success = port_forward_manager.stop_port_forward(cluster_name)
+        if success:
+            return {"message": f"Port forwarding stopped for cluster {cluster_name}"}
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No active port forward found for cluster {cluster_name}",
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to stop port forward: {str(e)}"
         )

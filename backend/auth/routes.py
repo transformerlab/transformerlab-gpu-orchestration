@@ -122,5 +122,14 @@ async def check_auth(
     request: Request, response: Response, user=Depends(get_current_user)
 ):
     if user:
-        return {"authenticated": True, "user": {"id": user.id, "email": user.email}}
+        return {
+            "authenticated": True,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "profile_picture_url": user.profile_picture_url,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            },
+        }
     return {"authenticated": False}

@@ -46,6 +46,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [jobType, setJobType] = useState<string>("custom");
+  const [jupyterPort, setJupyterPort] = useState("8888");
 
   const resetForm = () => {
     setCommand("");
@@ -59,6 +61,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setJobName("");
     setError(null);
     setSuccess(null);
+    setJobType("custom");
+    setJupyterPort("8888");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,8 +72,26 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setSuccess(null);
     try {
       const formData = new FormData();
-      formData.append("command", command);
-      if (setup) formData.append("setup", setup);
+
+      // Set up command and setup based on job type
+      let finalCommand = command;
+      let finalSetup = setup;
+
+      if (jobType === "jupyter") {
+        finalCommand = `jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser`;
+        finalSetup = `pip install jupyter
+# Create jupyter config to allow external connections
+jupyter notebook --generate-config
+echo "c.NotebookApp.ip = '0.0.0.0'" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.allow_root = True" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.open_browser = False" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.password = ''" >> ~/.jupyter/jupyter_notebook_config.py
+echo "c.NotebookApp.token = ''" >> ~/.jupyter/jupyter_notebook_config.py
+echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`;
+      }
+
+      formData.append("command", finalCommand);
+      if (finalSetup) formData.append("setup", finalSetup);
       if (pythonFile) formData.append("python_file", pythonFile);
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
@@ -77,6 +99,9 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       if (region) formData.append("region", region);
       if (zone) formData.append("zone", zone);
       if (jobName) formData.append("job_name", jobName);
+      if (jobType !== "custom") formData.append("job_type", jobType);
+      if (jobType === "jupyter") formData.append("jupyter_port", jupyterPort);
+
       const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
         {
@@ -136,21 +161,41 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                 <Textarea
                   value={command}
                   onChange={(e) => setCommand(e.target.value)}
-                  placeholder="python my_script.py"
+                  placeholder={
+                    jobType === "jupyter"
+                      ? "Jupyter command will be automatically configured"
+                      : "python my_script.py"
+                  }
                   minRows={2}
                   required
-                  disabled={isClusterLaunching}
+                  disabled={isClusterLaunching || jobType === "jupyter"}
                 />
+                {jobType === "jupyter" && (
+                  <Typography level="body-xs" color="neutral" sx={{ mt: 0.5 }}>
+                    Jupyter will be automatically configured to run on port{" "}
+                    {jupyterPort}
+                  </Typography>
+                )}
               </FormControl>
               <FormControl sx={{ mb: 2 }}>
                 <FormLabel>Setup Command (optional)</FormLabel>
                 <Textarea
                   value={setup}
                   onChange={(e) => setSetup(e.target.value)}
-                  placeholder="pip install -r requirements.txt"
+                  placeholder={
+                    jobType === "jupyter"
+                      ? "Jupyter setup will be automatically configured"
+                      : "pip install -r requirements.txt"
+                  }
                   minRows={2}
-                  disabled={isClusterLaunching}
+                  disabled={isClusterLaunching || jobType === "jupyter"}
                 />
+                {jobType === "jupyter" && (
+                  <Typography level="body-xs" color="neutral" sx={{ mt: 0.5 }}>
+                    Jupyter and its dependencies will be automatically installed
+                    and configured
+                  </Typography>
+                )}
               </FormControl>
               <FormControl sx={{ mb: 2 }}>
                 <FormLabel>Attach Python file (optional)</FormLabel>
@@ -182,6 +227,39 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   disabled={isClusterLaunching}
                 />
               </FormControl>
+
+              {/* Job Type Selection */}
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Job Type</FormLabel>
+                <select
+                  value={jobType}
+                  onChange={(e) => setJobType(e.target.value)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #ccc",
+                    fontSize: "14px",
+                    width: "100%",
+                  }}
+                  disabled={isClusterLaunching}
+                >
+                  <option value="custom">Custom Command</option>
+                  <option value="jupyter">Jupyter Notebook</option>
+                </select>
+              </FormControl>
+
+              {/* Jupyter Port Configuration */}
+              {jobType === "jupyter" && (
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Jupyter Port</FormLabel>
+                  <Input
+                    value={jupyterPort}
+                    onChange={(e) => setJupyterPort(e.target.value)}
+                    placeholder="8888"
+                    disabled={isClusterLaunching}
+                  />
+                </FormControl>
+              )}
               {/* Resource Configuration */}
               <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
                 <Typography level="title-sm" sx={{ mb: 1 }}>
