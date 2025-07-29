@@ -76,12 +76,12 @@ if [ -f .env ]; then
     source .env
 fi
 
-if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
-    echo "❌ Error: WORKOS_API_KEY and WORKOS_CLIENT_ID environment variables must be set"
-    echo "Please set these variables when running the container:"
-    echo "docker run -e WORKOS_API_KEY=your_key -e WORKOS_CLIENT_ID=your_client_id -p 8000:8000 lattice"
-    exit 1
-fi
+# if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
+#     echo "❌ Error: WORKOS_API_KEY and WORKOS_CLIENT_ID environment variables must be set"
+#     echo "Please set these variables when running the container:"
+#     echo "docker run -e WORKOS_API_KEY=your_key -e WORKOS_CLIENT_ID=your_client_id -p 8000:8000 lattice"
+#     exit 1
+# fi
 
 # Now that we know the .env file exists, copy it exactly as is
 # to backend/.env and frontend/.env
