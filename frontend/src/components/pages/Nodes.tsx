@@ -187,7 +187,7 @@ const mockClusters: Cluster[] = [
   },
   {
     id: "cluster-3",
-    name: "On-Premesis Cluster",
+    name: "On-Premise Cluster",
     nodes: generateRandomNodes(12),
   },
   {
