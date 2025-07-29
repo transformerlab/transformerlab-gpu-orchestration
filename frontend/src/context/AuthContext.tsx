@@ -65,13 +65,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       );
       return {
         organization_id: current_organization_id,
-        organization_name: currentOrg?.name,
+        organization_name: currentOrg?.name || "Default Organization",
       };
     } catch (error) {
       console.error("Failed to fetch organizations:", error);
       return {
         organization_id: undefined,
-        organization_name: undefined,
+        organization_name: "Default Organization",
       };
     }
   };
