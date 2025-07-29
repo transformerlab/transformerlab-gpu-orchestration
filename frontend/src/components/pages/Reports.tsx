@@ -11,6 +11,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import PageWithTitle from "./templates/PageWithTitle";
 
 interface Report {
   id: string;
@@ -113,26 +114,11 @@ const ReportCard: React.FC<{ report: Report }> = ({ report }) => {
 
 const Reports: React.FC = () => {
   return (
-    <Box
-      sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 2,
-      }}
-    >
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h2" sx={{ mb: 1 }}>
-          Reports
-        </Typography>
-        <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          View who did what
-        </Typography>
-      </Box>
-
+    <PageWithTitle title="Reports" subtitle="View who did what">
       {reports.map((report) => (
         <ReportCard key={report.id} report={report} />
       ))}
-    </Box>
+    </PageWithTitle>
   );
 };
 

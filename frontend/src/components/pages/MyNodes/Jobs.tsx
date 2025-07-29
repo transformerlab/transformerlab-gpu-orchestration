@@ -9,7 +9,7 @@ import {
   Button,
 } from "@mui/joy";
 import { X } from "lucide-react";
-import { buildApiUrl } from "../../../utils/api";
+import { buildApiUrl, apiFetch } from "../../../utils/api";
 
 interface Job {
   job_id: number;
@@ -80,7 +80,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
         };
 
         try {
-          const response = await fetch(
+          const response = await apiFetch(
             buildApiUrl(`skypilot/jobs/${cluster.cluster_name}`),
             { credentials: "include" }
           );
@@ -114,7 +114,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       const updatedClustersWithJobs = await Promise.all(
         clustersWithJobs.map(async (cluster) => {
           try {
-            const response = await fetch(
+            const response = await apiFetch(
               buildApiUrl(`skypilot/jobs/${cluster.cluster_name}`),
               { credentials: "include" }
             );
@@ -200,7 +200,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     setLogsLoading(true);
     setSelectedJobId(jobId);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(
           `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
         ),
@@ -227,7 +227,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: true }));
       setError(null);
 
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
         {
           method: "POST",
@@ -285,7 +285,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       if (jupyterPort) formData.append("jupyter_port", jupyterPort.toString());
       if (vscodePort) formData.append("vscode_port", vscodePort.toString());
 
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/setup-port-forward`),
         {
           method: "POST",

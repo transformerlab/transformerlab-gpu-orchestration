@@ -27,11 +27,12 @@ import {
   Settings,
 } from "lucide-react";
 import ClusterManagement from "../ClusterManagement";
-import { buildApiUrl } from "../../utils/api";
+import { buildApiUrl, apiFetch } from "../../utils/api";
 import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../NodeSquare";
+import PageWithTitle from "../pages/templates/PageWithTitle";
 
 interface Node {
   id: string;
@@ -340,7 +341,7 @@ const Nodes: React.FC = () => {
 
   // --- Node Pools/Clouds Section ---
   const fetcher = (url: string) =>
-    fetch(url, { credentials: "include" }).then((res) => res.json());
+    apiFetch(url, { credentials: "include" }).then((res) => res.json());
   const { data, isLoading } = useSWR(buildApiUrl("clusters"), fetcher, {
     refreshInterval: 2000,
   });
@@ -357,7 +358,7 @@ const Nodes: React.FC = () => {
     setLoadingClusters(true);
     Promise.all(
       clusterNames.map((name: string) =>
-        fetch(buildApiUrl(`clusters/${name}`), { credentials: "include" })
+        apiFetch(buildApiUrl(`clusters/${name}`), { credentials: "include" })
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => ({ name, data }))
           .catch(() => ({ name, data: null }))
@@ -384,23 +385,14 @@ const Nodes: React.FC = () => {
 
   useEffect(() => {
     // Fetch GPU info for all nodes
-    fetch(buildApiUrl("skypilot/ssh-node-info"), { credentials: "include" })
+    apiFetch(buildApiUrl("skypilot/ssh-node-info"), { credentials: "include" })
       .then((res) => (res.ok ? res.json() : {}))
       .then((data) => setNodeGpuInfo(data))
       .catch(() => setNodeGpuInfo({}));
   }, []);
 
   return (
-    <Box
-      sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 2,
-      }}
-    >
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h2">Square Bank's Node Pool</Typography>
-      </Box>
+    <PageWithTitle title="Square Bank's Node Pool">
       {/* Existing Node Pools/Clusters UI */}
       {selectedCluster ? (
         <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
@@ -735,7 +727,7 @@ const Nodes: React.FC = () => {
           })
         )}
       </Box>
-    </Box>
+    </PageWithTitle>
   );
 };
 

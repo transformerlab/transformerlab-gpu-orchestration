@@ -16,7 +16,8 @@ import {
   Chip,
 } from "@mui/joy";
 import { Plus, Trash2, Edit, Key } from "lucide-react";
-import { buildApiUrl } from "../../../utils/api";
+import { buildApiUrl, apiFetch } from "../../../utils/api";
+import PageWithTitle from "../templates/PageWithTitle";
 
 interface IdentityFile {
   path: string;
@@ -47,7 +48,7 @@ const IdentityFileManager: React.FC = () => {
   const fetchIdentityFiles = async () => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl("clusters/identity-files"), {
+      const response = await apiFetch(buildApiUrl("clusters/identity-files"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -72,7 +73,7 @@ const IdentityFileManager: React.FC = () => {
       formData.append("display_name", newDisplayName.trim());
       formData.append("identity_file", newIdentityFile);
 
-      const response = await fetch(buildApiUrl("clusters/identity-files"), {
+      const response = await apiFetch(buildApiUrl("clusters/identity-files"), {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -104,7 +105,7 @@ const IdentityFileManager: React.FC = () => {
     try {
       setLoading(true);
       const encodedPath = encodeURIComponent(filePath);
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`clusters/identity-files/${encodedPath}`),
         {
           method: "DELETE",
@@ -134,7 +135,7 @@ const IdentityFileManager: React.FC = () => {
       formData.append("new_display_name", renameDisplayName.trim());
 
       const encodedPath = encodeURIComponent(selectedFile.path);
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`clusters/identity-files/${encodedPath}`),
         {
           method: "PUT",
@@ -172,7 +173,10 @@ const IdentityFileManager: React.FC = () => {
   };
 
   return (
-    <Box>
+    <PageWithTitle
+      title="Identity File Management"
+      subtitle="Upload and manage SSH identity files for use with node pools."
+    >
       {error && (
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -188,13 +192,6 @@ const IdentityFileManager: React.FC = () => {
           </Box>
         </Card>
       )}
-
-      <Box sx={{ mb: 3 }}>
-        <Typography level="h2">Identity File Management</Typography>
-        <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Upload and manage SSH identity files for use with node pools.
-        </Typography>
-      </Box>
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography level="h3">Identity Files</Typography>
@@ -366,7 +363,7 @@ const IdentityFileManager: React.FC = () => {
           </Stack>
         </ModalDialog>
       </Modal>
-    </Box>
+    </PageWithTitle>
   );
 };
 

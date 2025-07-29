@@ -11,6 +11,7 @@ import {
   Stack,
 } from "@mui/joy";
 import { Plus, UserPlus } from "lucide-react";
+import PageWithTitle from "../templates/PageWithTitle";
 
 // Fake placeholder data
 const fakeTeams = [
@@ -32,21 +33,10 @@ const Teams: React.FC = () => {
   const [selectedTeam, setSelectedTeam] = React.useState<string | null>(null);
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto" }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 2,
-        }}
-      >
-        <Box>
-          <Typography level="h2">Teams</Typography>
-          <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-            Manage teams and add users to teams.
-          </Typography>
-        </Box>
+    <PageWithTitle
+      title="Teams"
+      subtitle="Manage teams and add users to teams."
+      button={
         <Button
           variant="solid"
           color="primary"
@@ -55,7 +45,8 @@ const Teams: React.FC = () => {
         >
           Create Team
         </Button>
-      </Box>
+      }
+    >
       <Table>
         <thead>
           <tr>
@@ -116,7 +107,7 @@ const Teams: React.FC = () => {
           </Button>
         </ModalDialog>
       </Modal>
-    </Box>
+    </PageWithTitle>
   );
 };
 

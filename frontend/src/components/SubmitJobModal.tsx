@@ -15,7 +15,7 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/joy";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../utils/api";
 
 interface SubmitJobModalProps {
   open: boolean;
@@ -102,7 +102,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`;
       if (jobType !== "custom") formData.append("job_type", jobType);
       if (jobType === "jupyter") formData.append("jupyter_port", jupyterPort);
 
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
         {
           method: "POST",

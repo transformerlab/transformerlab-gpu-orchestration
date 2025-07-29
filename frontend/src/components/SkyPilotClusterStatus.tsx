@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import SubmitJobModal from "./SubmitJobModal";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../utils/api";
 import useSWR from "swr";
 
 interface ClusterStatus {
@@ -71,7 +71,7 @@ interface PortForward {
 }
 
 const fetcher = (url: string) =>
-  fetch(url, { credentials: "include" }).then((res) => res.json());
+  apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
 const SkyPilotClusterStatus: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +127,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     const fetchTypes = async () => {
       const typePromises = clusters.map(async (cluster: any) => {
         try {
-          const typeResponse = await fetch(
+          const typeResponse = await apiFetch(
             buildApiUrl(`skypilot/cluster-type/${cluster.cluster_name}`),
             { credentials: "include" }
           );
@@ -217,7 +217,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     setLogsLoading(true);
     setSelectedJobId(jobId);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(
           `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
         ),
@@ -242,7 +242,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     const cancelKey = `${clusterName}_${jobId}`;
     try {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: true }));
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
         {
           method: "POST",
@@ -282,7 +282,7 @@ const SkyPilotClusterStatus: React.FC = () => {
       if (jupyterPort) formData.append("jupyter_port", jupyterPort.toString());
       if (vscodePort) formData.append("vscode_port", vscodePort.toString());
 
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/setup-port-forward`),
         {
           method: "POST",
@@ -374,7 +374,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         ...prev,
         [`stop_${clusterName}`]: true,
       }));
-      const response = await fetch(buildApiUrl("skypilot/stop"), {
+      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -406,7 +406,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         ...prev,
         [`down_${clusterName}`]: true,
       }));
-      const response = await fetch(buildApiUrl("skypilot/down"), {
+      const response = await apiFetch(buildApiUrl("skypilot/down"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -451,7 +451,7 @@ const SkyPilotClusterStatus: React.FC = () => {
   const fetchPortForwards = async () => {
     try {
       setPortForwardsLoading(true);
-      const response = await fetch(buildApiUrl("skypilot/port-forwards"), {
+      const response = await apiFetch(buildApiUrl("skypilot/port-forwards"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -467,7 +467,7 @@ const SkyPilotClusterStatus: React.FC = () => {
 
   const stopPortForward = async (clusterName: string) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/port-forwards/${clusterName}/stop`),
         {
           method: "POST",

@@ -12,7 +12,7 @@ export const authApi = {
   getOrganizations: async (): Promise<{
     organizations: Array<{ id: string; name: string; object: string }>;
   }> => {
-    const response = await fetch(buildApiUrl("auth/orgs"), {
+    const response = await apiFetch(buildApiUrl("auth/orgs"), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -22,10 +22,22 @@ export const authApi = {
   },
 };
 
+export const apiFetch = async (
+  input: RequestInfo,
+  init?: RequestInit
+): Promise<Response> => {
+  const response = await fetch(input, init);
+  if (response.status === 401) {
+    window.dispatchEvent(new Event("auth-error"));
+    throw new Error(`Authentication error: ${response.status}`);
+  }
+  return response;
+};
+
 // RunPod API functions
 export const runpodApi = {
   setup: async (): Promise<{ message: string }> => {
-    const response = await fetch(buildApiUrl("skypilot/runpod/setup"), {
+    const response = await apiFetch(buildApiUrl("skypilot/runpod/setup"), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -35,7 +47,7 @@ export const runpodApi = {
   },
 
   verify: async (): Promise<{ valid: boolean }> => {
-    const response = await fetch(buildApiUrl("skypilot/runpod/verify"), {
+    const response = await apiFetch(buildApiUrl("skypilot/runpod/verify"), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -45,7 +57,7 @@ export const runpodApi = {
   },
 
   getGpuTypes: async (): Promise<{ gpu_types: string[] }> => {
-    const response = await fetch(buildApiUrl("skypilot/runpod/gpu-types"), {
+    const response = await apiFetch(buildApiUrl("skypilot/runpod/gpu-types"), {
       credentials: "include",
     });
     if (!response.ok) {

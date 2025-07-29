@@ -25,7 +25,7 @@ import {
   BookOpenIcon,
   CodeIcon,
 } from "lucide-react";
-import { buildApiUrl } from "../../../utils/api";
+import { buildApiUrl, apiFetch } from "../../../utils/api";
 import InteractiveTaskModal from "../../InteractiveTaskModal";
 import { useNavigate } from "react-router-dom";
 import NodeSquare from "../../NodeSquare";
@@ -86,7 +86,7 @@ const Held: React.FC<HeldProps> = ({
         ...prev,
         [`stop_${clusterName}`]: true,
       }));
-      const response = await fetch(buildApiUrl("skypilot/stop"), {
+      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,7 +115,7 @@ const Held: React.FC<HeldProps> = ({
         ...prev,
         [`down_${clusterName}`]: true,
       }));
-      const response = await fetch(buildApiUrl("skypilot/down"), {
+      const response = await apiFetch(buildApiUrl("skypilot/down"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

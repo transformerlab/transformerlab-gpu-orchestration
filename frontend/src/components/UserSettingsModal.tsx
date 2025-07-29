@@ -126,10 +126,14 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           {/* Organizations Section */}
           <Typography
             level="title-md"
-            sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+            sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
           >
             <Building2 size="18px" />
             Organizations
+          </Typography>
+          <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+            To switch organizations, logout and log back in to select a
+            different organization.
           </Typography>
 
           {loadingOrgs && (

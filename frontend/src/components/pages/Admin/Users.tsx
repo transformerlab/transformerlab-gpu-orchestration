@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography, Table, Avatar, Chip, Button } from "@mui/joy";
 import { Plus } from "lucide-react";
+import PageWithTitle from "../templates/PageWithTitle";
 
 const fakeUsers = [
   {
@@ -25,26 +26,10 @@ const fakeUsers = [
 
 const Users: React.FC = () => {
   return (
-    <Box
-      sx={{
-        maxWidth: 1000,
-        mx: "auto",
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 2,
-        }}
-      >
-        <Box>
-          <Typography level="h2">Users</Typography>
-          <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-            All users at Square Bank
-          </Typography>
-        </Box>
+    <PageWithTitle
+      title="Users"
+      subtitle="All users at Square Bank"
+      button={
         <Button
           variant="solid"
           color="primary"
@@ -52,43 +37,51 @@ const Users: React.FC = () => {
         >
           Add User
         </Button>
-      </Box>
-      <Table>
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Groups</th>
-          </tr>
-        </thead>
-        <tbody>
-          {fakeUsers.map((user) => (
-            <tr key={user.email}>
-              <td>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Avatar src={user.avatar} alt={user.name} size="sm" />
-                  <Box>
-                    <Typography level="body-md">{user.name}</Typography>
-                    <Typography
-                      level="body-sm"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      {user.email}
-                    </Typography>
-                  </Box>
-                </Box>
-              </td>
-              <td>
-                {user.groups.map((group) => (
-                  <Chip key={group} size="sm" sx={{ mr: 0.5 }}>
-                    {group}
-                  </Chip>
-                ))}
-              </td>
+      }
+    >
+      <Box
+        sx={{
+          maxWidth: 1000,
+          mx: "auto",
+        }}
+      >
+        <Table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Groups</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
-    </Box>
+          </thead>
+          <tbody>
+            {fakeUsers.map((user) => (
+              <tr key={user.email}>
+                <td>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Avatar src={user.avatar} alt={user.name} size="sm" />
+                    <Box>
+                      <Typography level="body-md">{user.name}</Typography>
+                      <Typography
+                        level="body-sm"
+                        sx={{ color: "text.secondary" }}
+                      >
+                        {user.email}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </td>
+                <td>
+                  {user.groups.map((group) => (
+                    <Chip key={group} size="sm" sx={{ mr: 0.5 }}>
+                      {group}
+                    </Chip>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Box>
+    </PageWithTitle>
   );
 };
 
