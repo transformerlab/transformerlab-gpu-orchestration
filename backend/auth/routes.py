@@ -73,10 +73,10 @@ async def get_current_user_info(
     request: Request, response: Response, user=Depends(get_current_user)
 ):
     return UserResponse(
-        id=user.id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
+        id=user["id"],
+        email=user["email"],
+        first_name=user["first_name"],
+        last_name=user["last_name"],
     )
 
 
@@ -125,11 +125,11 @@ async def check_auth(
         return {
             "authenticated": True,
             "user": {
-                "id": user.id,
-                "email": user.email,
-                "profile_picture_url": user.profile_picture_url,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
+                "id": user["id"],
+                "email": user["email"],
+                "profile_picture_url": user["profile_picture_url"],
+                "first_name": user["first_name"],
+                "last_name": user["last_name"],
             },
         }
     return {"authenticated": False}
@@ -142,9 +142,13 @@ async def get_user_organizations(
     """Get all organizations for the authenticated user"""
     try:
         organization_memberships = (
-            workos_client.user_management.list_organization_memberships(user_id=user.id)
+            workos_client.user_management.list_organization_memberships(
+                user_id=user["id"]
+            )
         )
         org_list = []
+        current_org_id = user.get("organization_id")
+
         for membership in organization_memberships:
             organization = workos_client.organizations.get_organization(
                 organization_id=membership.organization_id
@@ -156,7 +160,12 @@ async def get_user_organizations(
                     object="organization",
                 )
             )
-        return OrganizationsResponse(organizations=org_list)
+
+        response_data = {
+            "organizations": org_list,
+            "current_organization_id": current_org_id,
+        }
+        return OrganizationsResponse(**response_data)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch organizations: {str(e)}"

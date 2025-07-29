@@ -148,7 +148,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </Alert>
           )}
 
-          {organizations.length > 0 && (
+          {organizations.length > 0 ? (
             <Box sx={{ mb: 3 }}>
               <List>
                 {organizations.map((org) => (
@@ -163,6 +163,15 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 ))}
               </List>
             </Box>
+          ) : (
+            !loadingOrgs &&
+            !orgError && (
+              <Box sx={{ mb: 3 }}>
+                <Typography level="body-sm" color="neutral">
+                  No organizations found
+                </Typography>
+              </Box>
+            )
           )}
         </Box>
 
