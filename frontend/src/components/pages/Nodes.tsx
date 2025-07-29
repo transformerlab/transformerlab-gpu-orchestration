@@ -339,17 +339,19 @@ const CloudClusterCard: React.FC<{
   cluster: any;
   clusterName: string;
   nodeGpuInfo: Record<string, any>;
-  clusterDetails: { [name: string]: Cluster | null };
   setSelectedCloudCluster: React.Dispatch<
     React.SetStateAction<{ cluster: any; name: string } | null>
   >;
-}> = ({
-  cluster,
-  clusterName,
-  nodeGpuInfo,
-  clusterDetails,
-  setSelectedCloudCluster,
-}) => {
+}> = ({ cluster, clusterName, nodeGpuInfo, setSelectedCloudCluster }) => {
+  // Fetch SkyPilot cluster status to determine which clusters are running
+  const { data: skyPilotStatus } = useSWR(
+    buildApiUrl("skypilot/status"),
+    (url: string) =>
+      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
+    { refreshInterval: 2000 }
+  );
+
+  const skyPilotClusters = skyPilotStatus?.clusters || [];
   if (!cluster || !Array.isArray(cluster.nodes) || cluster.nodes.length === 0) {
     return (
       <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
@@ -363,16 +365,13 @@ const CloudClusterCard: React.FC<{
     );
   }
 
-  // Get active cluster names to determine which nodes should be active
-  const activeClusterNames = Object.keys(clusterDetails).filter(
-    (name) =>
-      clusterDetails[name] &&
-      Array.isArray(clusterDetails[name]?.nodes) &&
-      clusterDetails[name]?.nodes.length > 0
+  // Check if this cluster is running based on SkyPilot status
+  const skyPilotCluster = skyPilotClusters.find(
+    (c: any) => c.cluster_name === clusterName
   );
-
-  // Set nodes as active only if they belong to active clusters
-  const isActiveCluster = activeClusterNames.includes(clusterName);
+  const isActiveCluster =
+    skyPilotCluster?.status === "ClusterStatus.UP" ||
+    skyPilotCluster?.status === "ClusterStatus.INIT";
 
   // Process nodes to ensure they have the required properties for display
   // Set nodes as inactive by default, only active if cluster is active
@@ -745,7 +744,6 @@ const Nodes: React.FC = () => {
                   cluster={cluster}
                   clusterName={name}
                   nodeGpuInfo={nodeGpuInfo}
-                  clusterDetails={clusterDetails}
                   setSelectedCloudCluster={setSelectedCloudCluster}
                 />
               );
