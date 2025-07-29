@@ -38,6 +38,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const handleAuthError = () => {
+      console.log(
+        "Event Listener: Auth error from fetch, clearing user session."
+      );
+      setUser(null);
+    };
+    window.addEventListener("auth-error", handleAuthError);
+
+    return () => {
+      window.removeEventListener("auth-error", handleAuthError);
+    };
+  }, []);
+
   const checkAuth = async () => {
     try {
       console.log("AuthContext: Checking authentication...");

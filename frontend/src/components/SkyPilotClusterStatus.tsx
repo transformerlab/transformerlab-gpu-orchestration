@@ -15,7 +15,7 @@ import {
 } from "@mui/joy";
 import { RefreshCw, Monitor, Square, Trash2 } from "lucide-react";
 import SubmitJobModal from "./SubmitJobModal";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../utils/api";
 import useSWR from "swr";
 
 interface ClusterStatus {
@@ -56,7 +56,7 @@ interface JobRecord {
 }
 
 const fetcher = (url: string) =>
-  fetch(url, { credentials: "include" }).then((res) => res.json());
+  apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
 const SkyPilotClusterStatus: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +95,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     const fetchTypes = async () => {
       const typePromises = clusters.map(async (cluster: any) => {
         try {
-          const typeResponse = await fetch(
+          const typeResponse = await apiFetch(
             buildApiUrl(`skypilot/cluster-type/${cluster.cluster_name}`),
             { credentials: "include" }
           );
@@ -140,7 +140,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     setJobsLoading(true);
     setJobsError("");
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}`),
         {
           credentials: "include",
@@ -170,7 +170,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     setLogsLoading(true);
     setSelectedJobId(jobId);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(
           `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
         ),
@@ -260,7 +260,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         ...prev,
         [`stop_${clusterName}`]: true,
       }));
-      const response = await fetch(buildApiUrl("skypilot/stop"), {
+      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -292,7 +292,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         ...prev,
         [`down_${clusterName}`]: true,
       }));
-      const response = await fetch(buildApiUrl("skypilot/down"), {
+      const response = await apiFetch(buildApiUrl("skypilot/down"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

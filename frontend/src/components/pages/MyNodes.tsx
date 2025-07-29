@@ -12,7 +12,7 @@ import {
   tabClasses,
 } from "@mui/joy";
 import useSWR from "swr";
-import { buildApiUrl } from "../../utils/api";
+import { buildApiUrl, apiFetch } from "../../utils/api";
 import Held from "./MyNodes/Holds";
 import Jobs from "./MyNodes/Jobs";
 
@@ -137,7 +137,7 @@ const mockClusters: Cluster[] = [
 const MyNodes: React.FC = () => {
   // --- SkyPilot Clusters Section ---
   const skypilotFetcher = (url: string) =>
-    fetch(url, { credentials: "include" }).then((res) => res.json());
+    apiFetch(url, { credentials: "include" }).then((res) => res.json());
   const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
     buildApiUrl("skypilot/status"),
     skypilotFetcher,

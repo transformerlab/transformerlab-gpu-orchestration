@@ -15,7 +15,7 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/joy";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../utils/api";
 
 interface SubmitJobModalProps {
   open: boolean;
@@ -77,7 +77,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       if (region) formData.append("region", region);
       if (zone) formData.append("zone", zone);
       if (jobName) formData.append("job_name", jobName);
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
         {
           method: "POST",
