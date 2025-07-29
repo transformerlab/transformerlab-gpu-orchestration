@@ -1,12 +1,26 @@
-import React from "react";
-import { Typography, Box, Table, CircularProgress, Chip } from "@mui/joy";
+import React, { useState, useEffect } from "react";
+import {
+  Typography,
+  Box,
+  Table,
+  CircularProgress,
+  Chip,
+  Textarea,
+  Button,
+} from "@mui/joy";
+import { X } from "lucide-react";
+import { buildApiUrl } from "../../../utils/api";
 
 interface Job {
-  id: string;
-  name: string;
+  job_id: number;
+  job_name: string;
+  username: string;
+  submitted_at: number;
+  start_at?: number;
+  end_at?: number;
+  resources: string;
   status: string;
-  experiment: string;
-  nodes: number; // Add nodes property
+  log_path: string;
 }
 
 interface Cluster {
@@ -14,165 +28,570 @@ interface Cluster {
   status: string;
   resources_str?: string;
   launched_at?: number;
-  jobs?: Job[]; // Add jobs property
+  last_use?: string;
+  autostop?: number;
+  to_down?: boolean;
 }
 
-interface HeldProps {
+interface ClusterWithJobs extends Cluster {
+  jobs: Job[];
+  jobsLoading: boolean;
+  jobsError?: string;
+}
+
+interface JobsProps {
   skypilotLoading: boolean;
   myClusters: Cluster[];
 }
 
-const fakeClusters: Cluster[] = [
-  {
-    cluster_name: "Azure Cloud",
-    status: "active",
-    resources_str: "8 CPUs, 32GB RAM",
-    launched_at: Math.floor(Date.now() / 1000) - 3600,
-    jobs: [
-      {
-        id: "job1",
-        name: "Data Preprocessing",
-        status: "running",
-        experiment: "Alpha",
-        nodes: 4,
-      },
-      {
-        id: "job2",
-        name: "Model Training",
-        status: "setting up",
-        experiment: "Beta",
-        nodes: 10,
-      },
-    ],
-  },
-  {
-    cluster_name: "On Premesis",
-    status: "inactive",
-    resources_str: "16 CPUs, 64GB RAM",
-    launched_at: Math.floor(Date.now() / 1000) - 7200,
-    jobs: [
-      {
-        id: "job3",
-        name: "ETL Pipeline",
-        status: "not started",
-        experiment: "Exp A",
-        nodes: 7,
-      },
-    ],
-  },
-];
+const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
+  const [clustersWithJobs, setClustersWithJobs] = useState<ClusterWithJobs[]>(
+    []
+  );
+  const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [error, setError] = useState<string | null>(null);
+  const [jobsWithPortForward, setJobsWithPortForward] = useState<Set<string>>(
+    new Set()
+  );
+  const [portForwardLoading, setPortForwardLoading] = useState<{
+    [key: string]: boolean;
+  }>({});
 
-// Helper: group jobs by experiment
-function groupJobsByExperiment(clusters: Cluster[]) {
-  const experimentMap: { [exp: string]: { cluster: Cluster; job: Job }[] } = {};
-  clusters.forEach((cluster) => {
-    cluster.jobs?.forEach((job) => {
-      if (!experimentMap[job.experiment]) experimentMap[job.experiment] = [];
-      experimentMap[job.experiment].push({ cluster, job });
-    });
-  });
-  return experimentMap;
-}
+  // Fetch jobs for each cluster
+  useEffect(() => {
+    if (myClusters.length === 0) {
+      setClustersWithJobs([]);
+      return;
+    }
 
-const nodeColors = [
-  "#10b981", // emerald-500 (green)
-  "#3b82f6", // blue-500 (blue)
-  "#10b981", // emerald-500 (green, repeated)
-  "#3b82f6", // blue-500 (blue, repeated)
-  "#10b981", // emerald-500 (green, repeated)
-  "#3b82f6", // blue-500 (blue, repeated)
-  "#6b7280", // gray-500
-  "#ef4444", // red-500
-];
+    const fetchJobsForClusters = async () => {
+      const clustersWithJobsData: ClusterWithJobs[] = [];
 
-const getRandomNodeColor = () => {
-  const idx = Math.floor(Math.random() * nodeColors.length);
-  return nodeColors[idx];
-};
+      for (const cluster of myClusters) {
+        const clusterWithJobs: ClusterWithJobs = {
+          ...cluster,
+          jobs: [],
+          jobsLoading: true,
+        };
 
-const Held: React.FC<HeldProps> = ({ skypilotLoading }) => {
-  const clustersToShow = fakeClusters;
-  const jobsByExperiment = groupJobsByExperiment(clustersToShow);
+        try {
+          const response = await fetch(
+            buildApiUrl(`skypilot/jobs/${cluster.cluster_name}`),
+            { credentials: "include" }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            clusterWithJobs.jobs = data.jobs || [];
+          } else {
+            clusterWithJobs.jobsError = `Failed to fetch jobs: ${response.statusText}`;
+          }
+        } catch (err) {
+          clusterWithJobs.jobsError = "Failed to fetch jobs";
+        } finally {
+          clusterWithJobs.jobsLoading = false;
+        }
+
+        clustersWithJobsData.push(clusterWithJobs);
+      }
+
+      setClustersWithJobs(clustersWithJobsData);
+    };
+
+    fetchJobsForClusters();
+  }, [myClusters]);
+
+  // Monitor job status changes for port forwarding
+  useEffect(() => {
+    if (clustersWithJobs.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const updatedClustersWithJobs = await Promise.all(
+        clustersWithJobs.map(async (cluster) => {
+          try {
+            const response = await fetch(
+              buildApiUrl(`skypilot/jobs/${cluster.cluster_name}`),
+              { credentials: "include" }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              const currentJobs = data.jobs || [];
+
+              // Check for jobs that just started running and need port forwarding
+              currentJobs.forEach((job: any) => {
+                const jobKey = `${cluster.cluster_name}_${job.job_id}`;
+
+                if (
+                  job.status === "JobStatus.RUNNING" &&
+                  job.job_name &&
+                  !jobsWithPortForward.has(jobKey)
+                ) {
+                  // Check if this is a Jupyter job (multiple patterns)
+                  if (
+                    job.job_name.includes("-jupyter-") ||
+                    job.job_name.toLowerCase().includes("jupyter") ||
+                    job.job_name.startsWith("jupyter")
+                  ) {
+                    const portMatch = job.job_name.match(/port(\d+)/);
+                    const port = portMatch ? parseInt(portMatch[1]) : 8888;
+                    console.log(
+                      `Setting up port forwarding for Jupyter job ${job.job_id} on port ${port}`
+                    );
+                    setupJobPortForward(
+                      cluster.cluster_name,
+                      job.job_id,
+                      "jupyter",
+                      port
+                    );
+                    setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
+                  }
+                  // Check if this is a VSCode job
+                  else if (
+                    job.job_name.includes("-vscode-") ||
+                    job.job_name.toLowerCase().includes("vscode") ||
+                    job.job_name.startsWith("vscode")
+                  ) {
+                    const portMatch = job.job_name.match(/port(\d+)/);
+                    const port = portMatch ? parseInt(portMatch[1]) : 8888;
+                    console.log(
+                      `Setting up port forwarding for VSCode job ${job.job_id} on port ${port}`
+                    );
+                    setupJobPortForward(
+                      cluster.cluster_name,
+                      job.job_id,
+                      "vscode",
+                      undefined,
+                      port
+                    );
+                    setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
+                  }
+                }
+              });
+
+              return {
+                ...cluster,
+                jobs: currentJobs,
+                jobsLoading: false,
+              };
+            }
+          } catch (err) {
+            console.error(
+              `Error monitoring jobs for cluster ${cluster.cluster_name}:`,
+              err
+            );
+          }
+          return cluster;
+        })
+      );
+
+      setClustersWithJobs(updatedClustersWithJobs);
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [clustersWithJobs, jobsWithPortForward]);
+
+  const fetchJobLogs = async (clusterName: string, jobId: number) => {
+    setLogsLoading(true);
+    setSelectedJobId(jobId);
+    try {
+      const response = await fetch(
+        buildApiUrl(
+          `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
+        ),
+        { credentials: "include" }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedJobLogs(data.logs || "");
+      } else {
+        setSelectedJobLogs("Failed to fetch logs");
+      }
+    } catch (err) {
+      setSelectedJobLogs("Error fetching logs");
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  // Cancel a job
+  const cancelJob = async (clusterName: string, jobId: number) => {
+    const cancelKey = `${clusterName}_${jobId}`;
+    try {
+      setCancelLoading((prev) => ({ ...prev, [cancelKey]: true }));
+      setError(null);
+
+      const response = await fetch(
+        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to cancel job: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("Job cancelled successfully:", data);
+
+      // Refresh the jobs for this cluster
+      const updatedClusters = clustersWithJobs.map((cluster) => {
+        if (cluster.cluster_name === clusterName) {
+          return {
+            ...cluster,
+            jobs: cluster.jobs.map((job) =>
+              job.job_id === jobId
+                ? { ...job, status: "JobStatus.CANCELLED" }
+                : job
+            ),
+          };
+        }
+        return cluster;
+      });
+      setClustersWithJobs(updatedClusters);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel job");
+    } finally {
+      setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
+    }
+  };
+
+  // Setup port forwarding for a job
+  const setupJobPortForward = async (
+    clusterName: string,
+    jobId: number,
+    jobType: string,
+    jupyterPort?: number,
+    vscodePort?: number
+  ) => {
+    const jobKey = `${clusterName}_${jobId}`;
+    console.log(
+      `Setting up port forwarding for ${jobType} job ${jobId} on cluster ${clusterName}`
+    );
+
+    setPortForwardLoading((prev) => ({ ...prev, [jobKey]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append("job_type", jobType);
+      if (jupyterPort) formData.append("jupyter_port", jupyterPort.toString());
+      if (vscodePort) formData.append("vscode_port", vscodePort.toString());
+
+      const response = await fetch(
+        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/setup-port-forward`),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Port forwarding setup successfully:", data);
+        setError(null);
+        // Mark this job as having port forwarding set up
+        setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
+      } else {
+        console.error("Failed to setup port forwarding for job:", jobId);
+        const errorData = await response.json();
+        setError(
+          `Failed to setup port forwarding: ${
+            errorData.detail || "Unknown error"
+          }`
+        );
+      }
+    } catch (err) {
+      console.error("Error setting up port forwarding for job:", err);
+      setError("Error setting up port forwarding");
+    } finally {
+      setPortForwardLoading((prev) => ({ ...prev, [jobKey]: false }));
+    }
+  };
+
+  const getJobStatusColor = (status: string) => {
+    switch (status) {
+      case "JobStatus.INIT":
+        return "primary";
+      case "JobStatus.PENDING":
+        return "neutral";
+      case "JobStatus.RUNNING":
+        return "success";
+      case "JobStatus.SUCCEEDED":
+        return "success";
+      case "JobStatus.FAILED":
+        return "danger";
+      case "JobStatus.CANCELLED":
+        return "warning";
+      default:
+        return "neutral";
+    }
+  };
+
+  const formatJobStatus = (status: string) => {
+    switch (status) {
+      case "JobStatus.INIT":
+        return "Initializing";
+      case "JobStatus.PENDING":
+        return "Pending";
+      case "JobStatus.RUNNING":
+        return "Running";
+      case "JobStatus.SUCCEEDED":
+        return "Succeeded";
+      case "JobStatus.FAILED":
+        return "Failed";
+      case "JobStatus.CANCELLED":
+        return "Cancelled";
+      default:
+        return status;
+    }
+  };
+
+  const formatTimestamp = (timestamp?: number) => {
+    if (!timestamp) return "-";
+    return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  if (skypilotLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (myClusters.length === 0) {
+    return (
+      <Box sx={{ textAlign: "center", mt: 4 }}>
+        <Typography level="h4" color="neutral">
+          No active clusters found
+        </Typography>
+        <Typography level="body-md" color="neutral" sx={{ mt: 1 }}>
+          Launch a cluster from the Interactive Development Environment to see
+          jobs here.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
-    <>
-      {skypilotLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-          <CircularProgress />
+    <Box>
+      <Typography level="h3" sx={{ mb: 3 }}>
+        Cloud Node Pools
+      </Typography>
+
+      {error && (
+        <Box sx={{ mb: 2, p: 2, bgcolor: "danger.50", borderRadius: 1 }}>
+          <Typography color="danger">{error}</Typography>
         </Box>
-      ) : (
-        Object.entries(jobsByExperiment).map(([experiment, jobs]) => (
-          <Box key={experiment} sx={{ mb: 4 }}>
-            <Typography level="h3" sx={{ mb: 1 }}>
-              {experiment}
+      )}
+
+      {clustersWithJobs.map((cluster) => (
+        <Box key={cluster.cluster_name} sx={{ mb: 4 }}>
+          <Typography level="h4" sx={{ mb: 2 }}>
+            {cluster.cluster_name}
+          </Typography>
+
+          {cluster.jobsLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+              <CircularProgress />
+            </Box>
+          ) : cluster.jobsError ? (
+            <Typography color="danger" sx={{ mb: 2 }}>
+              {cluster.jobsError}
             </Typography>
-            <Table
-              variant="outlined"
-              sx={{ minWidth: 650, mb: 2 }}
-              aria-label={`jobs table for ${experiment}`}
-            >
+          ) : cluster.jobs.length === 0 ? (
+            <Typography color="neutral" sx={{ mb: 2 }}>
+              No jobs found for this cluster
+            </Typography>
+          ) : (
+            <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
               <thead>
                 <tr>
-                  <th>Cluster Name</th>
+                  <th>Job ID</th>
+                  <th>Job Name</th>
                   <th>Status</th>
                   <th>Resources</th>
-                  <th>Launched At</th>
-                  <th>Job Name</th>
-                  <th>Nodes</th>
+                  <th>Submitted At</th>
+                  <th>Started At</th>
+                  <th>Ended At</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {jobs.map(({ cluster, job }) => (
-                  <tr key={job.id}>
-                    <td>{cluster.cluster_name}</td>
+                {cluster.jobs.map((job) => (
+                  <tr key={job.job_id}>
+                    <td>
+                      <Typography level="body-sm" fontWeight="bold">
+                        {job.job_id}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">{job.job_name}</Typography>
+                    </td>
                     <td>
                       <Chip
-                        color={job.status === "running" ? "success" : "neutral"}
+                        size="sm"
+                        color={getJobStatusColor(job.status)}
+                        variant="soft"
                       >
-                        {job.status}
+                        {formatJobStatus(job.status)}
                       </Chip>
                     </td>
-                    <td>{cluster.resources_str || "-"}</td>
                     <td>
-                      {cluster.launched_at
-                        ? new Date(cluster.launched_at * 1000).toLocaleString()
-                        : "-"}
+                      <Typography level="body-sm">{job.resources}</Typography>
                     </td>
-                    <td>{job.name}</td>
                     <td>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 0.5,
-                          maxWidth: 120,
-                        }}
-                      >
-                        {Array.from({ length: job.nodes }).map((_, idx) => (
-                          <Box
-                            key={idx}
-                            sx={{
-                              width: 16,
-                              height: 16,
-                              bgcolor: getRandomNodeColor(),
-                              border: "1px solid",
-                              borderColor: "neutral.outlinedBorder",
-                              borderRadius: "4px",
-                              display: "inline-block",
-                            }}
-                          />
-                        ))}
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.submitted_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.start_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.end_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          onClick={() =>
+                            fetchJobLogs(cluster.cluster_name, job.job_id)
+                          }
+                        >
+                          View Logs
+                        </Button>
+                        {/* Show cancel button only for running jobs */}
+                        {(job.status === "JobStatus.RUNNING" ||
+                          job.status === "JobStatus.PENDING" ||
+                          job.status === "JobStatus.SETTING_UP") && (
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            color="danger"
+                            startDecorator={<X size={14} />}
+                            onClick={() =>
+                              cancelJob(cluster.cluster_name, job.job_id)
+                            }
+                            loading={
+                              cancelLoading[
+                                `${cluster.cluster_name}_${job.job_id}`
+                              ]
+                            }
+                            disabled={
+                              cancelLoading[
+                                `${cluster.cluster_name}_${job.job_id}`
+                              ]
+                            }
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                        {/* Show port forward button for Jupyter jobs */}
+                        {job.status === "JobStatus.RUNNING" &&
+                          job.job_name &&
+                          (job.job_name.includes("-jupyter-") ||
+                            job.job_name.toLowerCase().includes("jupyter") ||
+                            job.job_name.startsWith("jupyter")) &&
+                          (() => {
+                            const jobKey = `${cluster.cluster_name}_${job.job_id}`;
+                            const hasPortForward =
+                              jobsWithPortForward.has(jobKey);
+                            const isLoading = portForwardLoading[jobKey];
+
+                            if (hasPortForward) {
+                              const portMatch = job.job_name.match(/port(\d+)/);
+                              const port = portMatch
+                                ? parseInt(portMatch[1])
+                                : 8888;
+                              const localhostUrl = `http://localhost:${port}`;
+
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="soft"
+                                  color="success"
+                                  onClick={() => {
+                                    window.open(localhostUrl, "_blank");
+                                  }}
+                                >
+                                  ✅ Localhost Access Active
+                                </Button>
+                              );
+                            } else {
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outlined"
+                                  color="primary"
+                                  loading={isLoading}
+                                  disabled={isLoading}
+                                  onClick={() => {
+                                    const portMatch =
+                                      job.job_name.match(/port(\d+)/);
+                                    const port = portMatch
+                                      ? parseInt(portMatch[1])
+                                      : 8888;
+                                    setupJobPortForward(
+                                      cluster.cluster_name,
+                                      job.job_id,
+                                      "jupyter",
+                                      port
+                                    );
+                                  }}
+                                >
+                                  Access on Localhost
+                                </Button>
+                              );
+                            }
+                          })()}
                       </Box>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
-          </Box>
-        ))
-      )}
-    </>
+          )}
+
+          {/* Job Logs Modal */}
+          {selectedJobId && (
+            <Box sx={{ mt: 2 }}>
+              <Typography level="title-sm" sx={{ mb: 1 }}>
+                Job {selectedJobId} Logs
+              </Typography>
+              {logsLoading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <Textarea
+                  value={selectedJobLogs}
+                  readOnly
+                  minRows={5}
+                  maxRows={10}
+                  sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}
+                />
+              )}
+            </Box>
+          )}
+        </Box>
+      ))}
+    </Box>
   );
 };
 
-export default Held;
+export default Jobs;

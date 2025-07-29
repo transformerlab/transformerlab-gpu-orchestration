@@ -118,6 +118,9 @@ def launch_cluster_with_skypilot(
     idle_minutes_to_autostop=None,
     file_mounts: Optional[dict] = None,
     workdir: Optional[str] = None,
+    launch_mode: Optional[str] = None,
+    jupyter_port: Optional[int] = None,
+    vscode_port: Optional[int] = None,
 ):
     try:
         # Handle RunPod setup
@@ -201,6 +204,40 @@ def launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
+
+        # Setup port forwarding for interactive development modes
+        if launch_mode in ["jupyter", "vscode"]:
+            import threading
+            from .port_forwarding import setup_port_forwarding_async
+
+            def setup_port_forward():
+                import asyncio
+
+                try:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    result = loop.run_until_complete(
+                        setup_port_forwarding_async(
+                            cluster_name, launch_mode, jupyter_port, vscode_port
+                        )
+                    )
+                    if result:
+                        print(f"Port forwarding setup successfully: {result}")
+                    else:
+                        print(
+                            f"Port forwarding setup failed for cluster {cluster_name}"
+                        )
+                except Exception as e:
+                    print(f"Error in port forwarding setup: {e}")
+                finally:
+                    loop.close()
+
+            # Start port forwarding in background thread
+            port_forward_thread = threading.Thread(
+                target=setup_port_forward, daemon=True
+            )
+            port_forward_thread.start()
+
         return request_id
     except Exception as e:
         raise HTTPException(
@@ -288,10 +325,22 @@ def submit_job_to_existing_cluster(
     region: Optional[str] = None,
     zone: Optional[str] = None,
     job_name: Optional[str] = None,
+    job_type: Optional[str] = None,
+    jupyter_port: Optional[int] = None,
+    vscode_port: Optional[int] = None,
 ):
     try:
+        # Create job name with metadata if it's a special job type
+        final_job_name = job_name if job_name else f"lattice-job-{cluster_name}"
+        if job_type and job_type != "custom":
+            final_job_name = f"{final_job_name}-{job_type}"
+            if job_type == "jupyter" and jupyter_port:
+                final_job_name = f"{final_job_name}-port{jupyter_port}"
+            elif job_type == "vscode" and vscode_port:
+                final_job_name = f"{final_job_name}-port{vscode_port}"
+
         task = sky.Task(
-            name=job_name if job_name else f"lattice-job-{cluster_name}",
+            name=final_job_name,
             run=command,
             setup=setup,
         )
@@ -312,12 +361,39 @@ def submit_job_to_existing_cluster(
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
+
         request_id = sky.exec(
             task,
             cluster_name=cluster_name,
         )
+
+        # Note: Port forwarding for Jupyter jobs is handled separately
+        # when the job actually starts running, not at submission time
+        # since jobs may be queued and not start immediately
+
         return request_id
     except Exception as e:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
+
+
+def cancel_job_with_skypilot(cluster_name: str, job_id: int):
+    """Cancel a job on a SkyPilot cluster using the SkyPilot SDK."""
+    try:
+        import sky
+
+        # Use sky.cancel to cancel the job
+        # The job_id should be passed as a string to match the expected format
+        request_id = sky.cancel(cluster_name=cluster_name, job_ids=[str(job_id)])
+
+        # Wait for the cancel operation to complete
+        result = sky.get(request_id)
+
+        return {
+            "request_id": request_id,
+            "result": result,
+            "message": f"Job {job_id} cancellation initiated successfully",
+        }
+    except Exception as e:
+        raise Exception(f"Failed to cancel job {job_id}: {str(e)}")
