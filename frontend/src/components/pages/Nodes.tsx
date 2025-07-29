@@ -335,9 +335,204 @@ const ClusterCard: React.FC<{
   );
 };
 
+const CloudClusterCard: React.FC<{
+  cluster: any;
+  clusterName: string;
+  nodeGpuInfo: Record<string, any>;
+  clusterDetails: { [name: string]: Cluster | null };
+  setSelectedCloudCluster: React.Dispatch<
+    React.SetStateAction<{ cluster: any; name: string } | null>
+  >;
+}> = ({
+  cluster,
+  clusterName,
+  nodeGpuInfo,
+  clusterDetails,
+  setSelectedCloudCluster,
+}) => {
+  if (!cluster || !Array.isArray(cluster.nodes) || cluster.nodes.length === 0) {
+    return (
+      <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Typography level="h4" sx={{ mb: 1 }}>
+          {clusterName}
+        </Typography>
+        <Typography level="body-md" sx={{ color: "text.secondary" }}>
+          No nodes in this cluster.
+        </Typography>
+      </Card>
+    );
+  }
+
+  // Get active cluster names to determine which nodes should be active
+  const activeClusterNames = Object.keys(clusterDetails).filter(
+    (name) =>
+      clusterDetails[name] &&
+      Array.isArray(clusterDetails[name]?.nodes) &&
+      clusterDetails[name]?.nodes.length > 0
+  );
+
+  // Set nodes as active only if they belong to active clusters
+  const isActiveCluster = activeClusterNames.includes(clusterName);
+
+  // Process nodes to ensure they have the required properties for display
+  // Set nodes as inactive by default, only active if cluster is active
+  const processedNodes = cluster.nodes.map((node: any, idx: number) => ({
+    id: `node-${idx}`,
+    type: "dedicated" as const,
+    status: isActiveCluster ? ("active" as const) : ("inactive" as const),
+    user: undefined, // No user assignment - all nodes are available
+    gpuType: node.gpuType || undefined,
+    cpuType: node.cpuType || undefined,
+    vcpus: node.vcpus || undefined,
+    vgpus: node.vgpus || undefined,
+    ip: node.ip || "",
+    jobName: node.jobName || undefined,
+    experimentName: node.experimentName || undefined,
+    identity_file: node.identity_file || undefined,
+    password: node.password || undefined,
+  }));
+
+  const activeCount = processedNodes.filter(
+    (n: Node) => n.status === "active"
+  ).length;
+  const assignedToYouCount = 0; // All nodes are available, none assigned
+
+  const sortedNodes = [...processedNodes].sort(
+    (a, b) =>
+      getStatusOrder(a.status, a.type) - getStatusOrder(b.status, b.type)
+  );
+
+  return (
+    <Card
+      variant="outlined"
+      sx={{
+        p: 3,
+        mb: 3,
+        transition: "all 0.2s ease",
+        "&:hover": {
+          boxShadow: "md",
+        },
+      }}
+    >
+      <Box sx={{ mb: 2 }}>
+        <Button
+          onClick={() =>
+            setSelectedCloudCluster({
+              cluster: { ...cluster, nodes: processedNodes, name: clusterName },
+              name: clusterName,
+            })
+          }
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 0,
+            margin: 0,
+            mb: 1,
+            "&:hover": {
+              backgroundColor: "unset",
+            },
+          }}
+          variant="plain"
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+            }}
+          >
+            <Typography level="h4" mb={0.5}>
+              {clusterName}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
+              <Chip size="sm" color="primary" variant="soft">
+                {assignedToYouCount} Nodes Assigned To You
+              </Chip>
+              <Chip size="sm" color="success" variant="soft">
+                {Math.round((activeCount / processedNodes.length) * 100)}% Total
+                Capacity In Use
+              </Chip>
+            </Stack>
+          </Box>
+          <div>
+            <ChevronRightIcon />
+          </div>
+        </Button>
+      </Box>
+
+      {/* Group nodes by type, display in two columns */}
+      <Box sx={{ mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 3,
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+          }}
+        >
+          {["dedicated"].map((nodeType, idx) => {
+            const nodesOfType = sortedNodes.filter(
+              (node) => node.type === nodeType
+            );
+            if (nodesOfType.length === 0) return null;
+
+            return (
+              <Box
+                key={nodeType}
+                sx={{
+                  flex: "1 1 0",
+                  minWidth: 0,
+                  maxWidth: "50%",
+                  mb: 3,
+                }}
+              >
+                <Typography
+                  level="title-sm"
+                  sx={{ mb: 1, textTransform: "capitalize" }}
+                >
+                  {nodeType === "on-demand"
+                    ? "On-Demand"
+                    : nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}{" "}
+                  Nodes ({nodesOfType.length})
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "1px",
+                    p: 2,
+                    backgroundColor: "background.level1",
+                    borderRadius: "md",
+                    maxHeight: 1000,
+                    overflow: "auto",
+                  }}
+                >
+                  {nodesOfType.map((node) => (
+                    <NodeSquare key={node.id} node={node} variant="mock" />
+                  ))}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+
+      <Stack direction="row" spacing={1}>
+        <Button variant="outlined">Reserve a Node</Button>
+        <Button variant="outlined">Start a Job</Button>
+      </Stack>
+    </Card>
+  );
+};
+
 const Nodes: React.FC = () => {
-  console.error("NODES COMPONENT MOUNTED");
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
+  const [selectedCloudCluster, setSelectedCloudCluster] = useState<{
+    cluster: any;
+    name: string;
+  } | null>(null);
 
   // --- Node Pools/Clouds Section ---
   const fetcher = (url: string) =>
@@ -372,14 +567,6 @@ const Nodes: React.FC = () => {
       setLoadingClusters(false);
     });
   }, [JSON.stringify(clusterNames)]);
-
-  // State for expanded all-nodes table and selected node per cluster
-  const [expandedCloudCluster, setExpandedCloudCluster] = useState<
-    string | null
-  >(null);
-  const [selectedCloudNode, setSelectedCloudNode] = useState<{
-    [clusterName: string]: number | null;
-  }>({});
 
   const [nodeGpuInfo, setNodeGpuInfo] = useState<Record<string, any>>({});
 
@@ -472,261 +659,100 @@ const Nodes: React.FC = () => {
         ))
       )}
       {/* --- Clouds Section --- */}
-      <Box sx={{ mt: 6 }}>
-        <Typography level="h3" sx={{ mb: 2 }}>
-          Cloud Node Pools
-        </Typography>
-        {isLoading || loadingClusters ? (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography level="body-md" sx={{ color: "text.secondary" }}>
-              Loading node pools...
-            </Typography>
-          </Box>
-        ) : (
-          Object.entries(clusterDetails).map(([name, cluster]) => {
-            const isExpanded = expandedCloudCluster === name;
-            return (
-              <Card
-                key={name}
-                sx={{
-                  mb: 3,
-                  cursor: "pointer",
-                  border: isExpanded ? "2px solid #3b82f6" : undefined,
-                }}
-                onClick={(e) => {
-                  // Only toggle if the card itself is clicked, not the grid
-                  if (
-                    (e.target as HTMLElement).getAttribute(
-                      "data-cluster-card"
-                    ) === "true"
-                  ) {
-                    setExpandedCloudCluster(isExpanded ? null : name);
-                    // Clear selected node for all clusters except the one being expanded
-                    setSelectedCloudNode((prev) =>
-                      isExpanded ? prev : { [name]: null }
-                    );
-                  }
-                }}
-              >
-                <Typography level="h4" sx={{ mb: 1 }} data-cluster-card="true">
-                  {name}
-                </Typography>
-                {/* Node grid is always visible */}
-                {cluster &&
-                Array.isArray(cluster.nodes) &&
-                cluster.nodes.length > 0 ? (
-                  <>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "1px",
-                        p: 2,
-                        backgroundColor: "background.level1",
-                        borderRadius: "md",
-                        maxHeight: 200,
-                        overflow: "auto",
-                      }}
-                      onClick={(e) => e.stopPropagation()} // Prevent card click when clicking node
-                    >
-                      {cluster.nodes.map((node: any, idx: number) => {
-                        const isSelected = selectedCloudNode[name] === idx;
-                        return (
-                          <Box
-                            key={idx}
-                            onClick={() => {
-                              setSelectedCloudNode((prev) => ({
-                                ...prev,
-                                [name]: idx,
-                              }));
-                              setExpandedCloudCluster(null);
-                            }}
-                            sx={{
-                              cursor: "pointer",
-                              border: isSelected
-                                ? "2px solid #f59e42"
-                                : "2px solid #3b82f6",
-                              borderRadius: "4px",
-                              boxShadow: isSelected
-                                ? "0 0 0 2px #f59e42"
-                                : undefined,
-                              m: 0.5,
-                              transition: "border 0.2s, box-shadow 0.2s",
-                              "&:hover": {
-                                border: "2px solid #f59e42",
-                                boxShadow: "0 0 0 2px #f59e42",
-                              },
-                            }}
-                          >
-                            <NodeSquare
-                              node={node}
-                              nodeGpuInfo={nodeGpuInfo}
-                              variant="ssh"
-                            />
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                    {/* Table for selected node */}
-                    {selectedCloudNode[name] != null &&
-                      cluster.nodes[selectedCloudNode[name]] && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography level="h4" sx={{ mb: 1 }}>
-                            Node Details
-                          </Typography>
-                          <Table
-                            size="sm"
-                            variant="outlined"
-                            borderAxis="both"
-                            stickyHeader
-                          >
-                            <thead>
-                              <tr>
-                                <th>IP Address</th>
-                                <th>User</th>
-                                <th>Identity File</th>
-                                <th>Password</th>
-                                <th>GPUs</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr>
-                                <td>
-                                  {cluster.nodes[selectedCloudNode[name]].ip ||
-                                    "-"}
-                                </td>
-                                <td>
-                                  {cluster.nodes[selectedCloudNode[name]]
-                                    .user || "-"}
-                                </td>
-                                <td>
-                                  {cluster.nodes[selectedCloudNode[name]]
-                                    .identity_file || "-"}
-                                </td>
-                                <td>
-                                  {cluster.nodes[selectedCloudNode[name]]
-                                    .password
-                                    ? "****"
-                                    : "-"}
-                                </td>
-                                <td>
-                                  {(() => {
-                                    const node =
-                                      cluster.nodes[selectedCloudNode[name]];
-                                    let gpuDisplay = "-";
-                                    const gpuInfo =
-                                      nodeGpuInfo[node.ip]?.gpu_resources;
-                                    if (
-                                      gpuInfo &&
-                                      gpuInfo.gpus &&
-                                      gpuInfo.gpus.length > 0
-                                    ) {
-                                      gpuDisplay = gpuInfo.gpus
-                                        .map((g: any) => {
-                                          const qty =
-                                            g.requestable_qty_per_node;
-                                          if (qty && /^\d+$/.test(qty.trim())) {
-                                            return `${g.gpu} (x${qty.trim()})`;
-                                          } else if (
-                                            qty &&
-                                            qty.trim().length > 0
-                                          ) {
-                                            return `${g.gpu} (${qty.trim()})`;
-                                          } else {
-                                            return g.gpu;
-                                          }
-                                        })
-                                        .join(", ");
-                                    } else if (node.gpuType) {
-                                      gpuDisplay = node.gpuType;
-                                    }
-                                    return gpuDisplay;
-                                  })()}
-                                </td>
-                              </tr>
-                            </tbody>
-                          </Table>
-                        </Box>
-                      )}
-                    {/* Table of all nodes, toggled by card click */}
-                    {isExpanded && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography level="h4" sx={{ mb: 1 }}>
-                          All Nodes
-                        </Typography>
-                        <Table
-                          size="sm"
-                          variant="outlined"
-                          borderAxis="both"
-                          stickyHeader
-                        >
-                          <thead>
-                            <tr>
-                              <th>IP Address</th>
-                              <th>User</th>
-                              <th>Identity File</th>
-                              <th>Password</th>
-                              <th>GPUs</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {cluster.nodes.map((node: any, idx: number) => {
-                              let gpuDisplay = "-";
-                              const gpuInfo =
-                                nodeGpuInfo[node.ip]?.gpu_resources;
-                              if (
-                                gpuInfo &&
-                                gpuInfo.gpus &&
-                                gpuInfo.gpus.length > 0
-                              ) {
-                                gpuDisplay = gpuInfo.gpus
-                                  .map((g: any) => {
-                                    const qty = g.requestable_qty_per_node;
-                                    if (qty && /^\d+$/.test(qty.trim())) {
-                                      return `${g.gpu} (x${qty.trim()})`;
-                                    } else if (qty && qty.trim().length > 0) {
-                                      return `${g.gpu} (${qty.trim()})`;
-                                    } else {
-                                      return g.gpu;
-                                    }
-                                  })
-                                  .join(", ");
-                              } else if (node.gpuType) {
-                                gpuDisplay = node.gpuType;
-                              }
-                              return (
-                                <tr
-                                  key={idx}
-                                  style={{
-                                    background:
-                                      selectedCloudNode[name] === idx
-                                        ? "#f5f5f5"
-                                        : undefined,
-                                  }}
-                                >
-                                  <td>{node.ip || "-"}</td>
-                                  <td>{node.user || "-"}</td>
-                                  <td>{node.identity_file || "-"}</td>
-                                  <td>{node.password ? "****" : "-"}</td>
-                                  <td>{gpuDisplay}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </Table>
-                      </Box>
-                    )}
-                  </>
-                ) : (
-                  <Typography level="body-md" sx={{ color: "text.secondary" }}>
-                    No nodes in this cluster.
-                  </Typography>
-                )}
-              </Card>
-            );
-          })
-        )}
-      </Box>
+      {selectedCloudCluster ? (
+        <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
+          <Button
+            onClick={() => setSelectedCloudCluster(null)}
+            startDecorator={<ChevronLeftIcon />}
+            variant="soft"
+          >
+            Back
+          </Button>
+          <Typography level="h3" sx={{ mb: 2 }}>
+            {selectedCloudCluster.name} - Instances
+          </Typography>
+          <Table stickyHeader>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>User</th>
+                <th>GPU</th>
+                <th>CPU</th>
+                <th>vCPUs</th>
+                <th>vGPUs</th>
+                <th>IP</th>
+                <th>Job</th>
+                <th>Experiment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedCloudCluster.cluster.nodes.map((node: any) => {
+                let gpuDisplay = "-";
+                const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
+                if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
+                  gpuDisplay = gpuInfo.gpus
+                    .map((g: any) => {
+                      const qty = g.requestable_qty_per_node;
+                      if (qty && /^\d+$/.test(qty.trim())) {
+                        return `${g.gpu} (x${qty.trim()})`;
+                      } else if (qty && qty.trim().length > 0) {
+                        return `${g.gpu} (${qty.trim()})`;
+                      } else {
+                        return g.gpu;
+                      }
+                    })
+                    .join(", ");
+                } else if (node.gpuType) {
+                  gpuDisplay = node.gpuType;
+                }
+                return (
+                  <tr key={node.id}>
+                    <td>{node.id}</td>
+                    <td>{node.type}</td>
+                    <td>{node.status}</td>
+                    <td>{node.user ?? "-"}</td>
+                    <td>{gpuDisplay}</td>
+                    <td>{node.cpuType}</td>
+                    <td>{node.vcpus}</td>
+                    <td>{node.vgpus}</td>
+                    <td>{node.ip}</td>
+                    <td>{node.jobName ?? "-"}</td>
+                    <td>{node.experimentName ?? "-"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </Sheet>
+      ) : (
+        <Box sx={{ mt: 6 }}>
+          <Typography level="h3" sx={{ mb: 2 }}>
+            Cloud Node Pools
+          </Typography>
+          {isLoading || loadingClusters ? (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <Typography level="body-md" sx={{ color: "text.secondary" }}>
+                Loading node pools...
+              </Typography>
+            </Box>
+          ) : (
+            Object.entries(clusterDetails).map(([name, cluster]) => {
+              return (
+                <CloudClusterCard
+                  key={name}
+                  cluster={cluster}
+                  clusterName={name}
+                  nodeGpuInfo={nodeGpuInfo}
+                  clusterDetails={clusterDetails}
+                  setSelectedCloudCluster={setSelectedCloudCluster}
+                />
+              );
+            })
+          )}
+        </Box>
+      )}
     </PageWithTitle>
   );
 };
