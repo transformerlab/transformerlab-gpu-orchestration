@@ -69,7 +69,6 @@ const UserDropdown: React.FC = () => {
           minWidth: 220,
           "--ListItem-paddingY": "0.5rem",
         }}
-        open
       >
         <Box sx={{ px: 2, py: 1 }}>
           <Typography level="title-md" sx={{ fontWeight: "bold" }}>
