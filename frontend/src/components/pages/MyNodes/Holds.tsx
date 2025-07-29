@@ -58,6 +58,7 @@ interface HeldProps {
   myClusters: Cluster[];
   groupedByExperiment?: { [key: string]: any[] };
   nodes?: any[];
+  onTabChange?: (tabIndex: number) => void;
 }
 
 const Held: React.FC<HeldProps> = ({
@@ -65,6 +66,7 @@ const Held: React.FC<HeldProps> = ({
   myClusters,
   groupedByExperiment = {},
   nodes = [],
+  onTabChange,
 }) => {
   const navigate = useNavigate();
   const [operationLoading, setOperationLoading] = React.useState<{
@@ -293,7 +295,14 @@ const Held: React.FC<HeldProps> = ({
                                   </ListItemDecorator>
                                   Restart
                                 </MenuItem>
-                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <MenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onTabChange) {
+                                      onTabChange(1); // Switch to Jobs tab
+                                    }
+                                  }}
+                                >
                                   <ListItemDecorator>
                                     <TextIcon />
                                   </ListItemDecorator>
@@ -420,34 +429,37 @@ const Held: React.FC<HeldProps> = ({
                     <ChevronDownIcon />
                   </MenuButton>
                   <Menu size="sm" variant="soft">
-                    <MenuItem>
-                      <ListItemDecorator>
-                        <PlayIcon />
-                      </ListItemDecorator>
-                      Start
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => handleStopCluster(cluster.cluster_name)}
-                      disabled={
-                        operationLoading[`stop_${cluster.cluster_name}`]
-                      }
-                    >
-                      <ListItemDecorator>
-                        <StopCircleIcon />
-                      </ListItemDecorator>
-                      Stop
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => handleDownCluster(cluster.cluster_name)}
-                      disabled={
-                        operationLoading[`down_${cluster.cluster_name}`]
-                      }
-                    >
-                      <ListItemDecorator>
-                        <Trash2Icon />
-                      </ListItemDecorator>
-                      Down
-                    </MenuItem>
+                    {/* Removed Start button */}
+                    {cluster.status.toLowerCase().includes("up") && (
+                      <>
+                        <MenuItem
+                          onClick={() =>
+                            handleStopCluster(cluster.cluster_name)
+                          }
+                          disabled={
+                            operationLoading[`stop_${cluster.cluster_name}`]
+                          }
+                        >
+                          <ListItemDecorator>
+                            <StopCircleIcon />
+                          </ListItemDecorator>
+                          Stop
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() =>
+                            handleDownCluster(cluster.cluster_name)
+                          }
+                          disabled={
+                            operationLoading[`down_${cluster.cluster_name}`]
+                          }
+                        >
+                          <ListItemDecorator>
+                            <Trash2Icon />
+                          </ListItemDecorator>
+                          Down
+                        </MenuItem>
+                      </>
+                    )}
                     <Divider />
                     <MenuItem
                       onClick={() =>
@@ -473,7 +485,13 @@ const Held: React.FC<HeldProps> = ({
                       Jupyter
                     </MenuItem>
                     <Divider />
-                    <MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        if (onTabChange) {
+                          onTabChange(1); // Switch to Jobs tab
+                        }
+                      }}
+                    >
                       <ListItemDecorator>
                         <TextIcon />
                       </ListItemDecorator>

@@ -260,9 +260,12 @@ async def get_cluster_jobs(cluster_name: str, request: Request, response: Respon
             )
         return JobQueueResponse(jobs=jobs)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get cluster jobs: {str(e)}"
-        )
+        print(f"Failed to get cluster jobs: {str(e)}")
+        return JobQueueResponse(jobs=[])
+
+        # raise HTTPException(
+        #     status_code=500, detail=f"Failed to get cluster jobs: {str(e)}"
+        # )
 
 
 @router.get("/jobs/{cluster_name}/{job_id}/logs", response_model=JobLogsResponse)

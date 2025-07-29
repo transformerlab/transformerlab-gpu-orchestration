@@ -27,6 +27,8 @@ interface Cluster {
 }
 
 const MyNodes: React.FC = () => {
+  const [activeTab, setActiveTab] = React.useState(0);
+
   // --- SkyPilot Clusters Section ---
   const skypilotFetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
@@ -44,9 +46,18 @@ const MyNodes: React.FC = () => {
         c.status.toLowerCase().includes("up"))
   );
 
+  const handleTabChange = (tabIndex: number) => {
+    setActiveTab(tabIndex);
+  };
+
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", p: 2 }}>
-      <Tabs defaultValue={0} sx={{ background: "transparent" }} variant="plain">
+      <Tabs
+        value={activeTab}
+        onChange={(_, value) => setActiveTab(value as number)}
+        sx={{ background: "transparent" }}
+        variant="plain"
+      >
         <TabList
           disableUnderline
           sx={{
@@ -65,7 +76,11 @@ const MyNodes: React.FC = () => {
           <Tab value={1}>Jobs</Tab>
         </TabList>
         <TabPanel value={0}>
-          <Held skypilotLoading={skypilotLoading} myClusters={myClusters} />
+          <Held
+            skypilotLoading={skypilotLoading}
+            myClusters={myClusters}
+            onTabChange={handleTabChange}
+          />
         </TabPanel>
         <TabPanel value={1}>
           <Jobs skypilotLoading={skypilotLoading} myClusters={myClusters} />
