@@ -13,11 +13,6 @@ if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
     exit 1
 fi
 
-
-# RUN sky stuff for proper setup
-export PATH="./backend/.venv/bin:$PATH"
-sky check
-
 # Set environment variables based on --dev parameter
 if [[ "$1" == "--dev" ]]; then
     export DEBUG="True"
@@ -26,6 +21,29 @@ if [[ "$1" == "--dev" ]]; then
     # In development mode, use a fixed, known cookie password for convenience
     export WORKOS_COOKIE_PASSWORD="uX2+8A0+KO0UFR131I6eyehwZmZSt2V5wul6x5QiJYU="
 else
+    echo "🔨 Building frontend..."
+    cd frontend || exit
+    npm run build
+    echo "✅ Frontend built successfully"
+    export FRONTEND_URL=${FRONTEND_URL:-"http://localhost:8000"}
+    cd ..
+
+    echo "Now build the backend..."
+    # I know it is weird to build the backend again but skypilot hardcodes the path to python
+    # so if you are building locally, and then switch to docker, the sky command will not work
+    cd backend || exit
+    # Create Python virtual environment and install backend dependencies
+    echo "📦 Creating Python virtual environment with uv..."
+    echo "📦 Installing backend dependencies with uv..."
+    uv venv --seed --python 3.10 --clear
+    source .venv/bin/activate
+    uv pip install -r requirements.txt
+    uv pip install --upgrade uvicorn
+    uv pip install "skypilot[kubernetes,runpod]"
+    uv pip install "runpod>=1.6"
+    echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
+    cd ..
+
     export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
     export DEBUG=${DEBUG:-"False"}
     # In production (or non-dev), ensure WORKOS_COOKIE_PASSWORD is set securely
@@ -42,7 +60,6 @@ else
     fi
 fi
 
-echo "🚀 Starting Lattice application using npm run dev..."
 if [ -n "$FRONTEND_URL" ]; then
     echo "📦 Frontend: $FRONTEND_URL"
 else
@@ -56,8 +73,9 @@ echo "🔗 Redirect URI: ${WORKOS_REDIRECT_URI}"
 echo "🔄 Activating Python virtual environment..."
 cd ./backend
 
-# Activate the uv virtual environment
-source .venv/bin/activate
+# RUN sky stuff for proper setup
+export PATH=".venv/bin:$PATH"
+sky check
 
 echo "✅ Virtual environment activated"
 python main.py
