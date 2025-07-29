@@ -14,6 +14,7 @@ import {
   Checkbox,
 } from "@mui/joy";
 import { Plus } from "lucide-react";
+import PageWithTitle from "../templates/PageWithTitle";
 
 // Fake placeholder data
 const fakeObjectStorages = [
@@ -39,28 +40,10 @@ const ObjectStorage: React.FC = () => {
   const [openAdd, setOpenAdd] = React.useState(false);
 
   return (
-    <Box sx={{ maxWidth: 900, mx: "auto" }}>
-      <style>{`
-        .object-storage-table td {
-          word-break: break-all;
-          max-width: 200px;
-          overflow-wrap: anywhere;
-        }
-      `}</style>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 2,
-        }}
-      >
-        <Box>
-          <Typography level="h2">Object Storage Locations</Typography>
-          <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-            Add and manage object storage locations (S3, GCS, Azure, etc).
-          </Typography>
-        </Box>
+    <PageWithTitle
+      title="Object Storage Locations"
+      subtitle="Add and manage object storage locations (S3, GCS, Azure, etc)."
+      button={
         <Button
           variant="solid"
           color="primary"
@@ -69,7 +52,15 @@ const ObjectStorage: React.FC = () => {
         >
           Add
         </Button>
-      </Box>
+      }
+    >
+      <style>{`
+        .object-storage-table td {
+          word-break: break-all;
+          max-width: 200px;
+          overflow-wrap: anywhere;
+        }
+      `}</style>
       <Table className="object-storage-table">
         <thead>
           <tr>
@@ -129,7 +120,7 @@ const ObjectStorage: React.FC = () => {
           </Stack>
         </ModalDialog>
       </Modal>
-    </Box>
+    </PageWithTitle>
   );
 };
 

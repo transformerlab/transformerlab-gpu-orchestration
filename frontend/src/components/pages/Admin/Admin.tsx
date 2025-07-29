@@ -13,6 +13,7 @@ import Users from "./Users";
 import IdentityFileManager from "./IdentityFileManager";
 import Teams from "./Teams";
 import ObjectStorage from "./ObjectStorage";
+import PageWithTitle from "../templates/PageWithTitle";
 
 const Admin: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<
@@ -32,7 +33,12 @@ const Admin: React.FC = () => {
       case "objectStorage":
         return <ObjectStorage />;
       case "volumes":
-        return <Typography>Volumes</Typography>;
+        return (
+          <PageWithTitle
+            title="Volumes"
+            subtitle="Manage volume mounts and storage."
+          />
+        );
       default:
         return null;
     }

@@ -5,6 +5,7 @@ import ClusterManagement from "../ClusterManagement";
 import { buildApiUrl } from "../../utils/api";
 import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
+import PageWithTitle from "./templates/PageWithTitle";
 
 interface Node {
   id: string;
@@ -139,27 +140,15 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
 
 const Jobs: React.FC = () => {
   return (
-    <Box
-      sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 2,
-      }}
+    <PageWithTitle
+      title="Interactive Development"
+      subtitle="Launch interactive development environments and manage clusters"
     >
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h2" sx={{ mb: 1 }}>
-          Interactive Development
-        </Typography>
-        <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Launch interactive development environments and manage clusters
-        </Typography>
-      </Box>
-
       <Stack spacing={3}>
         <SkyPilotClusterLauncher />
         <SkyPilotClusterStatus />
       </Stack>
-    </Box>
+    </PageWithTitle>
   );
 };
 

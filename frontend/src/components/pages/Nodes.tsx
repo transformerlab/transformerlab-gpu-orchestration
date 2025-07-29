@@ -32,6 +32,7 @@ import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../NodeSquare";
+import PageWithTitle from "../pages/templates/PageWithTitle";
 
 interface Node {
   id: string;
@@ -391,16 +392,7 @@ const Nodes: React.FC = () => {
   }, []);
 
   return (
-    <Box
-      sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 2,
-      }}
-    >
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h2">Square Bank's Node Pool</Typography>
-      </Box>
+    <PageWithTitle title="Square Bank's Node Pool">
       {/* Existing Node Pools/Clusters UI */}
       {selectedCluster ? (
         <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
@@ -735,7 +727,7 @@ const Nodes: React.FC = () => {
           })
         )}
       </Box>
-    </Box>
+    </PageWithTitle>
   );
 };
 

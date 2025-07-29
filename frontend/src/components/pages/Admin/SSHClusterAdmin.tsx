@@ -19,6 +19,7 @@ import {
 } from "@mui/joy";
 import { Plus, Trash2, Monitor } from "lucide-react";
 import { buildApiUrl } from "../../../utils/api";
+import PageWithTitle from "../templates/PageWithTitle";
 
 interface SSHNode {
   ip: string;
@@ -244,7 +245,10 @@ const SSHClusterAdmin: React.FC = () => {
   };
 
   return (
-    <Box>
+    <PageWithTitle
+      title="SSH Cluster Management"
+      subtitle="Add, remove, and manage SSH clusters and their nodes."
+    >
       {error && (
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -260,12 +264,7 @@ const SSHClusterAdmin: React.FC = () => {
           </Box>
         </Card>
       )}
-      <Box sx={{ mb: 3 }}>
-        <Typography level="h2">SSH Cluster Management</Typography>
-        <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Add, remove, and manage SSH clusters and their nodes.
-        </Typography>
-      </Box>
+
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography level="h3">Node Pool Configuration</Typography>
         <Button
@@ -545,7 +544,7 @@ const SSHClusterAdmin: React.FC = () => {
           </Stack>
         </ModalDialog>
       </Modal>
-    </Box>
+    </PageWithTitle>
   );
 };
 

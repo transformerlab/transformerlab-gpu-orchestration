@@ -17,6 +17,7 @@ import {
 } from "@mui/joy";
 import { Plus, Trash2, Edit, Key } from "lucide-react";
 import { buildApiUrl } from "../../../utils/api";
+import PageWithTitle from "../templates/PageWithTitle";
 
 interface IdentityFile {
   path: string;
@@ -172,7 +173,10 @@ const IdentityFileManager: React.FC = () => {
   };
 
   return (
-    <Box>
+    <PageWithTitle
+      title="Identity File Management"
+      subtitle="Upload and manage SSH identity files for use with node pools."
+    >
       {error && (
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -188,13 +192,6 @@ const IdentityFileManager: React.FC = () => {
           </Box>
         </Card>
       )}
-
-      <Box sx={{ mb: 3 }}>
-        <Typography level="h2">Identity File Management</Typography>
-        <Typography level="body-lg" sx={{ color: "text.secondary" }}>
-          Upload and manage SSH identity files for use with node pools.
-        </Typography>
-      </Box>
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography level="h3">Identity Files</Typography>
@@ -366,7 +363,7 @@ const IdentityFileManager: React.FC = () => {
           </Stack>
         </ModalDialog>
       </Modal>
-    </Box>
+    </PageWithTitle>
   );
 };
 
