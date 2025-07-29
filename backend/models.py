@@ -14,6 +14,16 @@ class UserResponse(BaseModel):
     last_name: Optional[str] = None
 
 
+class Organization(BaseModel):
+    id: str
+    name: str
+    object: str = "organization"
+
+
+class OrganizationsResponse(BaseModel):
+    organizations: List[Organization]
+
+
 class SSHNode(BaseModel):
     ip: str
     user: str
