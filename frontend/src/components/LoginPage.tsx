@@ -8,7 +8,7 @@ import {
   Alert,
 } from "@mui/joy";
 import axios from "axios";
-import logo from "../logo.png";
+import logo from "../logo.svg";
 
 // Use relative API base URL - this will work regardless of host/port
 const apiBaseUrl = import.meta.env.VITE_API_URL || "/api/v1";

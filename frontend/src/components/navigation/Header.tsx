@@ -13,7 +13,7 @@ import {
 import { useColorScheme } from "@mui/joy/styles";
 import { Sun, Moon } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import logo from "../../logo.png";
+import logo from "../../logo.svg";
 import UserDropdown from "./UserDropdown";
 
 const Header: React.FC = () => {
