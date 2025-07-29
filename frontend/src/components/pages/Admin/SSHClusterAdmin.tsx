@@ -18,7 +18,7 @@ import {
   Option,
 } from "@mui/joy";
 import { Plus, Trash2, Monitor } from "lucide-react";
-import { buildApiUrl } from "../../../utils/api";
+import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
 
 interface SSHNode {
@@ -71,7 +71,7 @@ const SSHClusterAdmin: React.FC = () => {
 
   const fetchIdentityFiles = async () => {
     try {
-      const response = await fetch(buildApiUrl("clusters/identity-files"), {
+      const response = await apiFetch(buildApiUrl("clusters/identity-files"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -86,7 +86,7 @@ const SSHClusterAdmin: React.FC = () => {
   const fetchClusters = async () => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl("clusters"), {
+      const response = await apiFetch(buildApiUrl("clusters"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -105,7 +105,7 @@ const SSHClusterAdmin: React.FC = () => {
   const fetchClusterDetails = async (clusterName: string) => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl(`clusters/${clusterName}`), {
+      const response = await apiFetch(buildApiUrl(`clusters/${clusterName}`), {
         credentials: "include",
       });
       if (response.ok) {
@@ -130,7 +130,7 @@ const SSHClusterAdmin: React.FC = () => {
       if (newClusterPassword) formData.append("password", newClusterPassword);
       if (newClusterIdentityFile)
         formData.append("identity_file_path", newClusterIdentityFile);
-      const response = await fetch(buildApiUrl("clusters"), {
+      const response = await apiFetch(buildApiUrl("clusters"), {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -163,7 +163,7 @@ const SSHClusterAdmin: React.FC = () => {
       if (newNodePassword) formData.append("password", newNodePassword);
       if (newNodeIdentityFile)
         formData.append("identity_file_path", newNodeIdentityFile);
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
         {
           method: "POST",
@@ -199,7 +199,7 @@ const SSHClusterAdmin: React.FC = () => {
     }
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl(`clusters/${clusterName}`), {
+      const response = await apiFetch(buildApiUrl(`clusters/${clusterName}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -225,7 +225,7 @@ const SSHClusterAdmin: React.FC = () => {
     }
     try {
       setLoading(true);
-      const response = await fetch(
+      const response = await apiFetch(
         buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes/${nodeIp}`),
         {
           method: "DELETE",

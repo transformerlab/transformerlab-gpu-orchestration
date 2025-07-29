@@ -9,7 +9,7 @@ import {
   Table,
 } from "@mui/joy";
 import { Monitor } from "lucide-react";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../utils/api";
 
 interface SSHNode {
   ip: string;
@@ -43,7 +43,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const fetchClusters = async () => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl("clusters"), {
+      const response = await apiFetch(buildApiUrl("clusters"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -62,7 +62,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const fetchClusterDetails = async (clusterName: string) => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl(`clusters/${clusterName}`), {
+      const response = await apiFetch(buildApiUrl(`clusters/${clusterName}`), {
         credentials: "include",
       });
       if (response.ok) {
@@ -72,7 +72,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
           onClusterSelected(clusterName);
         }
         // Fetch GPU info for all nodes
-        const gpuRes = await fetch(buildApiUrl("skypilot/ssh-node-info"), {
+        const gpuRes = await apiFetch(buildApiUrl("skypilot/ssh-node-info"), {
           credentials: "include",
         });
         if (gpuRes.ok) {

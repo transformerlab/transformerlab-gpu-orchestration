@@ -15,7 +15,7 @@ import {
   Alert,
   Stack,
 } from "@mui/joy";
-import { buildApiUrl } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../utils/api";
 import { Code, BookOpen } from "lucide-react";
 
 type TaskType = "vscode" | "jupyter";
@@ -96,7 +96,7 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
           formData.append("vscode_port", vscodePort);
         }
 
-        const response = await fetch(
+        const response = await apiFetch(
           buildApiUrl(`skypilot/interactive/${clusterName}/launch`),
           {
             method: "POST",
@@ -151,7 +151,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
         formData.append("job_type", "jupyter");
         formData.append("jupyter_port", jupyterPort);
 
-        const response = await fetch(
+        const response = await apiFetch(
           buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
           {
             method: "POST",

@@ -18,7 +18,7 @@ import {
   Alert,
 } from "@mui/joy";
 import { Play, Rocket, Terminal, Code, BookOpen } from "lucide-react";
-import { buildApiUrl, runpodApi } from "../utils/api";
+import { buildApiUrl, runpodApi, apiFetch } from "../utils/api";
 
 interface LaunchClusterRequest {
   cluster_name: string;
@@ -111,7 +111,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   const fetchSSHClusters = async () => {
     try {
-      const response = await fetch(buildApiUrl("skypilot/ssh-clusters"), {
+      const response = await apiFetch(buildApiUrl("skypilot/ssh-clusters"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -221,7 +221,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
       if (launchMode === "vscode" && vscodePort) {
         formData.append("vscode_port", vscodePort);
       }
-      const response = await fetch(buildApiUrl("skypilot/launch"), {
+      const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
         credentials: "include",
         body: formData,
