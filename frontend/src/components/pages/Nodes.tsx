@@ -558,8 +558,8 @@ const CloudClusterCard: React.FC<{
           <Button variant="outlined" onClick={handleReserveNode}>
             Reserve a Node
           </Button>
-          <Button 
-            variant="outlined" 
+          <Button
+            variant="outlined"
             onClick={handleLaunchJob}
             disabled={!isActiveCluster}
           >
@@ -630,7 +630,7 @@ const ReserveNodeModal: React.FC<{
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
@@ -692,10 +692,11 @@ const ReserveNodeModal: React.FC<{
                   {success}
                 </Alert>
               )}
-              
+
               <Alert color="primary" sx={{ mb: 2 }}>
                 <Typography level="body-sm">
-                  <strong>SSH Mode:</strong> This will reserve a node from the {clusterName} cluster using direct SSH connection.
+                  <strong>Direct Connect Mode:</strong> This will reserve a node
+                  from the {clusterName} cluster using direct SSH connection.
                 </Typography>
               </Alert>
 
@@ -791,11 +792,7 @@ const ReserveNodeModal: React.FC<{
               </Card>
 
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Button
-                  variant="plain"
-                  onClick={onClose}
-                  disabled={loading}
-                >
+                <Button variant="plain" onClick={onClose} disabled={loading}>
                   Cancel
                 </Button>
                 <Button
