@@ -339,7 +339,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
           disabled={loading}
           color="success"
         >
-          Launch Interactive Development Environment
+          Launch a Cluster on a Cloud Node Pool
         </Button>
       </Box>
 
@@ -356,7 +356,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         >
           <ModalClose />
           <Typography level="h4" sx={{ mb: 2 }}>
-            Launch Interactive Development Environment
+            Launch a Cluster on a Cloud Node Pool
           </Typography>
 
           <Stack spacing={3}>

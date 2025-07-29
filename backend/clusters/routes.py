@@ -204,12 +204,7 @@ async def delete_cluster(cluster_name: str, request: Request, response: Response
         raise HTTPException(
             status_code=404, detail=f"Cluster '{cluster_name}' not found"
         )
-    cluster_config = pools[cluster_name]
-    if "identity_file" in cluster_config:
-        cleanup_identity_file(cluster_config["identity_file"])
-    for host in cluster_config.get("hosts", []):
-        if "identity_file" in host:
-            cleanup_identity_file(host["identity_file"])
+    # Remove cluster from pools without deleting identity files
     del pools[cluster_name]
     save_ssh_node_pools(pools)
     return {"message": f"Cluster '{cluster_name}' deleted successfully"}
@@ -226,13 +221,7 @@ async def remove_node(
         )
     hosts = pools[cluster_name].get("hosts", [])
     original_length = len(hosts)
-    node_to_remove = None
-    for host in hosts:
-        if host.get("ip") == node_ip:
-            node_to_remove = host
-            break
-    if node_to_remove and "identity_file" in node_to_remove:
-        cleanup_identity_file(node_to_remove["identity_file"])
+    # Remove node without deleting its identity file
     pools[cluster_name]["hosts"] = [host for host in hosts if host.get("ip") != node_ip]
     if len(pools[cluster_name]["hosts"]) == original_length:
         raise HTTPException(

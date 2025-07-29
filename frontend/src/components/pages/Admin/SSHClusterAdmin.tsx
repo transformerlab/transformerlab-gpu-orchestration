@@ -246,8 +246,8 @@ const SSHClusterAdmin: React.FC = () => {
 
   return (
     <PageWithTitle
-      title="SSH Cluster Management"
-      subtitle="Add, remove, and manage SSH clusters and their nodes."
+      title="Cloud Node Pool Management"
+      subtitle="Add, remove, and manage cloud node clusters and their nodes."
     >
       {error && (
         <Card color="danger" variant="soft" sx={{ mb: 2 }}>
