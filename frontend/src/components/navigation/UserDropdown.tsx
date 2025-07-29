@@ -43,10 +43,7 @@ const UserDropdown: React.FC = () => {
           mr: 1,
         }}
       >
-        <Avatar
-          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&dpr=2"
-          size="md"
-        >
+        <Avatar src={user.profile_picture_url} size="md">
           {/* fallback initials logic can be removed if always using src */}
         </Avatar>
         <Box
