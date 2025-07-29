@@ -8,6 +8,20 @@ export const buildApiUrl = (endpoint: string): string => {
   return `${API_BASE_URL}/${cleanEndpoint}`;
 };
 
+export const authApi = {
+  getOrganizations: async (): Promise<{
+    organizations: Array<{ id: string; name: string; object: string }>;
+  }> => {
+    const response = await fetch(buildApiUrl("auth/orgs"), {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch organizations");
+    }
+    return response.json();
+  },
+};
+
 // RunPod API functions
 export const runpodApi = {
   setup: async (): Promise<{ message: string }> => {
