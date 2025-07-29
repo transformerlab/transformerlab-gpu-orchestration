@@ -50,6 +50,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   );
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [selectedClusterName, setSelectedClusterName] = useState<string>("");
   const [logsLoading, setLogsLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState<{
     [key: string]: boolean;
@@ -199,6 +200,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const fetchJobLogs = async (clusterName: string, jobId: number) => {
     setLogsLoading(true);
     setSelectedJobId(jobId);
+    setSelectedClusterName(clusterName);
     try {
       const response = await apiFetch(
         buildApiUrl(
@@ -568,7 +570,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           )}
 
           {/* Job Logs Modal */}
-          {selectedJobId && (
+          {selectedJobId && selectedClusterName === cluster.cluster_name && (
             <Box sx={{ mt: 2 }}>
               <Typography level="title-sm" sx={{ mb: 1 }}>
                 Job {selectedJobId} Logs
