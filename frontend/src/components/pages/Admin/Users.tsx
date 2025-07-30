@@ -1,105 +1,530 @@
-import React from "react";
-import { Box, Typography, Table, Avatar, Chip, Button, Alert } from "@mui/joy";
-import { Plus } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Table,
+  Avatar,
+  Chip,
+  Button,
+  Alert,
+  CircularProgress,
+  IconButton,
+  Modal,
+  ModalDialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  FormLabel,
+  Input,
+  Select,
+  Option,
+} from "@mui/joy";
+import { Plus, Trash2, Mail } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useAuth } from "../../../context/AuthContext";
-import { useFakeData } from "../../../context/FakeDataContext";
+import { buildApiUrl, apiFetch } from "../../../utils/api";
 
-const fakeUsers = [
-  {
-    name: "Alice Johnson",
-    avatar: "https://i.pravatar.cc/150?img=9",
-    email: "alice.johnson@example.com",
-    groups: ["Admin", "DevOps"],
-  },
-  {
-    name: "Bob Smith",
-    avatar: "https://i.pravatar.cc/150?img=7",
-    email: "bob.smith@example.com",
-    groups: ["User"],
-  },
-  {
-    name: "Carol Lee",
-    avatar: "https://i.pravatar.cc/150?img=3",
-    email: "carol.lee@example.com",
-    groups: ["Admin", "User"],
-  },
-];
+interface OrganizationMember {
+  user_id: string;
+  role: string | { slug: string };
+  email: string;
+  first_name: string;
+  last_name: string;
+  profile_picture_url?: string;
+}
+
+interface OrganizationMembersResponse {
+  members: OrganizationMember[];
+}
+
+interface InvitationRequest {
+  email: string;
+  role_slug?: string;
+  expires_in_days?: number;
+}
 
 const Users: React.FC = () => {
-  const { user } = useAuth();
-  const { showFakeData } = useFakeData();
+  const { user, loading: authLoading } = useAuth();
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<OrganizationMember | null>(
+    null
+  );
+
+  // Invitation modal state
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [inviteForm, setInviteForm] = useState<InvitationRequest>({
+    email: "",
+    role_slug: "member",
+    expires_in_days: 7,
+  });
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!user) {
+        // User is still loading, don't set error yet
+        return;
+      }
+
+      if (!user.organization_id) {
+        setError("No organization ID available");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await apiFetch(
+          buildApiUrl(`admin/orgs/${user.organization_id}/members`),
+          {
+            credentials: "include",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch organization members");
+        }
+
+        const data: OrganizationMembersResponse = await response.json();
+        console.log("API Response:", data);
+        setMembers(data.members);
+      } catch (err) {
+        console.error("Error fetching members:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch members"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, [user]);
+
+  const getDisplayName = (member: OrganizationMember) => {
+    if (member.first_name && member.last_name) {
+      return `${member.first_name} ${member.last_name}`;
+    }
+    return member.email;
+  };
+
+  const getAvatarUrl = (member: OrganizationMember) => {
+    // Use profile_picture_url if available, otherwise fall back to placeholder
+    if (member.profile_picture_url) {
+      return member.profile_picture_url;
+    }
+
+    // Generate a simple avatar based on email hash as fallback
+    const hash = member.email.split("").reduce((a, b) => {
+      a = (a << 5) - a + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return `https://i.pravatar.cc/150?img=${Math.abs(hash) % 70}`;
+  };
+
+  const handleRemoveUser = async (member: OrganizationMember) => {
+    if (!user?.organization_id) {
+      setError("No organization ID available");
+      return;
+    }
+
+    try {
+      setRemovingUserId(member.user_id);
+      setError(null);
+
+      const response = await apiFetch(
+        buildApiUrl(
+          `admin/orgs/${user.organization_id}/members/${member.user_id}`
+        ),
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to remove user from organization");
+      }
+
+      // Remove the user from the local state
+      setMembers(members.filter((m) => m.user_id !== member.user_id));
+      setRemoveDialogOpen(false);
+      setUserToRemove(null);
+    } catch (err) {
+      console.error("Error removing user:", err);
+      setError(err instanceof Error ? err.message : "Failed to remove user");
+    } finally {
+      setRemovingUserId(null);
+    }
+  };
+
+  const openRemoveDialog = (member: OrganizationMember) => {
+    setUserToRemove(member);
+    setRemoveDialogOpen(true);
+  };
+
+  const handleInviteUser = async () => {
+    if (!user?.organization_id) {
+      setInviteError("No organization ID available");
+      return;
+    }
+
+    if (!inviteForm.email.trim()) {
+      setInviteError("Email is required");
+      return;
+    }
+
+    try {
+      setInviting(true);
+      setInviteError(null);
+      setInviteSuccess(null);
+
+      const response = await apiFetch(
+        buildApiUrl(`admin/orgs/${user.organization_id}/invitations`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            email: inviteForm.email.trim(),
+            role_slug: inviteForm.role_slug,
+            expires_in_days: inviteForm.expires_in_days,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to send invitation");
+      }
+
+      const data = await response.json();
+      setInviteSuccess(`Invitation sent successfully to ${inviteForm.email}`);
+
+      setInviteForm({
+        email: "",
+        role_slug: "member",
+        expires_in_days: 7,
+      });
+
+      setTimeout(() => {
+        setInviteDialogOpen(false);
+        setInviteSuccess(null);
+      }, 1000);
+    } catch (err) {
+      console.error("Error sending invitation:", err);
+      setInviteError(
+        err instanceof Error ? err.message : "Failed to send invitation"
+      );
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const openInviteDialog = () => {
+    setInviteDialogOpen(true);
+    setInviteError(null);
+    setInviteSuccess(null);
+    setInviteForm({
+      email: "",
+      role_slug: "member",
+      expires_in_days: 7,
+    });
+  };
+
+  if (authLoading || loading) {
+    return (
+      <PageWithTitle
+        title="Users"
+        subtitle={`All users at ${user?.organization_name || "Loading..."}`}
+        button={
+          <Button
+            variant="solid"
+            color="primary"
+            startDecorator={<Mail size={16} />}
+            onClick={openInviteDialog}
+          >
+            Invite User
+          </Button>
+        }
+      >
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      </PageWithTitle>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageWithTitle
+        title="Users"
+        subtitle={`All users at ${
+          user?.organization_name || "Unknown Organization"
+        }`}
+        button={
+          <Button
+            variant="solid"
+            color="primary"
+            startDecorator={<Mail size={16} />}
+            onClick={openInviteDialog}
+          >
+            Invite User
+          </Button>
+        }
+      >
+        <Alert color="danger" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      </PageWithTitle>
+    );
+  }
+
   return (
     <PageWithTitle
       title="Users"
-      subtitle={`All users at ${user?.organization_name}`}
+      subtitle={`All users at ${
+        user?.organization_name || "Unknown Organization"
+      }`}
       button={
         <Button
           variant="solid"
           color="primary"
-          startDecorator={<Plus size={16} />}
+          startDecorator={<Mail size={16} />}
+          onClick={openInviteDialog}
         >
-          Add User
+          Invite User
         </Button>
       }
     >
-      {showFakeData ? (
-        <>
-          <Alert color="warning" sx={{ mb: 2 }}>
-            This page is showing sample data. Real user management functionality
-            will be implemented soon.
-          </Alert>
-          <Box
-            sx={{
-              maxWidth: 1000,
-              mx: "auto",
-            }}
-          >
-            <Table>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Groups</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fakeUsers.map((user) => (
-                  <tr key={user.email}>
-                    <td>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Avatar src={user.avatar} alt={user.name} size="sm" />
-                        <Box>
-                          <Typography level="body-md">{user.name}</Typography>
-                          <Typography
-                            level="body-sm"
-                            sx={{ color: "text.secondary" }}
-                          >
-                            {user.email}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </td>
-                    <td>
-                      {user.groups.map((group) => (
-                        <Chip key={group} size="sm" sx={{ mr: 0.5 }}>
-                          {group}
-                        </Chip>
-                      ))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+      <Box
+        sx={{
+          maxWidth: 1000,
+          mx: "auto",
+        }}
+      >
+        {members.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography level="body-lg" sx={{ color: "text.secondary" }}>
+              No users found in this organization
+            </Typography>
           </Box>
-        </>
-      ) : (
-        <Alert color="info" sx={{ mb: 2 }}>
-          User management functionality is not yet implemented. Enable fake data
-          in Settings to see sample data.
-        </Alert>
-      )}
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => (
+                <tr key={member.user_id}>
+                  <td>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Avatar
+                        src={getAvatarUrl(member)}
+                        alt={getDisplayName(member)}
+                        size="sm"
+                      />
+                      <Box>
+                        <Typography level="body-md">
+                          {getDisplayName(member)}
+                        </Typography>
+                        <Typography
+                          level="body-sm"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          {member.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      color={
+                        (typeof member.role === "string" &&
+                          member.role === "admin") ||
+                        (typeof member.role === "object" &&
+                          member.role?.slug === "admin")
+                          ? "primary"
+                          : "neutral"
+                      }
+                    >
+                      {typeof member.role === "string"
+                        ? member.role
+                        : member.role?.slug || "unknown"}
+                    </Chip>
+                  </td>
+                  <td>
+                    {(typeof member.role === "string" &&
+                      member.role === "admin") ||
+                    (typeof member.role === "object" &&
+                      member.role?.slug === "admin") ? (
+                      <Typography
+                        level="body-sm"
+                        sx={{ color: "text.secondary" }}
+                      ></Typography>
+                    ) : (
+                      <IconButton
+                        size="sm"
+                        color="danger"
+                        variant="plain"
+                        onClick={() => openRemoveDialog(member)}
+                        disabled={removingUserId === member.user_id}
+                      >
+                        {removingUserId === member.user_id ? (
+                          <CircularProgress size="sm" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                      </IconButton>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Box>
+
+      {/* Remove User Confirmation Dialog */}
+      <Modal open={removeDialogOpen} onClose={() => setRemoveDialogOpen(false)}>
+        <ModalDialog>
+          <DialogTitle>Remove User</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to remove{" "}
+              <strong>
+                {userToRemove ? getDisplayName(userToRemove) : ""}
+              </strong>{" "}
+              from the organization? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={() => setRemoveDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              color="danger"
+              onClick={() => userToRemove && handleRemoveUser(userToRemove)}
+              loading={removingUserId !== null}
+            >
+              Remove User
+            </Button>
+          </DialogActions>
+        </ModalDialog>
+      </Modal>
+
+      {/* Invite User Dialog */}
+      <Modal open={inviteDialogOpen} onClose={() => setInviteDialogOpen(false)}>
+        <ModalDialog>
+          <DialogTitle>Invite User to Organization</DialogTitle>
+          <DialogContent>
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
+            >
+              {inviteError && (
+                <Alert color="danger" size="sm">
+                  {inviteError}
+                </Alert>
+              )}
+              {inviteSuccess && (
+                <Alert color="success" size="sm">
+                  {inviteSuccess}
+                </Alert>
+              )}
+
+              <FormControl>
+                <FormLabel>Email Address</FormLabel>
+                <Input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={inviteForm.email}
+                  onChange={(e) =>
+                    setInviteForm({ ...inviteForm, email: e.target.value })
+                  }
+                  disabled={inviting}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Role</FormLabel>
+                <Select
+                  value={inviteForm.role_slug}
+                  onChange={(_, value) =>
+                    setInviteForm({
+                      ...inviteForm,
+                      role_slug: value || "member",
+                    })
+                  }
+                  disabled={inviting}
+                >
+                  <Option value="member">Member</Option>
+                  <Option value="admin">Admin</Option>
+                </Select>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Invitation Expires In (Days)</FormLabel>
+                <Select
+                  value={inviteForm.expires_in_days?.toString()}
+                  onChange={(_, value) =>
+                    setInviteForm({
+                      ...inviteForm,
+                      expires_in_days: parseInt(value || "7"),
+                    })
+                  }
+                  disabled={inviting}
+                >
+                  <Option value="1">1 day</Option>
+                  <Option value="3">3 days</Option>
+                  <Option value="7">7 days</Option>
+                  <Option value="14">14 days</Option>
+                  <Option value="30">30 days</Option>
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={() => setInviteDialogOpen(false)}
+              disabled={inviting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              color="primary"
+              onClick={handleInviteUser}
+              loading={inviting}
+              disabled={!inviteForm.email.trim()}
+            >
+              Send Invitation
+            </Button>
+          </DialogActions>
+        </ModalDialog>
+      </Modal>
     </PageWithTitle>
   );
 };
