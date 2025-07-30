@@ -33,6 +33,13 @@ interface LaunchClusterResponse {
   message: string;
 }
 
+interface GpuType {
+  name: string;
+  count: string;
+  display_name: string;
+  full_string: string;
+}
+
 const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   open,
   onClose,
@@ -42,7 +49,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [command, setCommand] = useState("echo 'Hello RunPod'");
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
-  const [availableGpuTypes, setAvailableGpuTypes] = useState<string[]>([]);
+  const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
+  const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [runpodConfig, setRunpodConfig] = useState({
     api_key: "",
     allowed_gpu_types: [] as string[],
@@ -87,7 +95,16 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       );
       if (response.ok) {
         const data = await response.json();
-        setAvailableGpuTypes(data.gpu_types);
+        const gpuTypes = data.gpu_types.map((gpu: string) => {
+          const [name, count] = gpu.split(":");
+          return {
+            name,
+            count: count || "1",
+            display_name: `${name} (${count || "1"}x)`,
+            full_string: gpu, // Keep the original string for unique identification
+          };
+        });
+        setAvailableGpuTypes(gpuTypes);
       }
     } catch (err) {
       console.error("Error fetching GPU types:", err);
@@ -99,6 +116,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setCommand("echo 'Hello RunPod'");
     setSetup("");
     setSelectedGpuType("");
+    setSelectedGpuFullString("");
     setError(null);
     setSuccess(null);
   };
@@ -231,15 +249,28 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
           <FormControl required>
             <FormLabel>GPU Type</FormLabel>
             <Select
-              value={selectedGpuType}
-              onChange={(_, value) => setSelectedGpuType(value || "")}
+              value={selectedGpuFullString}
+              onChange={(_, value) => {
+                setSelectedGpuFullString(value || "");
+                // Extract the GPU name from the full string for the backend
+                if (value) {
+                  const [name] = value.split(":");
+                  setSelectedGpuType(name);
+                } else {
+                  setSelectedGpuType("");
+                }
+              }}
               placeholder="Select GPU type"
             >
-              {runpodConfig.allowed_gpu_types.map((gpuType) => (
-                <Option key={gpuType} value={gpuType}>
-                  {gpuType}
-                </Option>
-              ))}
+              {availableGpuTypes
+                .filter((gpu) =>
+                  runpodConfig.allowed_gpu_types.includes(gpu.name)
+                )
+                .map((gpu) => (
+                  <Option key={gpu.full_string} value={gpu.full_string}>
+                    {gpu.display_name}
+                  </Option>
+                ))}
             </Select>
             <Typography
               level="body-xs"

@@ -1535,8 +1535,7 @@ const Nodes: React.FC = () => {
 
             {runpodConfig.is_configured && (
               <Alert color="success">
-                RunPod is configured and ready to use. You can launch RunPod
-                clusters from the "Launch SkyPilot Cluster" page.
+                RunPod is configured and ready to use.
               </Alert>
             )}
           </Stack>

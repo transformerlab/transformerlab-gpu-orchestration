@@ -15,6 +15,9 @@ import {
   Switch,
   Alert,
   CircularProgress,
+  Select,
+  Option,
+  Grid,
 } from "@mui/joy";
 import { Save, Key, Gpu } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -125,15 +128,6 @@ const RunPodAdmin: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const toggleGpuType = (gpuName: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      allowed_gpu_types: prev.allowed_gpu_types.includes(gpuName)
-        ? prev.allowed_gpu_types.filter((g) => g !== gpuName)
-        : [...prev.allowed_gpu_types, gpuName],
-    }));
   };
 
   const testConnection = async () => {
@@ -269,27 +263,135 @@ const RunPodAdmin: React.FC = () => {
               configured and try refreshing.
             </Alert>
           ) : (
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-              {availableGpuTypes.map((gpu) => (
-                <Chip
-                  key={gpu.name}
-                  variant={
-                    config.allowed_gpu_types.includes(gpu.name)
-                      ? "solid"
-                      : "outlined"
-                  }
-                  color={
-                    config.allowed_gpu_types.includes(gpu.name)
-                      ? "primary"
-                      : "neutral"
-                  }
-                  onClick={() => toggleGpuType(gpu.name)}
-                  sx={{ cursor: "pointer" }}
-                >
-                  {gpu.display_name}
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1,
+                }}
+              >
+                <Typography level="title-sm">
+                  Select GPU Types to Allow
+                </Typography>
+                <Chip size="sm" variant="soft" color="primary">
+                  {config.allowed_gpu_types.length} selected
                 </Chip>
-              ))}
-            </Box>
+              </Box>
+
+              <Grid container spacing={2}>
+                {availableGpuTypes.map((gpu) => {
+                  const isSelected = config.allowed_gpu_types.includes(
+                    gpu.name
+                  );
+                  return (
+                    <Grid xs={12} sm={6} md={4} key={gpu.name}>
+                      <Card
+                        variant={isSelected ? "solid" : "outlined"}
+                        color={isSelected ? "primary" : "neutral"}
+                        sx={{
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          "&:hover": {
+                            transform: "translateY(-2px)",
+                            boxShadow: "md",
+                          },
+                          position: "relative",
+                          overflow: "hidden",
+                        }}
+                        onClick={() => {
+                          setConfig((prev) => ({
+                            ...prev,
+                            allowed_gpu_types: isSelected
+                              ? prev.allowed_gpu_types.filter(
+                                  (g) => g !== gpu.name
+                                )
+                              : [...prev.allowed_gpu_types, gpu.name],
+                          }));
+                        }}
+                      >
+                        {isSelected && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: 8,
+                              right: 8,
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              bgcolor: "success.500",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Typography
+                              level="body-xs"
+                              sx={{ color: "white", fontWeight: "bold" }}
+                            >
+                              ✓
+                            </Typography>
+                          </Box>
+                        )}
+
+                        <Stack spacing={1}>
+                          <Typography
+                            level="title-sm"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            {gpu.name}
+                          </Typography>
+                          <Typography
+                            level="body-sm"
+                            sx={{ color: "text.secondary" }}
+                          >
+                            {gpu.count}x GPU
+                          </Typography>
+                          <Chip
+                            size="sm"
+                            variant="soft"
+                            color={isSelected ? "primary" : "neutral"}
+                            sx={{ alignSelf: "flex-start" }}
+                          >
+                            {gpu.count} Instance{gpu.count !== "1" ? "s" : ""}
+                          </Chip>
+                        </Stack>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+
+              <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_gpu_types: availableGpuTypes.map(
+                        (gpu) => gpu.name
+                      ),
+                    }));
+                  }}
+                >
+                  Select All
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_gpu_types: [],
+                    }));
+                  }}
+                >
+                  Clear All
+                </Button>
+              </Box>
+            </Stack>
           )}
         </Card>
 
