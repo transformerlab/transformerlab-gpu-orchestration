@@ -5,6 +5,8 @@ set -e
 if [ -f .env ]; then
     source .env
 fi
+# default port (can be overridden via ENV)
+export PORT=${PORT:-8000}
 
 if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
     echo "❌ Error: WORKOS_API_KEY and WORKOS_CLIENT_ID environment variables must be set"
@@ -63,10 +65,10 @@ fi
 if [ -n "$FRONTEND_URL" ]; then
     echo "📦 Frontend: $FRONTEND_URL"
 else
-    echo "📦 Frontend: http://localhost:8000"
+    echo "📦 Frontend: http://localhost:$PORT"
 fi
-echo "🔧 Backend API: http://localhost:8000/api/v1"
-echo "📝 API Documentation: http://localhost:8000/docs"
+echo "🔧 Backend API: http://localhost:$PORT/api/v1"
+echo "📝 API Documentation: http://localhost:$PORT/docs"
 echo "🔑 WorkOS Client ID: ${WORKOS_CLIENT_ID}"
 echo "🔗 Redirect URI: ${WORKOS_REDIRECT_URI}"
 
@@ -78,4 +80,9 @@ export PATH=".venv/bin:$PATH"
 sky check
 
 echo "✅ Virtual environment activated"
-python main.py
+# Start the application with uvicorn instead of running main.py directly
+if [[ "$DEBUG" == "True" ]]; then
+    uvicorn main:app --host 0.0.0.0 --port "$PORT" --reload
+else
+    uvicorn main:app --host 0.0.0.0 --port "$PORT"
+fi
