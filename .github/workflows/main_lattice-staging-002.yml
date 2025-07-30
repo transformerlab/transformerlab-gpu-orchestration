@@ -86,6 +86,9 @@ jobs:
         # Provide registry credentials for ACI to pull the image
         registry-username: ${{ secrets.AzureAppService_ContainerUsername_370f749654814d988edd250c13114975 }}
         registry-password: ${{ secrets.AzureAppService_ContainerPassword_ee70eb5d80d641fc8da6b06767afc8dd }}
+
+        location: westus2 # <--- IMPORTANT: Choose your desired Azure region (e.g., westus2, canadacentral, westeurope)
+
         # Add any environment variables your container needs
         # environment-variables: |
         #   MY_ENV_VAR_1=value1
