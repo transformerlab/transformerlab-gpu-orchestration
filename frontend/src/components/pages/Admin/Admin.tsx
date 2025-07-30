@@ -7,6 +7,11 @@ import {
   ListItemButton,
   ListItemContent,
   Sheet,
+  Switch,
+  FormControl,
+  FormLabel,
+  Card,
+  Stack,
 } from "@mui/joy";
 import SSHClusterAdmin from "./SSHClusterAdmin";
 import Users from "./Users";
@@ -14,11 +19,13 @@ import IdentityFileManager from "./IdentityFileManager";
 import Teams from "./Teams";
 import ObjectStorage from "./ObjectStorage";
 import PageWithTitle from "../templates/PageWithTitle";
+import { useFakeData } from "../../../context/FakeDataContext";
 
 const Admin: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<
-    "team" | "teams" | "clouds" | "identity" | "objectStorage" | "volumes"
+    "team" | "teams" | "clouds" | "identity" | "objectStorage" | "volumes" | "settings"
   >("team");
+  const { showFakeData, setShowFakeData } = useFakeData();
 
   const renderContent = () => {
     switch (selectedSection) {
@@ -38,6 +45,35 @@ const Admin: React.FC = () => {
             title="Volumes"
             subtitle="Manage volume mounts and storage."
           />
+        );
+      case "settings":
+        return (
+          <PageWithTitle
+            title="Settings"
+            subtitle="Configure application settings."
+          >
+            <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <Typography level="h4" sx={{ mb: 2 }}>
+                Display Settings
+              </Typography>
+              <Stack spacing={2}>
+                <FormControl>
+                  <FormLabel>Show Fake Data</FormLabel>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Switch
+                      checked={showFakeData}
+                      onChange={(e) => setShowFakeData(e.target.checked)}
+                    />
+                    <Typography level="body-sm" color="neutral">
+                      {showFakeData 
+                        ? "Fake data is currently displayed throughout the application" 
+                        : "Fake data is hidden - only real data will be shown"}
+                    </Typography>
+                  </Stack>
+                </FormControl>
+              </Stack>
+            </Card>
+          </PageWithTitle>
         );
       default:
         return null;
@@ -110,6 +146,14 @@ const Admin: React.FC = () => {
               onClick={() => setSelectedSection("volumes")}
             >
               <ListItemContent>Volumes</ListItemContent>
+            </ListItemButton>
+          </ListItem>
+          <ListItem>
+            <ListItemButton
+              selected={selectedSection === "settings"}
+              onClick={() => setSelectedSection("settings")}
+            >
+              <ListItemContent>Settings</ListItemContent>
             </ListItemButton>
           </ListItem>
         </List>
