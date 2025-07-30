@@ -14,6 +14,7 @@ import {
   Stack,
 } from "@mui/joy";
 import SSHClusterAdmin from "./SSHClusterAdmin";
+import RunPodAdmin from "./RunPodAdmin";
 import Users from "./Users";
 import IdentityFileManager from "./IdentityFileManager";
 import Teams from "./Teams";
@@ -23,7 +24,14 @@ import { useFakeData } from "../../../context/FakeDataContext";
 
 const Admin: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<
-    "team" | "teams" | "clouds" | "identity" | "objectStorage" | "volumes" | "settings"
+    | "team"
+    | "teams"
+    | "clouds"
+    | "runpod"
+    | "identity"
+    | "objectStorage"
+    | "volumes"
+    | "settings"
   >("team");
   const { showFakeData, setShowFakeData } = useFakeData();
 
@@ -35,6 +43,8 @@ const Admin: React.FC = () => {
         return <Teams />;
       case "clouds":
         return <SSHClusterAdmin />;
+      case "runpod":
+        return <RunPodAdmin />;
       case "identity":
         return <IdentityFileManager />;
       case "objectStorage":
@@ -65,8 +75,8 @@ const Admin: React.FC = () => {
                       onChange={(e) => setShowFakeData(e.target.checked)}
                     />
                     <Typography level="body-sm" color="neutral">
-                      {showFakeData 
-                        ? "Fake data is currently displayed throughout the application" 
+                      {showFakeData
+                        ? "Fake data is currently displayed throughout the application"
                         : "Fake data is hidden - only real data will be shown"}
                     </Typography>
                   </Stack>
@@ -121,7 +131,15 @@ const Admin: React.FC = () => {
               selected={selectedSection === "clouds"}
               onClick={() => setSelectedSection("clouds")}
             >
-              <ListItemContent>Clouds</ListItemContent>
+              <ListItemContent>Cloud Node Pools</ListItemContent>
+            </ListItemButton>
+          </ListItem>
+          <ListItem>
+            <ListItemButton
+              selected={selectedSection === "runpod"}
+              onClick={() => setSelectedSection("runpod")}
+            >
+              <ListItemContent>RunPod Configuration</ListItemContent>
             </ListItemButton>
           </ListItem>
           <ListItem>

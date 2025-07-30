@@ -26,6 +26,7 @@ import {
   Input,
   Alert,
 } from "@mui/joy";
+import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import {
   ArrowRightIcon,
   ChevronLeftIcon,
@@ -33,6 +34,7 @@ import {
   Monitor,
   Plus,
   Settings,
+  Zap,
 } from "lucide-react";
 import ClusterManagement from "../ClusterManagement";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -40,6 +42,7 @@ import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../NodeSquare";
+import RunPodClusterLauncher from "../RunPodClusterLauncher";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
@@ -64,6 +67,12 @@ interface Cluster {
   id: string;
   name: string;
   nodes: Node[];
+}
+
+interface RunPodConfig {
+  api_key: string;
+  allowed_gpu_types: string[];
+  is_configured: boolean;
 }
 
 const gpuTypes = [
@@ -815,6 +824,100 @@ const ReserveNodeModal: React.FC<{
 };
 
 // Custom SubmitJobModal that only shows custom mode (no Jupyter/VSCode options)
+const RunPodClusterCard: React.FC<{
+  cluster: any;
+  onClusterLaunched?: (clusterName: string) => void;
+}> = ({ cluster, onClusterLaunched }) => {
+  // State for modals
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [showLaunchJobModal, setShowLaunchJobModal] = useState(false);
+
+  const isActiveCluster =
+    cluster.status === "ClusterStatus.UP" ||
+    cluster.status === "ClusterStatus.INIT";
+
+  const handleReserveNode = () => {
+    setShowReserveModal(true);
+  };
+
+  const handleLaunchJob = () => {
+    setShowLaunchJobModal(true);
+  };
+
+  const handleClusterLaunched = (newClusterName: string) => {
+    window.location.reload();
+  };
+
+  const handleJobSubmitted = () => {
+    window.location.reload();
+  };
+
+  return (
+    <>
+      <Card
+        variant="outlined"
+        sx={{
+          p: 3,
+          mb: 3,
+          transition: "all 0.2s ease",
+          "&:hover": {
+            boxShadow: "md",
+          },
+        }}
+      >
+        <Box sx={{ mb: 2 }}>
+          <Typography level="h4" mb={0.5}>
+            {cluster.cluster_name}
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
+            <Chip size="sm" color="success" variant="soft">
+              {isActiveCluster ? "Active" : "Inactive"}
+            </Chip>
+            <Chip size="sm" color="primary" variant="soft">
+              RunPod Cluster
+            </Chip>
+          </Stack>
+        </Box>
+
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={handleReserveNode}>
+            Reserve a Node
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleLaunchJob}
+            disabled={!isActiveCluster}
+          >
+            Launch Job
+          </Button>
+        </Stack>
+      </Card>
+
+      {/* Reserve Node Modal for RunPod */}
+      {showReserveModal && (
+        <ReserveNodeModal
+          open={showReserveModal}
+          onClose={() => setShowReserveModal(false)}
+          clusterName={cluster.cluster_name}
+          onClusterLaunched={handleClusterLaunched}
+        />
+      )}
+
+      {/* Launch Job Modal for RunPod */}
+      {showLaunchJobModal && (
+        <CustomSubmitJobModal
+          open={showLaunchJobModal}
+          onClose={() => setShowLaunchJobModal(false)}
+          clusterName={cluster.cluster_name}
+          onJobSubmitted={handleJobSubmitted}
+          isClusterLaunching={false}
+          isSshCluster={false}
+        />
+      )}
+    </>
+  );
+};
+
 const CustomSubmitJobModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -1066,6 +1169,11 @@ const Nodes: React.FC = () => {
     cluster: any;
     name: string;
   } | null>(null);
+  const [runpodConfig, setRunpodConfig] = useState<RunPodConfig>({
+    api_key: "",
+    allowed_gpu_types: [],
+    is_configured: false,
+  });
 
   // --- Node Pools/Clouds Section ---
   const fetcher = (url: string) =>
@@ -1074,6 +1182,16 @@ const Nodes: React.FC = () => {
     refreshInterval: 2000,
   });
   const clusterNames = data?.clusters || [];
+
+  // Fetch SkyPilot cluster status to determine which clusters are running
+  const { data: skyPilotStatus } = useSWR(
+    buildApiUrl("skypilot/status"),
+    (url: string) =>
+      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
+    { refreshInterval: 2000 }
+  );
+
+  const skyPilotClusters = skyPilotStatus?.clusters || [];
 
   // State for all cluster details
   const [clusterDetails, setClusterDetails] = useState<{
@@ -1109,9 +1227,28 @@ const Nodes: React.FC = () => {
       .then((res) => (res.ok ? res.json() : {}))
       .then((data) => setNodeGpuInfo(data))
       .catch(() => setNodeGpuInfo({}));
+
+    // Fetch RunPod configuration
+    apiFetch(buildApiUrl("skypilot/runpod/config"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data) => setRunpodConfig(data))
+      .catch(() =>
+        setRunpodConfig({
+          api_key: "",
+          allowed_gpu_types: [],
+          is_configured: false,
+        })
+      );
   }, []);
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
+
+  const handleClusterLaunched = (clusterName: string) => {
+    // Refresh the page or update the cluster status
+    window.location.reload();
+  };
+
+  const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
 
   return (
     <PageWithTitle title={`${user?.organization_name}'s Node Pool`}>
@@ -1183,23 +1320,22 @@ const Nodes: React.FC = () => {
             </tbody>
           </Table>
         </Sheet>
+      ) : showFakeData ? (
+        mockClusters.map((cluster) => (
+          <div key={cluster.id}>
+            <ClusterCard
+              cluster={cluster}
+              setSelectedCluster={setSelectedCluster}
+            />
+          </div>
+        ))
       ) : (
-        showFakeData ? (
-          mockClusters.map((cluster) => (
-            <div key={cluster.id}>
-              <ClusterCard
-                cluster={cluster}
-                setSelectedCluster={setSelectedCluster}
-              />
-            </div>
-          ))
-        ) : (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography level="body-md" sx={{ color: "text.secondary" }}>
-              No fake data to display. Enable fake data in Settings to see sample clusters.
-            </Typography>
-          </Box>
-        )
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography level="body-md" sx={{ color: "text.secondary" }}>
+            No fake data to display. Enable fake data in Settings to see sample
+            clusters.
+          </Typography>
+        </Box>
       )}
       {/* --- Clouds Section --- */}
       {selectedCloudCluster ? (
@@ -1295,6 +1431,123 @@ const Nodes: React.FC = () => {
           )}
         </Box>
       )}
+
+      {/* On-Demand Clusters Section */}
+      <Box sx={{ mt: 6 }}>
+        <Typography level="h3" sx={{ mb: 2 }}>
+          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
+          On-Demand Clusters
+        </Typography>
+
+        {/* RunPod Clusters */}
+        {runpodConfig.is_configured && (
+          <>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              RunPod Clusters
+            </Typography>
+
+            {/* Check for active RunPod clusters */}
+            {skyPilotClusters.filter(
+              (cluster: any) =>
+                cluster.cluster_name &&
+                (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                  cluster.cluster_name.toLowerCase().includes("runpod"))
+            ).length > 0 ? (
+              skyPilotClusters
+                .filter(
+                  (cluster: any) =>
+                    cluster.cluster_name &&
+                    (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                      cluster.cluster_name.toLowerCase().includes("runpod"))
+                )
+                .map((cluster: any) => (
+                  <RunPodClusterCard
+                    key={cluster.cluster_name}
+                    cluster={cluster}
+                    onClusterLaunched={handleClusterLaunched}
+                  />
+                ))
+            ) : (
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                <Typography level="h4" sx={{ mb: 2 }}>
+                  No Active RunPod Nodes
+                </Typography>
+                <Typography
+                  level="body-md"
+                  sx={{ color: "text.secondary", mb: 2 }}
+                >
+                  No RunPod nodes are currently running.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowRunPodLauncher(true)}
+                >
+                  Reserve a RunPod Node
+                </Button>
+              </Card>
+            )}
+          </>
+        )}
+
+        {/* RunPod Configuration Status */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            RunPod Configuration
+          </Typography>
+
+          <Stack spacing={2}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>API Key Configured</Typography>
+              <Chip
+                variant="soft"
+                color={runpodConfig.is_configured ? "success" : "danger"}
+                size="sm"
+              >
+                {runpodConfig.is_configured ? "Yes" : "No"}
+              </Chip>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Allowed GPU Types</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {runpodConfig.allowed_gpu_types.length} selected
+              </Chip>
+            </Box>
+
+            {!runpodConfig.is_configured && (
+              <Alert color="warning">
+                RunPod is not configured. Please configure it in the Admin
+                section to use on-demand clusters.
+              </Alert>
+            )}
+
+            {runpodConfig.is_configured && (
+              <Alert color="success">
+                RunPod is configured and ready to use.
+              </Alert>
+            )}
+          </Stack>
+        </Card>
+      </Box>
+
+      {/* RunPod Cluster Launcher Modal */}
+      <RunPodClusterLauncher
+        open={showRunPodLauncher}
+        onClose={() => setShowRunPodLauncher(false)}
+        onClusterLaunched={handleClusterLaunched}
+      />
     </PageWithTitle>
   );
 };

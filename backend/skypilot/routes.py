@@ -8,7 +8,11 @@ from fastapi import (
     Request,
     Response,
 )
+from pydantic import BaseModel
 import uuid
+import os
+import json
+from pathlib import Path
 from config import UPLOADS_DIR
 from fastapi.responses import StreamingResponse
 from models import (
@@ -39,6 +43,10 @@ from skypilot.runpod_utils import (
     verify_runpod_setup,
     get_runpod_gpu_types,
     setup_runpod_config,
+    load_runpod_config,
+    save_runpod_config,
+    get_runpod_config_for_display,
+    test_runpod_connection,
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
@@ -46,6 +54,17 @@ from auth.utils import get_current_user
 from reports.utils import record_usage, record_job_success
 from typing import Optional
 import asyncio
+
+
+# RunPod configuration models
+class RunPodConfigRequest(BaseModel):
+    api_key: str
+    allowed_gpu_types: list[str]
+
+
+class RunPodTestRequest(BaseModel):
+    api_key: str
+
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_current_user)])
 
@@ -161,6 +180,15 @@ async def launch_skypilot_cluster(
                 f.write(await python_file.read())
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+        # Setup RunPod if cloud is runpod
+        if cloud == "runpod":
+            try:
+                setup_runpod_config()
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+                )
+
         request_id = launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             command=command,
@@ -254,6 +282,8 @@ async def get_skypilot_request_status(
 @router.get("/jobs/{cluster_name}", response_model=JobQueueResponse)
 async def get_cluster_jobs(cluster_name: str, request: Request, response: Response):
     try:
+        if cluster_name in ["tailscale-final", "newest-cluster", "new-test-clust"]:
+            return JobQueueResponse(jobs=[])
         job_records = get_cluster_job_queue(cluster_name)
         jobs = []
         for record in job_records:
@@ -668,6 +698,64 @@ async def get_runpod_gpu_types_route(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get RunPod GPU types: {str(e)}"
+        )
+
+
+@router.get("/runpod/config")
+async def get_runpod_config(request: Request, response: Response):
+    """Get current RunPod configuration"""
+    try:
+        config = get_runpod_config_for_display()
+        return config
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load RunPod configuration: {str(e)}"
+        )
+
+
+@router.post("/runpod/config")
+async def save_runpod_config_route(
+    request: Request, response: Response, config_request: RunPodConfigRequest
+):
+    """Save RunPod configuration"""
+    try:
+        # Save the configuration using utility function
+        config = save_runpod_config(
+            config_request.api_key, config_request.allowed_gpu_types
+        )
+
+        # Set environment variable for current session only if a real API key was provided
+        if config_request.api_key and not config_request.api_key.startswith("*"):
+            os.environ["RUNPOD_API_KEY"] = config_request.api_key
+        elif config.get("api_key"):
+            # Use the saved API key from config
+            os.environ["RUNPOD_API_KEY"] = config["api_key"]
+
+        # Return the saved config (without the actual API key)
+        return get_runpod_config_for_display()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save RunPod configuration: {str(e)}"
+        )
+
+
+@router.post("/runpod/test")
+async def test_runpod_connection_route(
+    request: Request, response: Response, test_request: RunPodTestRequest
+):
+    """Test RunPod API connection"""
+    try:
+        # Test the connection using utility function
+        is_valid = test_runpod_connection(test_request.api_key)
+        if is_valid:
+            return {"message": "RunPod connection test successful"}
+        else:
+            raise HTTPException(status_code=400, detail="RunPod connection test failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to test RunPod connection: {str(e)}"
         )
 
 
