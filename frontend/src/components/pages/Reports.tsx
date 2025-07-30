@@ -1,5 +1,5 @@
-import React from "react";
-import { Box, Card, Typography, Stack, Chip } from "@mui/joy";
+import React, { useState, useEffect } from "react";
+import { Box, Card, Typography, Stack, Chip, Divider } from "@mui/joy";
 import {
   LineChart,
   Line,
@@ -12,6 +12,7 @@ import {
   Area,
 } from "recharts";
 import PageWithTitle from "./templates/PageWithTitle";
+import { buildApiUrl } from "../../utils/api";
 
 interface Report {
   id: string;
@@ -112,12 +113,136 @@ const ReportCard: React.FC<{ report: Report }> = ({ report }) => {
   );
 };
 
+interface RealReportData {
+  date: string;
+  value: number;
+}
+
+interface RealReportsResponse {
+  usage: RealReportData[];
+  availability: RealReportData[];
+  job_success: RealReportData[];
+  total_jobs: number;
+  successful_jobs: number;
+  total_usage_hours: number;
+  average_availability_percent: number;
+}
+
 const Reports: React.FC = () => {
+  const [realData, setRealData] = useState<RealReportsResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRealData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(buildApiUrl("reports"), {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setRealData(data);
+    } catch (err) {
+      console.error("Failed to fetch real data:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch real data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealData();
+  }, []);
+
+  const realReports: Report[] = realData ? [
+    {
+      id: "real-1",
+      name: "Usage (past 30 days) - Real Data",
+      data: realData.usage,
+      color: "blue",
+      yAxisLabel: "Usage %",
+    },
+    {
+      id: "real-2",
+      name: "Availability (past 30 days) - Real Data",
+      data: realData.availability,
+      color: "emerald",
+      yAxisLabel: "Availability %",
+    },
+    {
+      id: "real-3",
+      name: "Job Success (past 30 days) - Real Data",
+      data: realData.job_success,
+      color: "violet",
+      yAxisLabel: "Success Rate %",
+    },
+  ] : [];
+
   return (
     <PageWithTitle title="Reports" subtitle="View who did what">
+      {/* Fake Data Section */}
+      <Typography level="h3" sx={{ mb: 3, mt: 2 }}>
+        Sample Data
+      </Typography>
       {reports.map((report) => (
         <ReportCard key={report.id} report={report} />
       ))}
+      
+      {/* Real Data Section */}
+      <Divider sx={{ my: 4 }} />
+      <Typography level="h3" sx={{ mb: 3 }}>
+        Real Data
+      </Typography>
+      
+      {loading && (
+        <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography>Loading real data...</Typography>
+        </Card>
+      )}
+      
+      {error && (
+        <Card variant="outlined" sx={{ p: 3, mb: 3, borderColor: "danger.500" }}>
+          <Typography color="danger">Error loading real data: {error}</Typography>
+        </Card>
+      )}
+      
+      {realData && realReports.length > 0 && (
+        <>
+          {realReports.map((report) => (
+            <ReportCard key={report.id} report={report} />
+          ))}
+          
+          {/* Summary Statistics */}
+          <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              Summary Statistics
+            </Typography>
+            <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
+              <Chip variant="soft" color="primary">
+                Total Jobs: {realData.total_jobs}
+              </Chip>
+              <Chip variant="soft" color="success">
+                Successful Jobs: {realData.successful_jobs}
+              </Chip>
+              <Chip variant="soft" color="warning">
+                Total Usage: {realData.total_usage_hours} hours
+              </Chip>
+              <Chip variant="soft" color="info">
+                Avg Availability: {realData.average_availability_percent}%
+              </Chip>
+            </Stack>
+          </Card>
+        </>
+      )}
+      
+      {realData && realReports.length === 0 && (
+        <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography>No real data available yet. Start using clusters and submitting jobs to see real statistics!</Typography>
+        </Card>
+      )}
     </PageWithTitle>
   );
 };

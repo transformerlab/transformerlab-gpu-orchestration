@@ -43,6 +43,7 @@ from skypilot.runpod_utils import (
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
 from auth.utils import get_current_user
+from reports.utils import record_usage, record_job_success
 from typing import Optional
 import asyncio
 
@@ -179,6 +180,18 @@ async def launch_skypilot_cluster(
             jupyter_port=jupyter_port,
             vscode_port=vscode_port,
         )
+        # Record usage event for cluster launch
+        try:
+            user_info = get_current_user(request, response)
+            user_id = user_info["id"]
+            record_usage(
+                user_id=user_id,
+                cluster_name=cluster_name,
+                usage_type="cluster_launch",
+                duration_minutes=None,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to record usage event for cluster launch: {e}")
         return LaunchClusterResponse(
             request_id=request_id,
             cluster_name=cluster_name,
@@ -457,6 +470,20 @@ async def submit_job_to_cluster(
             vscode_port=vscode_port,
         )
 
+        # Record usage event
+        try:
+            user_info = get_current_user(request, response)
+            user_id = user_info["id"]
+            record_usage(
+                user_id=user_id,
+                cluster_name=cluster_name,
+                usage_type="job_launch",
+                job_id=request_id,
+                duration_minutes=None,  # Will be updated when job completes
+            )
+        except Exception as e:
+            print(f"Warning: Failed to record usage event: {e}")
+
         return {
             "request_id": request_id,
             "message": f"Job submitted to cluster '{cluster_name}'",
@@ -551,6 +578,19 @@ code-server . --port {vscode_port} --host 0.0.0.0 --auth none"""
                     print(
                         f"Interactive {task_type} task started successfully on {cluster_name}"
                     )
+
+                    # Record usage event for interactive session
+                    try:
+                        user_info = get_current_user(request, response)
+                        user_id = user_info["id"]
+                        record_usage(
+                            user_id=user_id,
+                            cluster_name=cluster_name,
+                            usage_type="interactive_session",
+                            duration_minutes=None,  # Interactive sessions don't have fixed duration
+                        )
+                    except Exception as e:
+                        print(f"Warning: Failed to record interactive usage event: {e}")
                 else:
                     stdout, stderr = process.communicate()
                     print(f"Interactive task failed: {stderr}")
