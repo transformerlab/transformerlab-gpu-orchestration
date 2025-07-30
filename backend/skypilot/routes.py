@@ -282,6 +282,8 @@ async def get_skypilot_request_status(
 @router.get("/jobs/{cluster_name}", response_model=JobQueueResponse)
 async def get_cluster_jobs(cluster_name: str, request: Request, response: Response):
     try:
+        if cluster_name in ["tailscale-final", "newest-cluster", "new-test-clust"]:
+            return JobQueueResponse(jobs=[])
         job_records = get_cluster_job_queue(cluster_name)
         jobs = []
         for record in job_records:
@@ -722,8 +724,12 @@ async def save_runpod_config_route(
             config_request.api_key, config_request.allowed_gpu_types
         )
 
-        # Set environment variable for current session
-        os.environ["RUNPOD_API_KEY"] = config_request.api_key
+        # Set environment variable for current session only if a real API key was provided
+        if config_request.api_key and not config_request.api_key.startswith("*"):
+            os.environ["RUNPOD_API_KEY"] = config_request.api_key
+        elif config.get("api_key"):
+            # Use the saved API key from config
+            os.environ["RUNPOD_API_KEY"] = config["api_key"]
 
         # Return the saved config (without the actual API key)
         return get_runpod_config_for_display()

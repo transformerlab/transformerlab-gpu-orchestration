@@ -159,7 +159,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               size={20}
               style={{ marginRight: 8, verticalAlign: "middle" }}
             />
-            RunPod Cluster Launcher
+            RunPod Node Launcher
           </Typography>
           <Alert color="warning">
             RunPod is not configured. Please configure it in the Admin section
@@ -183,7 +183,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         <ModalClose />
         <Typography level="h4" sx={{ mb: 2 }}>
           <Zap size={20} style={{ marginRight: 8, verticalAlign: "middle" }} />
-          Launch RunPod Cluster
+          Reserve a Node on RunPod
         </Typography>
 
         {error && (
@@ -277,7 +277,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             loading={loading}
             color="success"
           >
-            Launch RunPod Cluster
+            Reserve a RunPod Node
           </Button>
         </Box>
       </ModalDialog>

@@ -1470,20 +1470,19 @@ const Nodes: React.FC = () => {
             ) : (
               <Card variant="outlined" sx={{ mb: 3 }}>
                 <Typography level="h4" sx={{ mb: 2 }}>
-                  No Active RunPod Clusters
+                  No Active RunPod Nodes
                 </Typography>
                 <Typography
                   level="body-md"
                   sx={{ color: "text.secondary", mb: 2 }}
                 >
-                  No RunPod clusters are currently running. You can launch a new
-                  RunPod cluster from the "Launch SkyPilot Cluster" page.
+                  No RunPod nodes are currently running.
                 </Typography>
                 <Button
                   variant="outlined"
                   onClick={() => setShowRunPodLauncher(true)}
                 >
-                  Launch RunPod Cluster
+                  Reserve a RunPod Node
                 </Button>
               </Card>
             )}

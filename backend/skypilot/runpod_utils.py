@@ -34,6 +34,13 @@ def get_runpod_api_key():
 
 def save_runpod_config(api_key: str, allowed_gpu_types: list[str]):
     """Save RunPod configuration to file"""
+    # Load existing config to preserve the real API key if the new one is masked
+    existing_config = load_runpod_config()
+
+    # If the provided API key is masked (all asterisks), keep the existing real API key
+    if api_key and api_key.startswith("*") and len(api_key) > 0:
+        api_key = existing_config.get("api_key", "")
+
     config = {
         "api_key": api_key,
         "allowed_gpu_types": allowed_gpu_types,
@@ -48,9 +55,12 @@ def save_runpod_config(api_key: str, allowed_gpu_types: list[str]):
 def get_runpod_config_for_display():
     """Get RunPod configuration for display (with masked API key)"""
     config = load_runpod_config()
-    # Don't return the actual API key for security
-    config["api_key"] = "*" * len(config["api_key"]) if config["api_key"] else ""
-    return config
+    # Create a copy for display with masked API key
+    display_config = config.copy()
+    display_config["api_key"] = (
+        "*" * len(config["api_key"]) if config["api_key"] else ""
+    )
+    return display_config
 
 
 def test_runpod_connection(api_key: str):
