@@ -33,6 +33,7 @@ import {
   Monitor,
   Plus,
   Settings,
+  Zap,
 } from "lucide-react";
 import ClusterManagement from "../ClusterManagement";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -64,6 +65,12 @@ interface Cluster {
   id: string;
   name: string;
   nodes: Node[];
+}
+
+interface RunPodConfig {
+  api_key: string;
+  allowed_gpu_types: string[];
+  is_configured: boolean;
 }
 
 const gpuTypes = [
@@ -1066,6 +1073,11 @@ const Nodes: React.FC = () => {
     cluster: any;
     name: string;
   } | null>(null);
+  const [runpodConfig, setRunpodConfig] = useState<RunPodConfig>({
+    api_key: "",
+    allowed_gpu_types: [],
+    is_configured: false,
+  });
 
   // --- Node Pools/Clouds Section ---
   const fetcher = (url: string) =>
@@ -1109,6 +1121,18 @@ const Nodes: React.FC = () => {
       .then((res) => (res.ok ? res.json() : {}))
       .then((data) => setNodeGpuInfo(data))
       .catch(() => setNodeGpuInfo({}));
+
+    // Fetch RunPod configuration
+    apiFetch(buildApiUrl("skypilot/runpod/config"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data) => setRunpodConfig(data))
+      .catch(() =>
+        setRunpodConfig({
+          api_key: "",
+          allowed_gpu_types: [],
+          is_configured: false,
+        })
+      );
   }, []);
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
@@ -1183,23 +1207,22 @@ const Nodes: React.FC = () => {
             </tbody>
           </Table>
         </Sheet>
+      ) : showFakeData ? (
+        mockClusters.map((cluster) => (
+          <div key={cluster.id}>
+            <ClusterCard
+              cluster={cluster}
+              setSelectedCluster={setSelectedCluster}
+            />
+          </div>
+        ))
       ) : (
-        showFakeData ? (
-          mockClusters.map((cluster) => (
-            <div key={cluster.id}>
-              <ClusterCard
-                cluster={cluster}
-                setSelectedCluster={setSelectedCluster}
-              />
-            </div>
-          ))
-        ) : (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography level="body-md" sx={{ color: "text.secondary" }}>
-              No fake data to display. Enable fake data in Settings to see sample clusters.
-            </Typography>
-          </Box>
-        )
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography level="body-md" sx={{ color: "text.secondary" }}>
+            No fake data to display. Enable fake data in Settings to see sample
+            clusters.
+          </Typography>
+        </Box>
       )}
       {/* --- Clouds Section --- */}
       {selectedCloudCluster ? (
@@ -1295,6 +1318,66 @@ const Nodes: React.FC = () => {
           )}
         </Box>
       )}
+
+      {/* On-Demand Clusters Section */}
+      <Box sx={{ mt: 6 }}>
+        <Typography level="h3" sx={{ mb: 2 }}>
+          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
+          On-Demand Clusters
+        </Typography>
+
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            RunPod Configuration
+          </Typography>
+
+          <Stack spacing={2}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>API Key Configured</Typography>
+              <Chip
+                variant="soft"
+                color={runpodConfig.is_configured ? "success" : "danger"}
+                size="sm"
+              >
+                {runpodConfig.is_configured ? "Yes" : "No"}
+              </Chip>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Allowed GPU Types</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {runpodConfig.allowed_gpu_types.length} selected
+              </Chip>
+            </Box>
+
+            {!runpodConfig.is_configured && (
+              <Alert color="warning">
+                RunPod is not configured. Please configure it in the Admin
+                section to use on-demand clusters.
+              </Alert>
+            )}
+
+            {runpodConfig.is_configured && (
+              <Alert color="success">
+                RunPod is configured and ready to use. You can launch RunPod
+                clusters from the "Launch SkyPilot Cluster" page.
+              </Alert>
+            )}
+          </Stack>
+        </Card>
+      </Box>
     </PageWithTitle>
   );
 };
