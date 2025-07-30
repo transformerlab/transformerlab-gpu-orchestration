@@ -94,9 +94,12 @@ jobs:
         #   MY_ENV_VAR_1=value1
         #   MY_ENV_VAR_2=value2
         secure-environment-variables: |
-          "WORKOS_API_KEY=${{ secrets.WORKOS_API_KEY }}"
-          "WORKOS_CLIENT_ID=${{ secrets.WORKOS_CLIENT_KEY }}"
-          # "ANOTHER_SECRET_VAR=${{ secrets.ANOTHER_SECRET }}" # Example for another
+          [
+            { "name": "WORKOS_API_KEY", "value": "${{ secrets.WORKOS_API_KEY }}" },
+            { "name": "WORKOS_CLIENT_ID", "value": "${{ secrets.WORKOS_CLIENT_KEY }}" }
+            # Add other secure environment variables here
+            # { "name": "DB_CONNECTION_STRING", "value": "${{ secrets.DB_CONNECTION_STRING }}" }
+          ]
           
 
   # Your existing deploy-to-webapp job remains unchanged (optional, you can remove it if you're fully moving to ACI)
