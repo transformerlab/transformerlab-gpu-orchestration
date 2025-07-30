@@ -86,6 +86,10 @@ def setup_runpod_config():
 
     # Set the API key for the RunPod SDK
     runpod.api_key = api_key
+
+    # Also set the environment variable for SkyPilot
+    os.environ["RUNPOD_API_KEY"] = api_key
+
     print("✅ RunPod API key configured")
     return True
 
@@ -102,6 +106,9 @@ def verify_runpod_setup():
             return False
 
         runpod.api_key = api_key
+
+        # Also set the environment variable for SkyPilot
+        os.environ["RUNPOD_API_KEY"] = api_key
 
         # Test API connectivity by trying to get user info
         try:

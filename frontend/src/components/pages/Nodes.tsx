@@ -26,6 +26,7 @@ import {
   Input,
   Alert,
 } from "@mui/joy";
+import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import {
   ArrowRightIcon,
   ChevronLeftIcon,
@@ -41,6 +42,7 @@ import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../NodeSquare";
+import RunPodClusterLauncher from "../RunPodClusterLauncher";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
@@ -822,6 +824,100 @@ const ReserveNodeModal: React.FC<{
 };
 
 // Custom SubmitJobModal that only shows custom mode (no Jupyter/VSCode options)
+const RunPodClusterCard: React.FC<{
+  cluster: any;
+  onClusterLaunched?: (clusterName: string) => void;
+}> = ({ cluster, onClusterLaunched }) => {
+  // State for modals
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [showLaunchJobModal, setShowLaunchJobModal] = useState(false);
+
+  const isActiveCluster =
+    cluster.status === "ClusterStatus.UP" ||
+    cluster.status === "ClusterStatus.INIT";
+
+  const handleReserveNode = () => {
+    setShowReserveModal(true);
+  };
+
+  const handleLaunchJob = () => {
+    setShowLaunchJobModal(true);
+  };
+
+  const handleClusterLaunched = (newClusterName: string) => {
+    window.location.reload();
+  };
+
+  const handleJobSubmitted = () => {
+    window.location.reload();
+  };
+
+  return (
+    <>
+      <Card
+        variant="outlined"
+        sx={{
+          p: 3,
+          mb: 3,
+          transition: "all 0.2s ease",
+          "&:hover": {
+            boxShadow: "md",
+          },
+        }}
+      >
+        <Box sx={{ mb: 2 }}>
+          <Typography level="h4" mb={0.5}>
+            {cluster.cluster_name}
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
+            <Chip size="sm" color="success" variant="soft">
+              {isActiveCluster ? "Active" : "Inactive"}
+            </Chip>
+            <Chip size="sm" color="primary" variant="soft">
+              RunPod Cluster
+            </Chip>
+          </Stack>
+        </Box>
+
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={handleReserveNode}>
+            Reserve a Node
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleLaunchJob}
+            disabled={!isActiveCluster}
+          >
+            Launch Job
+          </Button>
+        </Stack>
+      </Card>
+
+      {/* Reserve Node Modal for RunPod */}
+      {showReserveModal && (
+        <ReserveNodeModal
+          open={showReserveModal}
+          onClose={() => setShowReserveModal(false)}
+          clusterName={cluster.cluster_name}
+          onClusterLaunched={handleClusterLaunched}
+        />
+      )}
+
+      {/* Launch Job Modal for RunPod */}
+      {showLaunchJobModal && (
+        <CustomSubmitJobModal
+          open={showLaunchJobModal}
+          onClose={() => setShowLaunchJobModal(false)}
+          clusterName={cluster.cluster_name}
+          onJobSubmitted={handleJobSubmitted}
+          isClusterLaunching={false}
+          isSshCluster={false}
+        />
+      )}
+    </>
+  );
+};
+
 const CustomSubmitJobModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -1087,6 +1183,16 @@ const Nodes: React.FC = () => {
   });
   const clusterNames = data?.clusters || [];
 
+  // Fetch SkyPilot cluster status to determine which clusters are running
+  const { data: skyPilotStatus } = useSWR(
+    buildApiUrl("skypilot/status"),
+    (url: string) =>
+      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
+    { refreshInterval: 2000 }
+  );
+
+  const skyPilotClusters = skyPilotStatus?.clusters || [];
+
   // State for all cluster details
   const [clusterDetails, setClusterDetails] = useState<{
     [name: string]: Cluster | null;
@@ -1136,6 +1242,13 @@ const Nodes: React.FC = () => {
   }, []);
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
+
+  const handleClusterLaunched = (clusterName: string) => {
+    // Refresh the page or update the cluster status
+    window.location.reload();
+  };
+
+  const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
 
   return (
     <PageWithTitle title={`${user?.organization_name}'s Node Pool`}>
@@ -1326,6 +1439,58 @@ const Nodes: React.FC = () => {
           On-Demand Clusters
         </Typography>
 
+        {/* RunPod Clusters */}
+        {runpodConfig.is_configured && (
+          <>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              RunPod Clusters
+            </Typography>
+
+            {/* Check for active RunPod clusters */}
+            {skyPilotClusters.filter(
+              (cluster: any) =>
+                cluster.cluster_name &&
+                (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                  cluster.cluster_name.toLowerCase().includes("runpod"))
+            ).length > 0 ? (
+              skyPilotClusters
+                .filter(
+                  (cluster: any) =>
+                    cluster.cluster_name &&
+                    (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                      cluster.cluster_name.toLowerCase().includes("runpod"))
+                )
+                .map((cluster: any) => (
+                  <RunPodClusterCard
+                    key={cluster.cluster_name}
+                    cluster={cluster}
+                    onClusterLaunched={handleClusterLaunched}
+                  />
+                ))
+            ) : (
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                <Typography level="h4" sx={{ mb: 2 }}>
+                  No Active RunPod Clusters
+                </Typography>
+                <Typography
+                  level="body-md"
+                  sx={{ color: "text.secondary", mb: 2 }}
+                >
+                  No RunPod clusters are currently running. You can launch a new
+                  RunPod cluster from the "Launch SkyPilot Cluster" page.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowRunPodLauncher(true)}
+                >
+                  Launch RunPod Cluster
+                </Button>
+              </Card>
+            )}
+          </>
+        )}
+
+        {/* RunPod Configuration Status */}
         <Card variant="outlined">
           <Typography level="h4" sx={{ mb: 2 }}>
             RunPod Configuration
@@ -1378,6 +1543,13 @@ const Nodes: React.FC = () => {
           </Stack>
         </Card>
       </Box>
+
+      {/* RunPod Cluster Launcher Modal */}
+      <RunPodClusterLauncher
+        open={showRunPodLauncher}
+        onClose={() => setShowRunPodLauncher(false)}
+        onClusterLaunched={handleClusterLaunched}
+      />
     </PageWithTitle>
   );
 };

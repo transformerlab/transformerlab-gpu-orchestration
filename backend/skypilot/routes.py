@@ -180,6 +180,15 @@ async def launch_skypilot_cluster(
                 f.write(await python_file.read())
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+        # Setup RunPod if cloud is runpod
+        if cloud == "runpod":
+            try:
+                setup_runpod_config()
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+                )
+
         request_id = launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             command=command,
