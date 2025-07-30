@@ -1,10 +1,9 @@
 import json
-import os
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
-from .models import UsageReport, AvailabilityReport, JobSuccessReport, ReportData
+from datetime import datetime
+from models import ReportData
 
 
 def get_reports_dir() -> Path:
@@ -243,14 +242,9 @@ def get_job_success_data(user_id: str, days: int = 30) -> List[ReportData]:
 
 def get_reports_summary(user_id: str, days: int = 30) -> Dict[str, Any]:
     """Get a summary of all reports for a user"""
-    print(f"Getting reports summary for user: {user_id}")
-    print(f"Days: {days}")
     usage_data = get_usage_data(user_id, days)
     availability_data = get_availability_data(user_id, days)
     job_success_data = get_job_success_data(user_id, days)
-    print(f"Usage data: {usage_data}")
-    print(f"Availability data: {availability_data}")
-    print(f"Job success data: {job_success_data}")
 
     # Calculate summary statistics
     job_entries = load_report_entries(user_id, "job_success", days)
@@ -263,7 +257,6 @@ def get_reports_summary(user_id: str, days: int = 30) -> Dict[str, Any]:
     )
 
     availability_entries = load_report_entries(user_id, "availability", days)
-    print(f"Availability entries: {availability_entries}")
     if availability_entries:
         total_availability = sum(
             e.get("available_nodes", 0) for e in availability_entries

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from typing import Optional
 from auth.utils import get_current_user
 from .utils import get_reports_summary
-from .models import ReportsResponse
+from models import ReportsResponse
 
 router = APIRouter(prefix="/reports", dependencies=[Depends(get_current_user)])
 
@@ -15,11 +15,9 @@ async def get_user_reports(
     try:
         user = get_current_user(request, response)
         user_id = user["id"]
-        print(f"User ID: {user_id}")
 
         # Get reports summary
         summary = get_reports_summary(user_id, days)
-        print(f"Summary: {summary}")
 
         return ReportsResponse(
             usage=summary["usage"],
