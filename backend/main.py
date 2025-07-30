@@ -20,11 +20,13 @@ app.add_middleware(
 from auth.routes import router as auth_router
 from clusters.routes import router as clusters_router
 from skypilot.routes import router as skypilot_router
+from reports.routes import router as reports_router
 
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=api_v1_prefix)
 app.include_router(clusters_router, prefix=api_v1_prefix)
 app.include_router(skypilot_router, prefix=api_v1_prefix)
+app.include_router(reports_router, prefix=api_v1_prefix)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(

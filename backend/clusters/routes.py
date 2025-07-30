@@ -22,6 +22,7 @@ from utils.file_utils import (
     get_identity_files_dir,
 )
 from auth.utils import get_current_user
+from reports.utils import record_availability
 from typing import Optional
 
 router = APIRouter(prefix="/clusters", dependencies=[Depends(get_current_user)])
@@ -185,6 +186,24 @@ async def add_node(
         ip=ip, user=user, identity_file=identity_file_path_final, password=password
     )
     cluster_config = add_node_to_cluster(cluster_name, node, background_tasks)
+    
+    # Record availability event
+    try:
+        user_info = get_current_user(request, response)
+        user_id = user_info["id"]
+        total_nodes = len(cluster_config.get("hosts", []))
+        available_nodes = total_nodes  # All nodes are available when added
+        record_availability(
+            user_id=user_id,
+            cluster_name=cluster_name,
+            availability_type="node_added",
+            total_nodes=total_nodes,
+            available_nodes=available_nodes,
+            node_ip=ip
+        )
+    except Exception as e:
+        print(f"Warning: Failed to record availability event: {e}")
+    
     nodes = []
     for host in cluster_config.get("hosts", []):
         node_obj = SSHNode(
