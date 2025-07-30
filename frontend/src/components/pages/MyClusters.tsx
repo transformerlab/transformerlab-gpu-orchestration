@@ -26,7 +26,7 @@ interface Cluster {
   to_down?: boolean;
 }
 
-const MyNodes: React.FC = () => {
+const MyClusters: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState(0);
 
   // --- SkyPilot Clusters Section ---
@@ -90,4 +90,4 @@ const MyNodes: React.FC = () => {
   );
 };
 
-export default MyNodes;
+export default MyClusters;
