@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import PageWithTitle from "./templates/PageWithTitle";
 import { buildApiUrl } from "../../utils/api";
+import { useFakeData } from "../../context/FakeDataContext";
 
 interface Report {
   id: string;
@@ -132,6 +133,7 @@ const Reports: React.FC = () => {
   const [realData, setRealData] = useState<RealReportsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { showFakeData } = useFakeData();
 
   const fetchRealData = async () => {
     setLoading(true);
@@ -184,17 +186,22 @@ const Reports: React.FC = () => {
   return (
     <PageWithTitle title="Reports" subtitle="View who did what">
       {/* Fake Data Section */}
-      <Typography level="h3" sx={{ mb: 3, mt: 2 }}>
-        Sample Data
-      </Typography>
-      {reports.map((report) => (
-        <ReportCard key={report.id} report={report} />
-      ))}
+      {showFakeData && (
+        <>
+          <Typography level="h3" sx={{ mb: 3, mt: 2 }}>
+            Sample Data
+          </Typography>
+          {reports.map((report) => (
+            <ReportCard key={report.id} report={report} />
+          ))}
+          
+          {/* Real Data Section */}
+          <Divider sx={{ my: 4 }} />
+        </>
+      )}
       
-      {/* Real Data Section */}
-      <Divider sx={{ my: 4 }} />
       <Typography level="h3" sx={{ mb: 3 }}>
-        Real Data
+        {showFakeData ? "Real Data" : "Reports Data"}
       </Typography>
       
       {loading && (

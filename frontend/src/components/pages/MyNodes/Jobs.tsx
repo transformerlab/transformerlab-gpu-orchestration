@@ -10,6 +10,7 @@ import {
 } from "@mui/joy";
 import { X } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
+import { useFakeData } from "../../../context/FakeDataContext";
 
 interface Job {
   job_id: number;
@@ -39,6 +40,58 @@ interface ClusterWithJobs extends Cluster {
   jobsError?: string;
 }
 
+// Generate fake jobs for demonstration
+const generateFakeJobs = () => {
+  const fakeJobs = [];
+  const jobNames = [
+    "jupyter-notebook-port8888",
+    "vscode-server-port8080",
+    "training-script-001",
+    "inference-job-002",
+    "data-processing-003",
+    "model-evaluation-004",
+  ];
+  const statuses = [
+    "JobStatus.RUNNING",
+    "JobStatus.SUCCEEDED",
+    "JobStatus.PENDING",
+    "JobStatus.FAILED",
+  ];
+  const resources = [
+    "1x NVIDIA A100",
+    "2x NVIDIA V100",
+    "4x NVIDIA T4",
+    "1x NVIDIA H100",
+  ];
+
+  for (let i = 0; i < 6; i++) {
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const submittedAt =
+      Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 86400); // Random time in last 24h
+    const startAt =
+      status !== "JobStatus.PENDING"
+        ? submittedAt + Math.floor(Math.random() * 300)
+        : undefined;
+    const endAt =
+      status === "JobStatus.SUCCEEDED" || status === "JobStatus.FAILED"
+        ? (startAt || submittedAt) + Math.floor(Math.random() * 3600)
+        : undefined;
+
+    fakeJobs.push({
+      job_id: 1000 + i,
+      job_name: jobNames[i],
+      username: "ali",
+      submitted_at: submittedAt,
+      start_at: startAt,
+      end_at: endAt,
+      resources: resources[Math.floor(Math.random() * resources.length)],
+      status: status,
+      log_path: `/tmp/job_${1000 + i}.log`,
+    });
+  }
+  return fakeJobs;
+};
+
 interface JobsProps {
   skypilotLoading: boolean;
   myClusters: Cluster[];
@@ -48,6 +101,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const [clustersWithJobs, setClustersWithJobs] = useState<ClusterWithJobs[]>(
     []
   );
+  const { showFakeData } = useFakeData();
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [selectedClusterName, setSelectedClusterName] = useState<string>("");
@@ -371,6 +425,103 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   }
 
   if (myClusters.length === 0) {
+    if (showFakeData) {
+      // Show fake jobs when no real clusters are available
+      const fakeJobs = generateFakeJobs();
+      const fakeCluster = {
+        cluster_name: "sample-cluster",
+        status: "UP",
+        resources_str: "2x NVIDIA A100, 32 vCPUs",
+        launched_at: Math.floor(Date.now() / 1000) - 3600,
+        last_use: "2 hours ago",
+        autostop: 60,
+        to_down: false,
+        jobs: fakeJobs,
+        jobsLoading: false,
+      };
+
+      return (
+        <Box>
+          <Typography level="h3" sx={{ mb: 3 }}>
+            Sample Jobs Data
+          </Typography>
+          <Typography level="body-sm" color="neutral" sx={{ mb: 3 }}>
+            This is sample data. Launch real clusters from the Interactive
+            Development Environment to see actual jobs.
+          </Typography>
+
+          <Box sx={{ mb: 4 }}>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              {fakeCluster.cluster_name}
+            </Typography>
+
+            <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>Job Name</th>
+                  <th>Status</th>
+                  <th>Resources</th>
+                  <th>Submitted At</th>
+                  <th>Started At</th>
+                  <th>Ended At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fakeCluster.jobs.map((job) => (
+                  <tr key={job.job_id}>
+                    <td>
+                      <Typography level="body-sm" fontWeight="bold">
+                        {job.job_id}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">{job.job_name}</Typography>
+                    </td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        color={getJobStatusColor(job.status)}
+                        variant="soft"
+                      >
+                        {formatJobStatus(job.status)}
+                      </Chip>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">{job.resources}</Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.submitted_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.start_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.end_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Button size="sm" variant="outlined" disabled>
+                          View Logs
+                        </Button>
+                      </Box>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Box>
+        </Box>
+      );
+    }
+
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
         <Typography level="h4" color="neutral">
@@ -592,6 +743,89 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           )}
         </Box>
       ))}
+
+      {/* Show fake jobs alongside real jobs if enabled */}
+      {showFakeData && (
+        <>
+          <Box sx={{ mb: 3, mt: 4 }}>
+            <Typography level="h3" sx={{ mb: 2 }}>
+              Sample Jobs Data
+            </Typography>
+            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+              Additional sample jobs for demonstration purposes.
+            </Typography>
+          </Box>
+
+          <Box sx={{ mb: 4 }}>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              sample-cluster
+            </Typography>
+
+            <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>Job Name</th>
+                  <th>Status</th>
+                  <th>Resources</th>
+                  <th>Submitted At</th>
+                  <th>Started At</th>
+                  <th>Ended At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {generateFakeJobs().map((job) => (
+                  <tr key={job.job_id}>
+                    <td>
+                      <Typography level="body-sm" fontWeight="bold">
+                        {job.job_id}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">{job.job_name}</Typography>
+                    </td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        color={getJobStatusColor(job.status)}
+                        variant="soft"
+                      >
+                        {formatJobStatus(job.status)}
+                      </Chip>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">{job.resources}</Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.submitted_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.start_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Typography level="body-sm">
+                        {formatTimestamp(job.end_at)}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Button size="sm" variant="outlined" disabled>
+                          View Logs
+                        </Button>
+                      </Box>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Box>
+        </>
+      )}
     </Box>
   );
 };

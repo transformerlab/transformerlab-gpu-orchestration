@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
+import { Box, Button, Card, Typography, Stack, Chip, Alert } from "@mui/joy";
 import { Monitor, Plus, Settings } from "lucide-react";
 import ClusterManagement from "../ClusterManagement";
 import { buildApiUrl } from "../../utils/api";
 import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import PageWithTitle from "./templates/PageWithTitle";
+import { useFakeData } from "../../context/FakeDataContext";
 
 interface Node {
   id: string;

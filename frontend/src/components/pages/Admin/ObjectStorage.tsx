@@ -12,9 +12,11 @@ import {
   Select,
   Option,
   Checkbox,
+  Alert,
 } from "@mui/joy";
 import { Plus } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
+import { useFakeData } from "../../../context/FakeDataContext";
 
 // Fake placeholder data
 const fakeObjectStorages = [
@@ -38,6 +40,7 @@ const fakeObjectStorages = [
 
 const ObjectStorage: React.FC = () => {
   const [openAdd, setOpenAdd] = React.useState(false);
+  const { showFakeData } = useFakeData();
 
   return (
     <PageWithTitle
@@ -61,26 +64,37 @@ const ObjectStorage: React.FC = () => {
           overflow-wrap: anywhere;
         }
       `}</style>
-      <Table className="object-storage-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Location</th>
-            <th>Store</th>
-          </tr>
-        </thead>
-        <tbody>
-          {fakeObjectStorages.map((storage) => (
-            <tr key={storage.remotePath}>
-              <td>{storage.name}</td>
-              <td>{storage.source}</td>
-              <td>
-                <Chip size="sm">{storage.store}</Chip>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      {showFakeData ? (
+        <>
+          <Alert color="warning" sx={{ mb: 2 }}>
+            This page is showing sample data. Real object storage management functionality will be implemented soon.
+          </Alert>
+          <Table className="object-storage-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Store</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fakeObjectStorages.map((storage) => (
+                <tr key={storage.remotePath}>
+                  <td>{storage.name}</td>
+                  <td>{storage.source}</td>
+                  <td>
+                    <Chip size="sm">{storage.store}</Chip>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </>
+      ) : (
+        <Alert color="info" sx={{ mb: 2 }}>
+          Object storage management functionality is not yet implemented. Enable fake data in Settings to see sample data.
+        </Alert>
+      )}
 
       {/* Add Storage Modal (Fake) */}
       <Modal open={openAdd} onClose={() => setOpenAdd(false)}>

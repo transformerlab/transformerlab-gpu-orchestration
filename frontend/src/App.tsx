@@ -8,6 +8,7 @@ import {
 import { CssVarsProvider } from "@mui/joy/styles";
 import CssBaseline from "@mui/joy/CssBaseline";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { FakeDataProvider } from "./context/FakeDataContext";
 import LoginPage from "./components/LoginPage";
 import Dashboard from "./components/navigation/MainPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -44,9 +45,11 @@ function App() {
     <CssVarsProvider theme={customTheme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <FakeDataProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </FakeDataProvider>
       </AuthProvider>
     </CssVarsProvider>
   );

@@ -42,6 +42,7 @@ import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../NodeSquare";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
+import { useFakeData } from "../../context/FakeDataContext";
 
 interface Node {
   id: string;
@@ -1110,6 +1111,7 @@ const Nodes: React.FC = () => {
       .catch(() => setNodeGpuInfo({}));
   }, []);
   const { user } = useAuth();
+  const { showFakeData } = useFakeData();
 
   return (
     <PageWithTitle title={`${user?.organization_name}'s Node Pool`}>
@@ -1182,14 +1184,22 @@ const Nodes: React.FC = () => {
           </Table>
         </Sheet>
       ) : (
-        mockClusters.map((cluster) => (
-          <div key={cluster.id}>
-            <ClusterCard
-              cluster={cluster}
-              setSelectedCluster={setSelectedCluster}
-            />
-          </div>
-        ))
+        showFakeData ? (
+          mockClusters.map((cluster) => (
+            <div key={cluster.id}>
+              <ClusterCard
+                cluster={cluster}
+                setSelectedCluster={setSelectedCluster}
+              />
+            </div>
+          ))
+        ) : (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography level="body-md" sx={{ color: "text.secondary" }}>
+              No fake data to display. Enable fake data in Settings to see sample clusters.
+            </Typography>
+          </Box>
+        )
       )}
       {/* --- Clouds Section --- */}
       {selectedCloudCluster ? (
