@@ -8,3 +8,5 @@ pydantic>=2.10.4
 PyYAML>=6.0
 skypilot==0.10.0
 runpod>=1.6.0
+azure-cli==2.75.0
+msrestazure==0.6.4.post1
