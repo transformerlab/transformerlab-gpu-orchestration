@@ -14,10 +14,12 @@ import {
   List,
   ListItem,
   CircularProgress,
+  Divider,
 } from "@mui/joy";
 import { useAuth } from "../context/AuthContext";
-import { Settings, User, Save, Building2 } from "lucide-react";
+import { Settings, User, Building2, Plus } from "lucide-react";
 import { authApi } from "../utils/api";
+import CreateOrganizationModal from "./CreateOrganizationModal";
 
 interface UserSettingsModalProps {
   open: boolean;
@@ -29,13 +31,13 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   onClose,
 }) => {
   const { user } = useAuth();
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [showSuccess, setShowSuccess] = React.useState(false);
   const [organizations, setOrganizations] = React.useState<
     Array<{ id: string; name: string; object: string }>
   >([]);
   const [loadingOrgs, setLoadingOrgs] = React.useState(false);
   const [orgError, setOrgError] = React.useState<string | null>(null);
+
+  const [showCreateModal, setShowCreateModal] = React.useState(false);
 
   const fetchOrganizations = async () => {
     setLoadingOrgs(true);
@@ -52,145 +54,142 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
   };
 
+  const handleOrganizationCreated = async () => {
+    await fetchOrganizations();
+  };
+
   React.useEffect(() => {
     if (open) {
       fetchOrganizations();
     }
   }, [open]);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
-  };
-
   if (!user) return null;
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog
-        aria-labelledby="user-settings-modal"
-        size="md"
-        sx={{
-          maxWidth: 600,
-          width: "100%",
-        }}
-      >
-        <ModalClose />
-        <Typography
-          component="h2"
-          level="h4"
-          textColor="inherit"
-          fontWeight="lg"
-          mb={1}
-          startDecorator={<Settings size="24px" />}
+    <>
+      <Modal open={open} onClose={onClose}>
+        <ModalDialog
+          aria-labelledby="user-settings-modal"
+          size="md"
+          sx={{
+            maxWidth: 600,
+            width: "100%",
+          }}
         >
-          User Profile
-        </Typography>
-
-        {showSuccess && (
-          <Alert color="success" sx={{ mb: 2 }}>
-            Settings saved successfully!
-          </Alert>
-        )}
-
-        <Box sx={{ mt: 2 }}>
-          {/* Profile Section */}
+          <ModalClose />
           <Typography
-            level="title-md"
-            sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+            component="h2"
+            level="h4"
+            textColor="inherit"
+            fontWeight="lg"
+            mb={1}
+            startDecorator={<Settings size="24px" />}
           >
-            <User size="18px" />
-            Profile Information
+            User Profile
           </Typography>
 
-          <Stack spacing={2} sx={{ mb: 3 }}>
-            <FormControl>
-              <FormLabel>First Name</FormLabel>
-              <Input defaultValue={user.first_name || ""} />
-            </FormControl>
+          <Box sx={{ mt: 2 }}>
+            <Typography
+              level="title-md"
+              sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <User size="18px" />
+              Profile Information
+            </Typography>
 
-            <FormControl>
-              <FormLabel>Last Name</FormLabel>
-              <Input defaultValue={user.last_name || ""} />
-            </FormControl>
+            <Stack spacing={2} sx={{ mb: 3 }}>
+              <FormControl>
+                <FormLabel>First Name</FormLabel>
+                <Input defaultValue={user.first_name || ""} disabled />
+              </FormControl>
 
-            <FormControl>
-              <FormLabel>Email</FormLabel>
-              <Input defaultValue={user.email} disabled />
-            </FormControl>
-          </Stack>
+              <FormControl>
+                <FormLabel>Last Name</FormLabel>
+                <Input defaultValue={user.last_name || ""} disabled />
+              </FormControl>
 
-          {/* Organizations Section */}
-          <Typography
-            level="title-md"
-            sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <Building2 size="18px" />
-            Organizations
-          </Typography>
-          <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-            To switch organizations, logout and log back in to select a
-            different organization.
-          </Typography>
+              <FormControl>
+                <FormLabel>Email</FormLabel>
+                <Input defaultValue={user.email} disabled />
+              </FormControl>
+            </Stack>
 
-          {loadingOrgs && (
-            <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-              <CircularProgress />
-            </Box>
-          )}
+            <Divider sx={{ my: 3 }} />
 
-          {orgError && (
-            <Alert color="danger" sx={{ mb: 2 }}>
-              {orgError}
-            </Alert>
-          )}
+            {/* Organizations Section */}
+            <Typography
+              level="title-md"
+              sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <Building2 size="18px" />
+              Organizations
+            </Typography>
+            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+              To switch organizations, logout and log back in to select a
+              different organization.
+            </Typography>
 
-          {organizations.length > 0 ? (
-            <Box sx={{ mb: 3 }}>
-              <List>
-                {organizations.map((org) => (
-                  <ListItem key={org.id}>
-                    <Box>
-                      <Typography level="title-md">{org.name}</Typography>
-                      <Typography level="body-sm" color="neutral">
-                        ID: {org.id}
-                      </Typography>
-                    </Box>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          ) : (
-            !loadingOrgs &&
-            !orgError && (
-              <Box sx={{ mb: 3 }}>
-                <Typography level="body-sm" color="neutral">
-                  No organizations found
-                </Typography>
+            {loadingOrgs && (
+              <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                <CircularProgress />
               </Box>
-            )
-          )}
-        </Box>
+            )}
 
-        <Box
-          sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 3 }}
-        >
-          <Button variant="outlined" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            loading={isSaving}
-            startDecorator={<Save size="16px" />}
-          >
-            Save
-          </Button>
-        </Box>
-      </ModalDialog>
-    </Modal>
+            {orgError && (
+              <Alert color="danger" sx={{ mb: 2 }}>
+                {orgError}
+              </Alert>
+            )}
+
+            {organizations.length > 0 ? (
+              <Box sx={{ mb: 3 }}>
+                <List>
+                  {organizations.map((org) => (
+                    <ListItem key={org.id}>
+                      <Box>
+                        <Typography level="title-md">{org.name}</Typography>
+                        <Typography level="body-sm" color="neutral">
+                          ID: {org.id}
+                        </Typography>
+                      </Box>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            ) : (
+              !loadingOrgs &&
+              !orgError && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography level="body-sm" color="neutral">
+                    No organizations found
+                  </Typography>
+                </Box>
+              )
+            )}
+
+            {/* Create Organization Button */}
+            <Box sx={{ mt: 3 }}>
+              <Button
+                variant="outlined"
+                startDecorator={<Plus size="16px" />}
+                onClick={() => setShowCreateModal(true)}
+                fullWidth
+              >
+                Create New Organization
+              </Button>
+            </Box>
+          </Box>
+        </ModalDialog>
+      </Modal>
+
+      {/* Create Organization Modal */}
+      <CreateOrganizationModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onOrganizationCreated={handleOrganizationCreated}
+      />
+    </>
   );
 };
 

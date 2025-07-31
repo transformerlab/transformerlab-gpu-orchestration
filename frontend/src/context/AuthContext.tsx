@@ -7,6 +7,12 @@ import React, {
 } from "react";
 import axios from "axios";
 
+interface Organization {
+  id: string;
+  name: string;
+  object: string;
+}
+
 interface User {
   id: string;
   email: string;
@@ -58,13 +64,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const fetchOrganizations = async (userId: string) => {
     try {
-      const response = await api.get("/auth/orgs");
+      const response = await api.get("/admin/orgs");
       const { organizations, current_organization_id } = response.data;
-      const currentOrg = organizations.find(
-        (org: any) => org.id === current_organization_id
-      );
+
+      const currentOrg = current_organization_id
+        ? organizations.find(
+            (org: Organization) => org.id === current_organization_id
+          )
+        : organizations.length > 0
+        ? organizations[0]
+        : null;
+
       return {
-        organization_id: current_organization_id,
+        organization_id: currentOrg?.id || current_organization_id,
         organization_name: currentOrg?.name || "Default Organization",
       };
     } catch (error) {

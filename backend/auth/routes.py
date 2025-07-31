@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
-from models import UserResponse, OrganizationsResponse, Organization
+from models import UserResponse
 from auth.utils import get_current_user
 from config import WORKOS_COOKIE_PASSWORD
 import os
@@ -133,40 +133,3 @@ async def check_auth(
             },
         }
     return {"authenticated": False}
-
-
-@router.get("/orgs", response_model=OrganizationsResponse)
-async def get_user_organizations(
-    request: Request, response: Response, user=Depends(get_current_user)
-):
-    """Get all organizations for the authenticated user"""
-    try:
-        organization_memberships = (
-            workos_client.user_management.list_organization_memberships(
-                user_id=user["id"]
-            )
-        )
-        org_list = []
-        current_org_id = user.get("organization_id")
-
-        for membership in organization_memberships:
-            organization = workos_client.organizations.get_organization(
-                organization_id=membership.organization_id
-            )
-            org_list.append(
-                Organization(
-                    id=organization.id,
-                    name=organization.name,
-                    object="organization",
-                )
-            )
-
-        response_data = {
-            "organizations": org_list,
-            "current_organization_id": current_org_id,
-        }
-        return OrganizationsResponse(**response_data)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch organizations: {str(e)}"
-        )
