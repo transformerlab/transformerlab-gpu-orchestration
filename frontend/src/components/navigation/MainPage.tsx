@@ -13,7 +13,6 @@ import GettingStarted from "../pages/Admin/GettingStarted";
 import Nodes from "../pages/NodePools";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Admin from "../pages/Admin/Admin";
 import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
 import MyClusters from "../pages/MyClusters";
@@ -22,6 +21,7 @@ import NodeDetails from "../pages/MyNodes/NodeDetails";
 import Teams from "../pages/Admin/Teams";
 import SSHClusterAdmin from "../pages/Admin/SSHClusterAdmin";
 import RunPodAdmin from "../pages/Admin/RunPodAdmin";
+import AzureAdmin from "../pages/Admin/AzureAdmin";
 import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PageWithTitle from "../pages/templates/PageWithTitle";
@@ -72,6 +72,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/teams" element={<Teams />} />
           <Route path="admin/clouds" element={<SSHClusterAdmin />} />
           <Route path="admin/runpod" element={<RunPodAdmin />} />
+          <Route path="admin/azure" element={<AzureAdmin />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route

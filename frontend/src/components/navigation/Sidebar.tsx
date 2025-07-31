@@ -76,6 +76,11 @@ const adminSubItems = [
     path: "/dashboard/admin/runpod",
   },
   {
+    content: "Azure Configuration",
+    section: "azure",
+    path: "/dashboard/admin/azure",
+  },
+  {
     content: "SSH Identity Files",
     section: "identity",
     path: "/dashboard/admin/identity",
