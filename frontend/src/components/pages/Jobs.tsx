@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Box, Button, Card, Typography, Stack, Chip, Alert } from "@mui/joy";
-import { Monitor, Plus, Settings } from "lucide-react";
-import ClusterManagement from "../ClusterManagement";
-import { buildApiUrl } from "../../utils/api";
-import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
-import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
+import React from "react";
+import { Box, Card, Typography, Stack, Chip } from "@mui/joy";
 import PageWithTitle from "./templates/PageWithTitle";
-import { useFakeData } from "../../context/FakeDataContext";
+import { apiFetch, buildApiUrl } from "../../utils/api";
+import useSWR from "swr";
+import Jobs from "./MyNodes/Jobs";
 
 interface Node {
   id: string;
@@ -139,18 +136,28 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
   );
 };
 
-const Jobs: React.FC = () => {
+const JobsPage: React.FC = () => {
+  const skypilotFetcher = (url: string) =>
+    apiFetch(url, { credentials: "include" }).then((res) => res.json());
+  const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
+    buildApiUrl("skypilot/status"),
+    skypilotFetcher,
+    { refreshInterval: 2000 }
+  );
+  const myClusters = (skypilotData?.clusters || []).filter(
+    (c: Cluster) =>
+      c.status &&
+      (c.status.toLowerCase().includes("init") ||
+        c.status.toLowerCase().includes("up"))
+  );
   return (
     <PageWithTitle
-      title="Interactive Development"
-      subtitle="Launch interactive development environments and manage clusters"
+      title="My Jobs"
+      subtitle="A job is a workload that runs on a cluster, such as a training job."
     >
-      <Stack spacing={3}>
-        <SkyPilotClusterLauncher />
-        <SkyPilotClusterStatus />
-      </Stack>
+      <Jobs skypilotLoading={skypilotLoading} myClusters={myClusters} />
     </PageWithTitle>
   );
 };
 
-export default Jobs;
+export default JobsPage;

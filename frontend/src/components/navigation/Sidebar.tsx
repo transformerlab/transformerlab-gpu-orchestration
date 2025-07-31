@@ -58,7 +58,7 @@ const sidebarItems = [
     chipCount: 15,
     path: "/dashboard/my-clusters",
   },
-  { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
+  { icon: <ComputerIcon />, content: "My Jobs", path: "/dashboard/jobs" },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
 ];
 
