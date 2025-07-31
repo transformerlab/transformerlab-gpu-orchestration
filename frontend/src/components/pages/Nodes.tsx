@@ -26,6 +26,7 @@ import {
   Input,
   Alert,
 } from "@mui/joy";
+import { useNavigate } from "react-router-dom";
 import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import {
   ArrowRightIcon,
@@ -210,8 +211,8 @@ const mockClusters: Cluster[] = [
 
 const ClusterCard: React.FC<{
   cluster: Cluster;
-  setSelectedCluster: React.Dispatch<React.SetStateAction<Cluster | null>>;
-}> = ({ cluster, setSelectedCluster }) => {
+}> = ({ cluster }) => {
+  const navigate = useNavigate();
   const dedicatedCount = cluster.nodes.filter(
     (n) => n.type === "dedicated"
   ).length;
@@ -246,7 +247,7 @@ const ClusterCard: React.FC<{
     >
       <Box sx={{ mb: 2 }}>
         <Button
-          onClick={() => setSelectedCluster(cluster)}
+          onClick={() => navigate(`/dashboard/clusters/${cluster.id}`)}
           sx={{
             width: "100%",
             display: "flex",
@@ -359,10 +360,8 @@ const CloudClusterCard: React.FC<{
   cluster: any;
   clusterName: string;
   nodeGpuInfo: Record<string, any>;
-  setSelectedCloudCluster: React.Dispatch<
-    React.SetStateAction<{ cluster: any; name: string } | null>
-  >;
-}> = ({ cluster, clusterName, nodeGpuInfo, setSelectedCloudCluster }) => {
+}> = ({ cluster, clusterName, nodeGpuInfo }) => {
+  const navigate = useNavigate();
   // State for modals
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showLaunchJobModal, setShowLaunchJobModal] = useState(false);
@@ -458,16 +457,7 @@ const CloudClusterCard: React.FC<{
       >
         <Box sx={{ mb: 2 }}>
           <Button
-            onClick={() =>
-              setSelectedCloudCluster({
-                cluster: {
-                  ...cluster,
-                  nodes: processedNodes,
-                  name: clusterName,
-                },
-                name: clusterName,
-              })
-            }
+            onClick={() => navigate(`/dashboard/clusters/${clusterName}`)}
             sx={{
               width: "100%",
               display: "flex",
@@ -1147,11 +1137,6 @@ const CustomSubmitJobModal: React.FC<{
 };
 
 const Nodes: React.FC = () => {
-  const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
-  const [selectedCloudCluster, setSelectedCloudCluster] = useState<{
-    cluster: any;
-    name: string;
-  } | null>(null);
   const [runpodConfig, setRunpodConfig] = useState<RunPodConfig>({
     api_key: "",
     allowed_gpu_types: [],
@@ -1279,80 +1264,10 @@ const Nodes: React.FC = () => {
   return (
     <PageWithTitle title={`${user?.organization_name}'s Node Pool`}>
       {/* Existing Node Pools/Clusters UI */}
-      {selectedCluster ? (
-        <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
-          <Button
-            onClick={() => setSelectedCluster(null)}
-            startDecorator={<ChevronLeftIcon />}
-            variant="soft"
-          >
-            Back
-          </Button>
-          <Typography level="h3" sx={{ mb: 2 }}>
-            {selectedCluster.name} - Instances
-          </Typography>
-          <Table stickyHeader>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>User</th>
-                <th>GPU</th>
-                <th>CPU</th>
-                <th>vCPUs</th>
-                <th>vGPUs</th>
-                <th>IP</th>
-                <th>Job</th>
-                <th>Experiment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedCluster.nodes.map((node) => {
-                let gpuDisplay = "-";
-                const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
-                if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
-                  gpuDisplay = gpuInfo.gpus
-                    .map((g: any) => {
-                      const qty = g.requestable_qty_per_node;
-                      if (qty && /^\d+$/.test(qty.trim())) {
-                        return `${g.gpu} (x${qty.trim()})`;
-                      } else if (qty && qty.trim().length > 0) {
-                        return `${g.gpu} (${qty.trim()})`;
-                      } else {
-                        return g.gpu;
-                      }
-                    })
-                    .join(", ");
-                } else if (node.gpuType) {
-                  gpuDisplay = node.gpuType;
-                }
-                return (
-                  <tr key={node.id}>
-                    <td>{node.id}</td>
-                    <td>{node.type}</td>
-                    <td>{node.status}</td>
-                    <td>{node.user ?? "-"}</td>
-                    <td>{gpuDisplay}</td>
-                    <td>{node.cpuType}</td>
-                    <td>{node.vcpus}</td>
-                    <td>{node.vgpus}</td>
-                    <td>{node.ip}</td>
-                    <td>{node.jobName ?? "-"}</td>
-                    <td>{node.experimentName ?? "-"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        </Sheet>
-      ) : showFakeData ? (
+      {showFakeData ? (
         mockClusters.map((cluster) => (
           <div key={cluster.id}>
-            <ClusterCard
-              cluster={cluster}
-              setSelectedCluster={setSelectedCluster}
-            />
+            <ClusterCard cluster={cluster} />
           </div>
         ))
       ) : (
@@ -1364,320 +1279,242 @@ const Nodes: React.FC = () => {
         </Box>
       )}
       {/* --- Clouds Section --- */}
-      {selectedCloudCluster ? (
-        <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
-          <Button
-            onClick={() => setSelectedCloudCluster(null)}
-            startDecorator={<ChevronLeftIcon />}
-            variant="soft"
-          >
-            Back
-          </Button>
-          <Typography level="h3" sx={{ mb: 2 }}>
-            {selectedCloudCluster.name} - Instances
-          </Typography>
-          <Table stickyHeader>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>User</th>
-                <th>GPU</th>
-                <th>CPU</th>
-                <th>vCPUs</th>
-                <th>vGPUs</th>
-                <th>IP</th>
-                <th>Job</th>
-                <th>Experiment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedCloudCluster.cluster.nodes.map((node: any) => {
-                let gpuDisplay = "-";
-                const gpuInfo = nodeGpuInfo[node.ip]?.gpu_resources;
-                if (gpuInfo && gpuInfo.gpus && gpuInfo.gpus.length > 0) {
-                  gpuDisplay = gpuInfo.gpus
-                    .map((g: any) => {
-                      const qty = g.requestable_qty_per_node;
-                      if (qty && /^\d+$/.test(qty.trim())) {
-                        return `${g.gpu} (x${qty.trim()})`;
-                      } else if (qty && qty.trim().length > 0) {
-                        return `${g.gpu} (${qty.trim()})`;
-                      } else {
-                        return g.gpu;
-                      }
-                    })
-                    .join(", ");
-                } else if (node.gpuType) {
-                  gpuDisplay = node.gpuType;
-                }
-                return (
-                  <tr key={node.id}>
-                    <td>{node.id}</td>
-                    <td>{node.type}</td>
-                    <td>{node.status}</td>
-                    <td>{node.user ?? "-"}</td>
-                    <td>{gpuDisplay}</td>
-                    <td>{node.cpuType}</td>
-                    <td>{node.vcpus}</td>
-                    <td>{node.vgpus}</td>
-                    <td>{node.ip}</td>
-                    <td>{node.jobName ?? "-"}</td>
-                    <td>{node.experimentName ?? "-"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        </Sheet>
-      ) : (
-        <Box sx={{ mt: 6 }}>
-          {/* Cloud Node Pools */}
-          <Typography level="h3" sx={{ mb: 2 }}>
-            <Zap
-              size={24}
-              style={{ marginRight: 8, verticalAlign: "middle" }}
-            />
-            Cloud Node Pools
-          </Typography>
+      <Box sx={{ mt: 6 }}>
+        {/* Cloud Node Pools */}
+        <Typography level="h3" sx={{ mb: 2 }}>
+          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
+          Cloud Node Pools
+        </Typography>
 
-          {isLoading || loadingClusters ? (
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <Typography level="body-md" sx={{ color: "text.secondary" }}>
-                Loading node pools...
-              </Typography>
-            </Box>
-          ) : (
-            Object.entries(clusterDetails).map(([name, cluster]) => {
-              return (
-                <CloudClusterCard
-                  key={name}
-                  cluster={cluster}
-                  clusterName={name}
-                  nodeGpuInfo={nodeGpuInfo}
-                  setSelectedCloudCluster={setSelectedCloudCluster}
-                />
-              );
-            })
-          )}
+        {isLoading || loadingClusters ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography level="body-md" sx={{ color: "text.secondary" }}>
+              Loading node pools...
+            </Typography>
+          </Box>
+        ) : (
+          Object.entries(clusterDetails).map(([name, cluster]) => {
+            return (
+              <CloudClusterCard
+                key={name}
+                cluster={cluster}
+                clusterName={name}
+                nodeGpuInfo={nodeGpuInfo}
+              />
+            );
+          })
+        )}
 
-          {/* On-Demand Clusters */}
-          <Typography level="h3" sx={{ mb: 2, mt: 4 }}>
-            <Zap
-              size={24}
-              style={{ marginRight: 8, verticalAlign: "middle" }}
-            />
-            On-Demand Clusters
-          </Typography>
+        {/* On-Demand Clusters */}
+        <Typography level="h3" sx={{ mb: 2, mt: 4 }}>
+          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
+          On-Demand Clusters
+        </Typography>
 
-          {/* RunPod Clusters */}
-          {runpodConfig.is_configured && (
-            <>
-              <Typography level="h4" sx={{ mb: 2 }}>
-                RunPod Clusters
-              </Typography>
-
-              {/* Instance Limits Display */}
-              {runpodInstances.max_instances > 0 && (
-                <Card variant="outlined" sx={{ mb: 2 }}>
-                  <Typography level="title-sm" sx={{ mb: 1 }}>
-                    Instance Limits
-                  </Typography>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography level="body-sm">
-                      {runpodInstances.current_count} /{" "}
-                      {runpodInstances.max_instances} instances
-                    </Typography>
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      color={runpodInstances.can_launch ? "success" : "danger"}
-                    >
-                      {runpodInstances.can_launch
-                        ? "Can Launch"
-                        : "Limit Reached"}
-                    </Chip>
-                  </Stack>
-
-                  {/* Visual representation of instances */}
-                  <Box sx={{ mt: 2 }}>
-                    <Typography
-                      level="body-xs"
-                      sx={{ mb: 1, color: "text.secondary" }}
-                    >
-                      Instance Usage:
-                    </Typography>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                      {/* Active instances (green) */}
-                      {Array.from(
-                        { length: runpodInstances.current_count },
-                        (_, i) => (
-                          <Box
-                            key={`active-${i}`}
-                            sx={{
-                              width: 20,
-                              height: 20,
-                              backgroundColor: "success.500",
-                              borderRadius: "sm",
-                              border: "1px solid",
-                              borderColor: "success.600",
-                            }}
-                          />
-                        )
-                      )}
-                      {/* Available instances (grey) */}
-                      {Array.from(
-                        {
-                          length:
-                            runpodInstances.max_instances -
-                            runpodInstances.current_count,
-                        },
-                        (_, i) => (
-                          <Box
-                            key={`available-${i}`}
-                            sx={{
-                              width: 20,
-                              height: 20,
-                              backgroundColor: "neutral.300",
-                              borderRadius: "sm",
-                              border: "1px solid",
-                              borderColor: "neutral.400",
-                            }}
-                          />
-                        )
-                      )}
-                    </Box>
-                  </Box>
-                </Card>
-              )}
-
-              {/* Check for active RunPod clusters */}
-              {skyPilotClusters.filter(
-                (cluster: any) =>
-                  cluster.cluster_name &&
-                  (cluster.cluster_name.toLowerCase().includes("runpod") ||
-                    cluster.cluster_name.toLowerCase().includes("runpod"))
-              ).length > 0
-                ? skyPilotClusters
-                    .filter(
-                      (cluster: any) =>
-                        cluster.cluster_name &&
-                        (cluster.cluster_name
-                          .toLowerCase()
-                          .includes("runpod") ||
-                          cluster.cluster_name.toLowerCase().includes("runpod"))
-                    )
-                    .map((cluster: any) => (
-                      <RunPodClusterCard
-                        key={cluster.cluster_name}
-                        cluster={cluster}
-                        onClusterLaunched={handleClusterLaunched}
-                      />
-                    ))
-                : null}
-
-              {/* Always show the launch button if RunPod is configured */}
-              {runpodConfig.is_configured && (
-                <Card variant="outlined" sx={{ mb: 3 }}>
-                  <Typography level="h4" sx={{ mb: 2 }}>
-                    Launch New RunPod Cluster
-                  </Typography>
-                  <Typography
-                    level="body-md"
-                    sx={{ color: "text.secondary", mb: 2 }}
-                  >
-                    Launch a new RunPod cluster for your workloads.
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    onClick={() => setShowRunPodLauncher(true)}
-                    disabled={!runpodInstances.can_launch}
-                  >
-                    Launch RunPod Cluster
-                  </Button>
-                  {!runpodInstances.can_launch && (
-                    <Typography
-                      level="body-xs"
-                      sx={{ color: "text.secondary", mt: 1 }}
-                    >
-                      Instance limit reached ({runpodInstances.current_count}/
-                      {runpodInstances.max_instances})
-                    </Typography>
-                  )}
-                </Card>
-              )}
-            </>
-          )}
-
-          {/* RunPod Configuration Status */}
-          <Card variant="outlined">
+        {/* RunPod Clusters */}
+        {runpodConfig.is_configured && (
+          <>
             <Typography level="h4" sx={{ mb: 2 }}>
-              RunPod Configuration
+              RunPod Clusters
             </Typography>
 
-            <Stack spacing={2}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography>API Key Configured</Typography>
-                <Chip
-                  variant="soft"
-                  color={runpodConfig.is_configured ? "success" : "danger"}
-                  size="sm"
+            {/* Instance Limits Display */}
+            {runpodInstances.max_instances > 0 && (
+              <Card variant="outlined" sx={{ mb: 2 }}>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Instance Limits
+                </Typography>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography level="body-sm">
+                    {runpodInstances.current_count} /{" "}
+                    {runpodInstances.max_instances} instances
+                  </Typography>
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    color={runpodInstances.can_launch ? "success" : "danger"}
+                  >
+                    {runpodInstances.can_launch
+                      ? "Can Launch"
+                      : "Limit Reached"}
+                  </Chip>
+                </Stack>
+
+                {/* Visual representation of instances */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography
+                    level="body-xs"
+                    sx={{ mb: 1, color: "text.secondary" }}
+                  >
+                    Instance Usage:
+                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {/* Active instances (green) */}
+                    {Array.from(
+                      { length: runpodInstances.current_count },
+                      (_, i) => (
+                        <Box
+                          key={`active-${i}`}
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            backgroundColor: "success.500",
+                            borderRadius: "sm",
+                            border: "1px solid",
+                            borderColor: "success.600",
+                          }}
+                        />
+                      )
+                    )}
+                    {/* Available instances (grey) */}
+                    {Array.from(
+                      {
+                        length:
+                          runpodInstances.max_instances -
+                          runpodInstances.current_count,
+                      },
+                      (_, i) => (
+                        <Box
+                          key={`available-${i}`}
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            backgroundColor: "neutral.300",
+                            borderRadius: "sm",
+                            border: "1px solid",
+                            borderColor: "neutral.400",
+                          }}
+                        />
+                      )
+                    )}
+                  </Box>
+                </Box>
+              </Card>
+            )}
+
+            {/* Check for active RunPod clusters */}
+            {skyPilotClusters.filter(
+              (cluster: any) =>
+                cluster.cluster_name &&
+                (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                  cluster.cluster_name.toLowerCase().includes("runpod"))
+            ).length > 0
+              ? skyPilotClusters
+                  .filter(
+                    (cluster: any) =>
+                      cluster.cluster_name &&
+                      (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                        cluster.cluster_name.toLowerCase().includes("runpod"))
+                  )
+                  .map((cluster: any) => (
+                    <RunPodClusterCard
+                      key={cluster.cluster_name}
+                      cluster={cluster}
+                      onClusterLaunched={handleClusterLaunched}
+                    />
+                  ))
+              : null}
+
+            {/* Always show the launch button if RunPod is configured */}
+            {runpodConfig.is_configured && (
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                <Typography level="h4" sx={{ mb: 2 }}>
+                  Launch New RunPod Cluster
+                </Typography>
+                <Typography
+                  level="body-md"
+                  sx={{ color: "text.secondary", mb: 2 }}
                 >
-                  {runpodConfig.is_configured ? "Yes" : "No"}
-                </Chip>
-              </Box>
+                  Launch a new RunPod cluster for your workloads.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowRunPodLauncher(true)}
+                  disabled={!runpodInstances.can_launch}
+                >
+                  Launch RunPod Cluster
+                </Button>
+                {!runpodInstances.can_launch && (
+                  <Typography
+                    level="body-xs"
+                    sx={{ color: "text.secondary", mt: 1 }}
+                  >
+                    Instance limit reached ({runpodInstances.current_count}/
+                    {runpodInstances.max_instances})
+                  </Typography>
+                )}
+              </Card>
+            )}
+          </>
+        )}
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
+        {/* RunPod Configuration Status */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            RunPod Configuration
+          </Typography>
+
+          <Stack spacing={2}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>API Key Configured</Typography>
+              <Chip
+                variant="soft"
+                color={runpodConfig.is_configured ? "success" : "danger"}
+                size="sm"
               >
-                <Typography>Allowed GPU Types</Typography>
-                <Chip variant="soft" color="primary" size="sm">
-                  {runpodConfig.allowed_gpu_types.length} selected
-                </Chip>
-              </Box>
+                {runpodConfig.is_configured ? "Yes" : "No"}
+              </Chip>
+            </Box>
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography>Maximum Instances</Typography>
-                <Chip variant="soft" color="primary" size="sm">
-                  {runpodConfig.max_instances === 0
-                    ? "Unlimited"
-                    : runpodConfig.max_instances}
-                </Chip>
-              </Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Allowed GPU Types</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {runpodConfig.allowed_gpu_types.length} selected
+              </Chip>
+            </Box>
 
-              {!runpodConfig.is_configured && (
-                <Alert color="warning">
-                  RunPod is not configured. Please configure it in the Admin
-                  section to use on-demand clusters.
-                </Alert>
-              )}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Maximum Instances</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {runpodConfig.max_instances === 0
+                  ? "Unlimited"
+                  : runpodConfig.max_instances}
+              </Chip>
+            </Box>
 
-              {runpodConfig.is_configured && (
-                <Alert color="success">
-                  RunPod is configured and ready to use.
-                </Alert>
-              )}
-            </Stack>
-          </Card>
-        </Box>
-      )}
+            {!runpodConfig.is_configured && (
+              <Alert color="warning">
+                RunPod is not configured. Please configure it in the Admin
+                section to use on-demand clusters.
+              </Alert>
+            )}
+
+            {runpodConfig.is_configured && (
+              <Alert color="success">
+                RunPod is configured and ready to use.
+              </Alert>
+            )}
+          </Stack>
+        </Card>
+      </Box>
 
       {/* RunPod Cluster Launcher Modal */}
       <RunPodClusterLauncher
