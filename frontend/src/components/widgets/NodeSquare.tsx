@@ -60,8 +60,8 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
 
   // Different styling and behavior based on variant
   const isMockVariant = variant === "mock";
-  const boxWidth = 32;
-  const boxHeight = 32;
+  const boxWidth = 24;
+  const boxHeight = 24;
   const backgroundColor = isMockVariant
     ? getStatusBackground(node.status || "inactive", node.type || "")
     : "#3b82f6";
