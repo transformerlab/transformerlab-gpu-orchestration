@@ -21,6 +21,8 @@ import {
   PersonStandingIcon,
   ShovelIcon,
   UsersIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -61,35 +63,62 @@ const sidebarItems = [
   {
     icon: <HouseIcon />,
     content: "My Clusters",
+    chipCount: 15,
     path: "/dashboard/my-clusters",
   },
   { icon: <ComputerIcon />, content: "Jobs", path: "/dashboard/jobs" },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
-  {
-    icon: <CogIcon />,
-    content: "Admin",
-    chipCount: 2,
-    path: "/dashboard/admin",
-  },
 ];
 
-const sidebarItems2 = [
-  { icon: <UsersIcon />, content: "Users", path: "/dashboard/users" },
+const adminSubItems = [
+  { content: "Users", section: "users", path: "/dashboard/admin/users" },
+  { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
-    icon: <GroupIcon />,
-    content: "Clusters",
-    path: "/dashboard/getting-started",
+    content: "Cloud Node Pools",
+    section: "clouds",
+    path: "/dashboard/admin/clouds",
   },
-  { icon: <BananaIcon />, content: "Quotas" },
+  {
+    content: "RunPod Configuration",
+    section: "runpod",
+    path: "/dashboard/admin/runpod",
+  },
+  {
+    content: "SSH Identity Files",
+    section: "identity",
+    path: "/dashboard/admin/identity",
+  },
+  {
+    content: "Object Storage",
+    section: "objectStorage",
+    path: "/dashboard/admin/object-storage",
+  },
+  { content: "Volumes", section: "volumes", path: "/dashboard/admin/volumes" },
+  {
+    content: "Settings",
+    section: "settings",
+    path: "/dashboard/admin/settings",
+  },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [adminExpanded, setAdminExpanded] = React.useState(
+    location.pathname.startsWith("/dashboard/admin")
+  );
 
   const handleNavigation = (path: string) => {
     navigate(path);
   };
+
+  const isAdminPath = location.pathname.startsWith("/dashboard/admin");
+
+  React.useEffect(() => {
+    if (isAdminPath) {
+      setAdminExpanded(true);
+    }
+  }, [isAdminPath]);
 
   return (
     <List
@@ -120,26 +149,40 @@ export default function Sidebar() {
               }
             />
           ))}
+          <ListItem nested>
+            <ListItemButton onClick={() => setAdminExpanded(!adminExpanded)}>
+              <ListItemDecorator
+                sx={isAdminPath ? {} : { color: "neutral.500" }}
+              >
+                <CogIcon />
+              </ListItemDecorator>
+              <ListItemContent>Admin</ListItemContent>
+              <ListItemDecorator sx={{ ml: "auto" }}>
+                {adminExpanded ? (
+                  <ChevronDownIcon size={16} />
+                ) : (
+                  <ChevronRightIcon size={16} />
+                )}
+              </ListItemDecorator>
+            </ListItemButton>
+            {adminExpanded && (
+              <List sx={{ "--List-gap": "2px" }}>
+                {adminSubItems.map((item, index) => (
+                  <ListItem key={`admin-${index}`}>
+                    <ListItemButton
+                      selected={location.pathname === item.path}
+                      onClick={() => handleNavigation(item.path)}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemContent>{item.content}</ListItemContent>
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </ListItem>
         </List>
-        <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
-          Administration
-        </ListSubheader>
       </ListItem>
-      <List
-        aria-labelledby="nav-list-browse"
-        sx={{ "& .JoyListItemButton-root": { p: "8px" } }}
-      >
-        {sidebarItems2.map((item, index) => (
-          <Item
-            key={`section2-${index}`}
-            icon={item.icon}
-            content={item.content}
-            selected={item.path ? location.pathname === item.path : false}
-            chipCount={item.chipCount}
-            onClick={item.path ? () => handleNavigation(item.path) : undefined}
-          />
-        ))}
-      </List>
     </List>
   );
 }
