@@ -19,7 +19,7 @@ import {
   Option,
   Grid,
 } from "@mui/joy";
-import { Save, Key, Gpu } from "lucide-react";
+import { Save, Key, Gpu, Settings } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
 
@@ -27,6 +27,7 @@ interface RunPodConfig {
   api_key: string;
   allowed_gpu_types: string[];
   is_configured: boolean;
+  max_instances: number;
 }
 
 interface GpuType {
@@ -40,6 +41,7 @@ const RunPodAdmin: React.FC = () => {
     api_key: "",
     allowed_gpu_types: [],
     is_configured: false,
+    max_instances: 0,
   });
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,6 +114,7 @@ const RunPodAdmin: React.FC = () => {
         body: JSON.stringify({
           api_key: config.api_key,
           allowed_gpu_types: config.allowed_gpu_types,
+          max_instances: config.max_instances,
         }),
       });
 
@@ -395,6 +398,50 @@ const RunPodAdmin: React.FC = () => {
           )}
         </Card>
 
+        {/* Instance Limits Configuration */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            <Settings
+              size={20}
+              style={{ marginRight: 8, verticalAlign: "middle" }}
+            />
+            Instance Limits
+          </Typography>
+          <Typography level="body-sm" sx={{ mb: 2, color: "text.secondary" }}>
+            Set the maximum number of RunPod instances that can be launched simultaneously.
+            Set to 0 for unlimited instances.
+          </Typography>
+
+          <Stack spacing={2}>
+            <FormControl>
+              <FormLabel>Maximum Instances</FormLabel>
+              <Input
+                value={config.max_instances}
+                onChange={(e) =>
+                  setConfig((prev) => ({ 
+                    ...prev, 
+                    max_instances: parseInt(e.target.value) || 0 
+                  }))
+                }
+                placeholder="0 for unlimited"
+                slotProps={{
+                  input: {
+                    type: "number",
+                    min: 0,
+                  }
+                }}
+                sx={{ maxWidth: 200 }}
+              />
+              <Typography level="body-xs" sx={{ color: "text.secondary", mt: 0.5 }}>
+                {config.max_instances === 0 
+                  ? "Unlimited instances allowed" 
+                  : `Maximum ${config.max_instances} instance${config.max_instances !== 1 ? 's' : ''} allowed`
+                }
+              </Typography>
+            </FormControl>
+          </Stack>
+        </Card>
+
         {/* Status Information */}
         <Card variant="outlined">
           <Typography level="h4" sx={{ mb: 2 }}>
@@ -427,6 +474,18 @@ const RunPodAdmin: React.FC = () => {
               <Typography>Allowed GPU Types</Typography>
               <Chip variant="soft" color="primary" size="sm">
                 {config.allowed_gpu_types.length} selected
+              </Chip>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Maximum Instances</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {config.max_instances === 0 ? "Unlimited" : config.max_instances}
               </Chip>
             </Box>
           </Stack>
