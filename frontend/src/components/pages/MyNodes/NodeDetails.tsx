@@ -22,7 +22,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import NodeSquare from "../../NodeSquare";
+import NodeSquare from "../../widgets/NodeSquare";
 
 const NodeDetails: React.FC = () => {
   const { nodeId } = useParams<{ nodeId: string }>();

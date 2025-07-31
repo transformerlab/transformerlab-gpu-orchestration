@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, Tooltip } from "@mui/joy";
+import { Box, Typography, Tooltip, Avatar } from "@mui/joy";
 
 interface NodeSquareProps {
   node: {
@@ -60,8 +60,8 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
 
   // Different styling and behavior based on variant
   const isMockVariant = variant === "mock";
-  const boxWidth = isMockVariant ? 12 : 12;
-  const boxHeight = isMockVariant ? 26 : 12;
+  const boxWidth = 32;
+  const boxHeight = 32;
   const backgroundColor = isMockVariant
     ? getStatusBackground(node.status || "inactive", node.type || "")
     : "#3b82f6";
@@ -122,7 +122,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
       <Box
         component="span"
         sx={{
-          display: "inline-block",
+          display: "inline-flex",
           width: boxWidth,
           height: boxHeight,
           backgroundColor,
@@ -138,22 +138,19 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
             transform: "scale(1.2)",
             boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
           },
+          overflow: "hidden",
+          justifyContent: "center",
+          alignItems: "center",
         }}
         onClick={handleClick}
       >
         {isMockVariant && node.user === "ali" && (
-          <Box
-            component="span"
+          <Avatar
+            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&dpr=2"
+            size="sm"
             sx={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              backgroundColor: "#1a2f5dff",
-              display: "block",
+              height: "24px",
+              width: "24px",
             }}
           />
         )}

@@ -41,7 +41,7 @@ import { buildApiUrl, apiFetch } from "../../utils/api";
 import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
-import NodeSquare from "../NodeSquare";
+import NodeSquare from "../widgets/NodeSquare";
 import RunPodClusterLauncher from "../RunPodClusterLauncher";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
