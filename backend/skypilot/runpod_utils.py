@@ -12,16 +12,29 @@ RUNPOD_CONFIG_FILE = Path.home() / ".runpod" / "lattice_config.json"
 def load_runpod_config():
     """Load RunPod configuration from file"""
     if not RUNPOD_CONFIG_FILE.exists():
-        return {"api_key": "", "allowed_gpu_types": [], "is_configured": False}
+        return {
+            "api_key": "",
+            "allowed_gpu_types": [],
+            "is_configured": False,
+            "max_instances": 0,
+        }
 
     try:
         with open(RUNPOD_CONFIG_FILE, "r") as f:
             config = json.load(f)
             config["is_configured"] = bool(config.get("api_key"))
+            # Set defaults for new fields if they don't exist
+            if "max_instances" not in config:
+                config["max_instances"] = 0
             return config
     except Exception as e:
         print(f"Error loading RunPod config: {e}")
-        return {"api_key": "", "allowed_gpu_types": [], "is_configured": False}
+        return {
+            "api_key": "",
+            "allowed_gpu_types": [],
+            "is_configured": False,
+            "max_instances": 0,
+        }
 
 
 def get_runpod_api_key():
@@ -32,7 +45,7 @@ def get_runpod_api_key():
     return RUNPOD_API_KEY
 
 
-def save_runpod_config(api_key: str, allowed_gpu_types: list[str]):
+def save_runpod_config(api_key: str, allowed_gpu_types: list[str], max_instances: int = 0):
     """Save RunPod configuration to file"""
     # Load existing config to preserve the real API key if the new one is masked
     existing_config = load_runpod_config()
@@ -44,6 +57,7 @@ def save_runpod_config(api_key: str, allowed_gpu_types: list[str]):
     config = {
         "api_key": api_key,
         "allowed_gpu_types": allowed_gpu_types,
+        "max_instances": max_instances,
         "is_configured": bool(api_key),
     }
     RUNPOD_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)

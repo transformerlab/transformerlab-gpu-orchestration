@@ -47,6 +47,7 @@ from skypilot.runpod_utils import (
     save_runpod_config,
     get_runpod_config_for_display,
     test_runpod_connection,
+    load_runpod_config,
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
@@ -60,6 +61,7 @@ import asyncio
 class RunPodConfigRequest(BaseModel):
     api_key: str
     allowed_gpu_types: list[str]
+    max_instances: int = 0
 
 
 class RunPodTestRequest(BaseModel):
@@ -774,7 +776,9 @@ async def save_runpod_config_route(
     try:
         # Save the configuration using utility function
         config = save_runpod_config(
-            config_request.api_key, config_request.allowed_gpu_types
+            config_request.api_key,
+            config_request.allowed_gpu_types,
+            config_request.max_instances,
         )
 
         # Set environment variable for current session only if a real API key was provided
@@ -839,4 +843,33 @@ async def stop_port_forward(request: Request, response: Response, cluster_name: 
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to stop port forward: {str(e)}"
+        )
+
+
+@router.get("/runpod/instances")
+async def get_runpod_instances(request: Request, response: Response):
+    """Get current RunPod instance count and limits"""
+    try:
+        # Get current configuration
+        config = load_runpod_config()
+
+        # Count current RunPod clusters
+        skyPilotStatus = get_skypilot_status()
+        runpod_clusters = [
+            cluster
+            for cluster in skyPilotStatus
+            if cluster.get("name", "").lower().find("runpod") != -1
+        ]
+
+        current_count = len(runpod_clusters)
+        max_instances = config.get("max_instances", 0)
+
+        return {
+            "current_count": current_count,
+            "max_instances": max_instances,
+            "can_launch": max_instances == 0 or current_count < max_instances,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get RunPod instance count: {str(e)}"
         )

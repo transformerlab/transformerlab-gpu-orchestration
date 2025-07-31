@@ -73,6 +73,7 @@ interface RunPodConfig {
   api_key: string;
   allowed_gpu_types: string[];
   is_configured: boolean;
+  max_instances: number;
 }
 
 const gpuTypes = [
@@ -829,16 +830,11 @@ const RunPodClusterCard: React.FC<{
   onClusterLaunched?: (clusterName: string) => void;
 }> = ({ cluster, onClusterLaunched }) => {
   // State for modals
-  const [showReserveModal, setShowReserveModal] = useState(false);
   const [showLaunchJobModal, setShowLaunchJobModal] = useState(false);
 
   const isActiveCluster =
     cluster.status === "ClusterStatus.UP" ||
     cluster.status === "ClusterStatus.INIT";
-
-  const handleReserveNode = () => {
-    setShowReserveModal(true);
-  };
 
   const handleLaunchJob = () => {
     setShowLaunchJobModal(true);
@@ -880,9 +876,6 @@ const RunPodClusterCard: React.FC<{
         </Box>
 
         <Stack direction="row" spacing={1}>
-          <Button variant="outlined" onClick={handleReserveNode}>
-            Reserve a Node
-          </Button>
           <Button
             variant="outlined"
             onClick={handleLaunchJob}
@@ -892,16 +885,6 @@ const RunPodClusterCard: React.FC<{
           </Button>
         </Stack>
       </Card>
-
-      {/* Reserve Node Modal for RunPod */}
-      {showReserveModal && (
-        <ReserveNodeModal
-          open={showReserveModal}
-          onClose={() => setShowReserveModal(false)}
-          clusterName={cluster.cluster_name}
-          onClusterLaunched={handleClusterLaunched}
-        />
-      )}
 
       {/* Launch Job Modal for RunPod */}
       {showLaunchJobModal && (
@@ -1173,6 +1156,18 @@ const Nodes: React.FC = () => {
     api_key: "",
     allowed_gpu_types: [],
     is_configured: false,
+    max_instances: 0,
+  });
+
+  // State for RunPod instance count and limits
+  const [runpodInstances, setRunpodInstances] = useState<{
+    current_count: number;
+    max_instances: number;
+    can_launch: boolean;
+  }>({
+    current_count: 0,
+    max_instances: 0,
+    can_launch: true,
   });
 
   // --- Node Pools/Clouds Section ---
@@ -1230,15 +1225,46 @@ const Nodes: React.FC = () => {
 
     // Fetch RunPod configuration
     apiFetch(buildApiUrl("skypilot/runpod/config"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : {}))
-      .then((data) => setRunpodConfig(data))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setRunpodConfig(data);
+        } else {
+          setRunpodConfig({
+            api_key: "",
+            allowed_gpu_types: [],
+            is_configured: false,
+            max_instances: 0,
+          });
+        }
+      })
       .catch(() =>
         setRunpodConfig({
           api_key: "",
           allowed_gpu_types: [],
           is_configured: false,
+          max_instances: 0,
         })
       );
+
+    // Fetch RunPod instance count and limits
+    apiFetch(buildApiUrl("skypilot/runpod/instances"), {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setRunpodInstances(data);
+        }
+      })
+      .catch(() => {
+        // If the endpoint doesn't exist yet, use default values
+        setRunpodInstances({
+          current_count: 0,
+          max_instances: 0,
+          can_launch: true,
+        });
+      });
   }, []);
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
@@ -1408,139 +1434,229 @@ const Nodes: React.FC = () => {
       ) : (
         <Box sx={{ mt: 6 }}>
           <Typography level="h3" sx={{ mb: 2 }}>
-            Cloud Node Pools
+            <Zap
+              size={24}
+              style={{ marginRight: 8, verticalAlign: "middle" }}
+            />
+            On-Demand Clusters
           </Typography>
-          {isLoading || loadingClusters ? (
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <Typography level="body-md" sx={{ color: "text.secondary" }}>
-                Loading node pools...
+
+          {/* RunPod Clusters */}
+          {runpodConfig.is_configured && (
+            <>
+              <Typography level="h4" sx={{ mb: 2 }}>
+                RunPod Clusters
               </Typography>
-            </Box>
-          ) : (
-            Object.entries(clusterDetails).map(([name, cluster]) => {
-              return (
-                <CloudClusterCard
-                  key={name}
-                  cluster={cluster}
-                  clusterName={name}
-                  nodeGpuInfo={nodeGpuInfo}
-                  setSelectedCloudCluster={setSelectedCloudCluster}
-                />
-              );
-            })
+
+              {/* Instance Limits Display */}
+              {runpodInstances.max_instances > 0 && (
+                <Card variant="outlined" sx={{ mb: 2 }}>
+                  <Typography level="title-sm" sx={{ mb: 1 }}>
+                    Instance Limits
+                  </Typography>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Typography level="body-sm">
+                      {runpodInstances.current_count} /{" "}
+                      {runpodInstances.max_instances} instances
+                    </Typography>
+                    <Chip
+                      size="sm"
+                      variant="soft"
+                      color={runpodInstances.can_launch ? "success" : "danger"}
+                    >
+                      {runpodInstances.can_launch
+                        ? "Can Launch"
+                        : "Limit Reached"}
+                    </Chip>
+                  </Stack>
+
+                  {/* Visual representation of instances */}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography
+                      level="body-xs"
+                      sx={{ mb: 1, color: "text.secondary" }}
+                    >
+                      Instance Usage:
+                    </Typography>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                      {/* Active instances (green) */}
+                      {Array.from(
+                        { length: runpodInstances.current_count },
+                        (_, i) => (
+                          <Box
+                            key={`active-${i}`}
+                            sx={{
+                              width: 20,
+                              height: 20,
+                              backgroundColor: "success.500",
+                              borderRadius: "sm",
+                              border: "1px solid",
+                              borderColor: "success.600",
+                            }}
+                          />
+                        )
+                      )}
+                      {/* Available instances (grey) */}
+                      {Array.from(
+                        {
+                          length:
+                            runpodInstances.max_instances -
+                            runpodInstances.current_count,
+                        },
+                        (_, i) => (
+                          <Box
+                            key={`available-${i}`}
+                            sx={{
+                              width: 20,
+                              height: 20,
+                              backgroundColor: "neutral.300",
+                              borderRadius: "sm",
+                              border: "1px solid",
+                              borderColor: "neutral.400",
+                            }}
+                          />
+                        )
+                      )}
+                    </Box>
+                  </Box>
+                </Card>
+              )}
+
+              {/* Check for active RunPod clusters */}
+              {skyPilotClusters.filter(
+                (cluster: any) =>
+                  cluster.cluster_name &&
+                  (cluster.cluster_name.toLowerCase().includes("runpod") ||
+                    cluster.cluster_name.toLowerCase().includes("runpod"))
+              ).length > 0
+                ? skyPilotClusters
+                    .filter(
+                      (cluster: any) =>
+                        cluster.cluster_name &&
+                        (cluster.cluster_name
+                          .toLowerCase()
+                          .includes("runpod") ||
+                          cluster.cluster_name.toLowerCase().includes("runpod"))
+                    )
+                    .map((cluster: any) => (
+                      <RunPodClusterCard
+                        key={cluster.cluster_name}
+                        cluster={cluster}
+                        onClusterLaunched={handleClusterLaunched}
+                      />
+                    ))
+                : null}
+
+              {/* Always show the launch button if RunPod is configured */}
+              {runpodConfig.is_configured && (
+                <Card variant="outlined" sx={{ mb: 3 }}>
+                  <Typography level="h4" sx={{ mb: 2 }}>
+                    Launch New RunPod Cluster
+                  </Typography>
+                  <Typography
+                    level="body-md"
+                    sx={{ color: "text.secondary", mb: 2 }}
+                  >
+                    Launch a new RunPod cluster for your workloads.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setShowRunPodLauncher(true)}
+                    disabled={!runpodInstances.can_launch}
+                  >
+                    Launch RunPod Cluster
+                  </Button>
+                  {!runpodInstances.can_launch && (
+                    <Typography
+                      level="body-xs"
+                      sx={{ color: "text.secondary", mt: 1 }}
+                    >
+                      Instance limit reached ({runpodInstances.current_count}/
+                      {runpodInstances.max_instances})
+                    </Typography>
+                  )}
+                  {/* Debug info - remove this later */}
+                  <Typography
+                    level="body-xs"
+                    sx={{ color: "text.secondary", mt: 1 }}
+                  >
+                    Debug: Current={runpodInstances.current_count}, Max=
+                    {runpodInstances.max_instances}, CanLaunch=
+                    {runpodInstances.can_launch ? "true" : "false"}
+                  </Typography>
+                </Card>
+              )}
+            </>
           )}
-        </Box>
-      )}
 
-      {/* On-Demand Clusters Section */}
-      <Box sx={{ mt: 6 }}>
-        <Typography level="h3" sx={{ mb: 2 }}>
-          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
-          On-Demand Clusters
-        </Typography>
-
-        {/* RunPod Clusters */}
-        {runpodConfig.is_configured && (
-          <>
+          {/* RunPod Configuration Status */}
+          <Card variant="outlined">
             <Typography level="h4" sx={{ mb: 2 }}>
-              RunPod Clusters
+              RunPod Configuration
             </Typography>
 
-            {/* Check for active RunPod clusters */}
-            {skyPilotClusters.filter(
-              (cluster: any) =>
-                cluster.cluster_name &&
-                (cluster.cluster_name.toLowerCase().includes("runpod") ||
-                  cluster.cluster_name.toLowerCase().includes("runpod"))
-            ).length > 0 ? (
-              skyPilotClusters
-                .filter(
-                  (cluster: any) =>
-                    cluster.cluster_name &&
-                    (cluster.cluster_name.toLowerCase().includes("runpod") ||
-                      cluster.cluster_name.toLowerCase().includes("runpod"))
-                )
-                .map((cluster: any) => (
-                  <RunPodClusterCard
-                    key={cluster.cluster_name}
-                    cluster={cluster}
-                    onClusterLaunched={handleClusterLaunched}
-                  />
-                ))
-            ) : (
-              <Card variant="outlined" sx={{ mb: 3 }}>
-                <Typography level="h4" sx={{ mb: 2 }}>
-                  No Active RunPod Nodes
-                </Typography>
-                <Typography
-                  level="body-md"
-                  sx={{ color: "text.secondary", mb: 2 }}
-                >
-                  No RunPod nodes are currently running.
-                </Typography>
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowRunPodLauncher(true)}
-                >
-                  Reserve a RunPod Node
-                </Button>
-              </Card>
-            )}
-          </>
-        )}
-
-        {/* RunPod Configuration Status */}
-        <Card variant="outlined">
-          <Typography level="h4" sx={{ mb: 2 }}>
-            RunPod Configuration
-          </Typography>
-
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>API Key Configured</Typography>
-              <Chip
-                variant="soft"
-                color={runpodConfig.is_configured ? "success" : "danger"}
-                size="sm"
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
               >
-                {runpodConfig.is_configured ? "Yes" : "No"}
-              </Chip>
-            </Box>
+                <Typography>API Key Configured</Typography>
+                <Chip
+                  variant="soft"
+                  color={runpodConfig.is_configured ? "success" : "danger"}
+                  size="sm"
+                >
+                  {runpodConfig.is_configured ? "Yes" : "No"}
+                </Chip>
+              </Box>
 
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Allowed GPU Types</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {runpodConfig.allowed_gpu_types.length} selected
-              </Chip>
-            </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography>Allowed GPU Types</Typography>
+                <Chip variant="soft" color="primary" size="sm">
+                  {runpodConfig.allowed_gpu_types.length} selected
+                </Chip>
+              </Box>
 
-            {!runpodConfig.is_configured && (
-              <Alert color="warning">
-                RunPod is not configured. Please configure it in the Admin
-                section to use on-demand clusters.
-              </Alert>
-            )}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography>Maximum Instances</Typography>
+                <Chip variant="soft" color="primary" size="sm">
+                  {runpodConfig.max_instances === 0
+                    ? "Unlimited"
+                    : runpodConfig.max_instances}
+                </Chip>
+              </Box>
 
-            {runpodConfig.is_configured && (
-              <Alert color="success">
-                RunPod is configured and ready to use.
-              </Alert>
-            )}
-          </Stack>
-        </Card>
-      </Box>
+              {!runpodConfig.is_configured && (
+                <Alert color="warning">
+                  RunPod is not configured. Please configure it in the Admin
+                  section to use on-demand clusters.
+                </Alert>
+              )}
+
+              {runpodConfig.is_configured && (
+                <Alert color="success">
+                  RunPod is configured and ready to use.
+                </Alert>
+              )}
+            </Stack>
+          </Card>
+        </Box>
+      )}
 
       {/* RunPod Cluster Launcher Modal */}
       <RunPodClusterLauncher
