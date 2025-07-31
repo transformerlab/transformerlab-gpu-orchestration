@@ -1,20 +1,8 @@
 import React from "react";
-import {
-  Box,
-  Typography,
-  Table,
-  Chip,
-  CircularProgress,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanel,
-  tabClasses,
-} from "@mui/joy";
 import useSWR from "swr";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import Held from "./MyNodes/Holds";
-import Jobs from "./MyNodes/Jobs";
+import PageWithTitle from "./templates/PageWithTitle";
 
 interface Cluster {
   cluster_name: string;
@@ -51,42 +39,16 @@ const MyClusters: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: "auto", p: 2 }}>
-      <Tabs
-        value={activeTab}
-        onChange={(_, value) => setActiveTab(value as number)}
-        sx={{ background: "transparent" }}
-        variant="plain"
-      >
-        <TabList
-          disableUnderline
-          sx={{
-            [`& .${tabClasses.root}`]: {
-              px: 2, // consistent horizontal padding for all tabs
-              py: 1, // consistent vertical padding for all tabs
-            },
-            [`& .${tabClasses.root}[aria-selected="true"]`]: {
-              bgcolor: "transparent",
-              px: 2, // consistent horizontal padding for all tabs
-              py: 1, // consistent vertical padding for all tabs
-            },
-          }}
-        >
-          <Tab value={0}>Holds</Tab>
-          <Tab value={1}>Jobs</Tab>
-        </TabList>
-        <TabPanel value={0}>
-          <Held
-            skypilotLoading={skypilotLoading}
-            myClusters={myClusters}
-            onTabChange={handleTabChange}
-          />
-        </TabPanel>
-        <TabPanel value={1}>
-          <Jobs skypilotLoading={skypilotLoading} myClusters={myClusters} />
-        </TabPanel>
-      </Tabs>
-    </Box>
+    <PageWithTitle
+      title="My Clusters"
+      subtitle="A cluster is a group of nodes that run workloads."
+    >
+      <Held
+        skypilotLoading={skypilotLoading}
+        myClusters={myClusters}
+        onTabChange={handleTabChange}
+      />
+    </PageWithTitle>
   );
 };
 

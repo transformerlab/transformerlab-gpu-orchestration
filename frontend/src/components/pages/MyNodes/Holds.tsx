@@ -470,7 +470,7 @@ const Held: React.FC<HeldProps> = ({
           <>
             <Box sx={{ mb: 3, mt: 4 }}>
               <Typography level="h3" sx={{ mb: 2 }}>
-                Sample Holds Data
+                Sample Cluster Data
               </Typography>
               <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
                 Additional sample data for demonstration purposes.
@@ -609,7 +609,7 @@ const Held: React.FC<HeldProps> = ({
         <>
           <Box sx={{ mb: 3 }}>
             <Typography level="h3" sx={{ mb: 2 }}>
-              Sample Holds Data
+              Sample Cluster Data
             </Typography>
             <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
               This is sample data. Launch real clusters from the Interactive
