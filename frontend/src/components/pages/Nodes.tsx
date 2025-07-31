@@ -1433,7 +1433,37 @@ const Nodes: React.FC = () => {
         </Sheet>
       ) : (
         <Box sx={{ mt: 6 }}>
+          {/* Cloud Node Pools */}
           <Typography level="h3" sx={{ mb: 2 }}>
+            <Zap
+              size={24}
+              style={{ marginRight: 8, verticalAlign: "middle" }}
+            />
+            Cloud Node Pools
+          </Typography>
+
+          {isLoading || loadingClusters ? (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <Typography level="body-md" sx={{ color: "text.secondary" }}>
+                Loading node pools...
+              </Typography>
+            </Box>
+          ) : (
+            Object.entries(clusterDetails).map(([name, cluster]) => {
+              return (
+                <CloudClusterCard
+                  key={name}
+                  cluster={cluster}
+                  clusterName={name}
+                  nodeGpuInfo={nodeGpuInfo}
+                  setSelectedCloudCluster={setSelectedCloudCluster}
+                />
+              );
+            })
+          )}
+
+          {/* On-Demand Clusters */}
+          <Typography level="h3" sx={{ mb: 2, mt: 4 }}>
             <Zap
               size={24}
               style={{ marginRight: 8, verticalAlign: "middle" }}
