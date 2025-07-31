@@ -1,3 +1,6 @@
+import os
+import json
+from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
@@ -307,6 +310,20 @@ def stop_cluster_with_skypilot(cluster_name: str):
 
 def down_cluster_with_skypilot(cluster_name: str):
     try:
+        # First, get all jobs from the cluster before tearing down
+        try:
+            job_records = get_cluster_job_queue(cluster_name)
+            # Extract jobs from the job records
+            if job_records and hasattr(job_records, "jobs"):
+                jobs = job_records.jobs
+                if jobs:
+                    save_cluster_jobs(cluster_name, jobs)
+            elif isinstance(job_records, list):
+                # If it's already a list of jobs
+                save_cluster_jobs(cluster_name, job_records)
+        except Exception as e:
+            print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
+
         request_id = sky.down(cluster_name=cluster_name)
         return request_id
     except Exception as e:
@@ -397,3 +414,115 @@ def cancel_job_with_skypilot(cluster_name: str, job_id: int):
         }
     except Exception as e:
         raise Exception(f"Failed to cancel job {job_id}: {str(e)}")
+
+
+def save_cluster_jobs(cluster_name: str, jobs: list):
+    """Save jobs from a cluster to a local file before tearing down."""
+    try:
+        # Create the lattice directory in ~/.sky if it doesn't exist
+        lattice_dir = Path.home() / ".sky" / "lattice"
+        jobs_dir = lattice_dir / "jobs"
+        logs_dir = lattice_dir / "logs"
+        jobs_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save jobs to a JSON file with timestamp
+        import datetime
+
+        timestamp = datetime.datetime.now().isoformat()
+        filename = f"{cluster_name}_{timestamp}.json"
+        filepath = jobs_dir / filename
+
+        # Convert jobs to the same format as shown in frontend
+        serializable_jobs = []
+        for job in jobs:
+            try:
+                # Each job is a dictionary
+                job_dict = {
+                    "job_id": job.get("job_id", None),
+                    "job_name": job.get("job_name", ""),
+                    "username": job.get("username", ""),
+                    "submitted_at": job.get("submitted_at", None),
+                    "start_at": job.get("start_at", None),
+                    "end_at": job.get("end_at", None),
+                    "resources": job.get("resources", ""),
+                    "status": job.get("status", ""),
+                    "log_path": "",  # Will be updated with actual log file path after downloading
+                }
+
+                # Convert status enum to string if needed
+                if hasattr(job_dict["status"], "name"):
+                    job_dict["status"] = job_dict["status"].name
+
+                serializable_jobs.append(job_dict)
+            except Exception as job_error:
+                print(f"Failed to serialize job: {str(job_error)}")
+                continue
+
+        # Add metadata to the jobs data
+        jobs_data = {
+            "cluster_name": cluster_name,
+            "saved_at": timestamp,
+            "jobs": serializable_jobs,
+        }
+
+        # Save jobs data first
+        with open(filepath, "w") as f:
+            json.dump(jobs_data, f, indent=2)
+
+        # Download and save logs for each job using get_job_logs
+        for i, job in enumerate(jobs):
+            try:
+                job_id = job.get("job_id", None)
+                if job_id is not None:
+                    try:
+                        # Use get_job_logs to download logs for this job
+                        logs = get_job_logs(cluster_name, job_id, tail_lines=1000)
+                        log_filename = f"{cluster_name}_{job_id}_{timestamp}.log"
+                        log_filepath = logs_dir / log_filename
+                        with open(log_filepath, "w") as f:
+                            f.write(logs)
+                        # Add log file path to job data
+                        serializable_jobs[i]["log_path"] = str(log_filepath)
+                    except Exception as log_error:
+                        print(f"Failed to save logs for job {job_id}: {str(log_error)}")
+                        serializable_jobs[i]["log_path"] = ""
+            except Exception as job_error:
+                print(f"Failed to process job for log saving: {str(job_error)}")
+                continue
+
+        # Update the jobs data with log file paths
+        with open(filepath, "w") as f:
+            json.dump(jobs_data, f, indent=2)
+
+        return str(filepath)
+    except Exception as e:
+        print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
+        return None
+
+
+def get_past_jobs():
+    """Retrieve all past jobs from saved files."""
+    try:
+        lattice_dir = Path.home() / ".sky" / "lattice"
+        jobs_dir = lattice_dir / "jobs"
+
+        if not jobs_dir.exists():
+            return []
+
+        past_jobs = []
+        for filepath in jobs_dir.glob("*.json"):
+            try:
+                with open(filepath, "r") as f:
+                    data = json.load(f)
+                    past_jobs.append(data)
+            except Exception as e:
+                print(f"Failed to read job file {filepath}: {str(e)}")
+                continue
+
+        # Sort by saved_at timestamp (newest first)
+        past_jobs.sort(key=lambda x: x.get("saved_at", ""), reverse=True)
+        return past_jobs
+    except Exception as e:
+        print(f"Failed to get past jobs: {str(e)}")
+        return []

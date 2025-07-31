@@ -37,13 +37,13 @@ from skypilot.utils import (
     down_cluster_with_skypilot,
     fetch_and_parse_gpu_resources,
     cancel_job_with_skypilot,
+    get_past_jobs,
 )
 from skypilot.port_forwarding import port_forward_manager
 from skypilot.runpod_utils import (
     verify_runpod_setup,
     get_runpod_gpu_types,
     setup_runpod_config,
-    load_runpod_config,
     save_runpod_config,
     get_runpod_config_for_display,
     test_runpod_connection,
@@ -51,7 +51,7 @@ from skypilot.runpod_utils import (
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
 from auth.utils import get_current_user
-from reports.utils import record_usage, record_job_success
+from reports.utils import record_usage
 from typing import Optional
 import asyncio
 
@@ -445,6 +445,59 @@ async def get_cluster_type(cluster_name: str, request: Request, response: Respon
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster type: {str(e)}"
+        )
+
+
+@router.get("/past-jobs")
+async def get_past_jobs_endpoint(request: Request, response: Response):
+    """Get all past jobs from saved files."""
+    try:
+        past_jobs = get_past_jobs()
+        return {"past_jobs": past_jobs}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get past jobs: {str(e)}"
+        )
+
+
+@router.get("/past-jobs/{cluster_name}/{job_id}/logs")
+async def get_past_job_logs(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+):
+    """Get logs for a past job."""
+    try:
+        from pathlib import Path
+        import os
+
+        # Look for the log file in the saved logs directory
+        lattice_dir = Path.home() / ".sky" / "lattice"
+        logs_dir = lattice_dir / "logs"
+
+        if not logs_dir.exists():
+            raise HTTPException(status_code=404, detail="No saved logs found")
+
+        # Find the log file for this job
+        log_files = list(logs_dir.glob(f"{cluster_name}_{job_id}_*.log"))
+        if not log_files:
+            raise HTTPException(
+                status_code=404, detail="Log file not found for this job"
+            )
+
+        # Use the most recent log file if multiple exist
+        log_file = sorted(log_files)[-1]
+
+        with open(log_file, "r") as f:
+            logs = f.read()
+
+        return {"logs": logs}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get past job logs: {str(e)}"
         )
 
 
