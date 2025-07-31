@@ -27,7 +27,7 @@ interface Report {
 const generateSampleData = (baseValue: number, variance: number) => {
   const data = [];
   const now = new Date();
-  for (let i = 29; i >= 0; i--) {
+  for (let i = 13; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
     const value = Math.max(0, baseValue + (Math.random() - 0.5) * variance);
@@ -55,22 +55,22 @@ const getColorHex = (colorName: string): string => {
 const reports: Report[] = [
   {
     id: "1",
-    name: "Usage (past 30 days)",
-    data: generateSampleData(10, 2),
+    name: "Usage (past 14 days)",
+    data: generateSampleData(10, 4),
     color: "blue",
     yAxisLabel: "Usage %",
   },
   {
     id: "2",
-    name: "Availability (past 30 days)",
-    data: generateSampleData(95, 15),
+    name: "Availability (past 14 days)",
+    data: generateSampleData(10, 8),
     color: "emerald",
     yAxisLabel: "Availability %",
   },
   {
     id: "3",
-    name: "Job Success (past 30 days)",
-    data: generateSampleData(85, 20),
+    name: "Job Success (past 14 days)",
+    data: generateSampleData(10, 7),
     color: "violet",
     yAxisLabel: "Success Rate %",
   },
@@ -98,7 +98,20 @@ const ReportCard: React.FC<{ report: Report }> = ({ report }) => {
       <Box sx={{ height: 300, width: "100%" }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={report.data}>
-            {/* <CartesianGrid strokeDasharray="3 3" /> */}
+            <XAxis
+              dataKey="date"
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+              }}
+              tick={{ fontSize: 12 }}
+            />
+            <Tooltip
+              labelFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString();
+              }}
+            />
             <Area
               type="monotone"
               dataKey="value"
@@ -149,7 +162,9 @@ const Reports: React.FC = () => {
       setRealData(data);
     } catch (err) {
       console.error("Failed to fetch real data:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch real data");
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch real data"
+      );
     } finally {
       setLoading(false);
     }
@@ -159,29 +174,31 @@ const Reports: React.FC = () => {
     fetchRealData();
   }, []);
 
-  const realReports: Report[] = realData ? [
-    {
-      id: "real-1",
-      name: "Usage (past 30 days) - Real Data",
-      data: realData.usage,
-      color: "blue",
-      yAxisLabel: "Usage %",
-    },
-    {
-      id: "real-2",
-      name: "Availability (past 30 days) - Real Data",
-      data: realData.availability,
-      color: "emerald",
-      yAxisLabel: "Availability %",
-    },
-    {
-      id: "real-3",
-      name: "Job Success (past 30 days) - Real Data",
-      data: realData.job_success,
-      color: "violet",
-      yAxisLabel: "Success Rate %",
-    },
-  ] : [];
+  const realReports: Report[] = realData
+    ? [
+        {
+          id: "real-1",
+          name: "Usage (past 14 days) - Real Data",
+          data: realData.usage,
+          color: "blue",
+          yAxisLabel: "Usage %",
+        },
+        {
+          id: "real-2",
+          name: "Availability (past 14 days) - Real Data",
+          data: realData.availability,
+          color: "emerald",
+          yAxisLabel: "Availability %",
+        },
+        {
+          id: "real-3",
+          name: "Job Success (past 14 days) - Real Data",
+          data: realData.job_success,
+          color: "violet",
+          yAxisLabel: "Success Rate %",
+        },
+      ]
+    : [];
 
   return (
     <PageWithTitle title="Reports" subtitle="View who did what">
@@ -194,34 +211,39 @@ const Reports: React.FC = () => {
           {reports.map((report) => (
             <ReportCard key={report.id} report={report} />
           ))}
-          
+
           {/* Real Data Section */}
           <Divider sx={{ my: 4 }} />
         </>
       )}
-      
+
       <Typography level="h3" sx={{ mb: 3 }}>
         {showFakeData ? "Real Data" : "Reports Data"}
       </Typography>
-      
+
       {loading && (
         <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
           <Typography>Loading real data...</Typography>
         </Card>
       )}
-      
+
       {error && (
-        <Card variant="outlined" sx={{ p: 3, mb: 3, borderColor: "danger.500" }}>
-          <Typography color="danger">Error loading real data: {error}</Typography>
+        <Card
+          variant="outlined"
+          sx={{ p: 3, mb: 3, borderColor: "danger.500" }}
+        >
+          <Typography color="danger">
+            Error loading real data: {error}
+          </Typography>
         </Card>
       )}
-      
+
       {realData && realReports.length > 0 && (
         <>
           {realReports.map((report) => (
             <ReportCard key={report.id} report={report} />
           ))}
-          
+
           {/* Summary Statistics */}
           <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
             <Typography level="h4" sx={{ mb: 2 }}>
@@ -244,10 +266,13 @@ const Reports: React.FC = () => {
           </Card>
         </>
       )}
-      
+
       {realData && realReports.length === 0 && (
         <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
-          <Typography>No real data available yet. Start using clusters and submitting jobs to see real statistics!</Typography>
+          <Typography>
+            No real data available yet. Start using clusters and submitting jobs
+            to see real statistics!
+          </Typography>
         </Card>
       )}
     </PageWithTitle>
