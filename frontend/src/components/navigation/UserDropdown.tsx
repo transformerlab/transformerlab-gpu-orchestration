@@ -11,7 +11,7 @@ import {
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
 import { ClipboardCopyIcon, KeyRoundIcon, SettingsIcon } from "lucide-react";
-import UserSettingsModal from "../UserSettingsModal";
+import UserSettingsModal from "../user-settings/UserSettingsModal";
 
 const UserDropdown: React.FC = () => {
   const { user, logout } = useAuth();

@@ -16,9 +16,9 @@ import {
   CircularProgress,
   Divider,
 } from "@mui/joy";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { Settings, User, Building2, Plus } from "lucide-react";
-import { authApi } from "../utils/api";
+import { authApi } from "../../utils/api";
 import CreateOrganizationModal from "./CreateOrganizationModal";
 
 interface UserSettingsModalProps {

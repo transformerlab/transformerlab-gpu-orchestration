@@ -14,7 +14,7 @@ import {
   Textarea,
 } from "@mui/joy";
 import { Building2, Plus } from "lucide-react";
-import { authApi } from "../utils/api";
+import { authApi } from "../../utils/api";
 
 interface CreateOrganizationModalProps {
   open: boolean;

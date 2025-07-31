@@ -30,7 +30,7 @@ import { buildApiUrl, apiFetch } from "../../../utils/api";
 import InteractiveTaskModal from "../../InteractiveTaskModal";
 import SubmitJobModal from "../../SubmitJobModal";
 import { useNavigate } from "react-router-dom";
-import NodeSquare from "../../NodeSquare";
+import NodeSquare from "../../widgets/NodeSquare";
 import { useFakeData } from "../../../context/FakeDataContext";
 
 // Add a mock status generator for demonstration
