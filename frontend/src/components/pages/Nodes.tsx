@@ -1575,15 +1575,6 @@ const Nodes: React.FC = () => {
                       {runpodInstances.max_instances})
                     </Typography>
                   )}
-                  {/* Debug info - remove this later */}
-                  <Typography
-                    level="body-xs"
-                    sx={{ color: "text.secondary", mt: 1 }}
-                  >
-                    Debug: Current={runpodInstances.current_count}, Max=
-                    {runpodInstances.max_instances}, CanLaunch=
-                    {runpodInstances.can_launch ? "true" : "false"}
-                  </Typography>
                 </Card>
               )}
             </>
