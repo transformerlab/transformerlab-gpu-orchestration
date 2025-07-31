@@ -84,14 +84,14 @@ const UserDropdown: React.FC = () => {
             </Typography>
           </Box>
           <ListDivider />
-          <MenuItem disabled sx={{ cursor: "default" }}>
+          {/* <MenuItem disabled sx={{ cursor: "default" }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               <Typography level="title-sm">User ID</Typography>
               <Typography level="body-xs" sx={{ fontFamily: "monospace" }}>
                 {user.id}
               </Typography>
             </Box>
-          </MenuItem>
+          </MenuItem> */}
           <MenuItem onMouseDown={handleCopyApiKey}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               <Typography
@@ -115,7 +115,7 @@ const UserDropdown: React.FC = () => {
             </Box>
           </MenuItem>
           <MenuItem onClick={() => setSettingsModalOpen(true)}>
-            <Typography level="title-sm">Profile Settings</Typography>
+            <Typography level="title-sm">Settings</Typography>
           </MenuItem>
           <ListDivider />
           <MenuItem onClick={logout} color="danger">

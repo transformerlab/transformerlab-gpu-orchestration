@@ -89,7 +89,11 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             User Profile
           </Typography>
 
-          <Box sx={{ mt: 2 }}>
+          <Typography level="body-md" color="neutral" sx={{ mb: 2 }}>
+            {user.id}
+          </Typography>
+
+          <Box>
             <Typography
               level="title-md"
               sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
@@ -126,7 +130,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               Organizations
             </Typography>
             <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              To switch organizations, logout and log back in to select a
+              To switch organizations, log out and log back in to select a
               different organization.
             </Typography>
 
