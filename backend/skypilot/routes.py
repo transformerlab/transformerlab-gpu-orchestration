@@ -89,9 +89,10 @@ class AzureConfigRequest(BaseModel):
 
 class AzureTestRequest(BaseModel):
     subscription_id: str
-    tenant_id: str
-    client_id: str
-    client_secret: str
+    tenant_id: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    auth_mode: str = "cli"  # "cli" or "service_principal"
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_current_user)])
@@ -1031,6 +1032,7 @@ async def test_azure_connection_route(
             test_request.tenant_id or "",
             test_request.client_id or "",
             test_request.client_secret or "",
+            test_request.auth_mode,
         )
         if is_valid:
             return {"message": "Azure connection test successful"}

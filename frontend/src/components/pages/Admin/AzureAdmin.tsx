@@ -18,6 +18,7 @@ import {
   Select,
   Option,
   Grid,
+  Autocomplete,
 } from "@mui/joy";
 import { Save, Key, Server, Settings } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -101,16 +102,43 @@ const AzureAdmin: React.FC = () => {
           let category = "General Purpose";
           let display_name = type;
 
+          // GPU instances
           if (
             type.includes("NC") ||
             type.includes("ND") ||
-            type.includes("NV")
+            type.includes("NV") ||
+            type.includes("NP") ||
+            type.includes("H")
           ) {
             category = "GPU";
-          } else if (type.includes("E")) {
+          }
+          // Memory optimized instances
+          else if (
+            type.includes("E") ||
+            type.includes("M") ||
+            type.includes("R")
+          ) {
             category = "Memory Optimized";
-          } else if (type.includes("D")) {
+          }
+          // Compute optimized instances
+          else if (type.includes("F") || type.includes("H")) {
+            category = "Compute Optimized";
+          }
+          // Storage optimized instances
+          else if (type.includes("L") || type.includes("G")) {
+            category = "Storage Optimized";
+          }
+          // General purpose instances (D series and others)
+          else if (
+            type.includes("D") ||
+            type.includes("A") ||
+            type.includes("B")
+          ) {
             category = "General Purpose";
+          }
+          // Default
+          else {
+            category = "Other";
           }
 
           return {
@@ -162,6 +190,7 @@ const AzureAdmin: React.FC = () => {
           client_secret: config.client_secret,
           allowed_instance_types: config.allowed_instance_types,
           max_instances: config.max_instances,
+          auth_method: config.auth_method,
         }),
       });
 
@@ -218,7 +247,10 @@ const AzureAdmin: React.FC = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(testCredentials),
+        body: JSON.stringify({
+          ...testCredentials,
+          auth_mode: config.auth_method,
+        }),
       });
 
       if (response.ok) {
@@ -316,19 +348,19 @@ const AzureAdmin: React.FC = () => {
               </Button>
             </Box>
             {config.auth_method === "cli" ? (
-              <Typography level="body-sm" color="text.secondary">
+              <Typography level="body-sm" sx={{ color: "neutral.500" }}>
                 Using Azure CLI authentication. Make sure you're logged in with:{" "}
                 <code>az login</code>
               </Typography>
             ) : (
-              <Typography level="body-sm" color="text.secondary">
+              <Typography level="body-sm" sx={{ color: "neutral.500" }}>
                 Using service principal authentication. Configure credentials
                 below.
               </Typography>
             )}
           </Box>
 
-          <Typography level="body-sm" sx={{ mb: 2, color: "text.secondary" }}>
+          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
             You can use either Azure CLI authentication (simpler) or service
             principal authentication (more secure for production).
             <br />
@@ -487,7 +519,7 @@ const AzureAdmin: React.FC = () => {
             />
             Allowed Instance Types
           </Typography>
-          <Typography level="body-sm" sx={{ mb: 2, color: "text.secondary" }}>
+          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
             Select which Azure instance types users can choose from when
             creating Azure clusters.
           </Typography>
@@ -515,91 +547,47 @@ const AzureAdmin: React.FC = () => {
                 </Chip>
               </Box>
 
-              <Grid container spacing={2}>
-                {availableInstanceTypes.map((instanceType) => {
-                  const isSelected = config.allowed_instance_types.includes(
-                    instanceType.name
-                  );
-                  return (
-                    <Grid xs={12} sm={6} md={4} key={instanceType.name}>
-                      <Card
-                        variant={isSelected ? "solid" : "outlined"}
-                        color={isSelected ? "primary" : "neutral"}
-                        sx={{
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "md",
-                          },
-                          position: "relative",
-                          overflow: "hidden",
-                        }}
-                        onClick={() => {
-                          setConfig((prev) => ({
-                            ...prev,
-                            allowed_instance_types: isSelected
-                              ? prev.allowed_instance_types.filter(
-                                  (t) => t !== instanceType.name
-                                )
-                              : [
-                                  ...prev.allowed_instance_types,
-                                  instanceType.name,
-                                ],
-                          }));
-                        }}
-                      >
-                        {isSelected && (
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              top: 8,
-                              right: 8,
-                              width: 20,
-                              height: 20,
-                              borderRadius: "50%",
-                              bgcolor: "success.500",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <Typography
-                              level="body-xs"
-                              sx={{ color: "white", fontWeight: "bold" }}
-                            >
-                              ✓
-                            </Typography>
-                          </Box>
-                        )}
-
-                        <Stack spacing={1}>
-                          <Typography
-                            level="title-sm"
-                            sx={{ fontWeight: "bold" }}
-                          >
-                            {instanceType.name}
-                          </Typography>
-                          <Typography
-                            level="body-sm"
-                            sx={{ color: "text.secondary" }}
-                          >
-                            {instanceType.category}
-                          </Typography>
-                          <Chip
-                            size="sm"
-                            variant="soft"
-                            color={isSelected ? "primary" : "neutral"}
-                            sx={{ alignSelf: "flex-start" }}
-                          >
-                            {instanceType.category}
-                          </Chip>
-                        </Stack>
-                      </Card>
-                    </Grid>
-                  );
-                })}
-              </Grid>
+              <FormControl>
+                <FormLabel>Instance Types</FormLabel>
+                <Autocomplete
+                  multiple
+                  options={availableInstanceTypes}
+                  getOptionLabel={(option) =>
+                    `${option.name} (${option.category})`
+                  }
+                  value={availableInstanceTypes.filter((type) =>
+                    config.allowed_instance_types.includes(type.name)
+                  )}
+                  onChange={(_, newValue) => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_instance_types: newValue.map((item) => item.name),
+                    }));
+                  }}
+                  placeholder="Search and select Azure instance types..."
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Stack spacing={0.5}>
+                        <Typography
+                          level="title-sm"
+                          sx={{ fontWeight: "bold" }}
+                        >
+                          {option.name}
+                        </Typography>
+                        <Typography
+                          level="body-xs"
+                          sx={{ color: "neutral.500" }}
+                        >
+                          {option.category}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  )}
+                  sx={{ width: "100%" }}
+                  limitTags={5}
+                  disableCloseOnSelect
+                />
+              </FormControl>
 
               <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
                 <Button
@@ -642,7 +630,7 @@ const AzureAdmin: React.FC = () => {
             />
             Instance Limits
           </Typography>
-          <Typography level="body-sm" sx={{ mb: 2, color: "text.secondary" }}>
+          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
             Set the maximum number of Azure instances that can be launched
             simultaneously. Set to 0 for unlimited instances.
           </Typography>
@@ -669,7 +657,7 @@ const AzureAdmin: React.FC = () => {
               />
               <Typography
                 level="body-xs"
-                sx={{ color: "text.secondary", mt: 0.5 }}
+                sx={{ color: "neutral.500", mt: 0.5 }}
               >
                 {config.max_instances === 0
                   ? "Unlimited instances allowed"
