@@ -40,6 +40,12 @@ interface ClusterWithJobs extends Cluster {
   jobsError?: string;
 }
 
+interface PastJobCluster {
+  cluster_name: string;
+  saved_at: string;
+  jobs: Job[];
+}
+
 // Generate fake jobs for demonstration
 const generateFakeJobs = () => {
   const fakeJobs = [];
@@ -101,6 +107,9 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const [clustersWithJobs, setClustersWithJobs] = useState<ClusterWithJobs[]>(
     []
   );
+  const [pastJobClusters, setPastJobClusters] = useState<PastJobCluster[]>([]);
+  const [pastJobsLoading, setPastJobsLoading] = useState(false);
+  const [showPastJobs, setShowPastJobs] = useState(false);
   const { showFakeData } = useFakeData();
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
@@ -160,6 +169,55 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
 
     fetchJobsForClusters();
   }, [myClusters]);
+
+  // Fetch past jobs
+  const fetchPastJobs = async () => {
+    setPastJobsLoading(true);
+    try {
+      const response = await apiFetch(buildApiUrl("skypilot/past-jobs"), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPastJobClusters(data.past_jobs || []);
+      } else {
+        setError("Failed to fetch past jobs");
+      }
+    } catch (err) {
+      setError("Failed to fetch past jobs");
+    } finally {
+      setPastJobsLoading(false);
+    }
+  };
+
+  // Fetch logs for past jobs
+  const fetchPastJobLogs = async (clusterName: string, jobId: number) => {
+    setLogsLoading(true);
+    try {
+      const response = await apiFetch(
+        buildApiUrl(`skypilot/past-jobs/${clusterName}/${jobId}/logs`),
+        { credentials: "include" }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedJobLogs(data.logs || "No logs available");
+        setSelectedJobId(jobId);
+        setSelectedClusterName(clusterName);
+      } else {
+        setSelectedJobLogs("Failed to fetch logs");
+        setSelectedJobId(jobId);
+        setSelectedClusterName(clusterName);
+      }
+    } catch (err) {
+      setSelectedJobLogs("Failed to fetch logs");
+      setSelectedJobId(jobId);
+      setSelectedClusterName(clusterName);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
   // Monitor job status changes for port forwarding
   useEffect(() => {
@@ -414,6 +472,14 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const formatTimestamp = (timestamp?: number) => {
     if (!timestamp) return "-";
     return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  const formatSavedAt = (savedAt: string) => {
+    try {
+      return new Date(savedAt).toLocaleString();
+    } catch {
+      return savedAt;
+    }
   };
 
   if (skypilotLoading) {
@@ -826,6 +892,164 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           </Box>
         </>
       )}
+
+      {/* Past Jobs Section */}
+      <Box sx={{ mt: 6 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+          <Typography level="h3">Past Jobs</Typography>
+          <Button
+            size="sm"
+            variant="outlined"
+            onClick={() => {
+              if (!showPastJobs) {
+                fetchPastJobs();
+              }
+              setShowPastJobs(!showPastJobs);
+            }}
+          >
+            {showPastJobs ? "Hide" : "Show"} Past Jobs
+          </Button>
+        </Box>
+
+        {showPastJobs && (
+          <>
+            {pastJobsLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                <CircularProgress />
+              </Box>
+            ) : pastJobClusters.length === 0 ? (
+              <Typography color="neutral" sx={{ mb: 2 }}>
+                No past jobs found. Jobs from torn down clusters will appear
+                here.
+              </Typography>
+            ) : (
+              pastJobClusters.map((pastCluster) => (
+                <Box
+                  key={`${pastCluster.cluster_name}_${pastCluster.saved_at}`}
+                  sx={{ mb: 4 }}
+                >
+                  <Typography level="h4" sx={{ mb: 1 }}>
+                    {pastCluster.cluster_name}
+                  </Typography>
+                  <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+                    Saved on: {formatSavedAt(pastCluster.saved_at)}
+                  </Typography>
+
+                  <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+                    <thead>
+                      <tr>
+                        <th>Job ID</th>
+                        <th>Job Name</th>
+                        <th>Status</th>
+                        <th>Resources</th>
+                        <th>Submitted At</th>
+                        <th>Started At</th>
+                        <th>Ended At</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pastCluster.jobs.map((job) => (
+                        <tr key={job.job_id}>
+                          <td>
+                            <Typography level="body-sm" fontWeight="bold">
+                              {job.job_id}
+                            </Typography>
+                          </td>
+                          <td>
+                            <Typography level="body-sm">
+                              {job.job_name}
+                            </Typography>
+                          </td>
+                          <td>
+                            <Chip
+                              size="sm"
+                              color={getJobStatusColor(job.status)}
+                              variant="soft"
+                            >
+                              {formatJobStatus(job.status)}
+                            </Chip>
+                          </td>
+                          <td>
+                            <Typography level="body-sm">
+                              {job.resources}
+                            </Typography>
+                          </td>
+                          <td>
+                            <Typography level="body-sm">
+                              {formatTimestamp(job.submitted_at)}
+                            </Typography>
+                          </td>
+                          <td>
+                            <Typography level="body-sm">
+                              {formatTimestamp(job.start_at)}
+                            </Typography>
+                          </td>
+                          <td>
+                            <Typography level="body-sm">
+                              {formatTimestamp(job.end_at)}
+                            </Typography>
+                          </td>
+                          <td>
+                            <Box
+                              sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}
+                            >
+                              <Button
+                                size="sm"
+                                variant="outlined"
+                                onClick={() =>
+                                  fetchPastJobLogs(
+                                    pastCluster.cluster_name,
+                                    job.job_id
+                                  )
+                                }
+                              >
+                                View Logs
+                              </Button>
+                            </Box>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+
+                  {/* Past Job Logs Modal */}
+                  {selectedJobId &&
+                    selectedClusterName === pastCluster.cluster_name && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography level="title-sm" sx={{ mb: 1 }}>
+                          Past Job {selectedJobId} Logs
+                        </Typography>
+                        {logsLoading ? (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "center",
+                              py: 2,
+                            }}
+                          >
+                            <CircularProgress />
+                          </Box>
+                        ) : (
+                          <Textarea
+                            value={selectedJobLogs}
+                            readOnly
+                            minRows={5}
+                            maxRows={10}
+                            sx={{
+                              fontFamily: "monospace",
+                              fontSize: "0.875rem",
+                            }}
+                          />
+                        )}
+                      </Box>
+                    )}
+                </Box>
+              ))
+            )}
+          </>
+        )}
+      </Box>
     </Box>
   );
 };
