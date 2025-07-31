@@ -149,8 +149,8 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
             src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&dpr=2"
             size="sm"
             sx={{
-              height: "24px",
-              width: "24px",
+              height: "18px",
+              width: "18px",
             }}
           />
         )}
