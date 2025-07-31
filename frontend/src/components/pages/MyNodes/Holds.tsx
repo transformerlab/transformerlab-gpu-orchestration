@@ -24,9 +24,11 @@ import {
   PlayIcon,
   BookOpenIcon,
   CodeIcon,
+  Zap,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import InteractiveTaskModal from "../../InteractiveTaskModal";
+import SubmitJobModal from "../../SubmitJobModal";
 import { useNavigate } from "react-router-dom";
 import NodeSquare from "../../NodeSquare";
 import { useFakeData } from "../../../context/FakeDataContext";
@@ -119,6 +121,14 @@ const Held: React.FC<HeldProps> = ({
     taskType: "vscode",
   });
 
+  const [submitJobModal, setSubmitJobModal] = React.useState<{
+    open: boolean;
+    clusterName: string;
+  }>({
+    open: false,
+    clusterName: "",
+  });
+
   const handleStopCluster = async (clusterName: string) => {
     try {
       setOperationLoading((prev) => ({
@@ -193,6 +203,20 @@ const Held: React.FC<HeldProps> = ({
       open: false,
       clusterName: "",
       taskType: "vscode",
+    });
+  };
+
+  const openSubmitJobModal = (clusterName: string) => {
+    setSubmitJobModal({
+      open: true,
+      clusterName,
+    });
+  };
+
+  const closeSubmitJobModal = () => {
+    setSubmitJobModal({
+      open: false,
+      clusterName: "",
     });
   };
 
@@ -347,6 +371,17 @@ const Held: React.FC<HeldProps> = ({
                                 </MenuItem>
                                 <MenuItem onClick={(e) => e.stopPropagation()}>
                                   Metrics
+                                </MenuItem>
+                                <MenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openSubmitJobModal(node.cluster || "default");
+                                  }}
+                                >
+                                  <ListItemDecorator>
+                                    <Zap />
+                                  </ListItemDecorator>
+                                  Submit a Job
                                 </MenuItem>
                                 <Divider />
                                 <MenuItem onClick={(e) => e.stopPropagation()}>
@@ -748,6 +783,16 @@ const Held: React.FC<HeldProps> = ({
                           </ListItemDecorator>
                           Down
                         </MenuItem>
+                        <MenuItem
+                          onClick={() =>
+                            openSubmitJobModal(cluster.cluster_name)
+                          }
+                        >
+                          <ListItemDecorator>
+                            <Zap />
+                          </ListItemDecorator>
+                          Submit a Job
+                        </MenuItem>
                       </>
                     )}
                     <Divider />
@@ -855,6 +900,19 @@ const Held: React.FC<HeldProps> = ({
         isClusterLaunching={false}
       />
 
+      {/* Submit Job Modal */}
+      <SubmitJobModal
+        open={submitJobModal.open}
+        onClose={closeSubmitJobModal}
+        clusterName={submitJobModal.clusterName}
+        onJobSubmitted={() => {
+          // Optionally refresh the page or update the UI
+          console.log("Job submitted successfully");
+        }}
+        isClusterLaunching={false}
+        isSshCluster={false}
+      />
+
       {/* Show fake clusters alongside real clusters if enabled */}
       {showFakeData && (
         <>
@@ -920,6 +978,12 @@ const Held: React.FC<HeldProps> = ({
                                 <Trash2Icon />
                               </ListItemDecorator>
                               Down
+                            </MenuItem>
+                            <MenuItem disabled>
+                              <ListItemDecorator>
+                                <Zap />
+                              </ListItemDecorator>
+                              Submit a Job
                             </MenuItem>
                           </>
                         )}
