@@ -60,7 +60,7 @@ const Dashboard: React.FC = () => {
       </Box>
       <Box sx={{ gridArea: "main", px: 3, py: 2, overflowY: "auto" }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/nodes" replace />} />
+          <Route path="/" element={<Navigate to="node-pools" replace />} />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/node-pools" element={<Nodes />} />
           <Route path="/my-clusters" element={<MyClusters />} />
