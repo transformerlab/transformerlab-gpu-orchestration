@@ -12,11 +12,37 @@ export const authApi = {
   getOrganizations: async (): Promise<{
     organizations: Array<{ id: string; name: string; object: string }>;
   }> => {
-    const response = await apiFetch(buildApiUrl("auth/orgs"), {
+    const response = await apiFetch(buildApiUrl("admin/orgs"), {
       credentials: "include",
     });
     if (!response.ok) {
       throw new Error("Failed to fetch organizations");
+    }
+    return response.json();
+  },
+
+  createOrganization: async (
+    name: string,
+    domains?: string[]
+  ): Promise<{
+    id: string;
+    name: string;
+    domains?: string[];
+    object: string;
+  }> => {
+    const response = await apiFetch(buildApiUrl("admin/orgs"), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        domains,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create organization");
     }
     return response.json();
   },
