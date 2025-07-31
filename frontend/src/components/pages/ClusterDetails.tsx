@@ -125,11 +125,6 @@ const ClusterDetails: React.FC = () => {
             <Chip size="sm" color="primary" variant="soft">
               {nodes.length} Total Nodes
             </Chip>
-            {error && (
-              <Chip size="sm" color="danger" variant="soft">
-                API Error: {error}
-              </Chip>
-            )}
           </Stack>
         </Box>
 
