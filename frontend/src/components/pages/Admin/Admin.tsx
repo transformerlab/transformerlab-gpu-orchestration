@@ -24,7 +24,7 @@ import { useFakeData } from "../../../context/FakeDataContext";
 
 const Admin: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<
-    | "team"
+    | "users"
     | "teams"
     | "clouds"
     | "runpod"
@@ -32,12 +32,12 @@ const Admin: React.FC = () => {
     | "objectStorage"
     | "volumes"
     | "settings"
-  >("team");
+  >("users");
   const { showFakeData, setShowFakeData } = useFakeData();
 
   const renderContent = () => {
     switch (selectedSection) {
-      case "team":
+      case "users":
         return <Users />;
       case "teams":
         return <Teams />;
@@ -112,8 +112,8 @@ const Admin: React.FC = () => {
         <List>
           <ListItem>
             <ListItemButton
-              selected={selectedSection === "team"}
-              onClick={() => setSelectedSection("team")}
+              selected={selectedSection === "users"}
+              onClick={() => setSelectedSection("users")}
             >
               <ListItemContent>Users</ListItemContent>
             </ListItemButton>
