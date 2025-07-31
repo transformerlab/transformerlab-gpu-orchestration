@@ -44,7 +44,7 @@ import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../widgets/NodeSquare";
 import RunPodClusterLauncher from "../RunPodClusterLauncher";
-import PageWithTitle from "../pages/templates/PageWithTitle";
+import PageWithTitle from "./templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
 

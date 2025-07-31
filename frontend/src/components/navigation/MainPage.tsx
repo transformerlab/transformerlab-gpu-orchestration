@@ -10,7 +10,7 @@ import {
 } from "@mui/joy";
 import { Routes, Route, Navigate } from "react-router-dom";
 import GettingStarted from "../pages/Admin/GettingStarted";
-import Nodes from "../pages/Nodes";
+import Nodes from "../pages/NodePools";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Admin from "../pages/Admin/Admin";
@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
         <Routes>
           <Route path="/" element={<Navigate to="/nodes" replace />} />
           <Route path="/getting-started" element={<GettingStarted />} />
-          <Route path="/nodes" element={<Nodes />} />
+          <Route path="/node-pools" element={<Nodes />} />
           <Route path="/my-clusters" element={<MyClusters />} />
           <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
           <Route path="/clusters/:clusterId" element={<ClusterDetails />} />

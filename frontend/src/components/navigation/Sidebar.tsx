@@ -8,19 +8,11 @@ import ListItemButton from "@mui/joy/ListItemButton";
 import ListItemDecorator from "@mui/joy/ListItemDecorator";
 import ListItemContent from "@mui/joy/ListItemContent";
 import {
-  AppleIcon,
-  BananaIcon,
   ChartAreaIcon,
   CogIcon,
   ComputerIcon,
   GpuIcon,
-  GroupIcon,
-  HardHatIcon,
   HouseIcon,
-  LightbulbIcon,
-  PersonStandingIcon,
-  ShovelIcon,
-  UsersIcon,
   ChevronDownIcon,
   ChevronRightIcon,
 } from "lucide-react";
@@ -59,7 +51,7 @@ function Item({
 }
 
 const sidebarItems = [
-  { icon: <GpuIcon />, content: "Node Pool", path: "/dashboard/nodes" },
+  { icon: <GpuIcon />, content: "Node Pools", path: "/dashboard/node-pools" },
   {
     icon: <HouseIcon />,
     content: "My Clusters",
