@@ -569,11 +569,7 @@ const CloudClusterCard: React.FC<{
           <Button variant="outlined" onClick={handleReserveNode}>
             Reserve a Node
           </Button>
-          <Button
-            variant="outlined"
-            onClick={handleLaunchJob}
-            disabled={!isActiveCluster}
-          >
+          <Button variant="outlined" onClick={handleLaunchJob}>
             Launch Job
           </Button>
         </Stack>
@@ -883,11 +879,7 @@ const RunPodClusterCard: React.FC<{
           <Button variant="outlined" onClick={handleReserveNode}>
             Reserve a Node
           </Button>
-          <Button
-            variant="outlined"
-            onClick={handleLaunchJob}
-            disabled={!isActiveCluster}
-          >
+          <Button variant="outlined" onClick={handleLaunchJob}>
             Launch Job
           </Button>
         </Stack>
@@ -945,6 +937,8 @@ const CustomSubmitJobModal: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [monitoringInterval, setMonitoringInterval] =
+    useState<NodeJS.Timeout | null>(null);
 
   const resetForm = () => {
     setCommand("");
@@ -960,6 +954,67 @@ const CustomSubmitJobModal: React.FC<{
     setSuccess(null);
   };
 
+  const startMonitoringPolling = (clusterName: string) => {
+    console.log(
+      `[Frontend] startMonitoringPolling called for cluster: ${clusterName}`
+    );
+
+    // Clear any existing interval
+    if (monitoringInterval) {
+      clearInterval(monitoringInterval);
+    }
+
+    // Start polling every 30 seconds
+    const interval = setInterval(async () => {
+      try {
+        const response = await apiFetch(
+          buildApiUrl(`skypilot/monitoring/${clusterName}`),
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`[Monitoring] Status for ${clusterName}:`, data);
+
+          if (data.status === "teardown_completed") {
+            console.log(
+              `[Monitoring] Cluster ${clusterName} torn down successfully`
+            );
+            clearInterval(interval);
+            setMonitoringInterval(null);
+          } else if (data.status === "teardown_failed") {
+            console.log(
+              `[Monitoring] Failed to tear down cluster ${clusterName}:`,
+              data.message
+            );
+            clearInterval(interval);
+            setMonitoringInterval(null);
+          }
+        }
+      } catch (error) {
+        console.error(
+          `[Monitoring] Error checking status for ${clusterName}:`,
+          error
+        );
+      }
+    }, 30000); // Poll every 30 seconds
+
+    setMonitoringInterval(interval);
+  };
+
+  // Cleanup monitoring interval when modal closes
+  React.useEffect(() => {
+    return () => {
+      if (monitoringInterval) {
+        clearInterval(monitoringInterval);
+        setMonitoringInterval(null);
+      }
+    };
+  }, [monitoringInterval]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -968,6 +1023,8 @@ const CustomSubmitJobModal: React.FC<{
     try {
       const formData = new FormData();
 
+      // Add cluster name for the new auto-teardown endpoint
+      formData.append("cluster_name", clusterName);
       formData.append("command", command);
       if (setup) formData.append("setup", setup);
       if (pythonFile) formData.append("python_file", pythonFile);
@@ -978,17 +1035,36 @@ const CustomSubmitJobModal: React.FC<{
       if (zone) formData.append("zone", zone);
       if (jobName) formData.append("job_name", jobName);
 
+      // Add cloud type - default to SSH for Node Pool clusters
+      formData.append("cloud", "ssh");
+      formData.append("use_spot", "false");
+      formData.append("job_type", "custom");
+
+      // Use the new auto-teardown endpoint
+      console.log("[Frontend] Sending request to launch-job-with-teardown");
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
+        buildApiUrl("skypilot/launch-job-with-teardown"),
         {
           method: "POST",
           credentials: "include",
           body: formData,
         }
       );
+      console.log("[Frontend] Response status:", response.status);
+      console.log("[Frontend] Response ok:", response.ok);
       if (response.ok) {
         const data = await response.json();
-        setSuccess(data.message || "Job submitted successfully");
+        console.log("[Frontend] Job launch response:", data);
+        setSuccess(
+          data.message || "Job launched with auto-teardown successfully"
+        );
+
+        // Start polling for job completion
+        console.log(
+          `[Frontend] Starting monitoring for cluster: ${clusterName}`
+        );
+        startMonitoringPolling(clusterName);
+
         resetForm();
         if (onJobSubmitted) onJobSubmitted();
         setTimeout(() => {
@@ -996,11 +1072,13 @@ const CustomSubmitJobModal: React.FC<{
           onClose();
         }, 1200);
       } else {
+        console.log("[Frontend] Request failed, getting error data");
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to submit job");
+        console.log("[Frontend] Error data:", errorData);
+        setError(errorData.detail || "Failed to launch job with auto-teardown");
       }
     } catch (err) {
-      setError("Error submitting job");
+      setError("Error launching job with auto-teardown");
     } finally {
       setLoading(false);
     }
@@ -1011,8 +1089,12 @@ const CustomSubmitJobModal: React.FC<{
       <ModalDialog sx={{ maxWidth: 500 }}>
         <ModalClose />
         <Typography level="h4" sx={{ mb: 2 }}>
-          Launch Job on {clusterName}
+          Launch Job with Auto-Teardown
         </Typography>
+        <Alert color="primary" sx={{ mb: 2 }}>
+          This will launch a new cluster, run your job, and automatically tear
+          down the cluster when the job completes.
+        </Alert>
         <form onSubmit={handleSubmit}>
           <Card variant="outlined">
             <CardContent>

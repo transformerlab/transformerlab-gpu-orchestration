@@ -1,11 +1,15 @@
 import os
 import json
+import time
 from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
 
 import asyncio
+
+# Global storage for monitoring threads to prevent garbage collection
+_monitoring_threads = {}
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -526,3 +530,109 @@ def get_past_jobs():
     except Exception as e:
         print(f"Failed to get past jobs: {str(e)}")
         return []
+
+
+def launch_job_with_auto_teardown(
+    cluster_name: str,
+    command: str,
+    setup=None,
+    cloud=None,
+    instance_type=None,
+    cpus=None,
+    memory=None,
+    accelerators=None,
+    region=None,
+    zone=None,
+    use_spot=False,
+    idle_minutes_to_autostop=None,
+    file_mounts: Optional[dict] = None,
+    workdir: Optional[str] = None,
+    job_name: Optional[str] = None,
+    job_type: Optional[str] = None,
+    jupyter_port: Optional[int] = None,
+    vscode_port: Optional[int] = None,
+):
+    """
+    Launch a cluster, submit a job, and automatically tear down the cluster when the job completes.
+    This function combines cluster launch and job submission with automatic cleanup.
+    """
+    try:
+        # Step 1: Launch the cluster with a simple keep-alive command
+        print(f"[Auto-teardown] Launching cluster '{cluster_name}' for job execution")
+        launch_request_id = launch_cluster_with_skypilot(
+            cluster_name=cluster_name,
+            command="echo 'Cluster ready for job submission'",  # Simple keep-alive command
+            setup=setup,
+            cloud=cloud,
+            instance_type=instance_type,
+            cpus=cpus,
+            memory=memory,
+            accelerators=accelerators,
+            region=region,
+            zone=zone,
+            use_spot=use_spot,
+            idle_minutes_to_autostop=idle_minutes_to_autostop,
+            file_mounts=file_mounts,
+            workdir=workdir,
+            launch_mode=job_type,
+            jupyter_port=jupyter_port,
+            vscode_port=vscode_port,
+        )
+
+        # Step 2: Submit the actual job to the cluster
+        print(f"[Auto-teardown] Submitting job to cluster '{cluster_name}'")
+        job_request_id = submit_job_to_existing_cluster(
+            cluster_name=cluster_name,
+            command=command,
+            setup=None,  # Setup already done during cluster launch
+            file_mounts=file_mounts,
+            workdir=workdir,
+            cpus=cpus,
+            memory=memory,
+            accelerators=accelerators,
+            region=region,
+            zone=zone,
+            job_name=job_name,
+            job_type=job_type,
+            jupyter_port=jupyter_port,
+            vscode_port=vscode_port,
+        )
+
+        # Step 3: Create a monitoring file for frontend polling
+        print(f"[Auto-teardown] Setting up monitoring for cluster '{cluster_name}'")
+
+        # Create a monitoring file with cluster info
+        lattice_dir = Path.home() / ".sky" / "lattice"
+        monitoring_dir = lattice_dir / "monitoring"
+        monitoring_dir.mkdir(parents=True, exist_ok=True)
+
+        monitoring_file = monitoring_dir / f"{cluster_name}_monitor.json"
+        monitoring_data = {
+            "cluster_name": cluster_name,
+            "created_at": time.time(),
+            "status": "monitoring",
+            "last_check": time.time(),
+            "job_completed": False,
+            "teardown_triggered": False,
+            "max_wait_time": 3600,  # 1 hour
+            "check_interval": 60,  # 1 minute
+        }
+
+        with open(monitoring_file, "w") as f:
+            json.dump(monitoring_data, f)
+
+        print(f"[Auto-teardown] Monitoring file created: {monitoring_file}")
+        print(
+            f"[Auto-teardown] Frontend should poll this file to check job status and trigger teardown"
+        )
+
+        return {
+            "launch_request_id": launch_request_id,
+            "cluster_name": cluster_name,
+            "message": f"Cluster '{cluster_name}' launched with auto-teardown enabled. Cluster will be automatically torn down when the job completes.",
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch job with auto-teardown: {str(e)}"
+        )

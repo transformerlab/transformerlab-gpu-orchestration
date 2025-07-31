@@ -38,6 +38,7 @@ from skypilot.utils import (
     fetch_and_parse_gpu_resources,
     cancel_job_with_skypilot,
     get_past_jobs,
+    launch_job_with_auto_teardown,
 )
 from skypilot.port_forwarding import port_forward_manager
 from skypilot.runpod_utils import (
@@ -228,6 +229,103 @@ async def launch_skypilot_cluster(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to launch cluster: {str(e)}"
+        )
+
+
+@router.post("/launch-job-with-teardown", response_model=LaunchClusterResponse)
+async def launch_job_with_auto_teardown_route(
+    request: Request,
+    response: Response,
+    cluster_name: str = Form(...),
+    command: str = Form("echo 'Hello SkyPilot'"),
+    setup: Optional[str] = Form(None),
+    cloud: Optional[str] = Form(None),
+    instance_type: Optional[str] = Form(None),
+    cpus: Optional[str] = Form(None),
+    memory: Optional[str] = Form(None),
+    accelerators: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    zone: Optional[str] = Form(None),
+    use_spot: bool = Form(False),
+    idle_minutes_to_autostop: Optional[int] = Form(None),
+    python_file: Optional[UploadFile] = File(None),
+    job_name: Optional[str] = Form(None),
+    job_type: Optional[str] = Form(None),
+    jupyter_port: Optional[int] = Form(None),
+    vscode_port: Optional[int] = Form(None),
+):
+    """
+    Launch a cluster, submit a job, and automatically tear down the cluster when the job completes.
+    This is similar to "Reserve a Node" but with automatic cleanup after job completion.
+    """
+    try:
+        file_mounts = None
+        workdir = None
+        python_filename = None
+        if python_file is not None and python_file.filename:
+            # Save the uploaded file to a persistent uploads directory
+            python_filename = python_file.filename
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            # Mount the file to workspace/<filename> in the cluster
+            file_mounts = {f"workspace/{python_filename}": str(file_path)}
+            workdir = "workspace"
+
+        # Setup RunPod if cloud is runpod
+        if cloud == "runpod":
+            try:
+                setup_runpod_config()
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+                )
+
+        result = launch_job_with_auto_teardown(
+            cluster_name=cluster_name,
+            command=command,
+            setup=setup,
+            cloud=cloud,
+            instance_type=instance_type,
+            cpus=cpus,
+            memory=memory,
+            accelerators=accelerators,
+            region=region,
+            zone=zone,
+            use_spot=use_spot,
+            idle_minutes_to_autostop=idle_minutes_to_autostop,
+            file_mounts=file_mounts,
+            workdir=workdir,
+            job_name=job_name,
+            job_type=job_type,
+            jupyter_port=jupyter_port,
+            vscode_port=vscode_port,
+        )
+
+        # Record usage event for cluster launch with auto-teardown
+        try:
+            user_info = get_current_user(request, response)
+            user_id = user_info["id"]
+            record_usage(
+                user_id=user_id,
+                cluster_name=cluster_name,
+                usage_type="job_launch_with_teardown",
+                duration_minutes=None,
+            )
+        except Exception as e:
+            print(
+                f"Warning: Failed to record usage event for job launch with teardown: {e}"
+            )
+
+        return LaunchClusterResponse(
+            request_id=result["launch_request_id"],
+            cluster_name=cluster_name,
+            message=result["message"],
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch job with auto-teardown: {str(e)}"
         )
 
 
@@ -839,4 +937,137 @@ async def stop_port_forward(request: Request, response: Response, cluster_name: 
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to stop port forward: {str(e)}"
+        )
+
+
+@router.get("/monitoring/{cluster_name}")
+async def check_monitoring_status(
+    cluster_name: str, request: Request, response: Response
+):
+    """Check monitoring status for auto-teardown jobs and trigger teardown if needed."""
+    try:
+        from pathlib import Path
+        import time
+
+        # Check if monitoring file exists
+        lattice_dir = Path.home() / ".sky" / "lattice"
+        monitoring_dir = lattice_dir / "monitoring"
+        monitoring_file = monitoring_dir / f"{cluster_name}_monitor.json"
+
+        if not monitoring_file.exists():
+            return {
+                "cluster_name": cluster_name,
+                "status": "not_monitoring",
+                "message": "No monitoring file found for this cluster",
+            }
+
+        # Read monitoring data
+        with open(monitoring_file, "r") as f:
+            monitoring_data = json.load(f)
+
+        # Check if teardown has already been triggered
+        if monitoring_data.get("teardown_triggered", False):
+            return {
+                "cluster_name": cluster_name,
+                "status": "teardown_triggered",
+                "message": "Teardown already triggered for this cluster",
+            }
+
+        # Check job status
+        try:
+            job_records = get_cluster_job_queue(cluster_name)
+            if job_records and hasattr(job_records, "jobs"):
+                jobs = job_records.jobs
+            elif isinstance(job_records, list):
+                jobs = job_records
+            else:
+                jobs = []
+
+            # Check for job completion
+            job_completed = False
+            job_status = None
+            for job in jobs:
+                job_status = str(job.get("status", "")).lower()
+                if job_status in [
+                    "succeeded",
+                    "failed",
+                    "cancelled",
+                    "success",
+                    "fail",
+                    "cancel",
+                    "jobstatus.succeeded",
+                    "jobstatus.failed",
+                    "jobstatus.cancelled",
+                ]:
+                    job_completed = True
+                    break
+
+            if job_completed:
+                # Trigger teardown
+                print(
+                    f"[Auto-teardown] Job completed with status: {job_status}, triggering teardown for cluster '{cluster_name}'"
+                )
+
+                # Update monitoring data
+                monitoring_data["job_completed"] = True
+                monitoring_data["teardown_triggered"] = True
+                monitoring_data["completed_at"] = time.time()
+                monitoring_data["job_status"] = job_status
+
+                with open(monitoring_file, "w") as f:
+                    json.dump(monitoring_data, f)
+
+                # Trigger cluster teardown
+                try:
+                    down_cluster_with_skypilot(cluster_name)
+                    print(
+                        f"[Auto-teardown] Cluster '{cluster_name}' torn down successfully"
+                    )
+
+                    # Clean up monitoring file
+                    if monitoring_file.exists():
+                        monitoring_file.unlink()
+
+                    return {
+                        "cluster_name": cluster_name,
+                        "status": "teardown_completed",
+                        "job_status": job_status,
+                        "message": f"Cluster torn down successfully after job completed with status: {job_status}",
+                    }
+                except Exception as e:
+                    print(
+                        f"[Auto-teardown] Failed to tear down cluster '{cluster_name}': {e}"
+                    )
+                    return {
+                        "cluster_name": cluster_name,
+                        "status": "teardown_failed",
+                        "job_status": job_status,
+                        "message": f"Job completed but failed to tear down cluster: {str(e)}",
+                    }
+            else:
+                # Update last check time
+                monitoring_data["last_check"] = time.time()
+                with open(monitoring_file, "w") as f:
+                    json.dump(monitoring_data, f)
+
+                return {
+                    "cluster_name": cluster_name,
+                    "status": "monitoring",
+                    "jobs": len(jobs),
+                    "message": f"Monitoring cluster, found {len(jobs)} jobs, none completed yet",
+                }
+
+        except Exception as e:
+            print(
+                f"[Auto-teardown] Error checking job status for cluster '{cluster_name}': {e}"
+            )
+            return {
+                "cluster_name": cluster_name,
+                "status": "error",
+                "message": f"Error checking job status: {str(e)}",
+            }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to check monitoring status: {str(e)}"
         )
