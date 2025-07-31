@@ -11,6 +11,7 @@ import Reports from "../pages/Reports";
 import MyClusters from "../pages/MyClusters";
 import Users from "../pages/Admin/Users";
 import NodeDetails from "../pages/MyNodes/NodeDetails";
+import ClusterDetails from "../pages/ClusterDetails";
 
 const Dashboard: React.FC = () => {
   return (
@@ -42,14 +43,12 @@ const Dashboard: React.FC = () => {
       </Box>
       <Box sx={{ gridArea: "main", px: 3, py: 2, overflowY: "auto" }}>
         <Routes>
-          <Route
-            path="/"
-            element={<Navigate to="/dashboard/nodes" replace />}
-          />
+          <Route path="/" element={<Navigate to="/nodes" replace />} />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/nodes" element={<Nodes />} />
           <Route path="/my-clusters" element={<MyClusters />} />
           <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
+          <Route path="/clusters/:clusterId" element={<ClusterDetails />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />
