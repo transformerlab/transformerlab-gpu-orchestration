@@ -46,7 +46,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   onClusterLaunched,
 }) => {
   const [clusterName, setClusterName] = useState("");
-  const [command, setCommand] = useState("echo 'Hello RunPod'");
+  const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
@@ -113,7 +113,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 
   const resetForm = () => {
     setClusterName("");
-    setCommand("echo 'Hello RunPod'");
+    setCommand('echo "Welcome to Lattice"');
     setSetup("");
     setSelectedGpuType("");
     setSelectedGpuFullString("");
@@ -223,16 +223,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               value={clusterName}
               onChange={(e) => setClusterName(e.target.value)}
               placeholder="my-runpod-cluster"
-            />
-          </FormControl>
-
-          <FormControl required>
-            <FormLabel>Run Command</FormLabel>
-            <Textarea
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder="echo 'Hello RunPod'"
-              minRows={2}
             />
           </FormControl>
 

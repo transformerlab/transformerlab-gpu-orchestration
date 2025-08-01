@@ -614,7 +614,7 @@ const ReserveNodeModal: React.FC<{
   clusterName: string;
   onClusterLaunched?: (clusterName: string) => void;
 }> = ({ open, onClose, clusterName, onClusterLaunched }) => {
-  const [command, setCommand] = useState("echo SkyPilot");
+  const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [cpus, setCpus] = useState("");
   const [memory, setMemory] = useState("");
@@ -624,17 +624,15 @@ const ReserveNodeModal: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [pythonFile, setPythonFile] = useState<File | null>(null);
 
   const resetForm = () => {
-    setCommand("echo SkyPilot");
+    setCommand('echo "Welcome to Lattice"');
     setSetup("");
     setCpus("");
     setMemory("");
     setAccelerators("");
     setRegion("");
     setZone("");
-    setPythonFile(null);
     setError(null);
     setSuccess(null);
   };
@@ -658,9 +656,6 @@ const ReserveNodeModal: React.FC<{
       if (zone) formData.append("zone", zone);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
-      if (pythonFile) {
-        formData.append("python_file", pythonFile);
-      }
 
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
@@ -714,17 +709,6 @@ const ReserveNodeModal: React.FC<{
                 </Typography>
               </Alert>
 
-              <FormControl required sx={{ mb: 2 }}>
-                <FormLabel>Run Command</FormLabel>
-                <Textarea
-                  value={command}
-                  onChange={(e) => setCommand(e.target.value)}
-                  placeholder="echo SkyPilot"
-                  minRows={2}
-                  required
-                />
-              </FormControl>
-
               <FormControl sx={{ mb: 2 }}>
                 <FormLabel>Setup Command (optional)</FormLabel>
                 <Textarea
@@ -733,27 +717,6 @@ const ReserveNodeModal: React.FC<{
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
                 />
-              </FormControl>
-
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Attach Python file (optional)</FormLabel>
-                <input
-                  type="file"
-                  accept=".py"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setPythonFile(e.target.files[0]);
-                    } else {
-                      setPythonFile(null);
-                    }
-                  }}
-                  style={{ marginTop: 8 }}
-                />
-                {pythonFile && (
-                  <Typography level="body-xs" color="primary">
-                    Selected: {pythonFile.name}
-                  </Typography>
-                )}
               </FormControl>
 
               {/* Resource Configuration */}

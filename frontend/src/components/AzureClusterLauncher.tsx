@@ -46,7 +46,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   onClusterLaunched,
 }) => {
   const [clusterName, setClusterName] = useState("");
-  const [command, setCommand] = useState("echo 'Hello Azure'");
+  const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [selectedInstanceType, setSelectedInstanceType] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("");
@@ -182,7 +182,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const resetForm = () => {
     setClusterName("");
-    setCommand("echo 'Hello Azure'");
+    setCommand('echo "Welcome to Lattice"');
     setSetup("");
     setSelectedInstanceType("");
     setSelectedRegion("");
@@ -311,17 +311,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                     value={clusterName}
                     onChange={(e) => setClusterName(e.target.value)}
                     placeholder="my-azure-cluster"
-                    required
-                  />
-                </FormControl>
-
-                <FormControl required>
-                  <FormLabel>Run Command</FormLabel>
-                  <Textarea
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    placeholder="echo 'Hello Azure'"
-                    minRows={2}
                     required
                   />
                 </FormControl>
