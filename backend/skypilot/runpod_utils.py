@@ -2,11 +2,14 @@ import os
 import runpod
 import csv
 import json
+import subprocess
 from pathlib import Path
 from config import RUNPOD_API_KEY
 
 # Path to store RunPod configuration
 RUNPOD_CONFIG_FILE = Path.home() / ".runpod" / "lattice_config.json"
+# Path for SkyPilot's expected config.toml file
+RUNPOD_CONFIG_TOML = Path.home() / ".runpod" / "config.toml"
 
 
 def load_runpod_config():
@@ -45,7 +48,9 @@ def get_runpod_api_key():
     return RUNPOD_API_KEY
 
 
-def save_runpod_config(api_key: str, allowed_gpu_types: list[str], max_instances: int = 0):
+def save_runpod_config(
+    api_key: str, allowed_gpu_types: list[str], max_instances: int = 0
+):
     """Save RunPod configuration to file"""
     # Load existing config to preserve the real API key if the new one is masked
     existing_config = load_runpod_config()
@@ -100,6 +105,59 @@ def test_runpod_connection(api_key: str):
         return False
 
 
+def create_runpod_config_toml(api_key: str):
+    """Create the config.toml file that SkyPilot expects for RunPod"""
+    try:
+        # Ensure the .runpod directory exists
+        RUNPOD_CONFIG_TOML.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create the config.toml content
+        config_content = f"""[default]
+api_key = "{api_key}"
+"""
+
+        # Write the config.toml file
+        with open(RUNPOD_CONFIG_TOML, "w") as f:
+            f.write(config_content)
+
+        print(f"✅ Created RunPod config.toml at {RUNPOD_CONFIG_TOML}")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating RunPod config.toml: {e}")
+        return False
+
+
+def run_sky_check_runpod():
+    """Run 'sky check runpod' to validate the RunPod setup"""
+    try:
+        print("🔍 Running 'sky check runpod' to validate setup...")
+        result = subprocess.run(
+            ["sky", "check", "runpod"],
+            capture_output=True,
+            text=True,
+            timeout=30,  # 30 second timeout
+        )
+
+        if result.returncode == 0:
+            print("✅ Sky check runpod completed successfully")
+            print(f"Output: {result.stdout}")
+            return True, result.stdout
+        else:
+            print(f"❌ Sky check runpod failed with return code {result.returncode}")
+            print(f"Error output: {result.stderr}")
+            return False, result.stderr
+
+    except subprocess.TimeoutExpired:
+        print("❌ Sky check runpod timed out after 30 seconds")
+        return False, "Timeout"
+    except FileNotFoundError:
+        print("❌ 'sky' command not found. Make sure SkyPilot is properly installed.")
+        return False, "Sky command not found"
+    except Exception as e:
+        print(f"❌ Error running sky check runpod: {e}")
+        return False, str(e)
+
+
 def setup_runpod_config():
     """Setup RunPod configuration for SkyPilot integration"""
     api_key = get_runpod_api_key()
@@ -113,6 +171,17 @@ def setup_runpod_config():
 
     # Also set the environment variable for SkyPilot
     os.environ["RUNPOD_API_KEY"] = api_key
+
+    # Create the config.toml file that SkyPilot expects
+    if not create_runpod_config_toml(api_key):
+        raise ValueError("Failed to create RunPod config.toml file")
+
+    # Run sky check runpod to validate the setup
+    is_valid, output = run_sky_check_runpod()
+    if not is_valid:
+        print(f"⚠️ Sky check runpod validation failed: {output}")
+        # Don't raise an exception here, just log the warning
+        # The setup might still work for basic functionality
 
     print("✅ RunPod API key configured")
     return True
@@ -130,6 +199,10 @@ def verify_runpod_setup():
             return False
 
         runpod.api_key = api_key
+
+        if not os.path.exists(RUNPOD_CONFIG_TOML):
+            print(f"❌ RunPod config.toml not found at {RUNPOD_CONFIG_TOML}")
+            return False
 
         # Also set the environment variable for SkyPilot
         os.environ["RUNPOD_API_KEY"] = api_key
