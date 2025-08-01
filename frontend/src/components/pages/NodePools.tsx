@@ -44,6 +44,7 @@ import useSWR from "swr";
 import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../widgets/NodeSquare";
 import RunPodClusterLauncher from "../RunPodClusterLauncher";
+import AzureClusterLauncher from "../AzureClusterLauncher";
 import PageWithTitle from "./templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
@@ -73,6 +74,17 @@ interface Cluster {
 interface RunPodConfig {
   api_key: string;
   allowed_gpu_types: string[];
+  is_configured: boolean;
+  max_instances: number;
+}
+
+interface AzureConfig {
+  subscription_id: string;
+  tenant_id: string;
+  client_id: string;
+  client_secret: string;
+  allowed_instance_types: string[];
+  allowed_regions: string[];
   is_configured: boolean;
   max_instances: number;
 }
@@ -1144,8 +1156,31 @@ const Nodes: React.FC = () => {
     max_instances: 0,
   });
 
+  // State for Azure configuration
+  const [azureConfig, setAzureConfig] = useState<AzureConfig>({
+    subscription_id: "",
+    tenant_id: "",
+    client_id: "",
+    client_secret: "",
+    allowed_instance_types: [],
+    allowed_regions: [],
+    is_configured: false,
+    max_instances: 0,
+  });
+
   // State for RunPod instance count and limits
   const [runpodInstances, setRunpodInstances] = useState<{
+    current_count: number;
+    max_instances: number;
+    can_launch: boolean;
+  }>({
+    current_count: 0,
+    max_instances: 0,
+    can_launch: true,
+  });
+
+  // State for Azure instance count and limits
+  const [azureInstances, setAzureInstances] = useState<{
     current_count: number;
     max_instances: number;
     can_launch: boolean;
@@ -1232,6 +1267,47 @@ const Nodes: React.FC = () => {
         })
       );
 
+    // Fetch Azure configuration
+    apiFetch(buildApiUrl("skypilot/azure/config"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setAzureConfig({
+            subscription_id: data.subscription_id || "",
+            tenant_id: data.tenant_id || "",
+            client_id: data.client_id || "",
+            client_secret: data.client_secret || "",
+            allowed_instance_types: data.allowed_instance_types || [],
+            allowed_regions: data.allowed_regions || [],
+            is_configured: data.is_configured || false,
+            max_instances: data.max_instances || 0,
+          });
+        } else {
+          setAzureConfig({
+            subscription_id: "",
+            tenant_id: "",
+            client_id: "",
+            client_secret: "",
+            allowed_instance_types: [],
+            allowed_regions: [],
+            is_configured: false,
+            max_instances: 0,
+          });
+        }
+      })
+      .catch(() =>
+        setAzureConfig({
+          subscription_id: "",
+          tenant_id: "",
+          client_id: "",
+          client_secret: "",
+          allowed_instance_types: [],
+          allowed_regions: [],
+          is_configured: false,
+          max_instances: 0,
+        })
+      );
+
     // Fetch RunPod instance count and limits
     apiFetch(buildApiUrl("skypilot/runpod/instances"), {
       credentials: "include",
@@ -1250,6 +1326,35 @@ const Nodes: React.FC = () => {
           can_launch: true,
         });
       });
+
+    // Fetch Azure instance count and limits
+    apiFetch(buildApiUrl("skypilot/azure/instances"), {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setAzureInstances({
+            current_count: data.current_count || 0,
+            max_instances: data.max_instances || 0,
+            can_launch: data.can_launch !== undefined ? data.can_launch : true,
+          });
+        } else {
+          setAzureInstances({
+            current_count: 0,
+            max_instances: 0,
+            can_launch: true,
+          });
+        }
+      })
+      .catch(() => {
+        // If the endpoint doesn't exist yet, use default values
+        setAzureInstances({
+          current_count: 0,
+          max_instances: 0,
+          can_launch: true,
+        });
+      });
   }, []);
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
@@ -1260,6 +1365,7 @@ const Nodes: React.FC = () => {
   };
 
   const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
+  const [showAzureLauncher, setShowAzureLauncher] = useState(false);
 
   return (
     <PageWithTitle
@@ -1451,6 +1557,141 @@ const Nodes: React.FC = () => {
           </>
         )}
 
+        {/* Azure Clusters */}
+        {azureConfig.is_configured && (
+          <>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              Azure Clusters
+            </Typography>
+
+            {/* Instance Limits Display */}
+            {azureInstances.max_instances > 0 && (
+              <Card variant="outlined" sx={{ mb: 2 }}>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Instance Limits
+                </Typography>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography level="body-sm">
+                    {azureInstances.current_count} /{" "}
+                    {azureInstances.max_instances} instances
+                  </Typography>
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    color={azureInstances.can_launch ? "success" : "danger"}
+                  >
+                    {azureInstances.can_launch ? "Can Launch" : "Limit Reached"}
+                  </Chip>
+                </Stack>
+
+                {/* Visual representation of instances */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography
+                    level="body-xs"
+                    sx={{ mb: 1, color: "text.secondary" }}
+                  >
+                    Instance Usage:
+                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {/* Active instances (green) */}
+                    {Array.from(
+                      { length: azureInstances.current_count },
+                      (_, i) => (
+                        <Box
+                          key={`active-${i}`}
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            backgroundColor: "success.500",
+                            borderRadius: "sm",
+                            border: "1px solid",
+                            borderColor: "success.600",
+                          }}
+                        />
+                      )
+                    )}
+                    {/* Available instances (grey) */}
+                    {Array.from(
+                      {
+                        length:
+                          azureInstances.max_instances -
+                          azureInstances.current_count,
+                      },
+                      (_, i) => (
+                        <Box
+                          key={`available-${i}`}
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            backgroundColor: "neutral.300",
+                            borderRadius: "sm",
+                            border: "1px solid",
+                            borderColor: "neutral.400",
+                          }}
+                        />
+                      )
+                    )}
+                  </Box>
+                </Box>
+              </Card>
+            )}
+
+            {/* Check for active Azure clusters */}
+            {skyPilotClusters.filter(
+              (cluster: any) =>
+                cluster.cluster_name &&
+                (cluster.cluster_name.toLowerCase().includes("azure") ||
+                  cluster.cluster_name.toLowerCase().includes("azure"))
+            ).length > 0
+              ? skyPilotClusters
+                  .filter(
+                    (cluster: any) =>
+                      cluster.cluster_name &&
+                      (cluster.cluster_name.toLowerCase().includes("azure") ||
+                        cluster.cluster_name.toLowerCase().includes("azure"))
+                  )
+                  .map((cluster: any) => (
+                    <RunPodClusterCard
+                      key={cluster.cluster_name}
+                      cluster={cluster}
+                      onClusterLaunched={handleClusterLaunched}
+                    />
+                  ))
+              : null}
+
+            {/* Always show the launch button if Azure is configured */}
+            {azureConfig.is_configured && (
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                <Typography level="h4" sx={{ mb: 2 }}>
+                  Launch New Azure Cluster
+                </Typography>
+                <Typography
+                  level="body-md"
+                  sx={{ color: "text.secondary", mb: 2 }}
+                >
+                  Launch a new Azure cluster for your workloads.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowAzureLauncher(true)}
+                  disabled={!azureInstances.can_launch}
+                >
+                  Launch Azure Cluster
+                </Button>
+                {!azureInstances.can_launch && (
+                  <Typography
+                    level="body-xs"
+                    sx={{ color: "text.secondary", mt: 1 }}
+                  >
+                    Instance limit reached ({azureInstances.current_count}/
+                    {azureInstances.max_instances})
+                  </Typography>
+                )}
+              </Card>
+            )}
+          </>
+        )}
+
         {/* RunPod Configuration Status */}
         <Card variant="outlined">
           <Typography level="h4" sx={{ mb: 2 }}>
@@ -1517,12 +1758,99 @@ const Nodes: React.FC = () => {
             )}
           </Stack>
         </Card>
+
+        {/* Azure Configuration Status */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            Azure Configuration
+          </Typography>
+
+          <Stack spacing={2}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Credentials Configured</Typography>
+              <Chip
+                variant="soft"
+                color={azureConfig.is_configured ? "success" : "danger"}
+                size="sm"
+              >
+                {azureConfig.is_configured ? "Yes" : "No"}
+              </Chip>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Allowed Instance Types</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {azureConfig.allowed_instance_types.length} selected
+              </Chip>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Allowed Regions</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {azureConfig.allowed_regions.length} selected
+              </Chip>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography>Maximum Instances</Typography>
+              <Chip variant="soft" color="primary" size="sm">
+                {azureConfig.max_instances === 0
+                  ? "Unlimited"
+                  : azureConfig.max_instances}
+              </Chip>
+            </Box>
+
+            {!azureConfig.is_configured && (
+              <Alert color="warning">
+                Azure is not configured. Please configure it in the Admin
+                section to use on-demand clusters.
+              </Alert>
+            )}
+
+            {azureConfig.is_configured && (
+              <Alert color="success">
+                Azure is configured and ready to use.
+              </Alert>
+            )}
+          </Stack>
+        </Card>
       </Box>
 
       {/* RunPod Cluster Launcher Modal */}
       <RunPodClusterLauncher
         open={showRunPodLauncher}
         onClose={() => setShowRunPodLauncher(false)}
+        onClusterLaunched={handleClusterLaunched}
+      />
+
+      {/* Azure Cluster Launcher Modal */}
+      <AzureClusterLauncher
+        open={showAzureLauncher}
+        onClose={() => setShowAzureLauncher(false)}
         onClusterLaunched={handleClusterLaunched}
       />
     </PageWithTitle>

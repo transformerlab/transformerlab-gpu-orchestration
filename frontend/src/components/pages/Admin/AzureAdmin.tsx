@@ -30,6 +30,7 @@ interface AzureConfig {
   client_id: string;
   client_secret: string;
   allowed_instance_types: string[];
+  allowed_regions: string[];
   is_configured: boolean;
   auth_method: "service_principal";
   max_instances: number;
@@ -48,6 +49,7 @@ const AzureAdmin: React.FC = () => {
     client_id: "",
     client_secret: "",
     allowed_instance_types: [],
+    allowed_regions: [],
     is_configured: false,
     auth_method: "service_principal",
     max_instances: 0,
@@ -55,6 +57,7 @@ const AzureAdmin: React.FC = () => {
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<
     InstanceType[]
   >([]);
+  const [availableRegions, setAvailableRegions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +69,7 @@ const AzureAdmin: React.FC = () => {
   useEffect(() => {
     fetchAzureConfig();
     fetchAvailableInstanceTypes();
+    fetchAvailableRegions();
   }, []);
 
   const fetchAzureConfig = async () => {
@@ -76,8 +80,18 @@ const AzureAdmin: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        // Force auth_method to be service_principal
-        setConfig({ ...data, auth_method: "service_principal" });
+        // Force auth_method to be service_principal and add null checks
+        setConfig({
+          subscription_id: data.subscription_id || "",
+          tenant_id: data.tenant_id || "",
+          client_id: data.client_id || "",
+          client_secret: data.client_secret || "",
+          allowed_instance_types: data.allowed_instance_types || [],
+          allowed_regions: data.allowed_regions || [],
+          is_configured: data.is_configured || false,
+          auth_method: "service_principal",
+          max_instances: data.max_instances || 0,
+        });
       } else {
         setError("Failed to fetch Azure configuration");
       }
@@ -98,60 +112,78 @@ const AzureAdmin: React.FC = () => {
       );
       if (response.ok) {
         const data = await response.json();
-        const instanceTypes = data.instance_types.map((type: string) => {
-          // Parse instance type to extract category and display name
-          let category = "General Purpose";
-          let display_name = type;
+        const instanceTypes = (data.instance_types || []).map(
+          (type: string) => {
+            // Parse instance type to extract category and display name
+            let category = "General Purpose";
+            let display_name = type;
 
-          // GPU instances
-          if (
-            type.includes("NC") ||
-            type.includes("ND") ||
-            type.includes("NV") ||
-            type.includes("NP") ||
-            type.includes("H")
-          ) {
-            category = "GPU";
-          }
-          // Memory optimized instances
-          else if (
-            type.includes("E") ||
-            type.includes("M") ||
-            type.includes("R")
-          ) {
-            category = "Memory Optimized";
-          }
-          // Compute optimized instances
-          else if (type.includes("F") || type.includes("H")) {
-            category = "Compute Optimized";
-          }
-          // Storage optimized instances
-          else if (type.includes("L") || type.includes("G")) {
-            category = "Storage Optimized";
-          }
-          // General purpose instances (D series and others)
-          else if (
-            type.includes("D") ||
-            type.includes("A") ||
-            type.includes("B")
-          ) {
-            category = "General Purpose";
-          }
-          // Default
-          else {
-            category = "Other";
-          }
+            // GPU instances
+            if (
+              type.includes("NC") ||
+              type.includes("ND") ||
+              type.includes("NV") ||
+              type.includes("NP") ||
+              type.includes("H")
+            ) {
+              category = "GPU";
+            }
+            // Memory optimized instances
+            else if (
+              type.includes("E") ||
+              type.includes("M") ||
+              type.includes("R")
+            ) {
+              category = "Memory Optimized";
+            }
+            // Compute optimized instances
+            else if (type.includes("F") || type.includes("H")) {
+              category = "Compute Optimized";
+            }
+            // Storage optimized instances
+            else if (type.includes("L") || type.includes("G")) {
+              category = "Storage Optimized";
+            }
+            // General purpose instances (D series and others)
+            else if (
+              type.includes("D") ||
+              type.includes("A") ||
+              type.includes("B")
+            ) {
+              category = "General Purpose";
+            }
+            // Default
+            else {
+              category = "Other";
+            }
 
-          return {
-            name: type,
-            display_name: type,
-            category,
-          };
-        });
+            return {
+              name: type,
+              display_name: type,
+              category,
+            };
+          }
+        );
         setAvailableInstanceTypes(instanceTypes);
       }
     } catch (err) {
       console.error("Error fetching instance types:", err);
+      setAvailableInstanceTypes([]);
+    }
+  };
+
+  const fetchAvailableRegions = async () => {
+    try {
+      const response = await apiFetch(buildApiUrl("skypilot/azure/regions"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableRegions(data.regions || []);
+      }
+    } catch (err) {
+      console.error("Error fetching available regions:", err);
+      setAvailableRegions([]);
     }
   };
 
@@ -190,6 +222,7 @@ const AzureAdmin: React.FC = () => {
           client_id: config.client_id,
           client_secret: config.client_secret,
           allowed_instance_types: config.allowed_instance_types,
+          allowed_regions: config.allowed_regions,
           max_instances: config.max_instances,
           auth_method: "service_principal",
         }),
@@ -317,18 +350,21 @@ const AzureAdmin: React.FC = () => {
               Authentication Method: Service Principal
             </Typography>
             <Typography level="body-sm" sx={{ color: "neutral.500" }}>
-              Using service principal authentication. Configure credentials below.
+              Using service principal authentication. Configure credentials
+              below.
             </Typography>
           </Box>
 
           <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
-            <strong>For service principal authentication:</strong> Create a service principal using:
+            <strong>For service principal authentication:</strong> Create a
+            service principal using:
             <br />
             <code>
               az ad sp create-for-rbac --name "lattice-sky" --role contributor
             </code>
             <br />
-            This will provide you with the Client ID, Client Secret, and Tenant ID needed below.
+            This will provide you with the Client ID, Client Secret, and Tenant
+            ID needed below.
           </Typography>
           <Stack spacing={2}>
             <Box sx={{ display: "flex", gap: 2 }}>
@@ -560,6 +596,93 @@ const AzureAdmin: React.FC = () => {
                     setConfig((prev) => ({
                       ...prev,
                       allowed_instance_types: [],
+                    }));
+                  }}
+                >
+                  Clear All
+                </Button>
+              </Box>
+            </Stack>
+          )}
+        </Card>
+
+        {/* Regions Configuration */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            <Server
+              size={20}
+              style={{ marginRight: 8, verticalAlign: "middle" }}
+            />
+            Allowed Regions
+          </Typography>
+          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
+            Select which Azure regions users can choose from when creating Azure
+            clusters.
+          </Typography>
+
+          {availableRegions.length === 0 ? (
+            <Alert color="warning">
+              No regions available. Please ensure Azure is properly configured
+              and try refreshing.
+            </Alert>
+          ) : (
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1,
+                }}
+              >
+                <Typography level="title-sm">
+                  Select Regions to Allow
+                </Typography>
+                <Chip size="sm" variant="soft" color="primary">
+                  {config.allowed_regions.length} selected
+                </Chip>
+              </Box>
+
+              <FormControl>
+                <FormLabel>Regions</FormLabel>
+                <Autocomplete
+                  multiple
+                  options={availableRegions}
+                  getOptionLabel={(option) => option}
+                  value={config.allowed_regions}
+                  onChange={(_, newValue) => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_regions: newValue,
+                    }));
+                  }}
+                  placeholder="Search and select Azure regions..."
+                  sx={{ width: "100%" }}
+                  limitTags={5}
+                  disableCloseOnSelect
+                />
+              </FormControl>
+
+              <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_regions: availableRegions,
+                    }));
+                  }}
+                >
+                  Select All
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_regions: [],
                     }));
                   }}
                 >

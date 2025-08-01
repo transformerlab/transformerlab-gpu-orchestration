@@ -54,6 +54,7 @@ def save_azure_config(
     client_id: str,
     client_secret: str,
     allowed_instance_types: List[str],
+    allowed_regions: List[str],
     max_instances: int = 0,
 ):
     """Save Azure configuration to file"""
@@ -79,6 +80,7 @@ def save_azure_config(
         "client_id": client_id,
         "client_secret": client_secret,
         "allowed_instance_types": allowed_instance_types,
+        "allowed_regions": allowed_regions,
         "max_instances": max_instances,
         "auth_method": auth_method,
         "is_configured": bool(
@@ -224,10 +226,14 @@ def setup_azure_config():
 
         # Load existing config
         config = load_azure_config()
-        
+
         # Check if service principal credentials are configured
-        if not (config.get("subscription_id") and config.get("tenant_id") and 
-                config.get("client_id") and config.get("client_secret")):
+        if not (
+            config.get("subscription_id")
+            and config.get("tenant_id")
+            and config.get("client_id")
+            and config.get("client_secret")
+        ):
             raise Exception(
                 "Azure service principal credentials are not configured. Please configure them in the admin panel."
             )
@@ -237,9 +243,11 @@ def setup_azure_config():
             config["subscription_id"],
             config["tenant_id"],
             config["client_id"],
-            config["client_secret"]
+            config["client_secret"],
         ):
-            raise Exception("Azure service principal authentication failed. Please check your credentials.")
+            raise Exception(
+                "Azure service principal authentication failed. Please check your credentials."
+            )
 
         # Update config to mark as configured
         config["is_configured"] = True
@@ -250,6 +258,7 @@ def setup_azure_config():
             config["client_id"],
             config["client_secret"],
             config.get("allowed_instance_types", []),
+            config.get("allowed_regions", []),
             config.get("max_instances", 0),
         )
 
@@ -258,6 +267,73 @@ def setup_azure_config():
     except Exception as e:
         print(f"Error setting up Azure config: {e}")
         raise
+
+
+def get_azure_regions():
+    """Get available Azure regions from SkyPilot's Azure catalog"""
+    try:
+        import csv
+
+        # Find the SkyPilot catalog directory
+        sky_home = Path.home() / ".sky"
+        catalogs_dir = sky_home / "catalogs"
+
+        if not catalogs_dir.exists():
+            print("❌ SkyPilot catalogs directory not found")
+            return []
+
+        # Find the version directory (v7, v8, etc.)
+        version_dirs = [
+            d for d in catalogs_dir.iterdir() if d.is_dir() and d.name.startswith("v")
+        ]
+        if not version_dirs:
+            print("❌ No version directory found in SkyPilot catalogs")
+            return []
+
+        # Use the first (and should be only) version directory
+        version_dir = version_dirs[0]
+        azure_catalog_dir = version_dir / "azure"
+
+        if not azure_catalog_dir.exists():
+            print(f"❌ Azure catalog directory not found at {azure_catalog_dir}")
+            return []
+
+        # Find CSV files in the azure catalog directory
+        csv_files = list(azure_catalog_dir.glob("*.csv"))
+        if not csv_files:
+            print(f"❌ No CSV files found in {azure_catalog_dir}")
+            return []
+
+        regions = set()  # Use set to avoid duplicates
+
+        # Read all CSV files
+        for csv_file in csv_files:
+            if "vms.csv" in csv_file.name:
+                try:
+                    with open(csv_file, "r", encoding="utf-8") as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            region = row.get("Region", "").strip()
+
+                            if region and region != "Region":
+                                regions.add(region)
+
+                except Exception as csv_error:
+                    print(f"⚠️ Error reading {csv_file}: {csv_error}")
+                    continue
+
+        regions_list = sorted(list(regions))
+
+        if regions_list:
+            print(f"✅ Found {len(regions_list)} regions from SkyPilot Azure catalog")
+        else:
+            print("⚠️ No regions found in SkyPilot Azure catalog")
+
+        return regions_list
+
+    except Exception as e:
+        print(f"❌ Error getting regions from SkyPilot catalog: {e}")
+        return []
 
 
 def get_azure_instance_types():
