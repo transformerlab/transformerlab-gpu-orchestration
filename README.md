@@ -19,7 +19,7 @@
 ### Setup Instructions
 
 1. **WorkOS Setup**: Create a WorkOS account at [workos.com](https://workos.com) and configure your SSO connection
-2. **Run Setup Script**: `./setup.sh` (installs all dependencies)
+2. **Run Setup Script**: `./setup.sh` (installs all dependencies and runs database migrations)
 3. **Configure Environment**: Copy `.env.example` to `.env` and add your WorkOS credentials
 4. **Configure Environment for Frontend**: Copy `./frontend/.env.example` to `./frontend/.env` following the instructions there
 
@@ -38,7 +38,6 @@ You are setup
 1. Make sure your env files are set in the `/.env` and in `/frontend/.env` and make sure the frontend env redirect is set to VITE_API_URL=http://localhost:8000/api/v1 (not VITE_API_URL=/api/v1 which is only appropriate for production with one server)
 2. Run `./start.sh --dev` in one window
 3. Run `npm start dev` in frontend in another window
-
 
 ## 🐳 Docker Deployment
 
