@@ -15,12 +15,38 @@ dependencies = [
     "sqlalchemy>=2.0.42",
     "uvicorn[standard]==0.35.0",
     "workos==5.24.0",
+    
+    # explicity add prerelease packages needed for azure-cli (uv broken currently)
+    # see: https://docs.skypilot.co/en/latest/getting-started/installation.html#:~:text=%23%20Azure%20CLI%20has%20an%20issue%20with%20uv%2C%20and%20requires%20%27%2D%2Dprerelease%20allow%27.%0Auv%20pip%20install%20%2D%2Dprerelease%20allow%20azure%2Dcli
+    "azure-batch==15.0.0b2",
+    "azure-keyvault-administration==4.4.0b2",
+    "azure-keyvault-keys==4.11.0b1",
+    "azure-keyvault-securitydomain==1.0.0b1",
+    "azure-mgmt-batchai==7.0.0b1",
+    "azure-mgmt-containerinstance==10.2.0b1",
+    "azure-mgmt-containerregistry==14.1.0b1",
+    "azure-mgmt-datalake-store==1.1.0b1",
+    "azure-mgmt-eventgrid==10.2.0b2",
+    "azure-mgmt-extendedlocation==1.0.0b2",
+    "azure-mgmt-hdinsight==9.0.0b3",
+    "azure-mgmt-iotcentral==10.0.0b2",
+    "azure-mgmt-loganalytics==13.0.0b4",
+    "azure-mgmt-mysqlflexibleservers==1.0.0b3",
+    "azure-mgmt-policyinsights==1.1.0b4",
+    "azure-mgmt-postgresqlflexibleservers==1.1.0b2",
+    "azure-mgmt-rdbms==10.2.0b17",
+    "azure-mgmt-servicefabricmanagedclusters==2.1.0b1",
+    "azure-mgmt-servicelinker==1.2.0b3",
+    "azure-mgmt-signalr==2.0.0b2",
+    "azure-mgmt-sql==4.0.0b21",
+    "azure-mgmt-sqlvirtualmachine==1.0.0b5",
+    "azure-mgmt-synapse==2.1.0b5",
+    "msal==1.33.0b1",
+    # end of explicit deps for azure-cli
+
     "azure-cli==2.75.0",
     "msrestazure==0.6.4.post1",
 ]
-
-[tool.uv.pip]
-prerelease = "allow"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
