@@ -60,11 +60,17 @@ const AzureAdmin: React.FC = () => {
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [skyChecking, setSkyChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
   const [actualCredentials, setActualCredentials] =
     useState<AzureConfig | null>(null);
+  const [skyCheckResult, setSkyCheckResult] = useState<{
+    valid: boolean;
+    output: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchAzureConfig();
@@ -209,6 +215,7 @@ const AzureAdmin: React.FC = () => {
       setSaving(true);
       setError(null);
       setSuccess(null);
+      setSkyCheckResult(null);
 
       const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
         method: "POST",
@@ -231,7 +238,22 @@ const AzureAdmin: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setConfig({ ...data, auth_method: "service_principal" });
-        setSuccess("Azure configuration saved successfully");
+
+        // Handle sky check results if available
+        if (data.sky_check_result) {
+          setSkyCheckResult(data.sky_check_result);
+          if (data.sky_check_result.valid) {
+            setSuccess(
+              "Azure configuration saved successfully and sky check passed"
+            );
+          } else {
+            setError(
+              `Azure configuration saved but sky check failed: ${data.sky_check_result.message}`
+            );
+          }
+        } else {
+          setSuccess("Azure configuration saved successfully");
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.detail || "Failed to save Azure configuration");
@@ -298,6 +320,36 @@ const AzureAdmin: React.FC = () => {
       setError("Error testing Azure connection");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runSkyCheck = async () => {
+    try {
+      setSkyChecking(true);
+      setError(null);
+      setSuccess(null);
+      setSkyCheckResult(null);
+
+      const response = await apiFetch(buildApiUrl("skypilot/azure/sky-check"), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSkyCheckResult(data);
+        if (data.valid) {
+          setSuccess("Sky check azure completed successfully");
+        } else {
+          setError("Sky check azure failed");
+        }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || "Sky check azure failed");
+      }
+    } catch (err) {
+      setError("Error running sky check azure");
+    } finally {
+      setSkyChecking(false);
     }
   };
 
@@ -451,7 +503,7 @@ const AzureAdmin: React.FC = () => {
                 <Box sx={{ height: "40px" }} />
               </FormControl>
             </Box>
-            <Box sx={{ display: "flex", gap: 1 }}>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
               <Button
                 startDecorator={<Save size={16} />}
                 onClick={saveConfig}
@@ -482,6 +534,14 @@ const AzureAdmin: React.FC = () => {
               </Button>
               <Button
                 variant="outlined"
+                onClick={runSkyCheck}
+                disabled={skyChecking || !config.is_configured}
+                loading={skyChecking}
+              >
+                Sky Check Azure
+              </Button>
+              <Button
+                variant="outlined"
                 onClick={async () => {
                   if (!showCredentials) {
                     await fetchActualCredentials();
@@ -492,8 +552,59 @@ const AzureAdmin: React.FC = () => {
                 {showCredentials ? "Hide" : "Show"} Credentials
               </Button>
             </Box>
+            <Typography level="body-xs" sx={{ color: "text.secondary", mt: 1 }}>
+              Note: When you save the configuration, the system will
+              automatically create the required config.toml file and run a sky
+              check to validate the Azure setup.
+            </Typography>
           </Stack>
         </Card>
+
+        {/* Sky Check Results */}
+        {skyCheckResult && (
+          <Card variant="outlined">
+            <Typography level="h4" sx={{ mb: 2 }}>
+              Sky Check Azure Results
+            </Typography>
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography>Validation Status</Typography>
+                <Chip
+                  variant="soft"
+                  color={skyCheckResult.valid ? "success" : "danger"}
+                  size="sm"
+                >
+                  {skyCheckResult.valid ? "Passed" : "Failed"}
+                </Chip>
+              </Box>
+              <Box>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Output:
+                </Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    bgcolor: "background.level1",
+                    borderRadius: 1,
+                    fontFamily: "monospace",
+                    fontSize: "0.875rem",
+                    whiteSpace: "pre-wrap",
+                    maxHeight: 200,
+                    overflowY: "auto",
+                  }}
+                >
+                  {skyCheckResult.output}
+                </Box>
+              </Box>
+            </Stack>
+          </Card>
+        )}
 
         {/* Instance Types Configuration */}
         <Card variant="outlined">

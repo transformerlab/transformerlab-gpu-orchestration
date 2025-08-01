@@ -60,6 +60,7 @@ from skypilot.azure_utils import (
     get_azure_config_for_display,
     test_azure_connection,
     load_azure_config,
+    run_sky_check_azure,
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
@@ -1085,8 +1086,37 @@ async def save_azure_config_route(
         elif config.get("client_secret"):
             os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
 
-        # Return the saved config (without the actual credentials)
-        return get_azure_config_for_display()
+        # Run sky check to validate the setup if credentials are provided
+        sky_check_result = None
+        if (
+            config.get("subscription_id")
+            and config.get("tenant_id")
+            and config.get("client_id")
+            and config.get("client_secret")
+        ):
+            try:
+                # Run sky check to validate the setup
+                is_valid, output = run_sky_check_azure()
+                sky_check_result = {
+                    "valid": is_valid,
+                    "output": output,
+                    "message": "Sky check azure completed successfully"
+                    if is_valid
+                    else "Sky check azure failed",
+                }
+            except Exception as e:
+                sky_check_result = {
+                    "valid": False,
+                    "output": str(e),
+                    "message": f"Error during Azure sky check: {str(e)}",
+                }
+
+        # Return the saved config with sky check results
+        result = get_azure_config_for_display()
+        if sky_check_result:
+            result["sky_check_result"] = sky_check_result
+
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to save Azure configuration: {str(e)}"
@@ -1145,4 +1175,22 @@ async def get_azure_instances(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get Azure instance count: {str(e)}"
+        )
+
+
+@router.get("/azure/sky-check")
+async def run_sky_check_azure_route(request: Request, response: Response):
+    """Run 'sky check azure' to validate the Azure setup"""
+    try:
+        is_valid, output = run_sky_check_azure()
+        return {
+            "valid": is_valid,
+            "output": output,
+            "message": "Sky check azure completed successfully"
+            if is_valid
+            else "Sky check azure failed",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to run sky check azure: {str(e)}"
         )
