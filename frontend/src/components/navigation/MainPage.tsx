@@ -27,6 +27,7 @@ import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
 import ClusterDetails from "../pages/ClusterDetails";
+import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -68,6 +69,10 @@ const Dashboard: React.FC = () => {
           <Route path="/clusters/:clusterId" element={<ClusterDetails />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />
+          <Route
+            path="/skypilot-tester"
+            element={<SkyPilotClusterLauncher />}
+          />
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/teams" element={<Teams />} />
           <Route path="admin/clouds" element={<SSHClusterAdmin />} />
