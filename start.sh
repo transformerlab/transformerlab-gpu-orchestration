@@ -39,11 +39,14 @@ else
     echo "📦 Installing backend dependencies with uv..."
     uv venv --seed --python 3.10 --clear
     source .venv/bin/activate
-    uv pip install -r requirements.txt
-    uv pip install --upgrade uvicorn
-    uv pip install "skypilot[kubernetes,runpod]"
-    uv pip install "runpod>=1.6"
-    echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot)"
+    uv pip install .
+    echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot with kubernetes/runpod extras)"
+    
+    # Run database migrations
+    echo "🗄️  Running database migrations..."
+    alembic upgrade head
+    echo "✅ Database migrations completed"
+    
     cd ..
 
     export WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
