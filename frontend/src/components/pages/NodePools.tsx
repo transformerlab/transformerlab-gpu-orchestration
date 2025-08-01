@@ -1420,86 +1420,154 @@ const Nodes: React.FC = () => {
           On-Demand Clusters
         </Typography>
 
+        {/* Combined Instance Limits Display */}
+        {(runpodConfig.is_configured || azureConfig.is_configured) && (
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <Typography level="title-sm" sx={{ mb: 2 }}>
+              Instance Limits
+            </Typography>
+            <Stack spacing={2}>
+              {runpodConfig.is_configured &&
+                runpodInstances.max_instances > 0 && (
+                  <Box>
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems="center"
+                      sx={{ mb: 1 }}
+                    >
+                      <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
+                        RunPod:
+                      </Typography>
+                      <Typography level="body-sm">
+                        {runpodInstances.current_count} /{" "}
+                        {runpodInstances.max_instances} instances
+                      </Typography>
+                      <Chip
+                        size="sm"
+                        variant="soft"
+                        color={
+                          runpodInstances.can_launch ? "success" : "danger"
+                        }
+                      >
+                        {runpodInstances.can_launch
+                          ? "Can Launch"
+                          : "Limit Reached"}
+                      </Chip>
+                    </Stack>
+                    {/* Visual representation of RunPod instances */}
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                      {/* Progress bar for RunPod instances */}
+                      <Box sx={{ width: "100%", mt: 1 }}>
+                        <Box
+                          sx={{
+                            width: "100%",
+                            height: 8,
+                            backgroundColor: "neutral.200",
+                            borderRadius: "sm",
+                            overflow: "hidden",
+                            position: "relative",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: `${
+                                (runpodInstances.current_count /
+                                  runpodInstances.max_instances) *
+                                100
+                              }%`,
+                              height: "100%",
+                              backgroundColor: "success.500",
+                              transition: "width 0.3s ease",
+                            }}
+                          />
+                        </Box>
+                        <Typography
+                          level="body-xs"
+                          sx={{ mt: 0.5, color: "text.secondary" }}
+                        >
+                          {runpodInstances.current_count} active /{" "}
+                          {runpodInstances.max_instances} total
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+
+              {azureConfig.is_configured &&
+                azureInstances.max_instances > 0 && (
+                  <Box>
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems="center"
+                      sx={{ mb: 1 }}
+                    >
+                      <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
+                        Azure:
+                      </Typography>
+                      <Typography level="body-sm">
+                        {azureInstances.current_count} /{" "}
+                        {azureInstances.max_instances} instances
+                      </Typography>
+                      <Chip
+                        size="sm"
+                        variant="soft"
+                        color={azureInstances.can_launch ? "success" : "danger"}
+                      >
+                        {azureInstances.can_launch
+                          ? "Can Launch"
+                          : "Limit Reached"}
+                      </Chip>
+                    </Stack>
+                    {/* Visual representation of Azure instances */}
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                      {/* Progress bar for Azure instances */}
+                      <Box sx={{ width: "100%", mt: 1 }}>
+                        <Box
+                          sx={{
+                            width: "100%",
+                            height: 8,
+                            backgroundColor: "neutral.200",
+                            borderRadius: "sm",
+                            overflow: "hidden",
+                            position: "relative",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: `${
+                                (azureInstances.current_count /
+                                  azureInstances.max_instances) *
+                                100
+                              }%`,
+                              height: "100%",
+                              backgroundColor: "success.500",
+                              transition: "width 0.3s ease",
+                            }}
+                          />
+                        </Box>
+                        <Typography
+                          level="body-xs"
+                          sx={{ mt: 0.5, color: "text.secondary" }}
+                        >
+                          {azureInstances.current_count} active /{" "}
+                          {azureInstances.max_instances} total
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+            </Stack>
+          </Card>
+        )}
+
         {/* RunPod Clusters */}
         {runpodConfig.is_configured && (
           <>
             <Typography level="h4" sx={{ mb: 2 }}>
               RunPod Clusters
             </Typography>
-
-            {/* Instance Limits Display */}
-            {runpodInstances.max_instances > 0 && (
-              <Card variant="outlined" sx={{ mb: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Instance Limits
-                </Typography>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Typography level="body-sm">
-                    {runpodInstances.current_count} /{" "}
-                    {runpodInstances.max_instances} instances
-                  </Typography>
-                  <Chip
-                    size="sm"
-                    variant="soft"
-                    color={runpodInstances.can_launch ? "success" : "danger"}
-                  >
-                    {runpodInstances.can_launch
-                      ? "Can Launch"
-                      : "Limit Reached"}
-                  </Chip>
-                </Stack>
-
-                {/* Visual representation of instances */}
-                <Box sx={{ mt: 2 }}>
-                  <Typography
-                    level="body-xs"
-                    sx={{ mb: 1, color: "text.secondary" }}
-                  >
-                    Instance Usage:
-                  </Typography>
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                    {/* Active instances (green) */}
-                    {Array.from(
-                      { length: runpodInstances.current_count },
-                      (_, i) => (
-                        <Box
-                          key={`active-${i}`}
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            backgroundColor: "success.500",
-                            borderRadius: "sm",
-                            border: "1px solid",
-                            borderColor: "success.600",
-                          }}
-                        />
-                      )
-                    )}
-                    {/* Available instances (grey) */}
-                    {Array.from(
-                      {
-                        length:
-                          runpodInstances.max_instances -
-                          runpodInstances.current_count,
-                      },
-                      (_, i) => (
-                        <Box
-                          key={`available-${i}`}
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            backgroundColor: "neutral.300",
-                            borderRadius: "sm",
-                            border: "1px solid",
-                            borderColor: "neutral.400",
-                          }}
-                        />
-                      )
-                    )}
-                  </Box>
-                </Box>
-              </Card>
-            )}
 
             {/* Check for active RunPod clusters */}
             {skyPilotClusters.filter(
@@ -1563,78 +1631,6 @@ const Nodes: React.FC = () => {
             <Typography level="h4" sx={{ mb: 2 }}>
               Azure Clusters
             </Typography>
-
-            {/* Instance Limits Display */}
-            {azureInstances.max_instances > 0 && (
-              <Card variant="outlined" sx={{ mb: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Instance Limits
-                </Typography>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Typography level="body-sm">
-                    {azureInstances.current_count} /{" "}
-                    {azureInstances.max_instances} instances
-                  </Typography>
-                  <Chip
-                    size="sm"
-                    variant="soft"
-                    color={azureInstances.can_launch ? "success" : "danger"}
-                  >
-                    {azureInstances.can_launch ? "Can Launch" : "Limit Reached"}
-                  </Chip>
-                </Stack>
-
-                {/* Visual representation of instances */}
-                <Box sx={{ mt: 2 }}>
-                  <Typography
-                    level="body-xs"
-                    sx={{ mb: 1, color: "text.secondary" }}
-                  >
-                    Instance Usage:
-                  </Typography>
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                    {/* Active instances (green) */}
-                    {Array.from(
-                      { length: azureInstances.current_count },
-                      (_, i) => (
-                        <Box
-                          key={`active-${i}`}
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            backgroundColor: "success.500",
-                            borderRadius: "sm",
-                            border: "1px solid",
-                            borderColor: "success.600",
-                          }}
-                        />
-                      )
-                    )}
-                    {/* Available instances (grey) */}
-                    {Array.from(
-                      {
-                        length:
-                          azureInstances.max_instances -
-                          azureInstances.current_count,
-                      },
-                      (_, i) => (
-                        <Box
-                          key={`available-${i}`}
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            backgroundColor: "neutral.300",
-                            borderRadius: "sm",
-                            border: "1px solid",
-                            borderColor: "neutral.400",
-                          }}
-                        />
-                      )
-                    )}
-                  </Box>
-                </Box>
-              </Card>
-            )}
 
             {/* Check for active Azure clusters */}
             {skyPilotClusters.filter(
