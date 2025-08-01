@@ -450,3 +450,34 @@ run: |
 """
 
     return yaml_content
+
+
+def run_sky_check_azure():
+    """Run 'sky check azure' to validate the Azure setup"""
+    try:
+        print("🔍 Running 'sky check azure' to validate setup...")
+        result = subprocess.run(
+            ["sky", "check", "azure"],
+            capture_output=True,
+            text=True,
+            timeout=30,  # 30 second timeout
+        )
+
+        if result.returncode == 0:
+            print("✅ Sky check azure completed successfully")
+            print(f"Output: {result.stdout}")
+            return True, result.stdout
+        else:
+            print(f"❌ Sky check azure failed with return code {result.returncode}")
+            print(f"Error output: {result.stderr}")
+            return False, result.stderr
+
+    except subprocess.TimeoutExpired:
+        print("❌ Sky check azure timed out after 30 seconds")
+        return False, "Timeout"
+    except FileNotFoundError:
+        print("❌ 'sky' command not found. Make sure SkyPilot is properly installed.")
+        return False, "Sky command not found"
+    except Exception as e:
+        print(f"❌ Error running sky check azure: {e}")
+        return False, str(e)
