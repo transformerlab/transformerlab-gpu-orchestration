@@ -19,6 +19,9 @@ dependencies = [
     "msrestazure==0.6.4.post1",
 ]
 
+[tool.uv.pip]
+prerelease = "allow"
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
