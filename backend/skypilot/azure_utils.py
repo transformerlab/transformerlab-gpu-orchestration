@@ -17,7 +17,7 @@ def load_azure_config():
             "client_id": "",
             "client_secret": "",
             "is_configured": False,
-            "auth_method": "cli",  # Default to CLI auth
+            "auth_method": "service_principal",  # Default to service principal auth
             "allowed_instance_types": [],
             "max_instances": 0,
         }
@@ -31,6 +31,8 @@ def load_azure_config():
                 config["max_instances"] = 0
             if "allowed_instance_types" not in config:
                 config["allowed_instance_types"] = []
+            # Force auth_method to be service_principal
+            config["auth_method"] = "service_principal"
             return config
     except Exception as e:
         print(f"Error loading Azure config: {e}")
@@ -40,6 +42,7 @@ def load_azure_config():
             "client_id": "",
             "client_secret": "",
             "is_configured": False,
+            "auth_method": "service_principal",
             "allowed_instance_types": [],
             "max_instances": 0,
         }
@@ -67,10 +70,8 @@ def save_azure_config(
     if client_secret and client_secret.startswith("*") and len(client_secret) > 0:
         client_secret = existing_config.get("client_secret", "")
 
-    # Determine auth method
-    auth_method = (
-        "service_principal" if (tenant_id and client_id and client_secret) else "cli"
-    )
+    # Always use service principal authentication
+    auth_method = "service_principal"
 
     config = {
         "subscription_id": subscription_id,
@@ -81,8 +82,7 @@ def save_azure_config(
         "max_instances": max_instances,
         "auth_method": auth_method,
         "is_configured": bool(
-            subscription_id
-            and (auth_method == "cli" or (tenant_id and client_id and client_secret))
+            subscription_id and tenant_id and client_id and client_secret
         ),
     }
     AZURE_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -116,84 +116,72 @@ def test_azure_connection(
     tenant_id: str,
     client_id: str,
     client_secret: str,
-    auth_mode: str = "cli",
+    auth_mode: str = "service_principal",
 ):
-    """Test Azure connection with specific credentials"""
+    """Test Azure connection with service principal credentials"""
     try:
-        # Use auth_mode to determine authentication method
-        if auth_mode == "cli":
-            # Use CLI authentication
+        # Temporarily set the Azure credentials
+        original_subscription = os.environ.get("AZURE_SUBSCRIPTION_ID")
+        original_tenant = os.environ.get("AZURE_TENANT_ID")
+        original_client = os.environ.get("AZURE_CLIENT_ID")
+        original_secret = os.environ.get("AZURE_CLIENT_SECRET")
+
+        os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
+        os.environ["AZURE_TENANT_ID"] = tenant_id
+        os.environ["AZURE_CLIENT_ID"] = client_id
+        os.environ["AZURE_CLIENT_SECRET"] = client_secret
+
+        print(f"AZURE_SUBSCRIPTION_ID: {os.environ['AZURE_SUBSCRIPTION_ID']}")
+        print(f"AZURE_TENANT_ID: {os.environ['AZURE_TENANT_ID']}")
+        print(f"AZURE_CLIENT_ID: {os.environ['AZURE_CLIENT_ID']}")
+        print(f"AZURE_CLIENT_SECRET: {os.environ['AZURE_CLIENT_SECRET']}")
+
+        try:
+            # Test the connection using Azure CLI with service principal
             result = subprocess.run(
-                ["az", "account", "show"],
+                [
+                    "az",
+                    "login",
+                    "--service-principal",
+                    "--username",
+                    client_id,
+                    "--password",
+                    client_secret,
+                    "--tenant",
+                    tenant_id,
+                ],
                 capture_output=True,
                 text=True,
                 timeout=30,
             )
-            return result.returncode == 0
-        elif auth_mode == "service_principal":
-            # Use service principal authentication
-            # Temporarily set the Azure credentials
-            original_subscription = os.environ.get("AZURE_SUBSCRIPTION_ID")
-            original_tenant = os.environ.get("AZURE_TENANT_ID")
-            original_client = os.environ.get("AZURE_CLIENT_ID")
-            original_secret = os.environ.get("AZURE_CLIENT_SECRET")
-
-            os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
-            os.environ["AZURE_TENANT_ID"] = tenant_id
-            os.environ["AZURE_CLIENT_ID"] = client_id
-            os.environ["AZURE_CLIENT_SECRET"] = client_secret
-
-            print(f"AZURE_SUBSCRIPTION_ID: {os.environ['AZURE_SUBSCRIPTION_ID']}")
-            print(f"AZURE_TENANT_ID: {os.environ['AZURE_TENANT_ID']}")
-            print(f"AZURE_CLIENT_ID: {os.environ['AZURE_CLIENT_ID']}")
-            print(f"AZURE_CLIENT_SECRET: {os.environ['AZURE_CLIENT_SECRET']}")
-
-            try:
-                # Test the connection using Azure CLI with service principal
-                result = subprocess.run(
-                    [
-                        "az",
-                        "login",
-                        "--service-principal",
-                        "--username",
-                        client_id,
-                        "--password",
-                        client_secret,
-                        "--tenant",
-                        tenant_id,
-                    ],
+            if result.returncode == 0:
+                # Now test if we can access the subscription
+                result2 = subprocess.run(
+                    ["az", "account", "show"],
                     capture_output=True,
                     text=True,
                     timeout=30,
                 )
-                if result.returncode == 0:
-                    # Now test if we can access the subscription
-                    result2 = subprocess.run(
-                        ["az", "account", "show"],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                    )
-                    return result2.returncode == 0
-                return False
-            finally:
-                # Restore original credentials
-                if original_subscription:
-                    os.environ["AZURE_SUBSCRIPTION_ID"] = original_subscription
-                else:
-                    os.environ.pop("AZURE_SUBSCRIPTION_ID", None)
-                if original_tenant:
-                    os.environ["AZURE_TENANT_ID"] = original_tenant
-                else:
-                    os.environ.pop("AZURE_TENANT_ID", None)
-                if original_client:
-                    os.environ["AZURE_CLIENT_ID"] = original_client
-                else:
-                    os.environ.pop("AZURE_CLIENT_ID", None)
-                if original_secret:
-                    os.environ["AZURE_CLIENT_SECRET"] = original_secret
-                else:
-                    os.environ.pop("AZURE_CLIENT_SECRET", None)
+                return result2.returncode == 0
+            return False
+        finally:
+            # Restore original credentials
+            if original_subscription:
+                os.environ["AZURE_SUBSCRIPTION_ID"] = original_subscription
+            else:
+                os.environ.pop("AZURE_SUBSCRIPTION_ID", None)
+            if original_tenant:
+                os.environ["AZURE_TENANT_ID"] = original_tenant
+            else:
+                os.environ.pop("AZURE_TENANT_ID", None)
+            if original_client:
+                os.environ["AZURE_CLIENT_ID"] = original_client
+            else:
+                os.environ.pop("AZURE_CLIENT_ID", None)
+            if original_secret:
+                os.environ["AZURE_CLIENT_SECRET"] = original_secret
+            else:
+                os.environ.pop("AZURE_CLIENT_SECRET", None)
 
     except Exception as e:
         print(f"Error testing Azure connection: {e}")
@@ -201,7 +189,7 @@ def test_azure_connection(
 
 
 def verify_azure_setup():
-    """Verify Azure setup by checking if Azure CLI is installed and authenticated"""
+    """Verify Azure setup by checking if Azure CLI is installed and service principal is configured"""
     try:
         # Check if Azure CLI is installed
         result = subprocess.run(
@@ -210,37 +198,22 @@ def verify_azure_setup():
         if result.returncode != 0:
             return False
 
-        # Check if user is logged in
-        result = subprocess.run(
-            ["az", "account", "show"], capture_output=True, text=True, timeout=10
+        # Check if service principal is configured
+        config = load_azure_config()
+        return bool(
+            config.get("subscription_id")
+            and config.get("tenant_id")
+            and config.get("client_id")
+            and config.get("client_secret")
         )
-        return result.returncode == 0
 
     except Exception as e:
         print(f"Error verifying Azure setup: {e}")
         return False
 
 
-def verify_azure_cli_login():
-    """Verify Azure CLI interactive login"""
-    try:
-        # Check if user is logged in via Azure CLI
-        result = subprocess.run(
-            ["az", "account", "show"], capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            # Parse the account info to get subscription
-            account_info = json.loads(result.stdout)
-            subscription_id = account_info.get("id")
-            return True, subscription_id
-        return False, None
-    except Exception as e:
-        print(f"Error verifying Azure CLI login: {e}")
-        return False, None
-
-
 def setup_azure_config():
-    """Setup Azure configuration by ensuring Azure CLI is installed and user is logged in"""
+    """Setup Azure configuration - now only supports service principal authentication"""
     try:
         # Check if Azure CLI is installed
         result = subprocess.run(
@@ -249,23 +222,33 @@ def setup_azure_config():
         if result.returncode != 0:
             raise Exception("Azure CLI is not installed. Please install it first.")
 
-        # Check if user is logged in via CLI
-        is_logged_in, subscription_id = verify_azure_cli_login()
-        if not is_logged_in:
+        # Load existing config
+        config = load_azure_config()
+        
+        # Check if service principal credentials are configured
+        if not (config.get("subscription_id") and config.get("tenant_id") and 
+                config.get("client_id") and config.get("client_secret")):
             raise Exception(
-                "Azure CLI is not authenticated. Please run 'az login' first."
+                "Azure service principal credentials are not configured. Please configure them in the admin panel."
             )
 
-        # Update config with current subscription from CLI
-        config = load_azure_config()
-        config["subscription_id"] = subscription_id
+        # Test the connection
+        if not test_azure_connection(
+            config["subscription_id"],
+            config["tenant_id"],
+            config["client_id"],
+            config["client_secret"]
+        ):
+            raise Exception("Azure service principal authentication failed. Please check your credentials.")
+
+        # Update config to mark as configured
         config["is_configured"] = True
-        config["auth_method"] = "cli"  # Mark as using CLI authentication
+        config["auth_method"] = "service_principal"
         save_azure_config(
-            subscription_id,
-            config.get("tenant_id", ""),
-            config.get("client_id", ""),
-            config.get("client_secret", ""),
+            config["subscription_id"],
+            config["tenant_id"],
+            config["client_id"],
+            config["client_secret"],
             config.get("allowed_instance_types", []),
             config.get("max_instances", 0),
         )

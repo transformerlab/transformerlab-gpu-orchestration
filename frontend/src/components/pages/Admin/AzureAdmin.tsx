@@ -31,7 +31,7 @@ interface AzureConfig {
   client_secret: string;
   allowed_instance_types: string[];
   is_configured: boolean;
-  auth_method: "cli" | "service_principal";
+  auth_method: "service_principal";
   max_instances: number;
 }
 
@@ -49,7 +49,7 @@ const AzureAdmin: React.FC = () => {
     client_secret: "",
     allowed_instance_types: [],
     is_configured: false,
-    auth_method: "cli",
+    auth_method: "service_principal",
     max_instances: 0,
   });
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<
@@ -76,7 +76,8 @@ const AzureAdmin: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+        // Force auth_method to be service_principal
+        setConfig({ ...data, auth_method: "service_principal" });
       } else {
         setError("Failed to fetch Azure configuration");
       }
@@ -190,13 +191,13 @@ const AzureAdmin: React.FC = () => {
           client_secret: config.client_secret,
           allowed_instance_types: config.allowed_instance_types,
           max_instances: config.max_instances,
-          auth_method: config.auth_method,
+          auth_method: "service_principal",
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+        setConfig({ ...data, auth_method: "service_principal" });
         setSuccess("Azure configuration saved successfully");
       } else {
         const errorData = await response.json();
@@ -249,7 +250,7 @@ const AzureAdmin: React.FC = () => {
         },
         body: JSON.stringify({
           ...testCredentials,
-          auth_mode: config.auth_method,
+          auth_mode: "service_principal",
         }),
       });
 
@@ -312,66 +313,22 @@ const AzureAdmin: React.FC = () => {
           <Box
             sx={{ mb: 2, p: 2, bgcolor: "background.level1", borderRadius: 1 }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 1,
-              }}
-            >
-              <Typography level="title-sm">
-                Current Authentication Method:{" "}
-                {config.auth_method === "cli"
-                  ? "Azure CLI"
-                  : "Service Principal"}
-              </Typography>
-              <Button
-                size="sm"
-                variant="outlined"
-                onClick={() => {
-                  setConfig((prev) => ({
-                    ...prev,
-                    auth_method:
-                      prev.auth_method === "cli" ? "service_principal" : "cli",
-                    // Clear service principal credentials when switching to CLI
-                    ...(prev.auth_method === "service_principal" && {
-                      tenant_id: "",
-                      client_id: "",
-                      client_secret: "",
-                    }),
-                  }));
-                }}
-              >
-                Switch to{" "}
-                {config.auth_method === "cli" ? "Service Principal" : "CLI"}
-              </Button>
-            </Box>
-            {config.auth_method === "cli" ? (
-              <Typography level="body-sm" sx={{ color: "neutral.500" }}>
-                Using Azure CLI authentication. Make sure you're logged in with:{" "}
-                <code>az login</code>
-              </Typography>
-            ) : (
-              <Typography level="body-sm" sx={{ color: "neutral.500" }}>
-                Using service principal authentication. Configure credentials
-                below.
-              </Typography>
-            )}
+            <Typography level="title-sm" sx={{ mb: 1 }}>
+              Authentication Method: Service Principal
+            </Typography>
+            <Typography level="body-sm" sx={{ color: "neutral.500" }}>
+              Using service principal authentication. Configure credentials below.
+            </Typography>
           </Box>
 
           <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
-            You can use either Azure CLI authentication (simpler) or service
-            principal authentication (more secure for production).
-            <br />
-            <strong>For CLI authentication:</strong> Just run{" "}
-            <code>az login</code> in your terminal
-            <br />
-            <strong>For service principal:</strong> Create one using:
+            <strong>For service principal authentication:</strong> Create a service principal using:
             <br />
             <code>
               az ad sp create-for-rbac --name "lattice-sky" --role contributor
             </code>
+            <br />
+            This will provide you with the Client ID, Client Secret, and Tenant ID needed below.
           </Typography>
           <Stack spacing={2}>
             <Box sx={{ display: "flex", gap: 2 }}>
@@ -395,73 +352,69 @@ const AzureAdmin: React.FC = () => {
               </FormControl>
             </Box>
 
-            {/* Service Principal Fields - Only show when using service principal auth */}
-            {config.auth_method === "service_principal" && (
-              <>
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <FormControl sx={{ flex: 1 }}>
-                    <FormLabel>Tenant ID</FormLabel>
-                    <Input
-                      type={showCredentials ? "text" : "password"}
-                      value={
-                        showCredentials && actualCredentials
-                          ? actualCredentials.tenant_id
-                          : config.tenant_id
-                      }
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          tenant_id: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter your Azure tenant ID"
-                    />
-                  </FormControl>
-                  <FormControl sx={{ flex: 1 }}>
-                    <FormLabel>Client ID (App ID)</FormLabel>
-                    <Input
-                      type={showCredentials ? "text" : "password"}
-                      value={
-                        showCredentials && actualCredentials
-                          ? actualCredentials.client_id
-                          : config.client_id
-                      }
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          client_id: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter your Azure client ID"
-                    />
-                  </FormControl>
-                </Box>
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <FormControl sx={{ flex: 1 }}>
-                    <FormLabel>Client Secret</FormLabel>
-                    <Input
-                      type={showCredentials ? "text" : "password"}
-                      value={
-                        showCredentials && actualCredentials
-                          ? actualCredentials.client_secret
-                          : config.client_secret
-                      }
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          client_secret: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter your Azure client secret"
-                    />
-                  </FormControl>
-                  <FormControl sx={{ flex: 1 }}>
-                    <FormLabel>&nbsp;</FormLabel>
-                    <Box sx={{ height: "40px" }} />
-                  </FormControl>
-                </Box>
-              </>
-            )}
+            {/* Service Principal Fields - Always show since we only support service principal auth */}
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <FormControl sx={{ flex: 1 }}>
+                <FormLabel>Tenant ID</FormLabel>
+                <Input
+                  type={showCredentials ? "text" : "password"}
+                  value={
+                    showCredentials && actualCredentials
+                      ? actualCredentials.tenant_id
+                      : config.tenant_id
+                  }
+                  onChange={(e) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      tenant_id: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter your Azure tenant ID"
+                />
+              </FormControl>
+              <FormControl sx={{ flex: 1 }}>
+                <FormLabel>Client ID (App ID)</FormLabel>
+                <Input
+                  type={showCredentials ? "text" : "password"}
+                  value={
+                    showCredentials && actualCredentials
+                      ? actualCredentials.client_id
+                      : config.client_id
+                  }
+                  onChange={(e) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      client_id: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter your Azure client ID"
+                />
+              </FormControl>
+            </Box>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <FormControl sx={{ flex: 1 }}>
+                <FormLabel>Client Secret</FormLabel>
+                <Input
+                  type={showCredentials ? "text" : "password"}
+                  value={
+                    showCredentials && actualCredentials
+                      ? actualCredentials.client_secret
+                      : config.client_secret
+                  }
+                  onChange={(e) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      client_secret: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter your Azure client secret"
+                />
+              </FormControl>
+              <FormControl sx={{ flex: 1 }}>
+                <FormLabel>&nbsp;</FormLabel>
+                <Box sx={{ height: "40px" }} />
+              </FormControl>
+            </Box>
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button
                 startDecorator={<Save size={16} />}
@@ -469,10 +422,9 @@ const AzureAdmin: React.FC = () => {
                 disabled={
                   saving ||
                   !config.subscription_id ||
-                  (config.auth_method === "service_principal" &&
-                    (!config.tenant_id ||
-                      !config.client_id ||
-                      !config.client_secret))
+                  !config.tenant_id ||
+                  !config.client_id ||
+                  !config.client_secret
                 }
                 loading={saving}
               >
@@ -484,28 +436,25 @@ const AzureAdmin: React.FC = () => {
                 disabled={
                   loading ||
                   !config.subscription_id ||
-                  (config.auth_method === "service_principal" &&
-                    (!config.tenant_id ||
-                      !config.client_id ||
-                      !config.client_secret))
+                  !config.tenant_id ||
+                  !config.client_id ||
+                  !config.client_secret
                 }
                 loading={loading}
               >
                 Test Connection
               </Button>
-              {config.auth_method === "service_principal" && (
-                <Button
-                  variant="outlined"
-                  onClick={async () => {
-                    if (!showCredentials) {
-                      await fetchActualCredentials();
-                    }
-                    setShowCredentials(!showCredentials);
-                  }}
-                >
-                  {showCredentials ? "Hide" : "Show"} Credentials
-                </Button>
-              )}
+              <Button
+                variant="outlined"
+                onClick={async () => {
+                  if (!showCredentials) {
+                    await fetchActualCredentials();
+                  }
+                  setShowCredentials(!showCredentials);
+                }}
+              >
+                {showCredentials ? "Hide" : "Show"} Credentials
+              </Button>
             </Box>
           </Stack>
         </Card>
@@ -688,11 +637,7 @@ const AzureAdmin: React.FC = () => {
                 color={config.is_configured ? "success" : "danger"}
                 size="sm"
               >
-                {config.is_configured
-                  ? config.auth_method === "cli"
-                    ? "CLI"
-                    : "Service Principal"
-                  : "Not Configured"}
+                {config.is_configured ? "Service Principal" : "Not Configured"}
               </Chip>
             </Box>
             <Box

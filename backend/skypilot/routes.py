@@ -94,7 +94,7 @@ class AzureTestRequest(BaseModel):
     tenant_id: str = ""
     client_id: str = ""
     client_secret: str = ""
-    auth_mode: str = "cli"  # "cli" or "service_principal"
+    auth_mode: str = "service_principal"  # Only service_principal supported
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_current_user)])
