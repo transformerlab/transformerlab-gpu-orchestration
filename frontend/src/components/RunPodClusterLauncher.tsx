@@ -96,11 +96,12 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       if (response.ok) {
         const data = await response.json();
         const gpuTypes = data.gpu_types.map((gpu: string) => {
-          const [name, count] = gpu.split(":");
+          const [name, count, price] = gpu.split(":");
           return {
             name,
             count: count || "1",
             display_name: `${name} (${count || "1"}x)`,
+            price: price || "0",
             full_string: gpu, // Keep the original string for unique identification
           };
         });

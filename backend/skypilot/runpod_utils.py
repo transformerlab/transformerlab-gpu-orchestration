@@ -278,10 +278,11 @@ def get_runpod_gpu_types():
                     for row in reader:
                         accelerator_name = row.get("AcceleratorName", "").strip()
                         accelerator_count = row.get("AcceleratorCount", "1").strip()
+                        price = row.get("Price", "0").strip()
 
                         if accelerator_name and accelerator_name != "AcceleratorName":
                             # Format: GPU_NAME:COUNT
-                            gpu_type = f"{accelerator_name}:{accelerator_count}"
+                            gpu_type = f"{accelerator_name}:{accelerator_count}:{price}"
                             gpu_types.add(gpu_type)
 
             except Exception as csv_error:

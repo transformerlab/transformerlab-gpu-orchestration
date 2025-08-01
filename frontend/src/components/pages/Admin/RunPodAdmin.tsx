@@ -33,6 +33,7 @@ interface RunPodConfig {
 interface GpuType {
   name: string;
   count: string;
+  price: string;
   display_name: string;
 }
 
@@ -91,11 +92,14 @@ const RunPodAdmin: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         const gpuTypes = data.gpu_types.map((gpu: string) => {
-          const [name, count] = gpu.split(":");
+          const [name, count, price] = gpu.split(":");
           return {
             name,
             count: count || "1",
-            display_name: `${name} (${count || "1"}x)`,
+            price: price || "0",
+            display_name: `${name} (${count || "1"}x) - $${parseFloat(
+              price || "0"
+            ).toFixed(2)}/hr`,
           };
         });
         setAvailableGpuTypes(gpuTypes);
@@ -455,15 +459,29 @@ const RunPodAdmin: React.FC = () => {
                         <Stack spacing={1}>
                           <Typography
                             level="title-sm"
-                            sx={{ fontWeight: "bold" }}
+                            sx={{
+                              fontWeight: "bold",
+                              color: isSelected ? "white" : "inherit",
+                            }}
                           >
                             {gpu.name}
                           </Typography>
                           <Typography
                             level="body-sm"
-                            sx={{ color: "text.secondary" }}
+                            sx={{
+                              color: isSelected ? "white" : "text.secondary",
+                            }}
                           >
                             {gpu.count}x GPU
+                          </Typography>
+                          <Typography
+                            level="body-sm"
+                            sx={{
+                              color: isSelected ? "warning.300" : "success.500",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            ${parseFloat(gpu.price).toFixed(2)}/hr
                           </Typography>
                           <Chip
                             size="sm"
