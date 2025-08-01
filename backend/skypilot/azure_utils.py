@@ -272,55 +272,20 @@ def setup_azure_config():
 def get_azure_regions():
     """Get available Azure regions from SkyPilot's Azure catalog"""
     try:
-        import csv
+        from sky.catalog.common import read_catalog
 
-        # Find the SkyPilot catalog directory
-        sky_home = Path.home() / ".sky"
-        catalogs_dir = sky_home / "catalogs"
-
-        if not catalogs_dir.exists():
-            print("❌ SkyPilot catalogs directory not found")
-            return []
-
-        # Find the version directory (v7, v8, etc.)
-        version_dirs = [
-            d for d in catalogs_dir.iterdir() if d.is_dir() and d.name.startswith("v")
-        ]
-        if not version_dirs:
-            print("❌ No version directory found in SkyPilot catalogs")
-            return []
-
-        # Use the first (and should be only) version directory
-        version_dir = version_dirs[0]
-        azure_catalog_dir = version_dir / "azure"
-
-        if not azure_catalog_dir.exists():
-            print(f"❌ Azure catalog directory not found at {azure_catalog_dir}")
-            return []
-
-        # Find CSV files in the azure catalog directory
-        csv_files = list(azure_catalog_dir.glob("*.csv"))
-        if not csv_files:
-            print(f"❌ No CSV files found in {azure_catalog_dir}")
-            return []
+        # Read the Azure catalog using SkyPilot's read_catalog function
+        df = read_catalog("azure/vms.csv")
 
         regions = set()  # Use set to avoid duplicates
 
-        # Read all CSV files
-        for csv_file in csv_files:
-            if "vms.csv" in csv_file.name:
-                try:
-                    with open(csv_file, "r", encoding="utf-8") as f:
-                        reader = csv.DictReader(f)
-                        for row in reader:
-                            region = row.get("Region", "").strip()
+        # Extract regions from the catalog
+        for _, row in df.iterrows():
+            region = str(row.get("Region", "")).strip()
 
-                            if region and region != "Region":
-                                regions.add(region)
-
-                except Exception as csv_error:
-                    print(f"⚠️ Error reading {csv_file}: {csv_error}")
-                    continue
+            # Skip rows with NaN or empty values
+            if region and region != "Region" and region.lower() != "nan":
+                regions.add(region)
 
         regions_list = sorted(list(regions))
 
@@ -339,55 +304,24 @@ def get_azure_regions():
 def get_azure_instance_types():
     """Get available Azure instance types from SkyPilot's Azure catalog"""
     try:
-        import csv
+        from sky.catalog.common import read_catalog
 
-        # Find the SkyPilot catalog directory
-        sky_home = Path.home() / ".sky"
-        catalogs_dir = sky_home / "catalogs"
-
-        if not catalogs_dir.exists():
-            print("❌ SkyPilot catalogs directory not found")
-            return []
-
-        # Find the version directory (v7, v8, etc.)
-        version_dirs = [
-            d for d in catalogs_dir.iterdir() if d.is_dir() and d.name.startswith("v")
-        ]
-        if not version_dirs:
-            print("❌ No version directory found in SkyPilot catalogs")
-            return []
-
-        # Use the first (and should be only) version directory
-        version_dir = version_dirs[0]
-        azure_catalog_dir = version_dir / "azure"
-
-        if not azure_catalog_dir.exists():
-            print(f"❌ Azure catalog directory not found at {azure_catalog_dir}")
-            return []
-
-        # Find CSV files in the azure catalog directory
-        csv_files = list(azure_catalog_dir.glob("*.csv"))
-        if not csv_files:
-            print(f"❌ No CSV files found in {azure_catalog_dir}")
-            return []
+        # Read the Azure catalog using SkyPilot's read_catalog function
+        df = read_catalog("azure/vms.csv")
 
         instance_types = set()  # Use set to avoid duplicates
 
-        # Read all CSV files
-        for csv_file in csv_files:
-            if "vms.csv" in csv_file.name:
-                try:
-                    with open(csv_file, "r", encoding="utf-8") as f:
-                        reader = csv.DictReader(f)
-                        for row in reader:
-                            instance_type = row.get("InstanceType", "").strip()
+        # Extract instance types from the catalog
+        for _, row in df.iterrows():
+            instance_type = str(row.get("InstanceType", "")).strip()
 
-                            if instance_type and instance_type != "InstanceType":
-                                instance_types.add(instance_type)
-
-                except Exception as csv_error:
-                    print(f"⚠️ Error reading {csv_file}: {csv_error}")
-                    continue
+            # Skip rows with NaN or empty values
+            if (
+                instance_type
+                and instance_type != "InstanceType"
+                and instance_type.lower() != "nan"
+            ):
+                instance_types.add(instance_type)
 
         instance_types_list = sorted(list(instance_types))
 
