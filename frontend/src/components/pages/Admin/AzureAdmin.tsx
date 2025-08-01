@@ -552,11 +552,6 @@ const AzureAdmin: React.FC = () => {
                 {showCredentials ? "Hide" : "Show"} Credentials
               </Button>
             </Box>
-            <Typography level="body-xs" sx={{ color: "text.secondary", mt: 1 }}>
-              Note: When you save the configuration, the system will
-              automatically create the required config.toml file and run a sky
-              check to validate the Azure setup.
-            </Typography>
           </Stack>
         </Card>
 
