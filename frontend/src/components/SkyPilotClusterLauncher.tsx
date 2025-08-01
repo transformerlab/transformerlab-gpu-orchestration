@@ -89,6 +89,12 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     "idle" | "loading" | "success" | "error"
   >("idle");
 
+  // Azure specific state
+  const [azureInstanceTypes, setAzureInstanceTypes] = useState<string[]>([]);
+  const [azureSetupStatus, setAzureSetupStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+
   const resetForm = () => {
     setClusterName("");
     setLaunchMode("custom");
@@ -173,12 +179,15 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
   const setupRunPod = async () => {
     try {
       setRunpodSetupStatus("loading");
-      
+
       // Check if RunPod is configured
-      const configResponse = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
-        credentials: "include",
-      });
-      
+      const configResponse = await apiFetch(
+        buildApiUrl("skypilot/runpod/config"),
+        {
+          credentials: "include",
+        }
+      );
+
       if (configResponse.ok) {
         const config = await configResponse.json();
         if (config.is_configured) {
@@ -203,7 +212,9 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
           }
         } else {
           setRunpodSetupStatus("error");
-          setError("RunPod is not configured. Please configure it in the Admin section first.");
+          setError(
+            "RunPod is not configured. Please configure it in the Admin section first."
+          );
         }
       } else {
         setRunpodSetupStatus("error");
@@ -213,6 +224,41 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
       console.error("Error setting up RunPod:", err);
       setRunpodSetupStatus("error");
       setError("Error checking RunPod configuration");
+    }
+  };
+
+  const setupAzure = async () => {
+    try {
+      setAzureSetupStatus("loading");
+
+      // Check if Azure is configured
+      const configResponse = await apiFetch(
+        buildApiUrl("skypilot/azure/config"),
+        {
+          credentials: "include",
+        }
+      );
+
+      if (configResponse.ok) {
+        const config = await configResponse.json();
+        if (config.is_configured) {
+          setAzureSetupStatus("success");
+          // Use configured instance types
+          setAzureInstanceTypes(config.allowed_instance_types);
+        } else {
+          setAzureSetupStatus("error");
+          setError(
+            "Azure is not configured. Please configure it in the Admin section first."
+          );
+        }
+      } else {
+        setAzureSetupStatus("error");
+        setError("Failed to check Azure configuration");
+      }
+    } catch (err) {
+      console.error("Error setting up Azure:", err);
+      setAzureSetupStatus("error");
+      setError("Error checking Azure configuration");
     }
   };
 
@@ -439,7 +485,14 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                     <FormLabel>Cloud Provider</FormLabel>
                     <Select
                       value={cloud}
-                      onChange={(_, value) => setCloud(value || "")}
+                      onChange={(_, value) => {
+                        setCloud(value || "");
+                        if (value === "runpod") {
+                          setupRunPod();
+                        } else if (value === "azure") {
+                          setupAzure();
+                        }
+                      }}
                       placeholder="Select cloud"
                     >
                       <Option value="ssh">Direct Connect</Option>
@@ -467,6 +520,27 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                           <Typography level="body-sm" color="danger">
                             ❌ RunPod setup failed. Check RUNPOD_API_KEY
                             environment variable.
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                    {cloud === "azure" && (
+                      <Box sx={{ mt: 1 }}>
+                        {azureSetupStatus === "loading" && (
+                          <Typography level="body-sm" color="primary">
+                            ⏳ Setting up Azure...
+                          </Typography>
+                        )}
+                        {azureSetupStatus === "success" && (
+                          <Typography level="body-sm" color="success">
+                            ✅ Azure ready ({azureInstanceTypes.length} instance
+                            types available)
+                          </Typography>
+                        )}
+                        {azureSetupStatus === "error" && (
+                          <Typography level="body-sm" color="danger">
+                            ❌ Azure setup failed. Check Azure configuration in
+                            Admin section.
                           </Typography>
                         )}
                       </Box>
@@ -528,6 +602,18 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                       {runpodGpuTypes.map((gpuType) => (
                         <Option key={gpuType} value={gpuType}>
                           {gpuType}
+                        </Option>
+                      ))}
+                    </Select>
+                  ) : cloud === "azure" && azureInstanceTypes.length > 0 ? (
+                    <Select
+                      value={accelerators}
+                      onChange={(_, value) => setAccelerators(value || "")}
+                      placeholder="Select instance type"
+                    >
+                      {azureInstanceTypes.map((instanceType) => (
+                        <Option key={instanceType} value={instanceType}>
+                          {instanceType}
                         </Option>
                       ))}
                     </Select>

@@ -13,7 +13,6 @@ import GettingStarted from "../pages/Admin/GettingStarted";
 import Nodes from "../pages/NodePools";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Admin from "../pages/Admin/Admin";
 import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
 import MyClusters from "../pages/MyClusters";
@@ -22,11 +21,13 @@ import NodeDetails from "../pages/MyNodes/NodeDetails";
 import Teams from "../pages/Admin/Teams";
 import SSHClusterAdmin from "../pages/Admin/SSHClusterAdmin";
 import RunPodAdmin from "../pages/Admin/RunPodAdmin";
+import AzureAdmin from "../pages/Admin/AzureAdmin";
 import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
 import ClusterDetails from "../pages/ClusterDetails";
+import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -68,10 +69,15 @@ const Dashboard: React.FC = () => {
           <Route path="/clusters/:clusterId" element={<ClusterDetails />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />
+          <Route
+            path="/skypilot-tester"
+            element={<SkyPilotClusterLauncher />}
+          />
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/teams" element={<Teams />} />
           <Route path="admin/clouds" element={<SSHClusterAdmin />} />
           <Route path="admin/runpod" element={<RunPodAdmin />} />
+          <Route path="admin/azure" element={<AzureAdmin />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route

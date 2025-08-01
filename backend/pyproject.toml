@@ -11,10 +11,12 @@ dependencies = [
     "python-multipart>=0.0.18",
     "pyyaml>=6.0",
     "runpod>=1.6.0",
-    "skypilot[kubernetes,runpod]==0.10.0",
+    "skypilot[kubernetes,runpod,azure]==0.10.0",
     "sqlalchemy>=2.0.42",
     "uvicorn[standard]==0.35.0",
     "workos==5.24.0",
+    "azure-cli==2.75.0",
+    "msrestazure==0.6.4.post1",
 ]
 
 [build-system]
@@ -24,11 +26,11 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = [
     "auth",
-    "admin", 
+    "admin",
     "uploads",
     "alembic",
     "reports",
     "clusters",
     "skypilot",
-    "utils"
+    "utils",
 ]

@@ -180,6 +180,8 @@ def launch_cluster_with_skypilot(
                 resources_kwargs["infra"] = "ssh"
             elif cloud.lower() == "runpod":
                 resources_kwargs["cloud"] = "runpod"
+            elif cloud.lower() == "azure":
+                resources_kwargs["cloud"] = "azure"
             else:
                 resources_kwargs["infra"] = cloud
 

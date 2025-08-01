@@ -51,6 +51,15 @@ from skypilot.runpod_utils import (
     run_sky_check_runpod,
     create_runpod_config_toml,
 )
+from skypilot.azure_utils import (
+    verify_azure_setup,
+    get_azure_instance_types,
+    setup_azure_config,
+    save_azure_config,
+    get_azure_config_for_display,
+    test_azure_connection,
+    load_azure_config,
+)
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
 from auth.utils import get_current_user
@@ -68,6 +77,24 @@ class RunPodConfigRequest(BaseModel):
 
 class RunPodTestRequest(BaseModel):
     api_key: str
+
+
+# Azure configuration models
+class AzureConfigRequest(BaseModel):
+    subscription_id: str
+    tenant_id: str
+    client_id: str
+    client_secret: str
+    allowed_instance_types: list[str]
+    max_instances: int = 0
+
+
+class AzureTestRequest(BaseModel):
+    subscription_id: str
+    tenant_id: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    auth_mode: str = "service_principal"  # Only service_principal supported
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_current_user)])
@@ -191,6 +218,15 @@ async def launch_skypilot_cluster(
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+                )
+
+        # Setup Azure if cloud is azure
+        if cloud == "azure":
+            try:
+                setup_azure_config()
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
 
         request_id = launch_cluster_with_skypilot(
@@ -930,4 +966,168 @@ async def get_runpod_instances(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get RunPod instance count: {str(e)}"
+        )
+
+
+# Azure routes
+@router.get("/azure/setup")
+async def setup_azure(request: Request, response: Response):
+    """Setup Azure configuration"""
+    try:
+        setup_azure_config()
+        return {"message": "Azure configuration setup successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to setup Azure: {str(e)}")
+
+
+@router.get("/azure/verify")
+async def verify_azure(request: Request, response: Response):
+    """Verify Azure setup"""
+    try:
+        is_valid = verify_azure_setup()
+        return {"valid": is_valid}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to verify Azure setup: {str(e)}"
+        )
+
+
+@router.get("/azure/instance-types")
+async def get_azure_instance_types_route(request: Request, response: Response):
+    """Get available instance types from Azure"""
+    try:
+        instance_types = get_azure_instance_types()
+        return {"instance_types": instance_types}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get Azure instance types: {str(e)}"
+        )
+
+
+@router.get("/azure/config")
+async def get_azure_config(request: Request, response: Response):
+    """Get current Azure configuration"""
+    try:
+        config = get_azure_config_for_display()
+        return config
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load Azure configuration: {str(e)}"
+        )
+
+
+@router.get("/azure/config/actual")
+async def get_azure_config_actual(request: Request, response: Response):
+    """Get current Azure configuration with actual credentials (for testing)"""
+    try:
+        config = load_azure_config()
+        return config
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load Azure configuration: {str(e)}"
+        )
+
+
+@router.post("/azure/config")
+async def save_azure_config_route(
+    request: Request, response: Response, config_request: AzureConfigRequest
+):
+    """Save Azure configuration"""
+    try:
+        # Save the configuration using utility function
+        config = save_azure_config(
+            config_request.subscription_id,
+            config_request.tenant_id,
+            config_request.client_id,
+            config_request.client_secret,
+            config_request.allowed_instance_types,
+            config_request.max_instances,
+        )
+
+        # Set environment variables for current session only if real credentials were provided
+        if (
+            config_request.subscription_id
+            and not config_request.subscription_id.startswith("*")
+        ):
+            os.environ["AZURE_SUBSCRIPTION_ID"] = config_request.subscription_id
+        elif config.get("subscription_id"):
+            os.environ["AZURE_SUBSCRIPTION_ID"] = config["subscription_id"]
+
+        if config_request.tenant_id and not config_request.tenant_id.startswith("*"):
+            os.environ["AZURE_TENANT_ID"] = config_request.tenant_id
+        elif config.get("tenant_id"):
+            os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
+
+        if config_request.client_id and not config_request.client_id.startswith("*"):
+            os.environ["AZURE_CLIENT_ID"] = config_request.client_id
+        elif config.get("client_id"):
+            os.environ["AZURE_CLIENT_ID"] = config["client_id"]
+
+        if config_request.client_secret and not config_request.client_secret.startswith(
+            "*"
+        ):
+            os.environ["AZURE_CLIENT_SECRET"] = config_request.client_secret
+        elif config.get("client_secret"):
+            os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
+
+        # Return the saved config (without the actual credentials)
+        return get_azure_config_for_display()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save Azure configuration: {str(e)}"
+        )
+
+
+@router.post("/azure/test")
+async def test_azure_connection_route(
+    request: Request, response: Response, test_request: AzureTestRequest
+):
+    """Test Azure API connection"""
+    try:
+        # Test the connection using utility function
+        is_valid = test_azure_connection(
+            test_request.subscription_id,
+            test_request.tenant_id or "",
+            test_request.client_id or "",
+            test_request.client_secret or "",
+            test_request.auth_mode,
+        )
+        if is_valid:
+            return {"message": "Azure connection test successful"}
+        else:
+            raise HTTPException(status_code=400, detail="Azure connection test failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to test Azure connection: {str(e)}"
+        )
+
+
+@router.get("/azure/instances")
+async def get_azure_instances(request: Request, response: Response):
+    """Get current Azure instance count and limits"""
+    try:
+        # Get current configuration
+        config = load_azure_config()
+
+        # Count current Azure clusters
+        skyPilotStatus = get_skypilot_status()
+        azure_clusters = [
+            cluster
+            for cluster in skyPilotStatus
+            if cluster.get("name", "").lower().find("azure") != -1
+        ]
+
+        current_count = len(azure_clusters)
+        max_instances = config.get("max_instances", 0)
+
+        return {
+            "current_count": current_count,
+            "max_instances": max_instances,
+            "can_launch": max_instances == 0 or current_count < max_instances,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get Azure instance count: {str(e)}"
         )
