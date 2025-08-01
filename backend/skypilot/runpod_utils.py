@@ -76,9 +76,9 @@ def get_runpod_config_for_display():
     config = load_runpod_config()
     # Create a copy for display with masked API key
     display_config = config.copy()
-    display_config["api_key"] = (
-        "*" * len(config["api_key"]) if config["api_key"] else ""
-    )
+    # display_config["api_key"] = (
+    #     "*" * len(config["api_key"]) if config["api_key"] else ""
+    # )
     return display_config
 
 
