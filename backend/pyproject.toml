@@ -30,7 +30,6 @@ build-backend = "setuptools.build_meta"
 packages = [
     "auth",
     "admin",
-    "uploads",
     "alembic",
     "reports",
     "clusters",
