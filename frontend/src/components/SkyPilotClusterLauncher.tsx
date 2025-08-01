@@ -191,9 +191,25 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
       if (configResponse.ok) {
         const config = await configResponse.json();
         if (config.is_configured) {
-          setRunpodSetupStatus("success");
-          // Use configured GPU types
-          setRunpodGpuTypes(config.allowed_gpu_types);
+          // Run the setup endpoint which will create config.toml and run sky check
+          const setupResponse = await apiFetch(buildApiUrl("skypilot/runpod/setup"), {
+            credentials: "include",
+          });
+          
+          if (setupResponse.ok) {
+            const setupData = await setupResponse.json();
+            setRunpodSetupStatus("success");
+            // Use configured GPU types
+            setRunpodGpuTypes(config.allowed_gpu_types);
+            
+            // Show sky check results if available
+            if (setupData.sky_check_valid === false) {
+              setError(`RunPod setup completed but sky check failed: ${setupData.sky_check_output}`);
+            }
+          } else {
+            setRunpodSetupStatus("error");
+            setError("Failed to setup RunPod configuration");
+          }
         } else {
           setRunpodSetupStatus("error");
           setError(

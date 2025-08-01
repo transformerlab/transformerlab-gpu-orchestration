@@ -48,6 +48,8 @@ from skypilot.runpod_utils import (
     get_runpod_config_for_display,
     test_runpod_connection,
     load_runpod_config,
+    run_sky_check_runpod,
+    create_runpod_config_toml,
 )
 from skypilot.azure_utils import (
     verify_azure_setup,
@@ -763,7 +765,13 @@ async def setup_runpod(request: Request, response: Response):
     """Setup RunPod configuration"""
     try:
         setup_runpod_config()
-        return {"message": "RunPod configuration setup successfully"}
+        # Run sky check to validate the setup
+        is_valid, output = run_sky_check_runpod()
+        return {
+            "message": "RunPod configuration setup successfully",
+            "sky_check_valid": is_valid,
+            "sky_check_output": output,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to setup RunPod: {str(e)}")
 
@@ -824,8 +832,40 @@ async def save_runpod_config_route(
             # Use the saved API key from config
             os.environ["RUNPOD_API_KEY"] = config["api_key"]
 
-        # Return the saved config (without the actual API key)
-        return get_runpod_config_for_display()
+        # Create config.toml file and run sky check if API key is provided
+        sky_check_result = None
+        if config.get("api_key"):
+            try:
+                # Create the config.toml file
+                if create_runpod_config_toml(config["api_key"]):
+                    # Run sky check to validate the setup
+                    is_valid, output = run_sky_check_runpod()
+                    sky_check_result = {
+                        "valid": is_valid,
+                        "output": output,
+                        "message": "Sky check runpod completed successfully"
+                        if is_valid
+                        else "Sky check runpod failed",
+                    }
+                else:
+                    sky_check_result = {
+                        "valid": False,
+                        "output": "Failed to create config.toml file",
+                        "message": "Failed to create RunPod config.toml file",
+                    }
+            except Exception as e:
+                sky_check_result = {
+                    "valid": False,
+                    "output": str(e),
+                    "message": f"Error during RunPod setup: {str(e)}",
+                }
+
+        # Return the saved config with sky check results
+        result = get_runpod_config_for_display()
+        if sky_check_result:
+            result["sky_check_result"] = sky_check_result
+
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to save RunPod configuration: {str(e)}"
@@ -849,6 +889,24 @@ async def test_runpod_connection_route(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to test RunPod connection: {str(e)}"
+        )
+
+
+@router.get("/runpod/sky-check")
+async def run_sky_check_runpod_route(request: Request, response: Response):
+    """Run 'sky check runpod' to validate the RunPod setup"""
+    try:
+        is_valid, output = run_sky_check_runpod()
+        return {
+            "valid": is_valid,
+            "output": output,
+            "message": "Sky check runpod completed successfully"
+            if is_valid
+            else "Sky check runpod failed",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to run sky check runpod: {str(e)}"
         )
 
 

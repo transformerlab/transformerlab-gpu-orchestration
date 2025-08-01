@@ -30,7 +30,7 @@
     {
       "label": "Install Backend Dependencies",
       "type": "shell",
-      "command": "cd backend && pip install -r requirements.txt",
+      "command": "cd backend && uv pip install .",
       "group": "build",
       "presentation": {
         "echo": true,
