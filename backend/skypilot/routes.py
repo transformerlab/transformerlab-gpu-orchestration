@@ -54,6 +54,7 @@ from skypilot.runpod_utils import (
 from skypilot.azure_utils import (
     verify_azure_setup,
     get_azure_instance_types,
+    get_azure_regions,
     setup_azure_config,
     save_azure_config,
     get_azure_config_for_display,
@@ -86,6 +87,7 @@ class AzureConfigRequest(BaseModel):
     client_id: str
     client_secret: str
     allowed_instance_types: list[str]
+    allowed_regions: list[str]
     max_instances: int = 0
 
 
@@ -994,13 +996,25 @@ async def verify_azure(request: Request, response: Response):
 
 @router.get("/azure/instance-types")
 async def get_azure_instance_types_route(request: Request, response: Response):
-    """Get available instance types from Azure"""
+    """Get available Azure instance types"""
     try:
         instance_types = get_azure_instance_types()
         return {"instance_types": instance_types}
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get Azure instance types: {str(e)}"
+        )
+
+
+@router.get("/azure/regions")
+async def get_azure_regions_route(request: Request, response: Response):
+    """Get available Azure regions"""
+    try:
+        regions = get_azure_regions()
+        return {"regions": regions}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get Azure regions: {str(e)}"
         )
 
 
@@ -1041,6 +1055,7 @@ async def save_azure_config_route(
             config_request.client_id,
             config_request.client_secret,
             config_request.allowed_instance_types,
+            config_request.allowed_regions,
             config_request.max_instances,
         )
 
