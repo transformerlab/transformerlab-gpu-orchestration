@@ -228,14 +228,6 @@ const Held: React.FC<HeldProps> = ({
     navigate(`/dashboard/nodes/node/${node.id}`);
   };
 
-  const handleClusterClick = (cluster: Cluster, event: React.MouseEvent) => {
-    // Don't navigate if clicking on the dropdown menu
-    if ((event.target as HTMLElement).closest('[role="button"]')) {
-      return;
-    }
-    navigate(`/dashboard/clusters/${cluster.cluster_name}`);
-  };
-
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();
     if (statusLower.includes("up") || statusLower.includes("running")) {
@@ -758,9 +750,7 @@ const Held: React.FC<HeldProps> = ({
           {myClusters.map((cluster) => (
             <tr
               key={cluster.cluster_name}
-              onClick={(event) => handleClusterClick(cluster, event)}
               style={{
-                cursor: "pointer",
                 transition: "background-color 0.2s ease",
               }}
               onMouseEnter={(e) => {
@@ -982,9 +972,7 @@ const Held: React.FC<HeldProps> = ({
               ].map((cluster) => (
                 <tr
                   key={cluster.cluster_name}
-                  onClick={(event) => handleClusterClick(cluster, event)}
                   style={{
-                    cursor: "pointer",
                     transition: "background-color 0.2s ease",
                   }}
                   onMouseEnter={(e) => {
