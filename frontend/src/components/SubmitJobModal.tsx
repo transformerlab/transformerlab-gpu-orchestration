@@ -16,6 +16,7 @@ import {
   Alert,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useNotification } from "./NotificationSystem";
 
 interface SubmitJobModalProps {
   open: boolean;
@@ -44,10 +45,9 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [zone, setZone] = useState("");
   const [jobName, setJobName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [jobType, setJobType] = useState<string>("custom");
   const [jupyterPort, setJupyterPort] = useState("8888");
+  const { addNotification } = useNotification();
 
   const resetForm = () => {
     setCommand("");
@@ -59,8 +59,6 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setRegion("");
     setZone("");
     setJobName("");
-    setError(null);
-    setSuccess(null);
     setJobType("custom");
     setJupyterPort("8888");
   };
@@ -68,8 +66,6 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     try {
       const formData = new FormData();
 
@@ -112,19 +108,27 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`;
       );
       if (response.ok) {
         const data = await response.json();
-        setSuccess(data.message || "Job submitted successfully");
+        addNotification({
+          type: "success",
+          message: data.message || "Job submitted successfully",
+        });
         resetForm();
         if (onJobSubmitted) onJobSubmitted();
         setTimeout(() => {
-          setSuccess(null);
           onClose();
         }, 1200);
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to submit job");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to submit job",
+        });
       }
     } catch (err) {
-      setError("Error submitting job");
+      addNotification({
+        type: "danger",
+        message: "Error submitting job",
+      });
     } finally {
       setLoading(false);
     }
@@ -144,16 +148,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`;
                 <Alert color="warning" sx={{ mb: 2 }}>
                   Cluster is launching. Please wait until it is ready to submit
                   jobs.
-                </Alert>
-              )}
-              {error && (
-                <Alert color="danger" sx={{ mb: 2 }}>
-                  {error}
-                </Alert>
-              )}
-              {success && (
-                <Alert color="success" sx={{ mb: 2 }}>
-                  {success}
                 </Alert>
               )}
               <FormControl required sx={{ mb: 2 }}>

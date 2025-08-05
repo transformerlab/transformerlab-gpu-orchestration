@@ -19,6 +19,7 @@ import {
 } from "@mui/joy";
 import { Play, Rocket, Terminal, Code, BookOpen } from "lucide-react";
 import { buildApiUrl, runpodApi, apiFetch } from "../utils/api";
+import { useNotification } from "./NotificationSystem";
 
 interface LaunchClusterRequest {
   cluster_name: string;
@@ -58,9 +59,8 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 }) => {
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [sshClusters, setSshClusters] = useState<SSHCluster[]>([]);
+  const { addNotification } = useNotification();
 
   // Form states
   const [clusterName, setClusterName] = useState("");
@@ -192,38 +192,55 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         const config = await configResponse.json();
         if (config.is_configured) {
           // Run the setup endpoint which will create config.toml and run sky check
-          const setupResponse = await apiFetch(buildApiUrl("skypilot/runpod/setup"), {
-            credentials: "include",
-          });
-          
+          const setupResponse = await apiFetch(
+            buildApiUrl("skypilot/runpod/setup"),
+            {
+              credentials: "include",
+            }
+          );
+
           if (setupResponse.ok) {
             const setupData = await setupResponse.json();
             setRunpodSetupStatus("success");
             // Use configured GPU types
             setRunpodGpuTypes(config.allowed_gpu_types);
-            
+
             // Show sky check results if available
             if (setupData.sky_check_valid === false) {
-              setError(`RunPod setup completed but sky check failed: ${setupData.sky_check_output}`);
+              addNotification({
+                type: "danger",
+                message: `RunPod setup completed but sky check failed: ${setupData.sky_check_output}`,
+              });
             }
           } else {
             setRunpodSetupStatus("error");
-            setError("Failed to setup RunPod configuration");
+            addNotification({
+              type: "danger",
+              message: "Failed to setup RunPod configuration",
+            });
           }
         } else {
           setRunpodSetupStatus("error");
-          setError(
-            "RunPod is not configured. Please configure it in the Admin section first."
-          );
+          addNotification({
+            type: "danger",
+            message:
+              "RunPod is not configured. Please configure it in the Admin section first.",
+          });
         }
       } else {
         setRunpodSetupStatus("error");
-        setError("Failed to check RunPod configuration");
+        addNotification({
+          type: "danger",
+          message: "Failed to check RunPod configuration",
+        });
       }
     } catch (err) {
       console.error("Error setting up RunPod:", err);
       setRunpodSetupStatus("error");
-      setError("Error checking RunPod configuration");
+      addNotification({
+        type: "danger",
+        message: "Error checking RunPod configuration",
+      });
     }
   };
 
@@ -242,30 +259,62 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
       if (configResponse.ok) {
         const config = await configResponse.json();
         if (config.is_configured) {
-          setAzureSetupStatus("success");
-          // Use configured instance types
-          setAzureInstanceTypes(config.allowed_instance_types);
+          // Run the setup endpoint which will create config.toml and run sky check
+          const setupResponse = await apiFetch(
+            buildApiUrl("skypilot/azure/setup"),
+            {
+              credentials: "include",
+            }
+          );
+
+          if (setupResponse.ok) {
+            const setupData = await setupResponse.json();
+            setAzureSetupStatus("success");
+            // Use configured instance types
+            setAzureInstanceTypes(config.allowed_instance_types);
+
+            // Show sky check results if available
+            if (setupData.sky_check_valid === false) {
+              addNotification({
+                type: "danger",
+                message: `Azure setup completed but sky check failed: ${setupData.sky_check_output}`,
+              });
+            }
+          } else {
+            setAzureSetupStatus("error");
+            addNotification({
+              type: "danger",
+              message: "Failed to setup Azure configuration",
+            });
+          }
         } else {
           setAzureSetupStatus("error");
-          setError(
-            "Azure is not configured. Please configure it in the Admin section first."
-          );
+          addNotification({
+            type: "danger",
+            message:
+              "Azure is not configured. Please configure it in the Admin section first.",
+          });
         }
       } else {
         setAzureSetupStatus("error");
-        setError("Failed to check Azure configuration");
+        addNotification({
+          type: "danger",
+          message: "Failed to check Azure configuration",
+        });
       }
     } catch (err) {
       console.error("Error setting up Azure:", err);
       setAzureSetupStatus("error");
-      setError("Error checking Azure configuration");
+      addNotification({
+        type: "danger",
+        message: "Error checking Azure configuration",
+      });
     }
   };
 
   const launchCluster = async () => {
     try {
       setLoading(true);
-      setError(null);
 
       // Always use multipart/form-data
       const formData = new FormData();
@@ -302,7 +351,10 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
       if (response.ok) {
         const data: LaunchClusterResponse = await response.json();
-        setSuccess(`${data.message} (Request ID: ${data.request_id})`);
+        addNotification({
+          type: "success",
+          message: `${data.message} (Request ID: ${data.request_id})`,
+        });
         setShowLaunchModal(false);
         resetForm();
         if (onClusterLaunched) {
@@ -310,10 +362,16 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to launch cluster");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to launch cluster",
+        });
       }
     } catch (err) {
-      setError("Error launching cluster");
+      addNotification({
+        type: "danger",
+        message: "Error launching cluster",
+      });
     } finally {
       setLoading(false);
     }
@@ -373,38 +431,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
   return (
     <Box>
-      {error && (
-        <Card color="danger" variant="soft" sx={{ mb: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography color="danger">{error}</Typography>
-            <Button
-              variant="plain"
-              size="sm"
-              color="danger"
-              onClick={() => setError(null)}
-            >
-              ×
-            </Button>
-          </Box>
-        </Card>
-      )}
-
-      {success && (
-        <Card color="success" variant="soft" sx={{ mb: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography color="success">{success}</Typography>
-            <Button
-              variant="plain"
-              size="sm"
-              color="success"
-              onClick={() => setSuccess(null)}
-            >
-              ×
-            </Button>
-          </Box>
-        </Card>
-      )}
-
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
         <Button
           startDecorator={<Rocket size={16} />}
