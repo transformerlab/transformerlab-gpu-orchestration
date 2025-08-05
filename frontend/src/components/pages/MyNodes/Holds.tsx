@@ -25,6 +25,7 @@ import {
   BookOpenIcon,
   CodeIcon,
   Zap,
+  Info,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import InteractiveTaskModal from "../../InteractiveTaskModal";
@@ -338,6 +339,22 @@ const Held: React.FC<HeldProps> = ({
                                 <ChevronDownIcon size="16px" />
                               </MenuButton>
                               <Menu size="sm" variant="soft">
+                                <MenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(
+                                      `/dashboard/clusters/${
+                                        node.cluster || "default"
+                                      }`
+                                    );
+                                  }}
+                                >
+                                  <ListItemDecorator>
+                                    <Info />
+                                  </ListItemDecorator>
+                                  Info
+                                </MenuItem>
+                                <Divider />
                                 <MenuItem onClick={(e) => e.stopPropagation()}>
                                   <ListItemDecorator>
                                     <StopCircleIcon />
@@ -767,6 +784,19 @@ const Held: React.FC<HeldProps> = ({
                     <ChevronDownIcon />
                   </MenuButton>
                   <Menu size="sm" variant="soft">
+                    <MenuItem
+                      onClick={() =>
+                        navigate(
+                          `/dashboard/my-cluster-info/${cluster.cluster_name}`
+                        )
+                      }
+                    >
+                      <ListItemDecorator>
+                        <Info />
+                      </ListItemDecorator>
+                      Info
+                    </MenuItem>
+                    <Divider />
                     {/* Removed Start button */}
                     {cluster.status.toLowerCase().includes("up") && (
                       <>
@@ -990,6 +1020,19 @@ const Held: React.FC<HeldProps> = ({
                         <ChevronDownIcon />
                       </MenuButton>
                       <Menu size="sm" variant="soft">
+                        <MenuItem
+                          onClick={() =>
+                            navigate(
+                              `/dashboard/my-cluster-info/${cluster.cluster_name}`
+                            )
+                          }
+                        >
+                          <ListItemDecorator>
+                            <Info />
+                          </ListItemDecorator>
+                          Info
+                        </MenuItem>
+                        <Divider />
                         {cluster.status.toLowerCase().includes("up") && (
                           <>
                             <MenuItem disabled>
