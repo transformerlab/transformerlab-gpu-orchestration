@@ -14,6 +14,7 @@ import {
 import { Plus, UserPlus } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useFakeData } from "../../../context/FakeDataContext";
+import { useAuth } from "../../../context/AuthContext";
 
 // Fake placeholder data
 const fakeTeams = [
@@ -30,30 +31,35 @@ const fakeTeams = [
 const fakeAllUsers = ["Alice Johnson", "Bob Smith", "Carol Lee", "David Kim"];
 
 const Teams: React.FC = () => {
+  const { user } = useAuth();
   const [openCreate, setOpenCreate] = React.useState(false);
   const [openAddUser, setOpenAddUser] = React.useState(false);
   const [selectedTeam, setSelectedTeam] = React.useState<string | null>(null);
   const { showFakeData } = useFakeData();
+  const isAdmin = user?.role === "admin";
 
   return (
     <PageWithTitle
       title="Teams"
       subtitle="Manage teams and add users to teams."
       button={
-        <Button
-          variant="solid"
-          color="primary"
-          startDecorator={<Plus size={16} />}
-          onClick={() => setOpenCreate(true)}
-        >
-          Create Team
-        </Button>
+        isAdmin ? (
+          <Button
+            variant="solid"
+            color="primary"
+            startDecorator={<Plus size={16} />}
+            onClick={() => setOpenCreate(true)}
+          >
+            Create Team
+          </Button>
+        ) : undefined
       }
     >
       {showFakeData ? (
         <>
           <Alert color="warning" sx={{ mb: 2 }}>
-            This page is showing sample data. Real team management functionality will be implemented soon.
+            This page is showing sample data. Real team management functionality
+            will be implemented soon.
           </Alert>
           <Table>
             <thead>
@@ -77,17 +83,19 @@ const Teams: React.FC = () => {
                     </Stack>
                   </td>
                   <td>
-                    <Button
-                      size="sm"
-                      variant="outlined"
-                      startDecorator={<UserPlus size={14} />}
-                      onClick={() => {
-                        setSelectedTeam(team.name);
-                        setOpenAddUser(true);
-                      }}
-                    >
-                      Add User
-                    </Button>
+                    {isAdmin ? (
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        startDecorator={<UserPlus size={14} />}
+                        onClick={() => {
+                          setSelectedTeam(team.name);
+                          setOpenAddUser(true);
+                        }}
+                      >
+                        Add User
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -95,8 +103,9 @@ const Teams: React.FC = () => {
           </Table>
         </>
       ) : (
-        <Alert color="info" sx={{ mb: 2 }}>
-          Team management functionality is not yet implemented. Enable fake data in Settings to see sample data.
+        <Alert color="primary" sx={{ mb: 2 }}>
+          Team management functionality is not yet implemented. Enable fake data
+          in Settings to see sample data.
         </Alert>
       )}
 
