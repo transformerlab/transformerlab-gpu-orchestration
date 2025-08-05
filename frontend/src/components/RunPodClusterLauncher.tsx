@@ -50,6 +50,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [runpodConfig, setRunpodConfig] = useState({
     api_key: "",
@@ -118,6 +119,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSetup("");
     setSelectedGpuType("");
     setSelectedGpuFullString("");
+    setSelectedTemplate("");
     setError(null);
     setSuccess(null);
   };
@@ -235,6 +237,25 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               placeholder="pip install torch transformers"
               minRows={2}
             />
+          </FormControl>
+
+          <FormControl>
+            <FormLabel>Select a Template</FormLabel>
+            <Select
+              value={selectedTemplate}
+              onChange={(_, value) => setSelectedTemplate(value || "")}
+              placeholder="Choose a template"
+            >
+              <Option value="transformer-lab">Transformer Lab</Option>
+              <Option value="jupyter">Jupyter</Option>
+              <Option value="vscode">VSCode</Option>
+            </Select>
+            <Typography
+              level="body-xs"
+              sx={{ mt: 0.5, color: "text.secondary" }}
+            >
+              Choose a template for your node (functionality coming soon)
+            </Typography>
           </FormControl>
 
           <FormControl required>

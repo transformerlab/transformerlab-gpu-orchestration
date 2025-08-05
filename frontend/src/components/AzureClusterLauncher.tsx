@@ -61,6 +61,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   });
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -188,6 +189,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setSelectedRegion("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
+    setSelectedTemplate("");
     setError(null);
     setSuccess(null);
   };
@@ -323,6 +325,25 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                     placeholder="pip install -r requirements.txt"
                     minRows={2}
                   />
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Select a Template</FormLabel>
+                  <Select
+                    value={selectedTemplate}
+                    onChange={(_, value) => setSelectedTemplate(value || "")}
+                    placeholder="Choose a template"
+                  >
+                    <Option value="transformer-lab">Transformer Lab</Option>
+                    <Option value="jupyter">Jupyter</Option>
+                    <Option value="vscode">VSCode</Option>
+                  </Select>
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Choose a template for your node (functionality coming soon)
+                  </Typography>
                 </FormControl>
               </Stack>
             </Card>
