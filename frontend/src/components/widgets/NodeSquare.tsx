@@ -60,8 +60,8 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
 
   // Different styling and behavior based on variant
   const isMockVariant = variant === "mock";
-  const boxWidth = 24;
-  const boxHeight = 24;
+  const boxWidth = 34;
+  const boxHeight = 34;
   const backgroundColor = isMockVariant
     ? getStatusBackground(node.status || "inactive", node.type || "")
     : "#3b82f6";
@@ -125,12 +125,12 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
           display: "inline-flex",
           width: boxWidth,
           height: boxHeight,
-          backgroundColor,
+          // backgroundColor,
           borderRadius: "2px",
           margin: "1px",
           transition: "all 0.2s ease",
           cursor: "pointer",
-          border: borderColor ? `2px solid ${borderColor}` : undefined,
+          // border: borderColor ? `2px solid ${borderColor}` : undefined,
           boxSizing: "border-box",
           position: "relative",
           verticalAlign: "middle",
@@ -144,19 +144,48 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
         }}
         onClick={handleClick}
       >
-        {isMockVariant && node.user === "ali" && (
-          <Avatar
-            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&dpr=2"
-            size="sm"
-            sx={{
-              height: "18px",
-              width: "18px",
-            }}
-          />
-        )}
+        <Circley
+          state={node.status === "active" ? "on" : "off"}
+          dot={node?.user === "ali" ? "on" : "off"}
+        />
       </Box>
     </Tooltip>
   );
 };
 
 export default NodeSquare;
+
+interface CircleyProps {
+  state?: "on" | "off";
+  dot?: "on" | "off";
+}
+
+const Circley: React.FC<CircleyProps> = ({ state = "on", dot = "off" }) => {
+  const fill = state === "off" ? "#edeade" : "#83937a";
+  const stroke = state === "off" ? "#fffcf4" : "#bcccb3";
+  return (
+    <svg width="32" height="32" style={{ display: "block" }}>
+      <defs>
+        <filter id="dropshadow" x="-20%" y="-20%" width="180%" height="180%">
+          <feDropShadow
+            dx="0"
+            dy="3"
+            stdDeviation="0.2"
+            floodColor="#b3b3b1"
+            floodOpacity="0.7"
+          />
+        </filter>
+      </defs>
+      <circle
+        cx="16"
+        cy="14"
+        r="12"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="3"
+        filter="url(#dropshadow)"
+      />
+      {dot === "on" && <circle cx="16" cy="14" r="4" fill="#fd7d50" />}
+    </svg>
+  );
+};
