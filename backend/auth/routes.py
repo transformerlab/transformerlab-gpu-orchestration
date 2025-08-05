@@ -130,6 +130,8 @@ async def check_auth(
                 "profile_picture_url": user["profile_picture_url"],
                 "first_name": user["first_name"],
                 "last_name": user["last_name"],
+                "role": user.get("role"),
+                "organization_id": user.get("organization_id"),
             },
         }
     return {"authenticated": False}

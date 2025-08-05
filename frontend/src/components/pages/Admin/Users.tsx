@@ -49,6 +49,7 @@ const Users: React.FC = () => {
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isAdmin = user?.role === "admin";
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [userToRemove, setUserToRemove] = useState<OrganizationMember | null>(
@@ -249,14 +250,16 @@ const Users: React.FC = () => {
         title="Users"
         subtitle={`All users at ${user?.organization_name || "Loading..."}`}
         button={
-          <Button
-            variant="solid"
-            color="primary"
-            startDecorator={<Mail size={16} />}
-            onClick={openInviteDialog}
-          >
-            Invite User
-          </Button>
+          isAdmin ? (
+            <Button
+              variant="solid"
+              color="primary"
+              startDecorator={<Mail size={16} />}
+              onClick={openInviteDialog}
+            >
+              Invite User
+            </Button>
+          ) : undefined
         }
       >
         <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -274,14 +277,16 @@ const Users: React.FC = () => {
           user?.organization_name || "Unknown Organization"
         }`}
         button={
-          <Button
-            variant="solid"
-            color="primary"
-            startDecorator={<Mail size={16} />}
-            onClick={openInviteDialog}
-          >
-            Invite User
-          </Button>
+          isAdmin ? (
+            <Button
+              variant="solid"
+              color="primary"
+              startDecorator={<Mail size={16} />}
+              onClick={openInviteDialog}
+            >
+              Invite User
+            </Button>
+          ) : undefined
         }
       >
         <Alert color="danger" sx={{ mb: 2 }}>
@@ -298,14 +303,16 @@ const Users: React.FC = () => {
         user?.organization_name || "Unknown Organization"
       }`}
       button={
-        <Button
-          variant="solid"
-          color="primary"
-          startDecorator={<Mail size={16} />}
-          onClick={openInviteDialog}
-        >
-          Invite User
-        </Button>
+        isAdmin ? (
+          <Button
+            variant="solid"
+            color="primary"
+            startDecorator={<Mail size={16} />}
+            onClick={openInviteDialog}
+          >
+            Invite User
+          </Button>
+        ) : undefined
       }
     >
       <Box
@@ -373,7 +380,8 @@ const Users: React.FC = () => {
                     {(typeof member.role === "string" &&
                       member.role === "admin") ||
                     (typeof member.role === "object" &&
-                      member.role?.slug === "admin") ? (
+                      member.role?.slug === "admin") ||
+                    !isAdmin ? (
                       <Typography
                         level="body-sm"
                         sx={{ color: "text.secondary" }}
