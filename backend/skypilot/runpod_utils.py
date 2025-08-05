@@ -248,6 +248,7 @@ def get_runpod_gpu_types():
         for _, row in df.iterrows():
             accelerator_name = str(row.get("AcceleratorName", "")).strip()
             accelerator_count = str(row.get("AcceleratorCount", "1"))
+            price = row.get("Price", "0")
 
             # Skip rows with NaN or empty values
             if (
@@ -257,7 +258,7 @@ def get_runpod_gpu_types():
                 and accelerator_count.lower() != "nan"
             ):
                 # Format: GPU_NAME:COUNT
-                gpu_type = f"{accelerator_name}:{accelerator_count}"
+                gpu_type = f"{accelerator_name}:{accelerator_count}:{price}"
                 gpu_types.add(gpu_type)
 
         gpu_types_list = sorted(list(gpu_types))
