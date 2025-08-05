@@ -26,7 +26,9 @@ import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
+import MyClusterDetails from "../pages/MyClusterDetails";
 import ClusterDetails from "../pages/ClusterDetails";
+
 import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 
 const Dashboard: React.FC = () => {
@@ -66,7 +68,11 @@ const Dashboard: React.FC = () => {
           <Route path="/node-pools" element={<Nodes />} />
           <Route path="/my-clusters" element={<MyClusters />} />
           <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
-          <Route path="/clusters/:clusterId" element={<ClusterDetails />} />
+          <Route
+            path="/my-cluster-info/:clusterName"
+            element={<MyClusterDetails />}
+          />
+          <Route path="/clusters/:clusterName" element={<ClusterDetails />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/reports" element={<Reports />} />
           <Route
