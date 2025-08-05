@@ -362,7 +362,6 @@ const ClusterCard: React.FC<{
 
       <Stack direction="row" spacing={1}>
         <Button variant="outlined">Reserve a Node</Button>
-        <Button variant="outlined">Start a Job</Button>
       </Stack>
     </Card>
   );
@@ -571,13 +570,6 @@ const CloudClusterCard: React.FC<{
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={handleReserveNode}>
             Reserve a Node
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={handleLaunchJob}
-            disabled={!isActiveCluster}
-          >
-            Launch Job
           </Button>
         </Stack>
       </Card>
@@ -840,15 +832,7 @@ const RunPodClusterCard: React.FC<{
           </Stack>
         </Box>
 
-        <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            onClick={handleLaunchJob}
-            disabled={!isActiveCluster}
-          >
-            Launch Job
-          </Button>
-        </Stack>
+        <Stack direction="row" spacing={1}></Stack>
       </Card>
 
       {/* Launch Job Modal for RunPod */}
