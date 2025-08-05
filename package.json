@@ -1,6 +1,6 @@
 {
   "name": "lattice",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Full-stack application with FastAPI backend and React TypeScript frontend featuring WorkOS authentication",
   "private": true,
   "scripts": {
