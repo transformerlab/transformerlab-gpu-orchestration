@@ -19,12 +19,16 @@ import { useAuth } from "../../../context/AuthContext";
 // Fake placeholder data
 const fakeTeams = [
   {
-    name: "DevOps",
+    name: "Admin",
     users: ["Alice Johnson", "Bob Smith"],
   },
   {
-    name: "Backend",
-    users: ["Carol Lee"],
+    name: "Research",
+    users: ["Carol Lee", "Alice Johnson"],
+  },
+  {
+    name: "Applied Research",
+    users: ["Carol Lee", "David Kim", "Bob Smith"],
   },
 ];
 
@@ -57,10 +61,6 @@ const Teams: React.FC = () => {
     >
       {showFakeData ? (
         <>
-          <Alert color="warning" sx={{ mb: 2 }}>
-            This page is showing sample data. Real team management functionality
-            will be implemented soon.
-          </Alert>
           <Table>
             <thead>
               <tr>
