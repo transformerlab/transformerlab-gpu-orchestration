@@ -324,6 +324,11 @@ const MyClusterDetails: React.FC = () => {
     return status.replace("JobStatus.", "").replace(/_/g, " ");
   };
 
+  const formatClusterStatus = (status: string) => {
+    // Remove "ClusterStatus." prefix if present
+    return status.replace("ClusterStatus.", "");
+  };
+
   const formatJobDuration = (startAt?: number, endAt?: number) => {
     if (!startAt) return "-";
     const start = new Date(startAt * 1000);
@@ -349,7 +354,7 @@ const MyClusterDetails: React.FC = () => {
   if (statusLoading || loading) {
     return (
       <PageWithTitle
-        title="Cluster Details"
+        title={clusterName}
         subtitle="Cluster information and jobs"
       >
         <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -362,7 +367,7 @@ const MyClusterDetails: React.FC = () => {
   if (error) {
     return (
       <PageWithTitle
-        title="Cluster Details"
+        title={clusterName}
         subtitle="Cluster information and jobs"
       >
         <Alert color="danger">{error}</Alert>
@@ -373,7 +378,7 @@ const MyClusterDetails: React.FC = () => {
   if (!clusterData) {
     return (
       <PageWithTitle
-        title="Cluster Details"
+        title={clusterName}
         subtitle="Cluster information and jobs"
       >
         <Alert color="warning">Cluster not found</Alert>
@@ -382,10 +387,7 @@ const MyClusterDetails: React.FC = () => {
   }
 
   return (
-    <PageWithTitle
-      title="Cluster Details"
-      subtitle="Cluster information and jobs"
-    >
+    <PageWithTitle title={clusterName} subtitle="Cluster information and jobs">
       <Stack spacing={3}>
         {/* Header with back button and actions */}
         <Box
@@ -472,7 +474,7 @@ const MyClusterDetails: React.FC = () => {
                     }
                     variant="soft"
                   >
-                    {clusterData.status}
+                    {formatClusterStatus(clusterData.status)}
                   </Chip>
                 </Box>
 
@@ -584,41 +586,6 @@ const MyClusterDetails: React.FC = () => {
                 </ListItem>
               ))}
             </List>
-          </Card>
-        )}
-
-        {/* Available Operations */}
-        {clusterTypeInfo && (
-          <Card>
-            <Typography
-              level="title-sm"
-              sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
-            >
-              <Activity size={16} />
-              Available Operations
-            </Typography>
-            <Stack spacing={1}>
-              {clusterTypeInfo.available_operations.map((operation) => (
-                <Box
-                  key={operation}
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Typography level="body-sm" textTransform="capitalize">
-                    {operation}:
-                  </Typography>
-                  <Typography level="body-sm" color="neutral">
-                    {
-                      clusterTypeInfo.recommendations[
-                        operation as keyof typeof clusterTypeInfo.recommendations
-                      ]
-                    }
-                  </Typography>
-                </Box>
-              ))}
-            </Stack>
           </Card>
         )}
 

@@ -26,6 +26,7 @@ import {
   CodeIcon,
   Zap,
   Info,
+  MoreHorizontal,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import InteractiveTaskModal from "../../InteractiveTaskModal";
@@ -227,6 +228,11 @@ const Held: React.FC<HeldProps> = ({
       return;
     }
     navigate(`/dashboard/nodes/node/${node.id}`);
+  };
+
+  const formatStatus = (status: string) => {
+    // Remove "ClusterStatus." prefix if present
+    return status.replace("ClusterStatus.", "");
   };
 
   const getStatusColor = (status: string) => {
@@ -754,13 +760,13 @@ const Held: React.FC<HeldProps> = ({
       <Table variant="outlined" sx={{ minWidth: 650 }}>
         <thead>
           <tr>
-            <th style={{ width: "100px" }}>&nbsp;</th>
-            <th>Status</th>
             <th>Cluster Name</th>
+            <th>Status</th>
             <th>Resources</th>
             <th>Launched At</th>
             <th>Last Use</th>
             <th>Auto-stop</th>
+            <th style={{ width: "250px", minWidth: "250px" }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -778,105 +784,9 @@ const Held: React.FC<HeldProps> = ({
               }}
             >
               <td>
-                <ComputerIcon />
-                <Dropdown>
-                  <MenuButton variant="plain" size="sm">
-                    <ChevronDownIcon />
-                  </MenuButton>
-                  <Menu size="sm" variant="soft">
-                    <MenuItem
-                      onClick={() =>
-                        navigate(
-                          `/dashboard/my-cluster-info/${cluster.cluster_name}`
-                        )
-                      }
-                    >
-                      <ListItemDecorator>
-                        <Info />
-                      </ListItemDecorator>
-                      Info
-                    </MenuItem>
-                    <Divider />
-                    {/* Removed Start button */}
-                    {cluster.status.toLowerCase().includes("up") && (
-                      <>
-                        <MenuItem
-                          onClick={() =>
-                            handleStopCluster(cluster.cluster_name)
-                          }
-                          disabled={
-                            operationLoading[`stop_${cluster.cluster_name}`]
-                          }
-                        >
-                          <ListItemDecorator>
-                            <StopCircleIcon />
-                          </ListItemDecorator>
-                          Stop
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() =>
-                            handleDownCluster(cluster.cluster_name)
-                          }
-                          disabled={
-                            operationLoading[`down_${cluster.cluster_name}`]
-                          }
-                        >
-                          <ListItemDecorator>
-                            <Trash2Icon />
-                          </ListItemDecorator>
-                          Down
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() =>
-                            openSubmitJobModal(cluster.cluster_name)
-                          }
-                        >
-                          <ListItemDecorator>
-                            <Zap />
-                          </ListItemDecorator>
-                          Submit a Job
-                        </MenuItem>
-                      </>
-                    )}
-                    <Divider />
-                    <MenuItem
-                      onClick={() =>
-                        openInteractiveTaskModal(cluster.cluster_name, "vscode")
-                      }
-                    >
-                      <ListItemDecorator>
-                        <CodeIcon />
-                      </ListItemDecorator>
-                      VSCode
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() =>
-                        openInteractiveTaskModal(
-                          cluster.cluster_name,
-                          "jupyter"
-                        )
-                      }
-                    >
-                      <ListItemDecorator>
-                        <BookOpenIcon />
-                      </ListItemDecorator>
-                      Jupyter
-                    </MenuItem>
-                    <Divider />
-                    <MenuItem
-                      onClick={() => {
-                        if (onTabChange) {
-                          onTabChange(1); // Switch to Jobs tab
-                        }
-                      }}
-                    >
-                      <ListItemDecorator>
-                        <TextIcon />
-                      </ListItemDecorator>
-                      Logs
-                    </MenuItem>
-                  </Menu>
-                </Dropdown>
+                <Typography level="body-sm" fontWeight="bold">
+                  {cluster.cluster_name}
+                </Typography>
               </td>
               <td>
                 <Chip
@@ -897,13 +807,8 @@ const Held: React.FC<HeldProps> = ({
                     )
                   }
                 >
-                  {cluster.status}
+                  {formatStatus(cluster.status)}
                 </Chip>
-              </td>
-              <td>
-                <Typography level="body-sm" fontWeight="bold">
-                  {cluster.cluster_name}
-                </Typography>
               </td>
               <td>
                 <Typography level="body-sm">
@@ -924,6 +829,124 @@ const Held: React.FC<HeldProps> = ({
                 <Typography level="body-sm">
                   {formatAutostop(cluster.autostop, cluster.to_down)}
                 </Typography>
+              </td>
+              <td>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Button
+                    size="sm"
+                    variant="soft"
+                    color="neutral"
+                    onClick={() =>
+                      navigate(
+                        `/dashboard/my-cluster-info/${cluster.cluster_name}`
+                      )
+                    }
+                    startDecorator={<Info size="16px" />}
+                  >
+                    Info
+                  </Button>
+                  {cluster.status.toLowerCase().includes("up") && (
+                    <Button
+                      size="sm"
+                      variant="soft"
+                      color="danger"
+                      onClick={() => handleDownCluster(cluster.cluster_name)}
+                      disabled={
+                        operationLoading[`down_${cluster.cluster_name}`]
+                      }
+                      startDecorator={<Trash2Icon size="16px" />}
+                    >
+                      Down
+                    </Button>
+                  )}
+                  <Dropdown>
+                    <MenuButton
+                      variant="plain"
+                      size="sm"
+                      sx={{ minWidth: "auto" }}
+                    >
+                      <MoreHorizontal size="16px" />
+                    </MenuButton>
+                    <Menu
+                      size="sm"
+                      variant="soft"
+                      placement="left-start"
+                      sx={{
+                        maxHeight: "300px",
+                        overflow: "auto",
+                        zIndex: 9999,
+                      }}
+                    >
+                      {cluster.status.toLowerCase().includes("up") && (
+                        <>
+                          <MenuItem
+                            onClick={() =>
+                              handleStopCluster(cluster.cluster_name)
+                            }
+                            disabled={
+                              operationLoading[`stop_${cluster.cluster_name}`]
+                            }
+                          >
+                            <ListItemDecorator>
+                              <StopCircleIcon />
+                            </ListItemDecorator>
+                            Stop
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() =>
+                              openSubmitJobModal(cluster.cluster_name)
+                            }
+                          >
+                            <ListItemDecorator>
+                              <Zap />
+                            </ListItemDecorator>
+                            Submit a Job
+                          </MenuItem>
+                        </>
+                      )}
+                      <Divider />
+                      <MenuItem
+                        onClick={() =>
+                          openInteractiveTaskModal(
+                            cluster.cluster_name,
+                            "vscode"
+                          )
+                        }
+                      >
+                        <ListItemDecorator>
+                          <CodeIcon />
+                        </ListItemDecorator>
+                        VSCode
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() =>
+                          openInteractiveTaskModal(
+                            cluster.cluster_name,
+                            "jupyter"
+                          )
+                        }
+                      >
+                        <ListItemDecorator>
+                          <BookOpenIcon />
+                        </ListItemDecorator>
+                        Jupyter
+                      </MenuItem>
+                      <Divider />
+                      <MenuItem
+                        onClick={() => {
+                          if (onTabChange) {
+                            onTabChange(1); // Switch to Jobs tab
+                          }
+                        }}
+                      >
+                        <ListItemDecorator>
+                          <TextIcon />
+                        </ListItemDecorator>
+                        Logs
+                      </MenuItem>
+                    </Menu>
+                  </Dropdown>
+                </Box>
               </td>
             </tr>
           ))}
@@ -970,13 +993,13 @@ const Held: React.FC<HeldProps> = ({
           <Table variant="outlined" sx={{ minWidth: 650 }}>
             <thead>
               <tr>
-                <th style={{ width: "100px" }}>&nbsp;</th>
-                <th>Status</th>
                 <th>Cluster Name</th>
+                <th>Status</th>
                 <th>Resources</th>
                 <th>Launched At</th>
                 <th>Last Use</th>
                 <th>Auto-stop</th>
+                <th style={{ width: "250px", minWidth: "250px" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1014,69 +1037,9 @@ const Held: React.FC<HeldProps> = ({
                   }}
                 >
                   <td>
-                    <ComputerIcon />
-                    <Dropdown>
-                      <MenuButton variant="plain" size="sm">
-                        <ChevronDownIcon />
-                      </MenuButton>
-                      <Menu size="sm" variant="soft">
-                        <MenuItem
-                          onClick={() =>
-                            navigate(
-                              `/dashboard/my-cluster-info/${cluster.cluster_name}`
-                            )
-                          }
-                        >
-                          <ListItemDecorator>
-                            <Info />
-                          </ListItemDecorator>
-                          Info
-                        </MenuItem>
-                        <Divider />
-                        {cluster.status.toLowerCase().includes("up") && (
-                          <>
-                            <MenuItem disabled>
-                              <ListItemDecorator>
-                                <StopCircleIcon />
-                              </ListItemDecorator>
-                              Stop
-                            </MenuItem>
-                            <MenuItem disabled>
-                              <ListItemDecorator>
-                                <Trash2Icon />
-                              </ListItemDecorator>
-                              Down
-                            </MenuItem>
-                            <MenuItem disabled>
-                              <ListItemDecorator>
-                                <Zap />
-                              </ListItemDecorator>
-                              Submit a Job
-                            </MenuItem>
-                          </>
-                        )}
-                        <Divider />
-                        <MenuItem disabled>
-                          <ListItemDecorator>
-                            <CodeIcon />
-                          </ListItemDecorator>
-                          VSCode
-                        </MenuItem>
-                        <MenuItem disabled>
-                          <ListItemDecorator>
-                            <BookOpenIcon />
-                          </ListItemDecorator>
-                          Jupyter
-                        </MenuItem>
-                        <Divider />
-                        <MenuItem disabled>
-                          <ListItemDecorator>
-                            <TextIcon />
-                          </ListItemDecorator>
-                          Logs
-                        </MenuItem>
-                      </Menu>
-                    </Dropdown>
+                    <Typography level="body-sm" fontWeight="bold">
+                      {cluster.cluster_name}
+                    </Typography>
                   </td>
                   <td>
                     <Chip
@@ -1099,13 +1062,8 @@ const Held: React.FC<HeldProps> = ({
                         )
                       }
                     >
-                      {cluster.status}
+                      {formatStatus(cluster.status)}
                     </Chip>
-                  </td>
-                  <td>
-                    <Typography level="body-sm" fontWeight="bold">
-                      {cluster.cluster_name}
-                    </Typography>
                   </td>
                   <td>
                     <Typography level="body-sm">
@@ -1126,6 +1084,90 @@ const Held: React.FC<HeldProps> = ({
                     <Typography level="body-sm">
                       {formatAutostop(cluster.autostop, cluster.to_down)}
                     </Typography>
+                  </td>
+                  <td>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Button
+                        size="sm"
+                        variant="soft"
+                        color="neutral"
+                        onClick={() =>
+                          navigate(
+                            `/dashboard/my-cluster-info/${cluster.cluster_name}`
+                          )
+                        }
+                        startDecorator={<Info size="16px" />}
+                      >
+                        Info
+                      </Button>
+                      {cluster.status.toLowerCase().includes("up") && (
+                        <Button
+                          size="sm"
+                          variant="soft"
+                          color="danger"
+                          disabled
+                          startDecorator={<Trash2Icon size="16px" />}
+                        >
+                          Down
+                        </Button>
+                      )}
+                      <Dropdown>
+                        <MenuButton
+                          variant="plain"
+                          size="sm"
+                          sx={{ minWidth: "auto" }}
+                        >
+                          <MoreHorizontal size="16px" />
+                        </MenuButton>
+                        <Menu
+                          size="sm"
+                          variant="soft"
+                          placement="left-start"
+                          sx={{
+                            maxHeight: "300px",
+                            overflow: "auto",
+                            zIndex: 9999,
+                          }}
+                        >
+                          {cluster.status.toLowerCase().includes("up") && (
+                            <>
+                              <MenuItem disabled>
+                                <ListItemDecorator>
+                                  <StopCircleIcon />
+                                </ListItemDecorator>
+                                Stop
+                              </MenuItem>
+                              <MenuItem disabled>
+                                <ListItemDecorator>
+                                  <Zap />
+                                </ListItemDecorator>
+                                Submit a Job
+                              </MenuItem>
+                            </>
+                          )}
+                          <Divider />
+                          <MenuItem disabled>
+                            <ListItemDecorator>
+                              <CodeIcon />
+                            </ListItemDecorator>
+                            VSCode
+                          </MenuItem>
+                          <MenuItem disabled>
+                            <ListItemDecorator>
+                              <BookOpenIcon />
+                            </ListItemDecorator>
+                            Jupyter
+                          </MenuItem>
+                          <Divider />
+                          <MenuItem disabled>
+                            <ListItemDecorator>
+                              <TextIcon />
+                            </ListItemDecorator>
+                            Logs
+                          </MenuItem>
+                        </Menu>
+                      </Dropdown>
+                    </Box>
                   </td>
                 </tr>
               ))}
