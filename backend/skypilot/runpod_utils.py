@@ -1,6 +1,5 @@
 import os
 import runpod
-import csv
 import json
 import subprocess
 from pathlib import Path
@@ -238,56 +237,29 @@ def verify_runpod_setup():
 def get_runpod_gpu_types():
     """Get available GPU types from SkyPilot's RunPod catalog"""
     try:
-        # Find the SkyPilot catalog directory
-        sky_home = Path.home() / ".sky"
-        catalogs_dir = sky_home / "catalogs"
+        from sky.catalog.common import read_catalog
 
-        if not catalogs_dir.exists():
-            print("❌ SkyPilot catalogs directory not found")
-            return []
-
-        # Find the version directory (v7, v8, etc.)
-        version_dirs = [
-            d for d in catalogs_dir.iterdir() if d.is_dir() and d.name.startswith("v")
-        ]
-        if not version_dirs:
-            print("❌ No version directory found in SkyPilot catalogs")
-            return []
-
-        # Use the first (and should be only) version directory
-        version_dir = version_dirs[0]
-        runpod_catalog_dir = version_dir / "runpod"
-
-        if not runpod_catalog_dir.exists():
-            print(f"❌ RunPod catalog directory not found at {runpod_catalog_dir}")
-            return []
-
-        # Find CSV files in the runpod catalog directory
-        csv_files = list(runpod_catalog_dir.glob("*.csv"))
-        if not csv_files:
-            print(f"❌ No CSV files found in {runpod_catalog_dir}")
-            return []
+        # Read the RunPod catalog using SkyPilot's read_catalog function
+        df = read_catalog("runpod/vms.csv")
 
         gpu_types = set()  # Use set to avoid duplicates
 
-        # Read all CSV files
-        for csv_file in csv_files:
-            try:
-                with open(csv_file, "r", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        accelerator_name = row.get("AcceleratorName", "").strip()
-                        accelerator_count = row.get("AcceleratorCount", "1").strip()
-                        price = row.get("Price", "0").strip()
+        # Extract GPU types from the catalog
+        for _, row in df.iterrows():
+            accelerator_name = str(row.get("AcceleratorName", "")).strip()
+            accelerator_count = str(row.get("AcceleratorCount", "1"))
+            price = row.get("Price", "0")
 
-                        if accelerator_name and accelerator_name != "AcceleratorName":
-                            # Format: GPU_NAME:COUNT
-                            gpu_type = f"{accelerator_name}:{accelerator_count}:{price}"
-                            gpu_types.add(gpu_type)
-
-            except Exception as csv_error:
-                print(f"⚠️ Error reading {csv_file}: {csv_error}")
-                continue
+            # Skip rows with NaN or empty values
+            if (
+                accelerator_name
+                and accelerator_name != "AcceleratorName"
+                and accelerator_name.lower() != "nan"
+                and accelerator_count.lower() != "nan"
+            ):
+                # Format: GPU_NAME:COUNT
+                gpu_type = f"{accelerator_name}:{accelerator_count}:{price}"
+                gpu_types.add(gpu_type)
 
         gpu_types_list = sorted(list(gpu_types))
 
