@@ -17,6 +17,7 @@ interface NodeSquareProps {
   nodeGpuInfo?: Record<string, any>;
   variant?: "mock" | "ssh";
   clusterName?: string;
+  currentUser?: string;
 }
 
 const getStatusBackground = (status: string, type: string) => {
@@ -40,6 +41,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
   nodeGpuInfo = {},
   variant = "mock",
   clusterName,
+  currentUser,
 }) => {
   // Determine GPU display
   let gpuDisplay = "-";
@@ -150,7 +152,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
       >
         <Circley
           state={node.status === "active" ? "on" : "off"}
-          dot={node?.user === "ali" ? "on" : "off"}
+          dot={node?.user === currentUser ? "on" : "off"}
         />
       </Box>
     </Tooltip>

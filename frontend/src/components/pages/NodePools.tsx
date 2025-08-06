@@ -6,17 +6,7 @@ import {
   Typography,
   Stack,
   Chip,
-  Tooltip,
-  Table,
-  Sheet,
-  IconButton,
-  CircularProgress,
-  List,
-  ListItem,
-  ListDivider,
   Textarea,
-  ButtonGroup,
-  Link,
   Modal,
   ModalDialog,
   ModalClose,
@@ -27,21 +17,9 @@ import {
   Alert,
 } from "@mui/joy";
 import { useNavigate } from "react-router-dom";
-import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
-import {
-  ArrowRightIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Monitor,
-  Plus,
-  Settings,
-  Zap,
-} from "lucide-react";
-import ClusterManagement from "../ClusterManagement";
+import { ChevronRightIcon } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
-import SkyPilotClusterStatus from "../SkyPilotClusterStatus";
 import useSWR from "swr";
-import SubmitJobModal from "../SubmitJobModal";
 import NodeSquare from "../widgets/NodeSquare";
 import RunPodClusterLauncher from "../RunPodClusterLauncher";
 import AzureClusterLauncher from "../AzureClusterLauncher";
@@ -123,8 +101,8 @@ function randomIp() {
   )}.${Math.floor(Math.random() * 256)}`;
 }
 
-const generateRandomNodes = (count: number): Node[] => {
-  const users = ["ali", "bob", "catherine"];
+const generateRandomNodes = (count: number, currentUser?: string): Node[] => {
+  const users = [currentUser || "ali", "bob", "catherine"];
   const types: ("dedicated" | "on-demand")[] = ["dedicated", "on-demand"];
   const statuses: ("active" | "inactive" | "unhealthy")[] = [
     "active",
@@ -180,9 +158,10 @@ const generateRandomNodes = (count: number): Node[] => {
 // Generate dedicated nodes for RunPod and Azure clusters
 const generateDedicatedNodes = (
   count: number,
-  activeCount: number = 0
+  activeCount: number = 0,
+  currentUser?: string
 ): Node[] => {
-  const users = ["ali", "bob", "catherine"];
+  const users = [currentUser || "ali", "bob", "catherine"];
 
   return Array.from({ length: count }, (_, i) => {
     // Only the first 'activeCount' nodes should be active
@@ -221,20 +200,30 @@ const generateDedicatedNodes = (
   });
 };
 
-const getStatusOrder = (status: string, type: string): number => {
+const getStatusOrder = (
+  status: string,
+  type: string,
+  nodeUser?: string,
+  currentUser?: string
+): number => {
   let sort1 = 0;
   let sort2 = 0;
+  let sort3 = 0;
 
-  // Then by type
-  if (type === "dedicated") sort1 = 1;
-  if (type === "on-demand") sort1 = 2;
+  // First priority: nodes owned by current user (highest priority)
+  if (nodeUser === currentUser) sort1 = 1;
+  else sort1 = 2;
 
-  // First sort by status priority
-  if (status === "active") sort2 = 1;
-  if (status === "inactive") sort2 = 2;
-  if (status === "unhealthy") sort2 = 3;
+  // Second priority: by type
+  if (type === "dedicated") sort2 = 1;
+  if (type === "on-demand") sort2 = 2;
 
-  return sort1 * 10 + sort2;
+  // Third priority: by status
+  if (status === "active") sort3 = 1;
+  if (status === "inactive") sort3 = 2;
+  if (status === "unhealthy") sort3 = 3;
+
+  return sort1 * 100 + sort2 * 10 + sort3;
 };
 
 const mockClusters: Cluster[] = [
@@ -261,12 +250,14 @@ const ClusterCard: React.FC<{
   launchDisabled?: boolean;
   launchButtonText?: string;
   allowedGpuTypes?: string[];
+  currentUser?: string;
 }> = ({
   cluster,
   onLaunchCluster,
   launchDisabled = false,
   launchButtonText = "Request Instances",
   allowedGpuTypes,
+  currentUser,
 }) => {
   const navigate = useNavigate();
   const dedicatedCount = cluster.nodes.filter(
@@ -280,12 +271,13 @@ const ClusterCard: React.FC<{
     (n) => n.status === "unhealthy"
   ).length;
   const assignedToYouCount = cluster.nodes.filter(
-    (n) => n.user === "ali"
+    (n) => n.user === currentUser
   ).length;
 
   const sortedNodes = [...cluster.nodes].sort(
     (a, b) =>
-      getStatusOrder(a.status, a.type) - getStatusOrder(b.status, b.type)
+      getStatusOrder(a.status, a.type, a.user, currentUser) -
+      getStatusOrder(b.status, b.type, b.user, currentUser)
   );
 
   return (
@@ -391,6 +383,7 @@ const ClusterCard: React.FC<{
                       node={node}
                       variant="mock"
                       clusterName={cluster.id}
+                      currentUser={currentUser}
                     />
                   ))}
                 </Box>
@@ -417,7 +410,8 @@ const CloudClusterCard: React.FC<{
   cluster: any;
   clusterName: string;
   nodeGpuInfo: Record<string, any>;
-}> = ({ cluster, clusterName, nodeGpuInfo }) => {
+  currentUser?: string;
+}> = ({ cluster, clusterName, nodeGpuInfo, currentUser }) => {
   const navigate = useNavigate();
   // State for modals
   const [showReserveModal, setShowReserveModal] = useState(false);
@@ -478,7 +472,8 @@ const CloudClusterCard: React.FC<{
 
   const sortedNodes = [...processedNodes].sort(
     (a, b) =>
-      getStatusOrder(a.status, a.type) - getStatusOrder(b.status, b.type)
+      getStatusOrder(a.status, a.type, a.user, currentUser) -
+      getStatusOrder(b.status, b.type, b.user, currentUser)
   );
 
   const handleReserveNode = () => {
@@ -1296,6 +1291,28 @@ const Nodes: React.FC = () => {
   const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
   const [showAzureLauncher, setShowAzureLauncher] = useState(false);
 
+  const currentUserName =
+    user?.first_name || user?.email?.split("@")[0] || "ali";
+
+  // Generate mock clusters with current user
+  const mockClustersWithCurrentUser: Cluster[] = [
+    {
+      id: "cluster-1",
+      name: "Azure ML Cluster",
+      nodes: generateRandomNodes(165, currentUserName),
+    },
+    {
+      id: "cluster-3",
+      name: "On-Premise Cluster",
+      nodes: generateRandomNodes(12, currentUserName),
+    },
+    {
+      id: "cluster-4",
+      name: "Vector Institute Cluster",
+      nodes: generateRandomNodes(278, currentUserName),
+    },
+  ];
+
   return (
     <PageWithTitle
       title={`${user?.organization_name}'s Node Pools`}
@@ -1303,9 +1320,9 @@ const Nodes: React.FC = () => {
     >
       {/* Existing Node Pools/Clusters UI */}
       {showFakeData ? (
-        mockClusters.map((cluster) => (
+        mockClustersWithCurrentUser.map((cluster) => (
           <div key={cluster.id}>
-            <ClusterCard cluster={cluster} />
+            <ClusterCard cluster={cluster} currentUser={currentUserName} />
           </div>
         ))
       ) : (
@@ -1332,6 +1349,9 @@ const Nodes: React.FC = () => {
                 cluster={cluster}
                 clusterName={name}
                 nodeGpuInfo={nodeGpuInfo}
+                currentUser={
+                  user?.first_name || user?.email?.split("@")[0] || "ali"
+                }
               />
             );
           })
@@ -1345,13 +1365,15 @@ const Nodes: React.FC = () => {
               name: "RunPod Cluster",
               nodes: generateDedicatedNodes(
                 runpodConfig.max_instances,
-                runpodInstances.current_count
+                runpodInstances.current_count,
+                currentUserName
               ),
             }}
             onLaunchCluster={() => setShowRunPodLauncher(true)}
             launchDisabled={!runpodInstances.can_launch}
             launchButtonText="Request Instances"
             allowedGpuTypes={runpodConfig.allowed_gpu_types}
+            currentUser={currentUserName}
           />
         )}
 
@@ -1363,13 +1385,15 @@ const Nodes: React.FC = () => {
               name: "Azure Cluster",
               nodes: generateDedicatedNodes(
                 azureConfig.max_instances,
-                azureInstances.current_count
+                azureInstances.current_count,
+                currentUserName
               ),
             }}
             onLaunchCluster={() => setShowAzureLauncher(true)}
             launchDisabled={!azureInstances.can_launch}
             launchButtonText="Request Instances"
             allowedGpuTypes={azureConfig.allowed_instance_types}
+            currentUser={currentUserName}
           />
         )}
       </Box>
