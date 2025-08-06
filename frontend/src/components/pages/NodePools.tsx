@@ -177,6 +177,50 @@ const generateRandomNodes = (count: number): Node[] => {
   });
 };
 
+// Generate dedicated nodes for RunPod and Azure clusters
+const generateDedicatedNodes = (
+  count: number,
+  activeCount: number = 0
+): Node[] => {
+  const users = ["ali", "bob", "catherine"];
+
+  return Array.from({ length: count }, (_, i) => {
+    // Only the first 'activeCount' nodes should be active
+    const status: "active" | "inactive" | "unhealthy" =
+      i < activeCount ? "active" : "inactive";
+    let user: string | undefined;
+    let jobName: string | undefined;
+    let experimentName: string | undefined;
+
+    // If active, randomly assign some nodes to users
+    if (status === "active" && Math.random() < 0.3) {
+      user = users[Math.floor(Math.random() * users.length)];
+      jobName = jobNames[Math.floor(Math.random() * jobNames.length)];
+      experimentName =
+        experimentNames[Math.floor(Math.random() * experimentNames.length)];
+    }
+
+    const gpuType = gpuTypes[Math.floor(Math.random() * gpuTypes.length)];
+    const cpuType = cpuTypes[Math.floor(Math.random() * cpuTypes.length)];
+    const vcpus = [4, 8, 16, 32, 64][Math.floor(Math.random() * 5)];
+    const vgpus = [1, 2, 4, 8][Math.floor(Math.random() * 4)];
+
+    return {
+      id: `dedicated-node-${i}`,
+      type: "dedicated",
+      status,
+      ...(user ? { user } : {}),
+      ...(jobName ? { jobName } : {}),
+      ...(experimentName ? { experimentName } : {}),
+      gpuType,
+      cpuType,
+      vcpus,
+      vgpus,
+      ip: "", // Empty IP for Real clusters
+    };
+  });
+};
+
 const getStatusOrder = (status: string, type: string): number => {
   let sort1 = 0;
   let sort2 = 0;
@@ -218,7 +262,15 @@ const mockClusters: Cluster[] = [
 
 const ClusterCard: React.FC<{
   cluster: Cluster;
-}> = ({ cluster }) => {
+  onLaunchCluster?: () => void;
+  launchDisabled?: boolean;
+  launchButtonText?: string;
+}> = ({
+  cluster,
+  onLaunchCluster,
+  launchDisabled = false,
+  launchButtonText = "Reserve a Node",
+}) => {
   const navigate = useNavigate();
   const dedicatedCount = cluster.nodes.filter(
     (n) => n.type === "dedicated"
@@ -294,7 +346,7 @@ const ClusterCard: React.FC<{
         </Button>
       </Box>
 
-      {/* Group nodes by type, display in two columns */}
+      {/* Show only dedicated nodes */}
       <Box sx={{ mb: 2 }}>
         <Box
           sx={{
@@ -304,34 +356,21 @@ const ClusterCard: React.FC<{
             alignItems: "flex-start",
           }}
         >
-          {["dedicated", "on-demand"].map((nodeType, idx) => {
+          {(() => {
             const nodesOfType = sortedNodes.filter(
-              (node) => node.type === nodeType
+              (node) => node.type === "dedicated"
             );
             if (nodesOfType.length === 0) return null;
 
-            // Distribute node types into two columns: 0,2 left; 1 right
-            const isLeftColumn = idx % 2 === 0;
-
             return (
               <Box
-                key={nodeType}
                 sx={{
                   flex: "1 1 0",
                   minWidth: 0,
-                  maxWidth: "50%",
+                  maxWidth: "100%",
                   mb: 3,
                 }}
               >
-                <Typography
-                  level="title-sm"
-                  sx={{ mb: 1, textTransform: "capitalize" }}
-                >
-                  {nodeType === "on-demand"
-                    ? "On-Demand"
-                    : nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}{" "}
-                  Nodes ({nodesOfType.length})
-                </Typography>
                 <Box
                   sx={{
                     display: "flex",
@@ -350,12 +389,18 @@ const ClusterCard: React.FC<{
                 </Box>
               </Box>
             );
-          })}
+          })()}
         </Box>
       </Box>
 
       <Stack direction="row" spacing={1}>
-        <Button variant="outlined">Reserve a Node</Button>
+        <Button
+          variant="outlined"
+          onClick={onLaunchCluster}
+          disabled={launchDisabled}
+        >
+          {launchButtonText}
+        </Button>
       </Stack>
     </Card>
   );
@@ -772,75 +817,6 @@ const ReserveNodeModal: React.FC<{
         </form>
       </ModalDialog>
     </Modal>
-  );
-};
-
-// Custom SubmitJobModal that only shows custom mode (no Jupyter/VSCode options)
-const RunPodClusterCard: React.FC<{
-  cluster: any;
-  onClusterLaunched?: (clusterName: string) => void;
-}> = ({ cluster, onClusterLaunched }) => {
-  // State for modals
-  const [showLaunchJobModal, setShowLaunchJobModal] = useState(false);
-
-  const isActiveCluster =
-    cluster.status === "ClusterStatus.UP" ||
-    cluster.status === "ClusterStatus.INIT";
-
-  const handleLaunchJob = () => {
-    setShowLaunchJobModal(true);
-  };
-
-  const handleClusterLaunched = (newClusterName: string) => {
-    window.location.reload();
-  };
-
-  const handleJobSubmitted = () => {
-    window.location.reload();
-  };
-
-  return (
-    <>
-      <Card
-        variant="outlined"
-        sx={{
-          p: 3,
-          mb: 3,
-          transition: "all 0.2s ease",
-          "&:hover": {
-            boxShadow: "md",
-          },
-        }}
-      >
-        <Box sx={{ mb: 2 }}>
-          <Typography level="h4" mb={0.5}>
-            {cluster.cluster_name}
-          </Typography>
-          <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
-            <Chip size="sm" color="success" variant="soft">
-              {isActiveCluster ? "Active" : "Inactive"}
-            </Chip>
-            <Chip size="sm" color="primary" variant="soft">
-              RunPod Cluster
-            </Chip>
-          </Stack>
-        </Box>
-
-        <Stack direction="row" spacing={1}></Stack>
-      </Card>
-
-      {/* Launch Job Modal for RunPod */}
-      {showLaunchJobModal && (
-        <CustomSubmitJobModal
-          open={showLaunchJobModal}
-          onClose={() => setShowLaunchJobModal(false)}
-          clusterName={cluster.cluster_name}
-          onJobSubmitted={handleJobSubmitted}
-          isClusterLaunching={false}
-          isSshCluster={false}
-        />
-      )}
-    </>
   );
 };
 
@@ -1361,272 +1337,38 @@ const Nodes: React.FC = () => {
           On-Demand Clusters
         </Typography>
 
-        {/* Combined Instance Limits Display */}
-        {(runpodConfig.is_configured || azureConfig.is_configured) && (
-          <Card variant="outlined" sx={{ mb: 3 }}>
-            <Typography level="title-sm" sx={{ mb: 2 }}>
-              Instance Limits
-            </Typography>
-            <Stack spacing={2}>
-              {runpodConfig.is_configured &&
-                runpodInstances.max_instances > 0 && (
-                  <Box>
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
-                      sx={{ mb: 1 }}
-                    >
-                      <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
-                        RunPod:
-                      </Typography>
-                      <Typography level="body-sm">
-                        {runpodInstances.current_count} /{" "}
-                        {runpodInstances.max_instances} instances
-                      </Typography>
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        color={
-                          runpodInstances.can_launch ? "success" : "danger"
-                        }
-                      >
-                        {runpodInstances.can_launch
-                          ? "Can Launch"
-                          : "Limit Reached"}
-                      </Chip>
-                    </Stack>
-                    {/* Visual representation of RunPod instances */}
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                      {/* Progress bar for RunPod instances */}
-                      <Box sx={{ width: "100%", mt: 1 }}>
-                        <Box
-                          sx={{
-                            width: "100%",
-                            height: 8,
-                            backgroundColor: "neutral.200",
-                            borderRadius: "sm",
-                            overflow: "hidden",
-                            position: "relative",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: `${
-                                (runpodInstances.current_count /
-                                  runpodInstances.max_instances) *
-                                100
-                              }%`,
-                              height: "100%",
-                              backgroundColor: "success.500",
-                              transition: "width 0.3s ease",
-                            }}
-                          />
-                        </Box>
-                        <Typography
-                          level="body-xs"
-                          sx={{ mt: 0.5, color: "text.secondary" }}
-                        >
-                          {runpodInstances.current_count} active /{" "}
-                          {runpodInstances.max_instances} total
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                )}
-
-              {azureConfig.is_configured &&
-                azureInstances.max_instances > 0 && (
-                  <Box>
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
-                      sx={{ mb: 1 }}
-                    >
-                      <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
-                        Azure:
-                      </Typography>
-                      <Typography level="body-sm">
-                        {azureInstances.current_count} /{" "}
-                        {azureInstances.max_instances} instances
-                      </Typography>
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        color={azureInstances.can_launch ? "success" : "danger"}
-                      >
-                        {azureInstances.can_launch
-                          ? "Can Launch"
-                          : "Limit Reached"}
-                      </Chip>
-                    </Stack>
-                    {/* Visual representation of Azure instances */}
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                      {/* Progress bar for Azure instances */}
-                      <Box sx={{ width: "100%", mt: 1 }}>
-                        <Box
-                          sx={{
-                            width: "100%",
-                            height: 8,
-                            backgroundColor: "neutral.200",
-                            borderRadius: "sm",
-                            overflow: "hidden",
-                            position: "relative",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: `${
-                                (azureInstances.current_count /
-                                  azureInstances.max_instances) *
-                                100
-                              }%`,
-                              height: "100%",
-                              backgroundColor: "success.500",
-                              transition: "width 0.3s ease",
-                            }}
-                          />
-                        </Box>
-                        <Typography
-                          level="body-xs"
-                          sx={{ mt: 0.5, color: "text.secondary" }}
-                        >
-                          {azureInstances.current_count} active /{" "}
-                          {azureInstances.max_instances} total
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                )}
-            </Stack>
-          </Card>
-        )}
-
-        {/* RunPod Clusters */}
+        {/* RunPod Cluster */}
         {runpodConfig.is_configured && (
-          <>
-            <Typography level="h4" sx={{ mb: 2 }}>
-              RunPod Clusters
-            </Typography>
-
-            {/* Check for active RunPod clusters */}
-            {skyPilotClusters.filter(
-              (cluster: any) =>
-                cluster.cluster_name &&
-                (cluster.cluster_name.toLowerCase().includes("runpod") ||
-                  cluster.cluster_name.toLowerCase().includes("runpod"))
-            ).length > 0
-              ? skyPilotClusters
-                  .filter(
-                    (cluster: any) =>
-                      cluster.cluster_name &&
-                      (cluster.cluster_name.toLowerCase().includes("runpod") ||
-                        cluster.cluster_name.toLowerCase().includes("runpod"))
-                  )
-                  .map((cluster: any) => (
-                    <RunPodClusterCard
-                      key={cluster.cluster_name}
-                      cluster={cluster}
-                      onClusterLaunched={handleClusterLaunched}
-                    />
-                  ))
-              : null}
-
-            {/* Always show the launch button if RunPod is configured */}
-            {runpodConfig.is_configured && (
-              <Card variant="outlined" sx={{ mb: 3 }}>
-                <Typography level="h4" sx={{ mb: 2 }}>
-                  Launch New RunPod Cluster
-                </Typography>
-                <Typography
-                  level="body-md"
-                  sx={{ color: "text.secondary", mb: 2 }}
-                >
-                  Launch a new RunPod cluster for your workloads.
-                </Typography>
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowRunPodLauncher(true)}
-                  disabled={!runpodInstances.can_launch}
-                >
-                  Launch RunPod Cluster
-                </Button>
-                {!runpodInstances.can_launch && (
-                  <Typography
-                    level="body-xs"
-                    sx={{ color: "text.secondary", mt: 1 }}
-                  >
-                    Instance limit reached ({runpodInstances.current_count}/
-                    {runpodInstances.max_instances})
-                  </Typography>
-                )}
-              </Card>
-            )}
-          </>
+          <ClusterCard
+            cluster={{
+              id: "runpod-cluster",
+              name: "Real RunPod Cluster",
+              nodes: generateDedicatedNodes(
+                runpodConfig.max_instances,
+                runpodInstances.current_count
+              ),
+            }}
+            onLaunchCluster={() => setShowRunPodLauncher(true)}
+            launchDisabled={!runpodInstances.can_launch}
+            launchButtonText="Launch RunPod Cluster"
+          />
         )}
 
-        {/* Azure Clusters */}
+        {/* Azure Cluster */}
         {azureConfig.is_configured && (
-          <>
-            <Typography level="h4" sx={{ mb: 2 }}>
-              Azure Clusters
-            </Typography>
-
-            {/* Check for active Azure clusters */}
-            {skyPilotClusters.filter(
-              (cluster: any) =>
-                cluster.cluster_name &&
-                (cluster.cluster_name.toLowerCase().includes("azure") ||
-                  cluster.cluster_name.toLowerCase().includes("azure"))
-            ).length > 0
-              ? skyPilotClusters
-                  .filter(
-                    (cluster: any) =>
-                      cluster.cluster_name &&
-                      (cluster.cluster_name.toLowerCase().includes("azure") ||
-                        cluster.cluster_name.toLowerCase().includes("azure"))
-                  )
-                  .map((cluster: any) => (
-                    <RunPodClusterCard
-                      key={cluster.cluster_name}
-                      cluster={cluster}
-                      onClusterLaunched={handleClusterLaunched}
-                    />
-                  ))
-              : null}
-
-            {/* Always show the launch button if Azure is configured */}
-            {azureConfig.is_configured && (
-              <Card variant="outlined" sx={{ mb: 3 }}>
-                <Typography level="h4" sx={{ mb: 2 }}>
-                  Launch New Azure Cluster
-                </Typography>
-                <Typography
-                  level="body-md"
-                  sx={{ color: "text.secondary", mb: 2 }}
-                >
-                  Launch a new Azure cluster for your workloads.
-                </Typography>
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowAzureLauncher(true)}
-                  disabled={!azureInstances.can_launch}
-                >
-                  Launch Azure Cluster
-                </Button>
-                {!azureInstances.can_launch && (
-                  <Typography
-                    level="body-xs"
-                    sx={{ color: "text.secondary", mt: 1 }}
-                  >
-                    Instance limit reached ({azureInstances.current_count}/
-                    {azureInstances.max_instances})
-                  </Typography>
-                )}
-              </Card>
-            )}
-          </>
+          <ClusterCard
+            cluster={{
+              id: "azure-cluster",
+              name: "Real Azure Cluster",
+              nodes: generateDedicatedNodes(
+                azureConfig.max_instances,
+                azureInstances.current_count
+              ),
+            }}
+            onLaunchCluster={() => setShowAzureLauncher(true)}
+            launchDisabled={!azureInstances.can_launch}
+            launchButtonText="Launch Azure Cluster"
+          />
         )}
 
         {/* RunPod Configuration Status */}
