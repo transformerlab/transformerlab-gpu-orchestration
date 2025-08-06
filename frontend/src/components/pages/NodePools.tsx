@@ -386,7 +386,12 @@ const ClusterCard: React.FC<{
                   }}
                 >
                   {nodesOfType.map((node) => (
-                    <NodeSquare key={node.id} node={node} variant="mock" />
+                    <NodeSquare
+                      key={node.id}
+                      node={node}
+                      variant="mock"
+                      clusterName={cluster.id}
+                    />
                   ))}
                 </Box>
               </Box>
@@ -599,7 +604,12 @@ const CloudClusterCard: React.FC<{
                     }}
                   >
                     {nodesOfType.map((node) => (
-                      <NodeSquare key={node.id} node={node} variant="mock" />
+                      <NodeSquare
+                        key={node.id}
+                        node={node}
+                        variant="mock"
+                        clusterName={clusterName}
+                      />
                     ))}
                   </Box>
                 </Box>
