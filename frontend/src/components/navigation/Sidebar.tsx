@@ -11,12 +11,11 @@ import {
   ChartAreaIcon,
   CogIcon,
   ComputerIcon,
-  GpuIcon,
-  HouseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  CloudyIcon,
   StretchHorizontalIcon,
+  GripHorizontalIcon,
+  CircleDotIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -54,12 +53,12 @@ function Item({
 
 const sidebarItems = [
   {
-    icon: <CloudyIcon />,
+    icon: <GripHorizontalIcon />,
     content: "Node Pools",
     path: "/dashboard/node-pools",
   },
   {
-    icon: <ComputerIcon />,
+    icon: <CircleDotIcon size={22} style={{ paddingLeft: "2px" }} />,
     content: "My Machines",
     chipCount: 15,
     path: "/dashboard/my-clusters",
