@@ -64,6 +64,7 @@ from skypilot.azure_utils import (
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
+from auth.api_key_auth import get_user_or_api_key
 from auth.utils import get_current_user
 from reports.utils import record_usage
 from typing import Optional
@@ -100,7 +101,7 @@ class AzureTestRequest(BaseModel):
     auth_mode: str = "service_principal"  # Only service_principal supported
 
 
-router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key)])
 
 
 @router.get("/ssh-clusters")

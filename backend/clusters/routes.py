@@ -21,11 +21,12 @@ from utils.file_utils import (
     rename_identity_file,
     get_identity_files_dir,
 )
+from auth.api_key_auth import get_user_or_api_key
 from auth.utils import get_current_user
 from reports.utils import record_availability
 from typing import Optional
 
-router = APIRouter(prefix="/clusters", dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/clusters", dependencies=[Depends(get_user_or_api_key)])
 
 
 @router.get("", response_model=ClustersListResponse)
