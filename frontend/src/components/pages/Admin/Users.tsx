@@ -32,10 +32,14 @@ interface OrganizationMember {
   first_name: string;
   last_name: string;
   profile_picture_url?: string;
+  is_current_user?: boolean;
+  can_be_removed?: boolean;
+  can_change_role?: boolean;
 }
 
 interface OrganizationMembersResponse {
   members: OrganizationMember[];
+  admin_count?: number;
 }
 
 interface InvitationRequest {
@@ -108,7 +112,7 @@ const Users: React.FC = () => {
 
         const data: OrganizationMembersResponse = await response.json();
         console.log("API Response:", data);
-        setMembers(data.members);
+        setMembers(calculatePermissions(data.members));
       } catch (err) {
         console.error("Error fetching members:", err);
         setError(
@@ -143,6 +147,26 @@ const Users: React.FC = () => {
     return `https://i.pravatar.cc/150?img=${Math.abs(hash) % 70}`;
   };
 
+  // Helper function to calculate permissions based on current member list
+  const calculatePermissions = (memberList: OrganizationMember[]) => {
+    const adminCount = memberList.filter(m => {
+      const role = typeof m.role === "string" ? m.role : m.role?.slug;
+      return role === "admin";
+    }).length;
+
+    return memberList.map(member => {
+      const memberRole = typeof member.role === "string" ? member.role : member.role?.slug;
+      const isAdmin = memberRole === "admin";
+      const isOnlyAdmin = isAdmin && adminCount === 1;
+
+      return {
+        ...member,
+        can_be_removed: !isOnlyAdmin,
+        can_change_role: !isOnlyAdmin
+      };
+    });
+  };
+
   const handleRemoveUser = async (member: OrganizationMember) => {
     if (!user?.organization_id) {
       setError("No organization ID available");
@@ -167,8 +191,9 @@ const Users: React.FC = () => {
         throw new Error("Failed to remove user from organization");
       }
 
-      // Remove the user from the local state
-      setMembers(members.filter((m) => m.user_id !== member.user_id));
+      // Remove the user from the local state and recalculate permissions
+      const updatedMembers = members.filter((m) => m.user_id !== member.user_id);
+      setMembers(calculatePermissions(updatedMembers));
       setRemoveDialogOpen(false);
       setUserToRemove(null);
     } catch (err) {
@@ -299,12 +324,13 @@ const Users: React.FC = () => {
         throw new Error(errorData.detail || "Failed to update member role");
       }
 
-      // Update the local state
-      setMembers(members.map(member => 
+      // Update the local state and recalculate permissions
+      const updatedMembers = members.map(member => 
         member.user_id === userToChangeRole.user_id 
           ? { ...member, role: newRole }
           : member
-      ));
+      );
+      setMembers(calculatePermissions(updatedMembers));
 
       setRoleSuccess(`Role updated successfully to ${newRole}`);
 
@@ -463,28 +489,51 @@ const Users: React.FC = () => {
                       ></Typography>
                     ) : (
                       <Box sx={{ display: "flex", gap: 1 }}>
-                        <IconButton
-                          size="sm"
-                          color="primary"
-                          variant="plain"
-                          onClick={() => openRoleDialog(member)}
-                          disabled={changingRole}
-                        >
-                          <Edit size={16} />
-                        </IconButton>
-                        <IconButton
-                          size="sm"
-                          color="danger"
-                          variant="plain"
-                          onClick={() => openRemoveDialog(member)}
-                          disabled={removingUserId === member.user_id}
-                        >
-                          {removingUserId === member.user_id ? (
-                            <CircularProgress size="sm" />
-                          ) : (
-                            <Trash2 size={16} />
+                        {member.can_change_role !== false && (
+                          <IconButton
+                            size="sm"
+                            color="primary"
+                            variant="plain"
+                            onClick={() => openRoleDialog(member)}
+                            disabled={changingRole}
+                            title={
+                              !member.can_change_role
+                                ? "Cannot change role of the last admin"
+                                : "Change role"
+                            }
+                          >
+                            <Edit size={16} />
+                          </IconButton>
+                        )}
+                        {member.can_be_removed !== false && (
+                          <IconButton
+                            size="sm"
+                            color="danger"
+                            variant="plain"
+                            onClick={() => openRemoveDialog(member)}
+                            disabled={removingUserId === member.user_id}
+                            title={
+                              !member.can_be_removed
+                                ? "Cannot remove the last admin"
+                                : "Remove user"
+                            }
+                          >
+                            {removingUserId === member.user_id ? (
+                              <CircularProgress size="sm" />
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                          </IconButton>
+                        )}
+                        {(!member.can_change_role &&
+                          !member.can_be_removed) && (
+                            <Typography
+                              level="body-sm"
+                              sx={{ color: "text.secondary", fontStyle: "italic" }}
+                            >
+                              Cannot edit or remove only admin
+                            </Typography>
                           )}
-                        </IconButton>
                       </Box>
                     )}
                   </td>
