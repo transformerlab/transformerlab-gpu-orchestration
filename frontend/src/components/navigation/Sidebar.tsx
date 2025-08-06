@@ -72,37 +72,35 @@ const sidebarItems = [
 ];
 
 const adminSubItems = [
-  { content: "Users", section: "users", path: "/dashboard/admin/users" },
-  { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
+  { content: "Users", path: "/dashboard/admin/users" },
+  { content: "Teams", path: "/dashboard/admin/teams" },
+  {
+    content: "Node Pools",
+    path: "/dashboard/admin/pools",
+  },
   {
     content: "Dedicated Instances",
-    section: "clouds",
-    path: "/dashboard/admin/clouds",
+    path: "/dashboard/admin/instances",
   },
   {
     content: "RunPod Configuration",
-    section: "runpod",
     path: "/dashboard/admin/runpod",
   },
   {
     content: "Azure Configuration",
-    section: "azure",
     path: "/dashboard/admin/azure",
   },
   {
     content: "SSH Identity Files",
-    section: "identity",
     path: "/dashboard/admin/identity",
   },
   {
     content: "Object Storage",
-    section: "objectStorage",
     path: "/dashboard/admin/object-storage",
   },
-  { content: "Volumes", section: "volumes", path: "/dashboard/admin/volumes" },
+  { content: "Volumes", path: "/dashboard/admin/volumes" },
   {
     content: "Settings",
-    section: "settings",
     path: "/dashboard/admin/settings",
   },
 ];
