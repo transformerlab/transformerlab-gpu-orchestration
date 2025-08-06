@@ -42,12 +42,14 @@ interface AzureConfigModalProps {
   open: boolean;
   onClose: () => void;
   poolName?: string;
+  onConfigSaved?: () => void;
 }
 
 const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
   open,
   onClose,
   poolName = "Azure Pool",
+  onConfigSaved,
 }) => {
   const [config, setConfig] = useState<AzureConfig>({
     name: "",
@@ -231,6 +233,10 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
         });
         await fetchAzureConfig();
         onClose();
+        // Small delay to ensure modal is closed before refreshing
+        setTimeout(() => {
+          onConfigSaved?.();
+        }, 100);
       } else {
         addNotification({
           type: "danger",
@@ -272,6 +278,7 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
                     })
                   }
                   placeholder="Enter pool name (e.g., Azure Production)"
+                  disabled={config.is_configured}
                 />
               </FormControl>
               <Grid container spacing={2}>
@@ -282,8 +289,8 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
                       type={showCredentials ? "text" : "password"}
                       value={
                         showCredentials && actualCredentials
-                          ? actualCredentials.subscription_id
-                          : config.subscription_id
+                          ? actualCredentials.subscription_id || ""
+                          : config.subscription_id || ""
                       }
                       onChange={(e) =>
                         setConfig({
@@ -302,8 +309,8 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
                       type={showCredentials ? "text" : "password"}
                       value={
                         showCredentials && actualCredentials
-                          ? actualCredentials.tenant_id
-                          : config.tenant_id
+                          ? actualCredentials.tenant_id || ""
+                          : config.tenant_id || ""
                       }
                       onChange={(e) =>
                         setConfig({
@@ -324,8 +331,8 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
                       type={showCredentials ? "text" : "password"}
                       value={
                         showCredentials && actualCredentials
-                          ? actualCredentials.client_id
-                          : config.client_id
+                          ? actualCredentials.client_id || ""
+                          : config.client_id || ""
                       }
                       onChange={(e) =>
                         setConfig({
@@ -344,8 +351,8 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
                       type={showCredentials ? "text" : "password"}
                       value={
                         showCredentials && actualCredentials
-                          ? actualCredentials.client_secret
-                          : config.client_secret
+                          ? actualCredentials.client_secret || ""
+                          : config.client_secret || ""
                       }
                       onChange={(e) =>
                         setConfig({

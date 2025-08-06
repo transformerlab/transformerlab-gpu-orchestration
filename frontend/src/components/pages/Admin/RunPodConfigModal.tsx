@@ -37,12 +37,14 @@ interface RunPodConfigModalProps {
   open: boolean;
   onClose: () => void;
   poolName?: string;
+  onConfigSaved?: () => void;
 }
 
 const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
   open,
   onClose,
   poolName = "RunPod Pool",
+  onConfigSaved,
 }) => {
   const [config, setConfig] = useState<RunPodConfig>({
     name: "",
@@ -127,6 +129,7 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
           message: "RunPod configuration saved successfully",
         });
         await fetchRunPodConfig();
+        onConfigSaved?.();
         onClose();
       } else {
         addNotification({
@@ -161,7 +164,7 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
               <FormControl>
                 <FormLabel>Pool Name</FormLabel>
                 <Input
-                  value={config.name}
+                  value={config.name || ""}
                   onChange={(e) =>
                     setConfig({
                       ...config,
@@ -169,13 +172,14 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
                     })
                   }
                   placeholder="Enter pool name (e.g., RunPod GPU Pool)"
+                  disabled={config.is_configured}
                 />
               </FormControl>
               <FormControl>
                 <FormLabel>API Key</FormLabel>
                 <Input
                   type={showApiKey ? "text" : "password"}
-                  value={config.api_key}
+                  value={config.api_key || ""}
                   onChange={(e) =>
                     setConfig({
                       ...config,

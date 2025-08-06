@@ -156,7 +156,7 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
                       <FormControl>
                         <FormLabel>Node IP</FormLabel>
                         <Input
-                          value={newNodeIp}
+                          value={newNodeIp || ""}
                           onChange={(e) => setNewNodeIp(e.target.value)}
                           placeholder="Enter node IP address"
                         />
@@ -166,7 +166,7 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
                       <FormControl>
                         <FormLabel>User</FormLabel>
                         <Input
-                          value={newNodeUser}
+                          value={newNodeUser || ""}
                           onChange={(e) => setNewNodeUser(e.target.value)}
                           placeholder="Enter user"
                         />
@@ -178,7 +178,7 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
                       <FormControl>
                         <FormLabel>Identity File (Optional)</FormLabel>
                         <Select
-                          value={newNodeIdentityFile}
+                          value={newNodeIdentityFile || ""}
                           onChange={(_, value) =>
                             setNewNodeIdentityFile(value || "")
                           }
@@ -198,7 +198,7 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
                         <FormLabel>Password (Optional)</FormLabel>
                         <Input
                           type="password"
-                          value={newNodePassword}
+                          value={newNodePassword || ""}
                           onChange={(e) => setNewNodePassword(e.target.value)}
                           placeholder="Enter password"
                         />

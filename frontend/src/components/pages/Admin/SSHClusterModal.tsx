@@ -134,7 +134,7 @@ const SSHClusterModal: React.FC<SSHClusterModalProps> = ({
                   <FormControl>
                     <FormLabel>Cluster Name</FormLabel>
                     <Input
-                      value={newClusterName}
+                      value={newClusterName || ""}
                       onChange={(e) => setNewClusterName(e.target.value)}
                       placeholder="Enter cluster name"
                     />
@@ -144,7 +144,7 @@ const SSHClusterModal: React.FC<SSHClusterModalProps> = ({
                   <FormControl>
                     <FormLabel>Default User</FormLabel>
                     <Input
-                      value={newClusterUser}
+                      value={newClusterUser || ""}
                       onChange={(e) => setNewClusterUser(e.target.value)}
                       placeholder="Enter default user"
                     />
@@ -156,7 +156,7 @@ const SSHClusterModal: React.FC<SSHClusterModalProps> = ({
                   <FormControl>
                     <FormLabel>Identity File (Optional)</FormLabel>
                     <Select
-                      value={newClusterIdentityFile}
+                      value={newClusterIdentityFile || ""}
                       onChange={(_, value) =>
                         setNewClusterIdentityFile(value || "")
                       }
@@ -176,7 +176,7 @@ const SSHClusterModal: React.FC<SSHClusterModalProps> = ({
                     <FormLabel>Password (Optional)</FormLabel>
                     <Input
                       type="password"
-                      value={newClusterPassword}
+                      value={newClusterPassword || ""}
                       onChange={(e) => setNewClusterPassword(e.target.value)}
                       placeholder="Enter password"
                     />

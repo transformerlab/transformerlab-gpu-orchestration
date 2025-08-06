@@ -40,6 +40,8 @@ const Pools: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setNodePools(data.node_pools || []);
+      } else {
+        console.error("Error fetching node pools:", response.status);
       }
     } catch (err) {
       console.error("Error fetching node pools:", err);
@@ -108,7 +110,9 @@ const Pools: React.FC = () => {
               </thead>
               <tbody>
                 {nodePools.map((pool) => (
-                  <tr key={pool.name}>
+                  <tr
+                    key={pool.platform === "direct" ? pool.name : pool.platform}
+                  >
                     <td>
                       <Typography level="title-sm">{pool.name}</Typography>
                     </td>
@@ -263,11 +267,13 @@ const Pools: React.FC = () => {
         open={openAzureModal}
         onClose={() => setOpenAzureModal(false)}
         poolName={selectedPool?.name}
+        onConfigSaved={fetchNodePools}
       />
       <RunPodConfigModal
         open={openRunPodModal}
         onClose={() => setOpenRunPodModal(false)}
         poolName={selectedPool?.name}
+        onConfigSaved={fetchNodePools}
       />
       <SSHConfigModal
         open={openSSHModal}
