@@ -23,6 +23,7 @@ import {
 import { Save, Key, Server, Settings } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
+import { useNotification } from "../../../components/NotificationSystem";
 
 interface AzureConfig {
   subscription_id: string;
@@ -61,8 +62,6 @@ const AzureAdmin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [skyChecking, setSkyChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
   const [actualCredentials, setActualCredentials] =
     useState<AzureConfig | null>(null);
@@ -71,6 +70,7 @@ const AzureAdmin: React.FC = () => {
     output: string;
     message: string;
   } | null>(null);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     fetchAzureConfig();
@@ -99,10 +99,16 @@ const AzureAdmin: React.FC = () => {
           max_instances: data.max_instances || 0,
         });
       } else {
-        setError("Failed to fetch Azure configuration");
+        addNotification({
+          type: "danger",
+          message: "Failed to fetch Azure configuration",
+        });
       }
     } catch (err) {
-      setError("Error fetching Azure configuration");
+      addNotification({
+        type: "danger",
+        message: "Error fetching Azure configuration",
+      });
     } finally {
       setLoading(false);
     }
@@ -171,10 +177,11 @@ const AzureAdmin: React.FC = () => {
           }
         );
         setAvailableInstanceTypes(instanceTypes);
+      } else {
+        console.error("Error fetching instance types");
       }
     } catch (err) {
       console.error("Error fetching instance types:", err);
-      setAvailableInstanceTypes([]);
     }
   };
 
@@ -186,24 +193,27 @@ const AzureAdmin: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setAvailableRegions(data.regions || []);
+      } else {
+        console.error("Error fetching regions");
       }
     } catch (err) {
-      console.error("Error fetching available regions:", err);
-      setAvailableRegions([]);
+      console.error("Error fetching regions:", err);
     }
   };
 
   const fetchActualCredentials = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/azure/config/actual"),
+        buildApiUrl("skypilot/azure/credentials"),
         {
           credentials: "include",
         }
       );
       if (response.ok) {
-        const actualConfig = await response.json();
-        setActualCredentials(actualConfig);
+        const data = await response.json();
+        setActualCredentials(data);
+      } else {
+        console.error("Error fetching actual credentials");
       }
     } catch (err) {
       console.error("Error fetching actual credentials:", err);
@@ -213,8 +223,6 @@ const AzureAdmin: React.FC = () => {
   const saveConfig = async () => {
     try {
       setSaving(true);
-      setError(null);
-      setSuccess(null);
       setSkyCheckResult(null);
 
       const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
@@ -231,35 +239,46 @@ const AzureAdmin: React.FC = () => {
           allowed_instance_types: config.allowed_instance_types,
           allowed_regions: config.allowed_regions,
           max_instances: config.max_instances,
-          auth_method: "service_principal",
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConfig({ ...data, auth_method: "service_principal" });
+        setConfig(data);
 
         // Handle sky check results if available
         if (data.sky_check_result) {
           setSkyCheckResult(data.sky_check_result);
           if (data.sky_check_result.valid) {
-            setSuccess(
-              "Azure configuration saved successfully and sky check passed"
-            );
+            addNotification({
+              type: "success",
+              message:
+                "Azure configuration saved successfully and sky check passed",
+            });
           } else {
-            setError(
-              `Azure configuration saved but sky check failed: ${data.sky_check_result.message}`
-            );
+            addNotification({
+              type: "danger",
+              message: `Azure configuration saved but sky check failed: ${data.sky_check_result.message}`,
+            });
           }
         } else {
-          setSuccess("Azure configuration saved successfully");
+          addNotification({
+            type: "success",
+            message: "Azure configuration saved successfully",
+          });
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to save Azure configuration");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to save Azure configuration",
+        });
       }
     } catch (err) {
-      setError("Error saving Azure configuration");
+      addNotification({
+        type: "danger",
+        message: "Error saving Azure configuration",
+      });
     } finally {
       setSaving(false);
     }
@@ -268,34 +287,6 @@ const AzureAdmin: React.FC = () => {
   const testConnection = async () => {
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      // Get the actual config (not masked) for testing
-      const actualConfigResponse = await apiFetch(
-        buildApiUrl("skypilot/azure/config/actual"),
-        {
-          credentials: "include",
-        }
-      );
-
-      let testCredentials = {
-        subscription_id: config.subscription_id,
-        tenant_id: config.tenant_id,
-        client_id: config.client_id,
-        client_secret: config.client_secret,
-      };
-
-      if (actualConfigResponse.ok) {
-        const actualConfig = await actualConfigResponse.json();
-        // Use actual credentials from saved config
-        testCredentials = {
-          subscription_id: actualConfig.subscription_id,
-          tenant_id: actualConfig.tenant_id,
-          client_id: actualConfig.client_id,
-          client_secret: actualConfig.client_secret,
-        };
-      }
 
       const response = await apiFetch(buildApiUrl("skypilot/azure/test"), {
         method: "POST",
@@ -304,20 +295,31 @@ const AzureAdmin: React.FC = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...testCredentials,
-          auth_mode: "service_principal",
+          subscription_id: config.subscription_id,
+          tenant_id: config.tenant_id,
+          client_id: config.client_id,
+          client_secret: config.client_secret,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setSuccess("Azure connection test successful");
+        addNotification({
+          type: "success",
+          message: "Azure connection test successful",
+        });
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Azure connection test failed");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Azure connection test failed",
+        });
       }
     } catch (err) {
-      setError("Error testing Azure connection");
+      addNotification({
+        type: "danger",
+        message: "Error testing Azure connection",
+      });
     } finally {
       setLoading(false);
     }
@@ -326,8 +328,6 @@ const AzureAdmin: React.FC = () => {
   const runSkyCheck = async () => {
     try {
       setSkyChecking(true);
-      setError(null);
-      setSuccess(null);
       setSkyCheckResult(null);
 
       const response = await apiFetch(buildApiUrl("skypilot/azure/sky-check"), {
@@ -338,16 +338,28 @@ const AzureAdmin: React.FC = () => {
         const data = await response.json();
         setSkyCheckResult(data);
         if (data.valid) {
-          setSuccess("Sky check azure completed successfully");
+          addNotification({
+            type: "success",
+            message: "Sky check azure completed successfully",
+          });
         } else {
-          setError("Sky check azure failed");
+          addNotification({
+            type: "danger",
+            message: "Sky check azure failed",
+          });
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Sky check azure failed");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Sky check azure failed",
+        });
       }
     } catch (err) {
-      setError("Error running sky check azure");
+      addNotification({
+        type: "danger",
+        message: "Error running sky check azure",
+      });
     } finally {
       setSkyChecking(false);
     }
@@ -371,18 +383,6 @@ const AzureAdmin: React.FC = () => {
       title="Azure Configuration"
       subtitle="Configure Azure credentials and allowed instance types for on-demand clusters."
     >
-      {error && (
-        <Alert color="danger" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert color="success" sx={{ mb: 2 }}>
-          {success}
-        </Alert>
-      )}
-
       <Stack spacing={3}>
         {/* Azure Credentials Configuration */}
         <Card variant="outlined">

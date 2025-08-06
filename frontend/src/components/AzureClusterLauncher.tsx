@@ -21,6 +21,7 @@ import {
 } from "@mui/joy";
 import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useNotification } from "./NotificationSystem";
 
 interface AzureClusterLauncherProps {
   open: boolean;
@@ -63,8 +64,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     if (open) {
@@ -190,8 +190,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setUseSpot(false);
     setIdleMinutesToAutostop("");
     setSelectedTemplate("");
-    setError(null);
-    setSuccess(null);
   };
 
   const handleClose = () => {
@@ -201,24 +199,31 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const launchCluster = async () => {
     if (!clusterName.trim()) {
-      setError("Cluster name is required");
+      addNotification({
+        type: "danger",
+        message: "Cluster name is required",
+      });
       return;
     }
 
     if (!selectedInstanceType) {
-      setError("Instance type is required");
+      addNotification({
+        type: "danger",
+        message: "Instance type is required",
+      });
       return;
     }
 
     if (!selectedRegion) {
-      setError("Region is required");
+      addNotification({
+        type: "danger",
+        message: "Region is required",
+      });
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
 
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
@@ -240,17 +245,26 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
       if (response.ok) {
         const data: LaunchClusterResponse = await response.json();
-        setSuccess(data.message || "Azure cluster launched successfully");
+        addNotification({
+          type: "success",
+          message: data.message || "Azure cluster launched successfully",
+        });
         setTimeout(() => {
           if (onClusterLaunched) onClusterLaunched(data.cluster_name);
           handleClose();
         }, 1200);
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to launch Azure cluster");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to launch Azure cluster",
+        });
       }
     } catch (err) {
-      setError("Error launching Azure cluster");
+      addNotification({
+        type: "danger",
+        message: "Error launching Azure cluster",
+      });
     } finally {
       setLoading(false);
     }
@@ -299,9 +313,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
           }}
         >
           <Stack spacing={3}>
-            {error && <Alert color="danger">{error}</Alert>}
-            {success && <Alert color="success">{success}</Alert>}
-
             <Card variant="outlined">
               <Typography level="title-sm" sx={{ mb: 2 }}>
                 Basic Configuration

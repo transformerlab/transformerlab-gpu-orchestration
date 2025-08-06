@@ -24,6 +24,7 @@ import {
 import SubmitJobModal from "./SubmitJobModal";
 import { buildApiUrl, apiFetch } from "../utils/api";
 import useSWR from "swr";
+import { useNotification } from "./NotificationSystem";
 
 interface ClusterStatus {
   cluster_name: string;
@@ -74,7 +75,6 @@ const fetcher = (url: string) =>
   apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
 const SkyPilotClusterStatus: React.FC = () => {
-  const [error, setError] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState<{
     [key: string]: boolean;
   }>({});
@@ -100,6 +100,7 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [portForwardLoading, setPortForwardLoading] = useState<{
     [key: string]: boolean;
   }>({});
+  const { addNotification } = useNotification();
 
   // SWR for cluster status
   const { data, isLoading, mutate } = useSWR(
@@ -163,7 +164,10 @@ const SkyPilotClusterStatus: React.FC = () => {
     try {
       await mutate();
     } catch (err) {
-      setError("Error fetching cluster status");
+      addNotification({
+        type: "danger",
+        message: "Error fetching cluster status",
+      });
     }
   };
 
@@ -254,12 +258,19 @@ const SkyPilotClusterStatus: React.FC = () => {
       }
       const data = await response.json();
       console.log("Job cancelled successfully:", data);
+      addNotification({
+        type: "success",
+        message: "Job cancelled successfully",
+      });
       // Refresh the jobs list to show updated status
       if (expandedCluster === clusterName) {
         mutateJobs();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel job");
+      addNotification({
+        type: "danger",
+        message: err instanceof Error ? err.message : "Failed to cancel job",
+      });
     } finally {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
     }
@@ -278,12 +289,17 @@ const SkyPilotClusterStatus: React.FC = () => {
     );
     try {
       const formData = new FormData();
+      formData.append("job_id", jobId.toString());
       formData.append("job_type", jobType);
-      if (jupyterPort) formData.append("jupyter_port", jupyterPort.toString());
-      if (vscodePort) formData.append("vscode_port", vscodePort.toString());
+      if (jupyterPort) {
+        formData.append("jupyter_port", jupyterPort.toString());
+      }
+      if (vscodePort) {
+        formData.append("vscode_port", vscodePort.toString());
+      }
 
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/setup-port-forward`),
+        buildApiUrl(`skypilot/port-forward/${clusterName}/setup`),
         {
           method: "POST",
           credentials: "include",
@@ -291,18 +307,30 @@ const SkyPilotClusterStatus: React.FC = () => {
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Port forwarding setup successfully:", data);
-        // Refresh port forwards list
-        fetchPortForwards();
-      } else {
-        console.error("Failed to setup port forwarding for job:", jobId);
+      if (!response.ok) {
         const errorData = await response.json();
+        console.error("Failed to setup port forwarding for job:", jobId);
         console.error("Error details:", errorData);
+        throw new Error(
+          errorData.detail || "Failed to setup port forwarding for job"
+        );
       }
+
+      const data = await response.json();
+      console.log("Port forwarding setup successfully:", data);
+      addNotification({
+        type: "success",
+        message: "Port forwarding setup successfully",
+      });
+
+      // Refresh port forwards list
+      fetchPortForwards();
     } catch (err) {
       console.error("Error setting up port forwarding for job:", err);
+      addNotification({
+        type: "danger",
+        message: "Error setting up port forwarding",
+      });
     }
   };
 
@@ -370,65 +398,77 @@ const SkyPilotClusterStatus: React.FC = () => {
 
   const handleStopCluster = async (clusterName: string) => {
     try {
-      setOperationLoading((prev) => ({
-        ...prev,
-        [`stop_${clusterName}`]: true,
-      }));
-      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ cluster_name: clusterName }),
-      });
+      setOperationLoading((prev) => ({ ...prev, [clusterName]: true }));
+      const response = await apiFetch(
+        buildApiUrl(`skypilot/clusters/${clusterName}/stop`),
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
 
-      if (response.ok) {
-        // Refresh cluster status after successful operation
-        await fetchClusterStatus();
-      } else {
+      if (!response.ok) {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to stop cluster");
+        console.error("Failed to stop cluster:", errorData.detail);
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to stop cluster",
+        });
+      } else {
+        console.error("Error stopping cluster:", err);
+        addNotification({
+          type: "danger",
+          message: "Error stopping cluster",
+        });
       }
     } catch (err) {
-      setError("Error stopping cluster");
+      console.error("Error stopping cluster:", err);
+      addNotification({
+        type: "danger",
+        message: "Error stopping cluster",
+      });
     } finally {
-      setOperationLoading((prev) => ({
-        ...prev,
-        [`stop_${clusterName}`]: false,
-      }));
+      setOperationLoading((prev) => ({ ...prev, [clusterName]: false }));
+      // Refresh cluster status
+      mutate();
     }
   };
 
   const handleDownCluster = async (clusterName: string) => {
     try {
-      setOperationLoading((prev) => ({
-        ...prev,
-        [`down_${clusterName}`]: true,
-      }));
-      const response = await apiFetch(buildApiUrl("skypilot/down"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ cluster_name: clusterName }),
-      });
+      setOperationLoading((prev) => ({ ...prev, [clusterName]: true }));
+      const response = await apiFetch(
+        buildApiUrl(`skypilot/clusters/${clusterName}/down`),
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
 
-      if (response.ok) {
-        // Refresh cluster status after successful operation
-        await fetchClusterStatus();
-      } else {
+      if (!response.ok) {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to down cluster");
+        console.error("Failed to down cluster:", errorData.detail);
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to down cluster",
+        });
+      } else {
+        console.error("Error downing cluster:", err);
+        addNotification({
+          type: "danger",
+          message: "Error downing cluster",
+        });
       }
     } catch (err) {
-      setError("Error downing cluster");
+      console.error("Error downing cluster:", err);
+      addNotification({
+        type: "danger",
+        message: "Error downing cluster",
+      });
     } finally {
-      setOperationLoading((prev) => ({
-        ...prev,
-        [`down_${clusterName}`]: false,
-      }));
+      setOperationLoading((prev) => ({ ...prev, [clusterName]: false }));
+      // Refresh cluster status
+      mutate();
     }
   };
 
@@ -492,22 +532,6 @@ const SkyPilotClusterStatus: React.FC = () => {
 
   return (
     <Box>
-      {error && (
-        <Card color="danger" variant="soft" sx={{ mb: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography color="danger">{error}</Typography>
-            <Button
-              variant="plain"
-              size="sm"
-              color="danger"
-              onClick={() => setError(null)}
-            >
-              ×
-            </Button>
-          </Box>
-        </Card>
-      )}
-
       <Box
         sx={{
           display: "flex",
@@ -672,12 +696,8 @@ const SkyPilotClusterStatus: React.FC = () => {
                               onClick={() =>
                                 handleStopCluster(cluster.cluster_name)
                               }
-                              loading={
-                                operationLoading[`stop_${cluster.cluster_name}`]
-                              }
-                              disabled={
-                                operationLoading[`stop_${cluster.cluster_name}`]
-                              }
+                              loading={operationLoading[cluster.cluster_name]}
+                              disabled={operationLoading[cluster.cluster_name]}
                             >
                               Stop
                             </Button>
@@ -693,12 +713,8 @@ const SkyPilotClusterStatus: React.FC = () => {
                             onClick={() =>
                               handleDownCluster(cluster.cluster_name)
                             }
-                            loading={
-                              operationLoading[`down_${cluster.cluster_name}`]
-                            }
-                            disabled={
-                              operationLoading[`down_${cluster.cluster_name}`]
-                            }
+                            loading={operationLoading[cluster.cluster_name]}
+                            disabled={operationLoading[cluster.cluster_name]}
                           >
                             Down
                           </Button>

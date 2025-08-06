@@ -20,6 +20,7 @@ import {
 } from "@mui/joy";
 import { Rocket, Zap } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useNotification } from "./NotificationSystem";
 
 interface RunPodClusterLauncherProps {
   open: boolean;
@@ -58,8 +59,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     is_configured: false,
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     if (open) {
@@ -120,8 +120,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSelectedGpuType("");
     setSelectedGpuFullString("");
     setSelectedTemplate("");
-    setError(null);
-    setSuccess(null);
   };
 
   const handleClose = () => {
@@ -132,8 +130,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const launchCluster = async () => {
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
 
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
@@ -152,7 +148,10 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 
       if (response.ok) {
         const data: LaunchClusterResponse = await response.json();
-        setSuccess(`${data.message} (Request ID: ${data.request_id})`);
+        addNotification({
+          type: "success",
+          message: `${data.message} (Request ID: ${data.request_id})`,
+        });
         setTimeout(() => {
           if (onClusterLaunched) {
             onClusterLaunched(clusterName);
@@ -161,10 +160,16 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         }, 2000);
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to launch RunPod cluster");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to launch RunPod cluster",
+        });
       }
     } catch (err) {
-      setError("Error launching RunPod cluster");
+      addNotification({
+        type: "danger",
+        message: "Error launching RunPod cluster",
+      });
     } finally {
       setLoading(false);
     }
@@ -206,18 +211,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
           <Zap size={20} style={{ marginRight: 8, verticalAlign: "middle" }} />
           Reserve a Node on RunPod
         </Typography>
-
-        {error && (
-          <Alert color="danger" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {success && (
-          <Alert color="success" sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
 
         <Stack spacing={3}>
           <FormControl required>

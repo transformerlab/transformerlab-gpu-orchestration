@@ -1,26 +1,19 @@
 import React, { useState } from "react";
-import {
-  Box,
-  Button,
-  Card,
-  Typography,
-  CircularProgress,
-  Alert,
-} from "@mui/joy";
+import { Box, Button, Card, Typography, CircularProgress } from "@mui/joy";
 import axios from "axios";
 import logo from "../logo.svg";
+import { useNotification } from "./NotificationSystem";
 
 // Use relative API base URL - this will work regardless of host/port
 const apiBaseUrl = import.meta.env.VITE_API_URL || "/api/v1";
 
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { addNotification } = useNotification();
 
   const handleLogin = async () => {
     try {
       setLoading(true);
-      setError(null);
 
       // Get the login URL from the backend using the environment variable
       const response = await axios.get(`${apiBaseUrl}/auth/login-url`, {
@@ -37,7 +30,10 @@ const LoginPage: React.FC = () => {
       }
       window.location.href = response.data.login_url;
     } catch (err) {
-      setError("Failed to initiate login. Please try again.");
+      addNotification({
+        type: "danger",
+        message: "Failed to initiate login. Please try again.",
+      });
       console.error("Login error:", err);
     } finally {
       setLoading(false);
@@ -77,12 +73,6 @@ const LoginPage: React.FC = () => {
         <Typography level="body-md" sx={{ mb: 3, color: "text.secondary" }}>
           Distributed computing for AI
         </Typography>
-
-        {error && (
-          <Alert color="danger" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
 
         <Button
           variant="solid"

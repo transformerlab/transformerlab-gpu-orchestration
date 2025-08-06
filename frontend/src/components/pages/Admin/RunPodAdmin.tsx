@@ -22,6 +22,7 @@ import {
 import { Save, Key, Gpu, Settings } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
+import { useNotification } from "../../../components/NotificationSystem";
 
 interface RunPodConfig {
   api_key: string;
@@ -48,14 +49,13 @@ const RunPodAdmin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [skyChecking, setSkyChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [skyCheckResult, setSkyCheckResult] = useState<{
     valid: boolean;
     output: string;
     message: string;
   } | null>(null);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     fetchRunPodConfig();
@@ -72,10 +72,16 @@ const RunPodAdmin: React.FC = () => {
         const data = await response.json();
         setConfig(data);
       } else {
-        setError("Failed to fetch RunPod configuration");
+        addNotification({
+          type: "danger",
+          message: "Failed to fetch RunPod configuration",
+        });
       }
     } catch (err) {
-      setError("Error fetching RunPod configuration");
+      addNotification({
+        type: "danger",
+        message: "Error fetching RunPod configuration",
+      });
     } finally {
       setLoading(false);
     }
@@ -103,6 +109,8 @@ const RunPodAdmin: React.FC = () => {
           };
         });
         setAvailableGpuTypes(gpuTypes);
+      } else {
+        console.error("Error fetching GPU types:", err);
       }
     } catch (err) {
       console.error("Error fetching GPU types:", err);
@@ -112,8 +120,6 @@ const RunPodAdmin: React.FC = () => {
   const saveConfig = async () => {
     try {
       setSaving(true);
-      setError(null);
-      setSuccess(null);
       setSkyCheckResult(null);
 
       const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
@@ -137,23 +143,35 @@ const RunPodAdmin: React.FC = () => {
         if (data.sky_check_result) {
           setSkyCheckResult(data.sky_check_result);
           if (data.sky_check_result.valid) {
-            setSuccess(
-              "RunPod configuration saved successfully and sky check passed"
-            );
+            addNotification({
+              type: "success",
+              message:
+                "RunPod configuration saved successfully and sky check passed",
+            });
           } else {
-            setError(
-              `RunPod configuration saved but sky check failed: ${data.sky_check_result.message}`
-            );
+            addNotification({
+              type: "danger",
+              message: `RunPod configuration saved but sky check failed: ${data.sky_check_result.message}`,
+            });
           }
         } else {
-          setSuccess("RunPod configuration saved successfully");
+          addNotification({
+            type: "success",
+            message: "RunPod configuration saved successfully",
+          });
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to save RunPod configuration");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to save RunPod configuration",
+        });
       }
     } catch (err) {
-      setError("Error saving RunPod configuration");
+      addNotification({
+        type: "danger",
+        message: "Error saving RunPod configuration",
+      });
     } finally {
       setSaving(false);
     }
@@ -162,8 +180,6 @@ const RunPodAdmin: React.FC = () => {
   const testConnection = async () => {
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
 
       const response = await apiFetch(buildApiUrl("skypilot/runpod/test"), {
         method: "POST",
@@ -178,13 +194,22 @@ const RunPodAdmin: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setSuccess("RunPod connection test successful");
+        addNotification({
+          type: "success",
+          message: "RunPod connection test successful",
+        });
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "RunPod connection test failed");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "RunPod connection test failed",
+        });
       }
     } catch (err) {
-      setError("Error testing RunPod connection");
+      addNotification({
+        type: "danger",
+        message: "Error testing RunPod connection",
+      });
     } finally {
       setLoading(false);
     }
@@ -193,8 +218,6 @@ const RunPodAdmin: React.FC = () => {
   const runSkyCheck = async () => {
     try {
       setSkyChecking(true);
-      setError(null);
-      setSuccess(null);
       setSkyCheckResult(null);
 
       const response = await apiFetch(
@@ -208,16 +231,28 @@ const RunPodAdmin: React.FC = () => {
         const data = await response.json();
         setSkyCheckResult(data);
         if (data.valid) {
-          setSuccess("Sky check runpod completed successfully");
+          addNotification({
+            type: "success",
+            message: "Sky check runpod completed successfully",
+          });
         } else {
-          setError("Sky check runpod failed");
+          addNotification({
+            type: "danger",
+            message: "Sky check runpod failed",
+          });
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Sky check runpod failed");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Sky check runpod failed",
+        });
       }
     } catch (err) {
-      setError("Error running sky check runpod");
+      addNotification({
+        type: "danger",
+        message: "Error running sky check runpod",
+      });
     } finally {
       setSkyChecking(false);
     }
@@ -241,18 +276,6 @@ const RunPodAdmin: React.FC = () => {
       title="RunPod Configuration"
       subtitle="Configure RunPod API key and allowed GPU instances for on-demand clusters."
     >
-      {error && (
-        <Alert color="danger" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert color="success" sx={{ mb: 2 }}>
-          {success}
-        </Alert>
-      )}
-
       <Stack spacing={3}>
         {/* API Key Configuration */}
         <Card variant="outlined">

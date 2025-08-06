@@ -17,6 +17,7 @@ import {
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../utils/api";
 import { Code, BookOpen } from "lucide-react";
+import { useNotification } from "./NotificationSystem";
 
 type TaskType = "vscode" | "jupyter";
 
@@ -40,14 +41,11 @@ const InteractiveTaskModal: React.FC<InteractiveTaskModalProps> = ({
   const [vscodePort, setVscodePort] = useState("8888");
   const [jupyterPort, setJupyterPort] = useState("8888");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { addNotification } = useNotification();
 
   const resetForm = () => {
     setVscodePort("8888");
     setJupyterPort("8888");
-    setError(null);
-    setSuccess(null);
   };
 
   const getTaskConfig = () => {
@@ -84,8 +82,6 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
 
     try {
       if (taskType === "vscode") {
@@ -117,16 +113,22 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
             successMessage += `\n📡 Local Port: ${pf.local_port} → Remote Port: ${pf.remote_port}`;
           }
 
-          setSuccess(successMessage);
+          addNotification({
+            type: "success",
+            message: successMessage,
+            duration: 8000,
+          });
           resetForm();
           if (onTaskSubmitted) onTaskSubmitted();
           setTimeout(() => {
-            setSuccess(null);
             onClose();
           }, 4000);
         } else {
           const errorData = await response.json();
-          setError(errorData.detail || "Failed to launch interactive task");
+          addNotification({
+            type: "danger",
+            message: errorData.detail || "Failed to launch interactive task",
+          });
         }
       } else if (taskType === "jupyter") {
         // Jupyter uses the job submission endpoint
@@ -172,20 +174,29 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
             successMessage += `\n✅ Port forwarding will be set up automatically when the job starts running`;
           }
 
-          setSuccess(successMessage);
+          addNotification({
+            type: "success",
+            message: successMessage,
+            duration: 8000,
+          });
           resetForm();
           if (onTaskSubmitted) onTaskSubmitted();
           setTimeout(() => {
-            setSuccess(null);
             onClose();
           }, 4000);
         } else {
           const errorData = await response.json();
-          setError(errorData.detail || "Failed to submit Jupyter job");
+          addNotification({
+            type: "danger",
+            message: errorData.detail || "Failed to submit Jupyter job",
+          });
         }
       }
     } catch (err) {
-      setError("Error launching task");
+      addNotification({
+        type: "danger",
+        message: "Error launching task",
+      });
     } finally {
       setLoading(false);
     }
@@ -255,18 +266,6 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
                 <Alert color="warning" sx={{ mb: 2 }}>
                   Cluster is launching. Please wait until it is ready to submit
                   tasks.
-                </Alert>
-              )}
-
-              {error && (
-                <Alert color="danger" sx={{ mb: 2 }}>
-                  {error}
-                </Alert>
-              )}
-
-              {success && (
-                <Alert color="success" sx={{ mb: 2 }}>
-                  {success}
                 </Alert>
               )}
 
