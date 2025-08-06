@@ -36,6 +36,10 @@ class SendInvitationRequest(BaseModel):
     role_slug: Optional[str] = None
 
 
+class UpdateMemberRoleRequest(BaseModel):
+    role: str  # "admin" or "member"
+
+
 router = APIRouter(prefix="/admin/orgs")
 
 
@@ -198,6 +202,54 @@ async def remove_organization_member(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to remove member from organization: {str(e)}",
+        )
+
+
+@router.put("/{organization_id}/members/{user_id}/role")
+async def update_member_role(
+    organization_id: str,
+    user_id: str,
+    request: UpdateMemberRoleRequest,
+    user=Depends(get_current_user),
+):
+    """Update a member's role in an organization (admin endpoint)"""
+    try:
+        # First, get the organization membership to find the membership ID
+        memberships = workos_client.user_management.list_organization_memberships(
+            organization_id=organization_id
+        )
+
+        # Find the membership for the specific user
+        membership_id = None
+        for membership in memberships:
+            if membership.user_id == user_id:
+                membership_id = membership.id
+                break
+
+        if not membership_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User {user_id} is not a member of organization {organization_id}",
+            )
+
+        # Update the membership role
+        workos_client.user_management.update_organization_membership(
+            organization_membership_id=membership_id,
+            role_slug=request.role
+        )
+        
+        return {
+            "message": f"Member role updated successfully to {request.role}",
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "new_role": request.role
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update member role: {str(e)}",
         )
 
 
