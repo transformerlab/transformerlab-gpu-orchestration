@@ -265,11 +265,13 @@ const ClusterCard: React.FC<{
   onLaunchCluster?: () => void;
   launchDisabled?: boolean;
   launchButtonText?: string;
+  allowedGpuTypes?: string[];
 }> = ({
   cluster,
   onLaunchCluster,
   launchDisabled = false,
   launchButtonText = "Reserve a Node",
+  allowedGpuTypes,
 }) => {
   const navigate = useNavigate();
   const dedicatedCount = cluster.nodes.filter(
@@ -338,6 +340,11 @@ const ClusterCard: React.FC<{
                 {Math.round((activeCount / cluster.nodes.length) * 100)}% Total
                 Capacity In Use
               </Chip>
+              {allowedGpuTypes && allowedGpuTypes.length > 0 && (
+                <Chip size="sm" color="neutral" variant="soft">
+                  {allowedGpuTypes.length} Allowed Instances
+                </Chip>
+              )}
             </Stack>
           </Box>
           <div>
@@ -1339,6 +1346,7 @@ const Nodes: React.FC = () => {
             onLaunchCluster={() => setShowRunPodLauncher(true)}
             launchDisabled={!runpodInstances.can_launch}
             launchButtonText="Launch RunPod Cluster"
+            allowedGpuTypes={runpodConfig.allowed_gpu_types}
           />
         )}
 
@@ -1356,155 +1364,9 @@ const Nodes: React.FC = () => {
             onLaunchCluster={() => setShowAzureLauncher(true)}
             launchDisabled={!azureInstances.can_launch}
             launchButtonText="Launch Azure Cluster"
+            allowedGpuTypes={azureConfig.allowed_instance_types}
           />
         )}
-
-        {/* RunPod Configuration Status */}
-        <Card variant="outlined">
-          <Typography level="h4" sx={{ mb: 2 }}>
-            RunPod Configuration
-          </Typography>
-
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>API Key Configured</Typography>
-              <Chip
-                variant="soft"
-                color={runpodConfig.is_configured ? "success" : "danger"}
-                size="sm"
-              >
-                {runpodConfig.is_configured ? "Yes" : "No"}
-              </Chip>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Allowed GPU Types</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {runpodConfig.allowed_gpu_types.length} selected
-              </Chip>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Maximum Instances</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {runpodConfig.max_instances === 0
-                  ? "Unlimited"
-                  : runpodConfig.max_instances}
-              </Chip>
-            </Box>
-
-            {!runpodConfig.is_configured && (
-              <Alert color="warning">
-                RunPod is not configured. Please configure it in the Admin
-                section to use on-demand clusters.
-              </Alert>
-            )}
-
-            {runpodConfig.is_configured && (
-              <Alert color="success">
-                RunPod is configured and ready to use.
-              </Alert>
-            )}
-          </Stack>
-        </Card>
-
-        {/* Azure Configuration Status */}
-        <Card variant="outlined">
-          <Typography level="h4" sx={{ mb: 2 }}>
-            Azure Configuration
-          </Typography>
-
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Credentials Configured</Typography>
-              <Chip
-                variant="soft"
-                color={azureConfig.is_configured ? "success" : "danger"}
-                size="sm"
-              >
-                {azureConfig.is_configured ? "Yes" : "No"}
-              </Chip>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Allowed Instance Types</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {azureConfig.allowed_instance_types.length} selected
-              </Chip>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Allowed Regions</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {azureConfig.allowed_regions.length} selected
-              </Chip>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography>Maximum Instances</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {azureConfig.max_instances === 0
-                  ? "Unlimited"
-                  : azureConfig.max_instances}
-              </Chip>
-            </Box>
-
-            {!azureConfig.is_configured && (
-              <Alert color="warning">
-                Azure is not configured. Please configure it in the Admin
-                section to use on-demand clusters.
-              </Alert>
-            )}
-
-            {azureConfig.is_configured && (
-              <Alert color="success">
-                Azure is configured and ready to use.
-              </Alert>
-            )}
-          </Stack>
-        </Card>
       </Box>
 
       {/* RunPod Cluster Launcher Modal */}
