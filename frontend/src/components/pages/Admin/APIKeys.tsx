@@ -294,8 +294,6 @@ const APIKeys: React.FC = () => {
         key.id === data.key_info.id ? data.key_info : key
       ));
       
-      setRegenerateDialogOpen(false);
-      setKeyToRegenerate(null);
     } catch (err) {
       console.error("Error regenerating API key:", err);
       setError(
@@ -334,6 +332,7 @@ const APIKeys: React.FC = () => {
   const openRegenerateDialog = (key: APIKey) => {
     setKeyToRegenerate(key);
     setRegenerateDialogOpen(true);
+    setNewApiKey(null); // Reset the new API key state
   };
 
   const copyToClipboard = (text: string) => {
@@ -718,33 +717,76 @@ const APIKeys: React.FC = () => {
 
       {/* Regenerate Confirmation Dialog */}
       <Modal open={regenerateDialogOpen} onClose={() => setRegenerateDialogOpen(false)}>
-        <ModalDialog>
+        <ModalDialog size="lg">
           <DialogTitle>Regenerate API Key</DialogTitle>
           <DialogContent>
-            <Typography>
-              Are you sure you want to regenerate the API key{" "}
-              <strong>{keyToRegenerate?.name}</strong>? The current key will be
-              immediately invalidated and you'll need to update any applications
-              using it with the new key value.
-            </Typography>
+            {newApiKey ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <Alert color="success">
+                  API key regenerated successfully! Make sure to copy it now as you won't be able to see it again.
+                </Alert>
+                <Card>
+                  <CardContent>
+                    <Typography level="body-sm" sx={{ mb: 1 }}>
+                      Your regenerated API key:
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography
+                        level="body-sm"
+                        fontFamily="monospace"
+                        sx={{ 
+                          wordBreak: "break-all",
+                          backgroundColor: "background.level1",
+                          p: 1,
+                          borderRadius: "sm",
+                          flex: 1
+                        }}
+                      >
+                        {newApiKey}
+                      </Typography>
+                      <IconButton
+                        size="sm"
+                        onClick={() => copyToClipboard(newApiKey)}
+                        title="Copy to clipboard"
+                      >
+                        <Copy size={16} />
+                      </IconButton>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Box>
+            ) : (
+              <Typography>
+                Are you sure you want to regenerate the API key{" "}
+                <strong>{keyToRegenerate?.name}</strong>? The current key will be
+                immediately invalidated and you'll need to update any applications
+                using it with the new key value.
+              </Typography>
+            )}
           </DialogContent>
           <DialogActions>
             <Button
               variant="plain"
               color="neutral"
-              onClick={() => setRegenerateDialogOpen(false)}
+              onClick={() => {
+                setRegenerateDialogOpen(false);
+                setKeyToRegenerate(null);
+                setNewApiKey(null);
+              }}
               disabled={regenerating}
             >
-              Cancel
+              {newApiKey ? "Done" : "Cancel"}
             </Button>
-            <Button
-              variant="solid"
-              color="warning"
-              onClick={handleRegenerateApiKey}
-              loading={regenerating}
-            >
-              Regenerate Key
-            </Button>
+            {!newApiKey && (
+              <Button
+                variant="solid"
+                color="warning"
+                onClick={handleRegenerateApiKey}
+                loading={regenerating}
+              >
+                Regenerate Key
+              </Button>
+            )}
           </DialogActions>
         </ModalDialog>
       </Modal>
