@@ -74,6 +74,7 @@ const sidebarItems = [
 
 const adminSubItems = [
   { content: "Users", section: "users", path: "/dashboard/admin/users" },
+  { content: "API Keys", section: "api-keys", path: "/dashboard/admin/api-keys" },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
     content: "Dedicated Machines",

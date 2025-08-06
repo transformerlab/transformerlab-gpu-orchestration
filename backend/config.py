@@ -19,6 +19,8 @@ if engine.dialect.name == "sqlite":
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+from db_models import APIKey
+
 WORKOS_API_KEY = os.getenv("WORKOS_API_KEY")
 WORKOS_CLIENT_ID = os.getenv("WORKOS_CLIENT_ID")
 WORKOS_COOKIE_PASSWORD = os.getenv(
