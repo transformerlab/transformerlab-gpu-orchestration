@@ -244,11 +244,6 @@ const mockClusters: Cluster[] = [
     nodes: generateRandomNodes(165),
   },
   {
-    id: "cluster-2",
-    name: "RunPod Cluster",
-    nodes: generateRandomNodes(48),
-  },
-  {
     id: "cluster-3",
     name: "On-Premise Cluster",
     nodes: generateRandomNodes(12),
@@ -1337,7 +1332,7 @@ const Nodes: React.FC = () => {
           <ClusterCard
             cluster={{
               id: "runpod-cluster",
-              name: "Real RunPod Cluster",
+              name: "RunPod Cluster",
               nodes: generateDedicatedNodes(
                 runpodConfig.max_instances,
                 runpodInstances.current_count
@@ -1355,7 +1350,7 @@ const Nodes: React.FC = () => {
           <ClusterCard
             cluster={{
               id: "azure-cluster",
-              name: "Real Azure Cluster",
+              name: "Azure Cluster",
               nodes: generateDedicatedNodes(
                 azureConfig.max_instances,
                 azureInstances.current_count
