@@ -300,7 +300,7 @@ const ClusterCard: React.FC<{
         </Button>
       </Box>
 
-      {/* Group nodes by type, display in two columns */}
+      {/* Show only dedicated nodes */}
       <Box sx={{ mb: 2 }}>
         <Box
           sx={{
@@ -310,34 +310,21 @@ const ClusterCard: React.FC<{
             alignItems: "flex-start",
           }}
         >
-          {["dedicated", "on-demand", "spot"].map((nodeType, idx) => {
+          {(() => {
             const nodesOfType = sortedNodes.filter(
-              (node) => node.type === nodeType
+              (node) => node.type === "dedicated"
             );
             if (nodesOfType.length === 0) return null;
 
-            // Distribute node types into two columns: 0,2 left; 1 right
-            const isLeftColumn = idx % 2 === 0;
-
             return (
               <Box
-                key={nodeType}
                 sx={{
                   flex: "1 1 0",
                   minWidth: 0,
-                  maxWidth: "50%",
+                  maxWidth: "100%",
                   mb: 3,
                 }}
               >
-                <Typography
-                  level="title-sm"
-                  sx={{ mb: 1, textTransform: "capitalize" }}
-                >
-                  {nodeType === "on-demand"
-                    ? "On-Demand"
-                    : nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}{" "}
-                  Nodes ({nodesOfType.length})
-                </Typography>
                 <Box
                   sx={{
                     display: "flex",
@@ -356,7 +343,7 @@ const ClusterCard: React.FC<{
                 </Box>
               </Box>
             );
-          })}
+          })()}
         </Box>
       </Box>
 
