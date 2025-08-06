@@ -17,7 +17,7 @@ import {
   Divider,
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
-import { Settings, User, Building2, Plus } from "lucide-react";
+import { Settings, User, Building2, Plus, UserCog2Icon } from "lucide-react";
 import { authApi } from "../../utils/api";
 import CreateOrganizationModal from "./CreateOrganizationModal";
 
@@ -84,7 +84,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             textColor="inherit"
             fontWeight="lg"
             mb={1}
-            startDecorator={<Settings size="24px" />}
+            startDecorator={<UserCog2Icon size="24px" />}
           >
             User Profile
           </Typography>

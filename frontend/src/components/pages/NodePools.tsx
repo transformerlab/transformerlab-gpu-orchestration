@@ -51,7 +51,7 @@ import { useFakeData } from "../../context/FakeDataContext";
 
 interface Node {
   id: string;
-  type: "dedicated" | "on-demand" | "spot"; // Node type
+  type: "dedicated" | "on-demand"; // Node type
   status: "active" | "inactive" | "unhealthy"; // Node status
   user?: string; // User assignment
   gpuType?: string;
@@ -125,11 +125,7 @@ function randomIp() {
 
 const generateRandomNodes = (count: number): Node[] => {
   const users = ["ali", "bob", "catherine"];
-  const types: ("dedicated" | "on-demand" | "spot")[] = [
-    "dedicated",
-    "on-demand",
-    "spot",
-  ];
+  const types: ("dedicated" | "on-demand")[] = ["dedicated", "on-demand"];
   const statuses: ("active" | "inactive" | "unhealthy")[] = [
     "active",
     "inactive",
@@ -232,7 +228,6 @@ const getStatusOrder = (status: string, type: string): number => {
   // Then by type
   if (type === "dedicated") sort1 = 1;
   if (type === "on-demand") sort1 = 2;
-  if (type === "spot") sort1 = 3;
 
   // First sort by status priority
   if (status === "active") sort2 = 1;
@@ -283,7 +278,6 @@ const ClusterCard: React.FC<{
   const onDemandCount = cluster.nodes.filter(
     (n) => n.type === "on-demand"
   ).length;
-  const spotCount = cluster.nodes.filter((n) => n.type === "spot").length;
   const activeCount = cluster.nodes.filter((n) => n.status === "active").length;
   const unhealthyCount = cluster.nodes.filter(
     (n) => n.status === "unhealthy"
@@ -564,7 +558,7 @@ const CloudClusterCard: React.FC<{
               alignItems: "flex-start",
             }}
           >
-            {["dedicated"].map((nodeType, idx) => {
+            {["dedicated", "on-demand"].map((nodeType, idx) => {
               const nodesOfType = sortedNodes.filter(
                 (node) => node.type === nodeType
               );
