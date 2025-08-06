@@ -282,11 +282,14 @@ async def update_member_role(
             role_slug=request.role
         )
         
+        is_self_update = user_id == user.get("id")
+        
         return {
             "message": f"Member role updated successfully to {request.role}",
             "user_id": user_id,
             "organization_id": organization_id,
-            "new_role": request.role
+            "new_role": request.role,
+            "is_self_update": is_self_update
         }
     except HTTPException:
         raise

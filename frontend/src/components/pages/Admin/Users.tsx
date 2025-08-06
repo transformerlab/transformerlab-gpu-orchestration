@@ -53,7 +53,7 @@ interface UpdateRoleRequest {
 }
 
 const Users: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, checkAuth, refreshSession } = useAuth();
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -324,6 +324,8 @@ const Users: React.FC = () => {
         throw new Error(errorData.detail || "Failed to update member role");
       }
 
+      const responseData = await response.json();
+
       // Update the local state and recalculate permissions
       const updatedMembers = members.map(member => 
         member.user_id === userToChangeRole.user_id 
@@ -332,13 +334,28 @@ const Users: React.FC = () => {
       );
       setMembers(calculatePermissions(updatedMembers));
 
-      setRoleSuccess(`Role updated successfully to ${newRole}`);
-
-      setTimeout(() => {
-        setRoleDialogOpen(false);
-        setRoleSuccess(null);
-        setUserToChangeRole(null);
-      }, 1000);
+      if (responseData.is_self_update) {
+        setRoleSuccess(`Role updated successfully to ${newRole}. Refreshing session...`);
+        try {
+          await refreshSession();
+          setRoleSuccess(`Role updated successfully to ${newRole}`);
+        } catch (error) {
+          console.error("Failed to refresh session:", error);
+          setRoleSuccess(`Role updated successfully to ${newRole}. Please refresh the page to see changes.`);
+        }
+        setTimeout(() => {
+          setRoleDialogOpen(false);
+          setRoleSuccess(null);
+          setUserToChangeRole(null);
+        }, 1000);
+      } else {
+        setRoleSuccess(`Role updated successfully to ${newRole}`);
+        setTimeout(() => {
+          setRoleDialogOpen(false);
+          setRoleSuccess(null);
+          setUserToChangeRole(null);
+        }, 1000);
+      }
     } catch (err) {
       console.error("Error updating role:", err);
       setRoleError(
