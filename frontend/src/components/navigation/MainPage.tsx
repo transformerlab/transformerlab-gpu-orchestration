@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
         height: "100dvh",
         width: "100dvw",
         overflow: "hidden",
-        gridTemplateColumns: "180px 1fr",
+        gridTemplateColumns: "210px 1fr",
         gridTemplateRows: "60px 5fr",
         gridTemplateAreas: `
           "header header"
