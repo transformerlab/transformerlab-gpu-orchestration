@@ -15,6 +15,8 @@ import {
   HouseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CloudyIcon,
+  StretchHorizontalIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -51,14 +53,22 @@ function Item({
 }
 
 const sidebarItems = [
-  { icon: <GpuIcon />, content: "Node Pools", path: "/dashboard/node-pools" },
   {
-    icon: <HouseIcon />,
+    icon: <CloudyIcon />,
+    content: "Node Pools",
+    path: "/dashboard/node-pools",
+  },
+  {
+    icon: <ComputerIcon />,
     content: "My Machines",
     chipCount: 15,
     path: "/dashboard/my-clusters",
   },
-  { icon: <ComputerIcon />, content: "My Jobs", path: "/dashboard/jobs" },
+  {
+    icon: <StretchHorizontalIcon />,
+    content: "My Jobs",
+    path: "/dashboard/jobs",
+  },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
 ];
 

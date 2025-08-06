@@ -1287,7 +1287,7 @@ const Nodes: React.FC = () => {
   return (
     <PageWithTitle
       title={`${user?.organization_name}'s Node Pools`}
-      subtitle="A Node Pool is a group of nodes on a single cloud. Users can start a cluster (a compute environment for a specific task) from this screen."
+      subtitle="A Node Pool is a group of nodes on a single cloud. Users reserve machines or clusters from this screen."
     >
       {/* Existing Node Pools/Clusters UI */}
       {showFakeData ? (
