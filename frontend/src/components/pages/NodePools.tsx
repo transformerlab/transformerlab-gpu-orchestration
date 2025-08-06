@@ -1306,12 +1306,6 @@ const Nodes: React.FC = () => {
       )}
       {/* --- Clouds Section --- */}
       <Box sx={{ mt: 6 }}>
-        {/* Cloud Node Pools */}
-        <Typography level="h3" sx={{ mb: 2 }}>
-          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
-          Cloud Node Pools
-        </Typography>
-
         {isLoading || loadingClusters ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
             <Typography level="body-md" sx={{ color: "text.secondary" }}>
@@ -1330,12 +1324,6 @@ const Nodes: React.FC = () => {
             );
           })
         )}
-
-        {/* On-Demand Clusters */}
-        <Typography level="h3" sx={{ mb: 2, mt: 4 }}>
-          <Zap size={24} style={{ marginRight: 8, verticalAlign: "middle" }} />
-          On-Demand Clusters
-        </Typography>
 
         {/* RunPod Cluster */}
         {runpodConfig.is_configured && (
