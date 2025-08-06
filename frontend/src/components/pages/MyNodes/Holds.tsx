@@ -737,7 +737,7 @@ const Held: React.FC<HeldProps> = ({
   return (
     <Box>
       <Typography level="h3" sx={{ mb: 3 }}>
-        Cloud Node Pools
+        Dedicated Machines
       </Typography>
 
       <Table variant="outlined" sx={{ minWidth: 650 }}>

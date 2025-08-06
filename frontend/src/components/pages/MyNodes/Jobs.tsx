@@ -604,7 +604,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   return (
     <Box>
       <Typography level="h3" sx={{ mb: 3 }}>
-        Cloud Node Pools
+        Dedicated Machines
       </Typography>
 
       {error && (

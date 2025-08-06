@@ -76,7 +76,7 @@ const adminSubItems = [
   { content: "Users", section: "users", path: "/dashboard/admin/users" },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
-    content: "Cloud Node Pools",
+    content: "Dedicated Machines",
     section: "clouds",
     path: "/dashboard/admin/clouds",
   },
