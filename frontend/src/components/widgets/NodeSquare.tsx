@@ -171,7 +171,7 @@ const Circley: React.FC<CircleyProps> = ({ state = "on", dot = "off" }) => {
             dx="0"
             dy="3"
             stdDeviation="0.2"
-            floodColor="#b3b3b1"
+            floodColor="#b3b3b127"
             floodOpacity="0.7"
           />
         </filter>
