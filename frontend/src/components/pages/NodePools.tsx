@@ -265,7 +265,7 @@ const ClusterCard: React.FC<{
   cluster,
   onLaunchCluster,
   launchDisabled = false,
-  launchButtonText = "Reserve a Node",
+  launchButtonText = "Request Machine(s)",
   allowedGpuTypes,
 }) => {
   const navigate = useNavigate();
@@ -1340,7 +1340,7 @@ const Nodes: React.FC = () => {
             }}
             onLaunchCluster={() => setShowRunPodLauncher(true)}
             launchDisabled={!runpodInstances.can_launch}
-            launchButtonText="Launch RunPod Cluster"
+            launchButtonText="Request Machine(s)"
             allowedGpuTypes={runpodConfig.allowed_gpu_types}
           />
         )}
@@ -1358,7 +1358,7 @@ const Nodes: React.FC = () => {
             }}
             onLaunchCluster={() => setShowAzureLauncher(true)}
             launchDisabled={!azureInstances.can_launch}
-            launchButtonText="Launch Azure Cluster"
+            launchButtonText="Request Machine(s)"
             allowedGpuTypes={azureConfig.allowed_instance_types}
           />
         )}

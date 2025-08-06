@@ -483,14 +483,6 @@ const Held: React.FC<HeldProps> = ({
         {/* Show fake data alongside real data if enabled */}
         {showFakeData && (
           <>
-            <Box sx={{ mb: 3, mt: 4 }}>
-              <Typography level="h3" sx={{ mb: 2 }}>
-                Sample Cluster Data
-              </Typography>
-              <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-                Additional sample data for demonstration purposes.
-              </Typography>
-            </Box>
             {(() => {
               const fakeNodes = generateFakeNodes();
               const fakeGroupedByExperiment = {
@@ -622,15 +614,6 @@ const Held: React.FC<HeldProps> = ({
 
       return (
         <>
-          <Box sx={{ mb: 3 }}>
-            <Typography level="h3" sx={{ mb: 2 }}>
-              Sample Cluster Data
-            </Typography>
-            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              This is sample data. Launch real clusters from the Interactive
-              Development Environment to see actual data.
-            </Typography>
-          </Box>
           {Object.entries(fakeGroupedByExperiment).map(([expName, nodes]) => (
             <Box key={expName} sx={{ mb: 4 }}>
               <Typography level="h4" sx={{ mb: 1 }}>
