@@ -18,12 +18,14 @@ import { buildApiUrl, apiFetch } from "../../../utils/api";
 import AzureConfigModal from "./AzureConfigModal";
 import RunPodConfigModal from "./RunPodConfigModal";
 import SSHConfigModal from "./SSHConfigModal";
+import SSHClusterModal from "./SSHClusterModal";
 
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const [openAzureModal, setOpenAzureModal] = useState(false);
   const [openRunPodModal, setOpenRunPodModal] = useState(false);
   const [openSSHModal, setOpenSSHModal] = useState(false);
+  const [openSSHClusterModal, setOpenSSHClusterModal] = useState(false);
   const [selectedPool, setSelectedPool] = useState<any>(null);
   const [nodePools, setNodePools] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -245,11 +247,10 @@ const Pools: React.FC = () => {
                 startDecorator={<Server size={16} />}
                 onClick={() => {
                   setOpenAdd(false);
-                  setSelectedPool({ platform: "direct", name: "New SSH Pool" });
-                  setOpenSSHModal(true);
+                  setOpenSSHClusterModal(true);
                 }}
               >
-                SSH/Direct Connect
+                Create SSH Cluster
               </Button>
             </Stack>
             <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
@@ -273,6 +274,11 @@ const Pools: React.FC = () => {
         onClose={() => setOpenSSHModal(false)}
         poolName={selectedPool?.name}
         selectedPool={selectedPool}
+      />
+      <SSHClusterModal
+        open={openSSHClusterModal}
+        onClose={() => setOpenSSHClusterModal(false)}
+        onClusterCreated={fetchNodePools}
       />
     </PageWithTitle>
   );
