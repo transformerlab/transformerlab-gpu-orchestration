@@ -136,9 +136,6 @@ export default function Sidebar() {
       }}
     >
       <ListItem nested>
-        <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
-          Cluster
-        </ListSubheader>
         <List
           aria-labelledby="nav-list-browse"
           sx={{ "& .JoyListItemButton-root": { p: "8px" } }}
