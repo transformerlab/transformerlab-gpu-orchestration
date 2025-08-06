@@ -31,6 +31,7 @@ import MyClusterDetails from "../pages/MyClusterDetails";
 import ClusterDetails from "../pages/ClusterDetails";
 
 import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
+import Pools from "../pages/Admin/Pools";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -83,6 +84,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/api-keys" element={<APIKeys />} />
           <Route path="admin/teams" element={<Teams />} />
+          <Route path="admin/pools" element={<Pools />} />
           <Route path="admin/clouds" element={<SSHClusterAdmin />} />
           <Route path="admin/runpod" element={<RunPodAdmin />} />
           <Route path="admin/azure" element={<AzureAdmin />} />

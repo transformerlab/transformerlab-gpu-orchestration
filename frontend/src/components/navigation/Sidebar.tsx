@@ -11,12 +11,11 @@ import {
   ChartAreaIcon,
   CogIcon,
   ComputerIcon,
-  GpuIcon,
-  HouseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  CloudyIcon,
   StretchHorizontalIcon,
+  GripHorizontalIcon,
+  CircleDotIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -54,13 +53,13 @@ function Item({
 
 const sidebarItems = [
   {
-    icon: <CloudyIcon />,
+    icon: <GripHorizontalIcon />,
     content: "Node Pools",
     path: "/dashboard/node-pools",
   },
   {
-    icon: <ComputerIcon />,
-    content: "My Machines",
+    icon: <CircleDotIcon size={22} style={{ paddingLeft: "2px" }} />,
+    content: "My Instances",
     chipCount: 15,
     path: "/dashboard/my-clusters",
   },
@@ -77,34 +76,32 @@ const adminSubItems = [
   { content: "API Keys", section: "api-keys", path: "/dashboard/admin/api-keys" },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
-    content: "Dedicated Machines",
-    section: "clouds",
-    path: "/dashboard/admin/clouds",
+    content: "Node Pools",
+    path: "/dashboard/admin/pools",
+  },
+  {
+    content: "Dedicated Instances",
+    path: "/dashboard/admin/instances",
   },
   {
     content: "RunPod Configuration",
-    section: "runpod",
     path: "/dashboard/admin/runpod",
   },
   {
     content: "Azure Configuration",
-    section: "azure",
     path: "/dashboard/admin/azure",
   },
   {
     content: "SSH Identity Files",
-    section: "identity",
     path: "/dashboard/admin/identity",
   },
   {
     content: "Object Storage",
-    section: "objectStorage",
     path: "/dashboard/admin/object-storage",
   },
-  { content: "Volumes", section: "volumes", path: "/dashboard/admin/volumes" },
+  { content: "Volumes", path: "/dashboard/admin/volumes" },
   {
     content: "Settings",
-    section: "settings",
     path: "/dashboard/admin/settings",
   },
 ];
@@ -138,9 +135,6 @@ export default function Sidebar() {
       }}
     >
       <ListItem nested>
-        <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
-          Cluster
-        </ListSubheader>
         <List
           aria-labelledby="nav-list-browse"
           sx={{ "& .JoyListItemButton-root": { p: "8px" } }}

@@ -265,7 +265,7 @@ const ClusterCard: React.FC<{
   cluster,
   onLaunchCluster,
   launchDisabled = false,
-  launchButtonText = "Request Machine(s)",
+  launchButtonText = "Request Instances",
   allowedGpuTypes,
 }) => {
   const navigate = useNavigate();
@@ -386,7 +386,12 @@ const ClusterCard: React.FC<{
                   }}
                 >
                   {nodesOfType.map((node) => (
-                    <NodeSquare key={node.id} node={node} variant="mock" />
+                    <NodeSquare
+                      key={node.id}
+                      node={node}
+                      variant="mock"
+                      clusterName={cluster.id}
+                    />
                   ))}
                 </Box>
               </Box>
@@ -599,7 +604,12 @@ const CloudClusterCard: React.FC<{
                     }}
                   >
                     {nodesOfType.map((node) => (
-                      <NodeSquare key={node.id} node={node} variant="mock" />
+                      <NodeSquare
+                        key={node.id}
+                        node={node}
+                        variant="mock"
+                        clusterName={clusterName}
+                      />
                     ))}
                   </Box>
                 </Box>
@@ -1289,7 +1299,7 @@ const Nodes: React.FC = () => {
   return (
     <PageWithTitle
       title={`${user?.organization_name}'s Node Pools`}
-      subtitle="A Node Pool is a group of nodes on a single cloud. Users reserve machines or clusters from this screen."
+      subtitle="A Node Pool is a group of nodes on a single cloud. Users reserve instances from this screen."
     >
       {/* Existing Node Pools/Clusters UI */}
       {showFakeData ? (
@@ -1340,7 +1350,7 @@ const Nodes: React.FC = () => {
             }}
             onLaunchCluster={() => setShowRunPodLauncher(true)}
             launchDisabled={!runpodInstances.can_launch}
-            launchButtonText="Request Machine(s)"
+            launchButtonText="Request Instances"
             allowedGpuTypes={runpodConfig.allowed_gpu_types}
           />
         )}
@@ -1358,7 +1368,7 @@ const Nodes: React.FC = () => {
             }}
             onLaunchCluster={() => setShowAzureLauncher(true)}
             launchDisabled={!azureInstances.can_launch}
-            launchButtonText="Request Machine(s)"
+            launchButtonText="Request Instances"
             allowedGpuTypes={azureConfig.allowed_instance_types}
           />
         )}

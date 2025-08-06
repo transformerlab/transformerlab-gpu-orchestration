@@ -78,8 +78,8 @@ jobs:
         ACI_NAME="${{ env.ACI_NAME }}"
         DNS_LABEL="${{ env.DNS_LABEL }}"
         LOCATION="westus2" # <--- IMPORTANT: Ensure your desired Azure region here (e.g., westus2, canadacentral, westeurope)
-        LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}
-        LOG_ANALYTICS_WORKSPACE_KEY: ${{ secrets.LOG_ANALYTICS_WORKSPACE_KEY }}
+        LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}"
+        LOG_ANALYTICS_WORKSPACE_KEY="${{ secrets.LOG_ANALYTICS_WORKSPACE_KEY }}"
       
         # Construct the environment variables string for Azure CLI
         # Each var should be name=value, separated by a space.
