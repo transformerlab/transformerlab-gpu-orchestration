@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   Box,
   Card,
   FormControl,
@@ -19,9 +20,7 @@ import MyClusters from "../pages/MyClusters";
 import Users from "../pages/Admin/Users";
 import NodeDetails from "../pages/MyNodes/NodeDetails";
 import Teams from "../pages/Admin/Teams";
-import SSHClusterAdmin from "../pages/Admin/SSHClusterAdmin";
-import RunPodAdmin from "../pages/Admin/RunPodAdmin";
-import AzureAdmin from "../pages/Admin/AzureAdmin";
+
 import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PageWithTitle from "../pages/templates/PageWithTitle";
@@ -83,9 +82,6 @@ const Dashboard: React.FC = () => {
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/teams" element={<Teams />} />
           <Route path="admin/pools" element={<Pools />} />
-          <Route path="admin/clouds" element={<SSHClusterAdmin />} />
-          <Route path="admin/runpod" element={<RunPodAdmin />} />
-          <Route path="admin/azure" element={<AzureAdmin />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route
@@ -94,7 +90,11 @@ const Dashboard: React.FC = () => {
               <PageWithTitle
                 title="Volumes"
                 subtitle="Manage volume mounts and storage."
-              />
+              >
+                <Alert color="primary" sx={{ mb: 2 }}>
+                  Volume management functionality is not yet implemented.
+                </Alert>
+              </PageWithTitle>
             }
           />
           <Route
