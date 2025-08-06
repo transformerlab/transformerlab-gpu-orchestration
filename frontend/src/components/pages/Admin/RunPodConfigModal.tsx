@@ -74,7 +74,13 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
       });
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+        setConfig({
+          name: data.name || "",
+          api_key: data.api_key || "",
+          allowed_gpu_types: data.allowed_gpu_types || [],
+          is_configured: data.is_configured || false,
+          max_instances: data.max_instances || 0,
+        });
       }
     } catch (err) {
       console.error("Error fetching RunPod config:", err);
@@ -129,8 +135,11 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
           message: "RunPod configuration saved successfully",
         });
         await fetchRunPodConfig();
-        onConfigSaved?.();
         onClose();
+        // Longer delay to ensure modal is fully closed before refreshing
+        setTimeout(() => {
+          onConfigSaved?.();
+        }, 300);
       } else {
         addNotification({
           type: "danger",

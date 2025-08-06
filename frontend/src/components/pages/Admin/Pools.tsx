@@ -42,9 +42,11 @@ const Pools: React.FC = () => {
         setNodePools(data.node_pools || []);
       } else {
         console.error("Error fetching node pools:", response.status);
+        // Keep existing data if fetch fails
       }
     } catch (err) {
       console.error("Error fetching node pools:", err);
+      // Keep existing data if fetch fails
     } finally {
       setLoading(false);
     }
@@ -91,11 +93,11 @@ const Pools: React.FC = () => {
     >
       {showFakeData ? (
         <>
-          {loading ? (
+          {loading && nodePools.length === 0 ? (
             <Alert color="info" sx={{ mb: 2 }}>
               Loading node pools...
             </Alert>
-          ) : (
+          ) : nodePools.length > 0 ? (
             <Table className="node-pools-table">
               <thead>
                 <tr>
@@ -114,7 +116,9 @@ const Pools: React.FC = () => {
                     key={pool.platform === "direct" ? pool.name : pool.platform}
                   >
                     <td>
-                      <Typography level="title-sm">{pool.name}</Typography>
+                      <Typography level="title-sm">
+                        {pool.name || "Unnamed Pool"}
+                      </Typography>
                     </td>
                     <td>
                       <Chip
@@ -130,55 +134,59 @@ const Pools: React.FC = () => {
                           )
                         }
                       >
-                        {pool.platform}
+                        {pool.platform || "unknown"}
                       </Chip>
                     </td>
                     <td>
                       <Typography level="body-sm" fontWeight="lg">
-                        {pool.numberOfNodes}
+                        {pool.numberOfNodes || 0}
                       </Typography>
                     </td>
                     <td>
                       <Chip
                         size="sm"
                         color={
-                          pool.status === "enabled" ? "success" : "warning"
+                          (pool.status || "disabled") === "enabled"
+                            ? "success"
+                            : "warning"
                         }
                       >
-                        {pool.status}
+                        {pool.status || "disabled"}
                       </Chip>
                     </td>
                     <td>
                       <Chip
                         size="sm"
                         color={
-                          pool.config.is_configured ? "success" : "warning"
+                          pool.config?.is_configured || false
+                            ? "success"
+                            : "warning"
                         }
                         variant="soft"
                       >
-                        {pool.config.is_configured
+                        {pool.config?.is_configured || false
                           ? "Configured"
                           : "Not Configured"}
                       </Chip>
                     </td>
                     <td>
                       <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                        {pool.access.map((team) => (
+                        {(pool.access || []).map((team) => (
                           <Chip
                             key={team}
                             size="sm"
                             variant="soft"
                             color={
-                              team === "Admin"
+                              (team || "") === "Admin"
                                 ? "success"
-                                : team === "Research Team"
+                                : (team || "") === "Research Team"
                                 ? "primary"
-                                : team === "Search ML Team"
+                                : (team || "") === "Search ML Team"
                                 ? "warning"
                                 : "success"
                             }
                           >
-                            {team}
+                            {team || "Unknown"}
                           </Chip>
                         ))}
                       </Box>
@@ -196,6 +204,11 @@ const Pools: React.FC = () => {
                 ))}
               </tbody>
             </Table>
+          ) : (
+            <Alert color="warning" sx={{ mb: 2 }}>
+              No node pools configured. Use "Add Node Pool" to create your first
+              pool.
+            </Alert>
           )}
         </>
       ) : (

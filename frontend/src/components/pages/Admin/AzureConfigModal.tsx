@@ -92,6 +92,7 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
       if (response.ok) {
         const data = await response.json();
         setConfig({
+          name: data.name || "",
           subscription_id: data.subscription_id || "",
           tenant_id: data.tenant_id || "",
           client_id: data.client_id || "",
