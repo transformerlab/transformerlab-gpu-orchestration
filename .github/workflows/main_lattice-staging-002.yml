@@ -82,7 +82,7 @@ jobs:
         # Construct the environment variables string for Azure CLI
         # Each var should be name=value, separated by a space.
         # Secrets are interpolated by GitHub Actions before being passed to the shell.
-        ENV_VARS_STRING="WORKOS_API_KEY=${{ secrets.WORKOS_API_KEY }} WORKOS_CLIENT_ID=${{ secrets.WORKOS_CLIENT_ID }} BASE_URL=${{ secrets.BASE_URL }} WORKOS_REDIRECT_URI=${{ secrets.WORKOS_REDIRECT_URI }} VITE_API_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000/"
+        ENV_VARS_STRING="WORKOS_API_KEY=${{ secrets.WORKOS_API_KEY }} WORKOS_CLIENT_ID=${{ secrets.WORKOS_CLIENT_ID }} BASE_URL=${{ secrets.BASE_URL }} WORKOS_REDIRECT_URI=${{ secrets.WORKOS_REDIRECT_URI }} VITE_API_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000/api/v1 FRONTEND_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000"
         # Add any other secure or non-secure environment variables here, separated by a space
         # Example: ENV_VARS_STRING="${ENV_VARS_STRING} ANOTHER_VAR=${{ secrets.ANOTHER_SECRET }}"
         # Example: ENV_VARS_STRING="${ENV_VARS_STRING} MY_NON_SECRET_VAR=myvalue"

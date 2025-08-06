@@ -135,3 +135,47 @@ async def check_auth(
             },
         }
     return {"authenticated": False}
+
+
+@router.post("/refresh")
+async def refresh_session(request: Request, response: Response):
+    """Force refresh the WorkOS session to get updated user info"""
+    try:
+        session_cookie = request.cookies.get("wos_session")
+        if not session_cookie:
+            raise HTTPException(status_code=401, detail="No session found")
+        
+        session = workos_client.user_management.load_sealed_session(
+            sealed_session=session_cookie,
+            cookie_password=WORKOS_COOKIE_PASSWORD,
+        )
+        
+        refreshed_session = session.refresh()
+        if refreshed_session.authenticated:
+            response.set_cookie(
+                key="wos_session",
+                value=refreshed_session.sealed_session,
+                httponly=True,
+                secure=False,
+                samesite="lax",
+                max_age=86400 * 7,
+                path="/",
+            )
+            
+            user = refreshed_session.user
+            return {
+                "authenticated": True,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "profile_picture_url": user.profile_picture_url,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "role": refreshed_session.role,
+                    "organization_id": refreshed_session.organization_id,
+                },
+            }
+        else:
+            raise HTTPException(status_code=401, detail="Session refresh failed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to refresh session: {str(e)}")

@@ -36,7 +36,29 @@ class SendInvitationRequest(BaseModel):
     role_slug: Optional[str] = None
 
 
+class UpdateMemberRoleRequest(BaseModel):
+    role: str  # "admin" or "member"
+
+
 router = APIRouter(prefix="/admin/orgs")
+
+
+def is_user_admin(role) -> bool:
+    """Check if a user role indicates admin status"""
+    if isinstance(role, dict) and role.get("slug") == "admin":
+        return True
+    elif isinstance(role, str) and role == "admin":
+        return True
+    return False
+
+
+def count_admins_in_memberships(memberships) -> int:
+    """Count the number of admin users from a list of memberships"""
+    admin_count = 0
+    for membership in memberships:
+        if is_user_admin(membership.role):
+            admin_count += 1
+    return admin_count
 
 
 @router.get("", response_model=OrganizationsResponse)
@@ -177,9 +199,11 @@ async def remove_organization_member(
 
         # Find the membership for the specific user
         membership_id = None
+        user_role = None
         for membership in memberships:
             if membership.user_id == user_id:
                 membership_id = membership.id
+                user_role = membership.role
                 break
 
         if not membership_id:
@@ -188,6 +212,17 @@ async def remove_organization_member(
                 status_code=404,
                 detail=f"User {user_id} is not a member of organization {organization_id}",
             )
+
+        # Check if this user is an admin and if they're the only admin
+        is_admin = is_user_admin(user_role)
+            
+        if is_admin:
+            admin_count = count_admins_in_memberships(memberships)
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot remove the last admin from the organization",
+                )
 
         workos_client.user_management.delete_organization_membership(
             organization_membership_id=membership_id
@@ -201,6 +236,70 @@ async def remove_organization_member(
         )
 
 
+@router.put("/{organization_id}/members/{user_id}/role")
+async def update_member_role(
+    organization_id: str,
+    user_id: str,
+    request: UpdateMemberRoleRequest,
+    user=Depends(get_current_user),
+):
+    """Update a member's role in an organization (admin endpoint)"""
+    try:
+        # First, get the organization membership to find the membership ID
+        memberships = workos_client.user_management.list_organization_memberships(
+            organization_id=organization_id
+        )
+
+        # Find the membership for the specific user
+        membership_id = None
+        current_role = None
+        for membership in memberships:
+            if membership.user_id == user_id:
+                membership_id = membership.id
+                current_role = membership.role
+                break
+
+        if not membership_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User {user_id} is not a member of organization {organization_id}",
+            )
+
+        # Check if this is an admin being demoted and if they're the only admin
+        is_currently_admin = is_user_admin(current_role)
+            
+        if is_currently_admin and request.role != "admin":
+            admin_count = count_admins_in_memberships(memberships)
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot change the role of the last admin in the organization",
+                )
+
+        # Update the membership role
+        workos_client.user_management.update_organization_membership(
+            organization_membership_id=membership_id,
+            role_slug=request.role
+        )
+        
+        is_self_update = user_id == user.get("id")
+        
+        return {
+            "message": f"Member role updated successfully to {request.role}",
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "new_role": request.role,
+            "is_self_update": is_self_update
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update member role: {str(e)}",
+        )
+
+
 @router.get("/{organization_id}/members")
 async def list_organization_members(
     organization_id: str, user=Depends(get_current_user)
@@ -210,11 +309,28 @@ async def list_organization_members(
         memberships = workos_client.user_management.list_organization_memberships(
             organization_id=organization_id
         )
+        
+        # Count total admins from existing memberships data
+        admin_count = count_admins_in_memberships(memberships)
+        current_user_id = user.get("id")
+        
+        # Build member list with permissions
         members = []
         for membership in memberships:
             user_info = workos_client.user_management.get_user(
                 user_id=membership.user_id
             )
+            
+            # Check if this member is an admin
+            is_admin = is_user_admin(membership.role)
+            
+            # Check if this user can be modified (not if they're the last admin)
+            is_last_admin = (
+                membership.user_id == current_user_id and 
+                is_admin and 
+                admin_count <= 1
+            )
+            
             members.append(
                 {
                     "user_id": membership.user_id,
@@ -223,9 +339,16 @@ async def list_organization_members(
                     "first_name": user_info.first_name,
                     "last_name": user_info.last_name,
                     "profile_picture_url": user_info.profile_picture_url,
+                    "is_current_user": membership.user_id == current_user_id,
+                    "can_be_removed": not is_last_admin,
+                    "can_change_role": not is_last_admin,
                 }
             )
-        return {"members": members}
+            
+        return {
+            "members": members,
+            "admin_count": admin_count,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to list organization members: {str(e)}"
