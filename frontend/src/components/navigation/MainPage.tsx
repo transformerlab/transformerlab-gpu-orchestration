@@ -18,6 +18,7 @@ import Jobs from "../pages/Jobs";
 import Reports from "../pages/Reports";
 import MyClusters from "../pages/MyClusters";
 import Users from "../pages/Admin/Users";
+import APIKeys from "../pages/Admin/APIKeys";
 import NodeDetails from "../pages/MyNodes/NodeDetails";
 import Teams from "../pages/Admin/Teams";
 
@@ -80,6 +81,7 @@ const Dashboard: React.FC = () => {
             element={<SkyPilotClusterLauncher />}
           />
           <Route path="admin/users" element={<Users />} />
+          <Route path="admin/api-keys" element={<APIKeys />} />
           <Route path="admin/teams" element={<Teams />} />
           <Route path="admin/pools" element={<Pools />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />

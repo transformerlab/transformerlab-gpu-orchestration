@@ -72,8 +72,9 @@ const sidebarItems = [
 ];
 
 const adminSubItems = [
-  { content: "Users", path: "/dashboard/admin/users" },
-  { content: "Teams", path: "/dashboard/admin/teams" },
+  { content: "Users", section: "users", path: "/dashboard/admin/users" },
+  { content: "API Keys", section: "api-keys", path: "/dashboard/admin/api-keys" },
+  { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
     content: "Node Pools",
     path: "/dashboard/admin/pools",
