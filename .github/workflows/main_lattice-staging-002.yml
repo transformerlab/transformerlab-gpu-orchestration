@@ -100,8 +100,8 @@ jobs:
           --image "$IMAGE_FULL_TAG" \
           --dns-name-label "$DNS_LABEL" \
           --ports ${{ env.CONTAINER_PORT_MAIN }} ${{ env.CONTAINER_PORT_JUPYTER }} \
-          --cpu 1 \
-          --memory 1.5 \
+          --cpu 2 \
+          --memory 4 \
           --os-type Linux \
           --location "$LOCATION" \
           --environment-variables $ENV_VARS_STRING \
