@@ -71,11 +71,12 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isMockVariant && node.id) {
-      window.location.href = `/dashboard/nodes/node/${encodeURIComponent(
-        node.id
-      )}`;
-    }
+    // Navigation to individual node pages is disabled
+    // if (isMockVariant && node.id) {
+    //   window.location.href = `/dashboard/nodes/node/${encodeURIComponent(
+    //     node.id
+    //   )}`;
+    // }
   };
 
   return (
