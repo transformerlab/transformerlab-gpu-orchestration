@@ -108,6 +108,6 @@ jobs:
           --location "$LOCATION" \
           --environment-variables $ENV_VARS_STRING \
           $REGISTRY_CREDS \
-          --restart-policy Always # Recommended for continuous services \
+          --restart-policy Always \
           --log-analytics-workspace "$LOG_ANALYTICS_WORKSPACE_ID" \
           --log-analytics-workspace-key "$LOG_ANALYTICS_WORKSPACE_KEY"
