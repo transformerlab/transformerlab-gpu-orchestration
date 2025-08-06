@@ -15,7 +15,7 @@ interface Node {
 }
 
 const ClusterDetails: React.FC = () => {
-  const { clusterId } = useParams<{ clusterId: string }>();
+  const { clusterName } = useParams<{ clusterName: string }>();
   const navigate = useNavigate();
   const { showFakeData } = useFakeData();
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -23,13 +23,13 @@ const ClusterDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!clusterId) return;
+    if (!clusterName) return;
 
     setLoading(true);
     setError(null);
 
     // Always try to fetch from API first, regardless of showFakeData setting
-    apiFetch(buildApiUrl(`clusters/${clusterId}`), { credentials: "include" })
+    apiFetch(buildApiUrl(`clusters/${clusterName}`), { credentials: "include" })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to fetch cluster: ${res.status}`);
@@ -70,7 +70,7 @@ const ClusterDetails: React.FC = () => {
               ip: `10.0.${Math.floor(Math.random() * 256)}.${Math.floor(
                 Math.random() * 256
               )}`,
-              identity_file: `/home/user/.ssh/id_rsa_${clusterId}`,
+              identity_file: `/home/user/.ssh/id_rsa_${clusterName}`,
               gpu_info: gpuTypes[Math.floor(Math.random() * gpuTypes.length)],
               status: statuses[Math.floor(Math.random() * statuses.length)] as
                 | "active"
@@ -87,7 +87,7 @@ const ClusterDetails: React.FC = () => {
       .finally(() => {
         setLoading(false);
       });
-  }, [clusterId, showFakeData]);
+  }, [clusterName, showFakeData]);
 
   const handleBack = () => {
     navigate(-1);
@@ -106,7 +106,7 @@ const ClusterDetails: React.FC = () => {
   }
 
   return (
-    <PageWithTitle title={`${clusterId} - Cluster Details`}>
+    <PageWithTitle title={`${clusterName} - Cluster Details`}>
       <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
         <Button
           onClick={handleBack}
@@ -119,7 +119,7 @@ const ClusterDetails: React.FC = () => {
 
         <Box sx={{ mb: 2 }}>
           <Typography level="h3" sx={{ mb: 1 }}>
-            {clusterId} - Cluster Details
+            {clusterName} - Cluster Details
           </Typography>
           <Stack direction="row" spacing={1}>
             <Chip size="sm" color="primary" variant="soft">
