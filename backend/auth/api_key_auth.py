@@ -1,4 +1,4 @@
-from fastapi import HTTPException, Security, Depends
+from fastapi import HTTPException, Security, Depends, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -31,7 +31,7 @@ async def get_api_key_user(
         return None
     
     api_key = credentials.credentials
-    
+
     # Check if it's a lattice API key
     if not api_key.startswith("lk_"):
         return None
@@ -81,6 +81,8 @@ async def get_api_key_user(
 
 
 async def get_user_or_api_key(
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db),
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security)
 ) -> dict:
@@ -95,7 +97,7 @@ async def get_user_or_api_key(
     
     # Fall back to session authentication
     try:
-        session_user = await get_current_user()
+        session_user = get_current_user(request, response)
         if session_user:
             session_user["auth_method"] = "session"
             return session_user
@@ -113,7 +115,11 @@ def require_scope(required_scope: str):
     Dependency to check if the authenticated user has a required scope.
     Only applies to API key authentication - session users have full access.
     """
-    async def scope_checker(user: dict = Depends(get_user_or_api_key)) -> dict:
+    async def scope_checker(
+        request: Request,
+        response: Response,
+        user: dict = Depends(get_user_or_api_key)
+    ) -> dict:
         # Session users have full access
         if user.get("auth_method") == "session":
             return user
