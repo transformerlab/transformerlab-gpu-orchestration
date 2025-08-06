@@ -20,6 +20,7 @@ import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useNotification } from "../../../components/NotificationSystem";
 
 interface AzureConfig {
+  name: string;
   subscription_id: string;
   tenant_id: string;
   client_id: string;
@@ -49,6 +50,7 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
   poolName = "Azure Pool",
 }) => {
   const [config, setConfig] = useState<AzureConfig>({
+    name: "",
     subscription_id: "",
     tenant_id: "",
     client_id: "",
@@ -259,6 +261,19 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
             <CircularProgress />
           ) : (
             <Stack spacing={2}>
+              <FormControl>
+                <FormLabel>Pool Name</FormLabel>
+                <Input
+                  value={config.name}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      name: e.target.value,
+                    })
+                  }
+                  placeholder="Enter pool name (e.g., Azure Production)"
+                />
+              </FormControl>
               <Grid container spacing={2}>
                 <Grid xs={6}>
                   <FormControl>

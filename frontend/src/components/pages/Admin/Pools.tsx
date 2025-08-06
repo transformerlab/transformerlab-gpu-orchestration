@@ -14,45 +14,10 @@ import {
 import { Plus, Server, Gpu, Cloud } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useFakeData } from "../../../context/FakeDataContext";
+import { buildApiUrl, apiFetch } from "../../../utils/api";
 import AzureConfigModal from "./AzureConfigModal";
 import RunPodConfigModal from "./RunPodConfigModal";
 import SSHConfigModal from "./SSHConfigModal";
-
-// Fake placeholder data for demonstration
-const fakeNodePools = [
-  {
-    name: "Azure Production Training",
-    platform: "azure",
-    numberOfNodes: 128,
-    status: "enabled",
-    access: ["Research Team", "Admin"],
-    config: { is_configured: true, max_instances: 128 },
-  },
-  {
-    name: "Azure Staging",
-    platform: "azure",
-    numberOfNodes: 10,
-    status: "disabled",
-    access: ["Admin", "Search ML Team"],
-    config: { is_configured: false, max_instances: 10 },
-  },
-  {
-    name: "RunPod GPU Pool",
-    platform: "runpod",
-    numberOfNodes: 50,
-    status: "enabled",
-    access: ["Research Team", "Post-Training Team"],
-    config: { is_configured: true, max_instances: 50 },
-  },
-  {
-    name: "Vector Institute Pool",
-    platform: "direct",
-    numberOfNodes: 205,
-    status: "enabled",
-    access: ["Research Team", "Post-Training Team"],
-    config: { is_configured: true, max_instances: 205 },
-  },
-];
 
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
@@ -60,7 +25,32 @@ const Pools: React.FC = () => {
   const [openRunPodModal, setOpenRunPodModal] = useState(false);
   const [openSSHModal, setOpenSSHModal] = useState(false);
   const [selectedPool, setSelectedPool] = useState<any>(null);
+  const [nodePools, setNodePools] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const { showFakeData } = useFakeData();
+
+  const fetchNodePools = async () => {
+    try {
+      setLoading(true);
+      const response = await apiFetch(buildApiUrl("skypilot/node-pools"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNodePools(data.node_pools || []);
+      }
+    } catch (err) {
+      console.error("Error fetching node pools:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showFakeData) {
+      fetchNodePools();
+    }
+  }, [showFakeData]);
 
   const handleConfigurePool = (pool: any) => {
     setSelectedPool(pool);
@@ -97,100 +87,110 @@ const Pools: React.FC = () => {
     >
       {showFakeData ? (
         <>
-          <Table className="node-pools-table">
-            <thead>
-              <tr>
-                <th>Pool Name</th>
-                <th>Platform</th>
-                <th>Nodes</th>
-                <th>Status</th>
-                <th>Configuration</th>
-                <th>Access</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fakeNodePools.map((pool) => (
-                <tr key={pool.name}>
-                  <td>
-                    <Typography level="title-sm">{pool.name}</Typography>
-                  </td>
-                  <td>
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      startDecorator={
-                        pool.platform === "azure" ? (
-                          <Cloud size={14} />
-                        ) : pool.platform === "runpod" ? (
-                          <Gpu size={14} />
-                        ) : (
-                          <Server size={14} />
-                        )
-                      }
-                    >
-                      {pool.platform}
-                    </Chip>
-                  </td>
-                  <td>
-                    <Typography level="body-sm" fontWeight="lg">
-                      {pool.numberOfNodes}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Chip
-                      size="sm"
-                      color={pool.status === "enabled" ? "success" : "warning"}
-                    >
-                      {pool.status}
-                    </Chip>
-                  </td>
-                  <td>
-                    <Chip
-                      size="sm"
-                      color={pool.config.is_configured ? "success" : "warning"}
-                      variant="soft"
-                    >
-                      {pool.config.is_configured
-                        ? "Configured"
-                        : "Not Configured"}
-                    </Chip>
-                  </td>
-                  <td>
-                    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                      {pool.access.map((team) => (
-                        <Chip
-                          key={team}
-                          size="sm"
-                          variant="soft"
-                          color={
-                            team === "Admin"
-                              ? "success"
-                              : team === "Research Team"
-                              ? "primary"
-                              : team === "Search ML Team"
-                              ? "warning"
-                              : "success"
-                          }
-                        >
-                          {team}
-                        </Chip>
-                      ))}
-                    </Box>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="outlined"
-                      onClick={() => handleConfigurePool(pool)}
-                    >
-                      Configure
-                    </Button>
-                  </td>
+          {loading ? (
+            <Alert color="info" sx={{ mb: 2 }}>
+              Loading node pools...
+            </Alert>
+          ) : (
+            <Table className="node-pools-table">
+              <thead>
+                <tr>
+                  <th>Pool Name</th>
+                  <th>Platform</th>
+                  <th>Nodes</th>
+                  <th>Status</th>
+                  <th>Configuration</th>
+                  <th>Access</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {nodePools.map((pool) => (
+                  <tr key={pool.name}>
+                    <td>
+                      <Typography level="title-sm">{pool.name}</Typography>
+                    </td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        variant="soft"
+                        startDecorator={
+                          pool.platform === "azure" ? (
+                            <Cloud size={14} />
+                          ) : pool.platform === "runpod" ? (
+                            <Gpu size={14} />
+                          ) : (
+                            <Server size={14} />
+                          )
+                        }
+                      >
+                        {pool.platform}
+                      </Chip>
+                    </td>
+                    <td>
+                      <Typography level="body-sm" fontWeight="lg">
+                        {pool.numberOfNodes}
+                      </Typography>
+                    </td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        color={
+                          pool.status === "enabled" ? "success" : "warning"
+                        }
+                      >
+                        {pool.status}
+                      </Chip>
+                    </td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        color={
+                          pool.config.is_configured ? "success" : "warning"
+                        }
+                        variant="soft"
+                      >
+                        {pool.config.is_configured
+                          ? "Configured"
+                          : "Not Configured"}
+                      </Chip>
+                    </td>
+                    <td>
+                      <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                        {pool.access.map((team) => (
+                          <Chip
+                            key={team}
+                            size="sm"
+                            variant="soft"
+                            color={
+                              team === "Admin"
+                                ? "success"
+                                : team === "Research Team"
+                                ? "primary"
+                                : team === "Search ML Team"
+                                ? "warning"
+                                : "success"
+                            }
+                          >
+                            {team}
+                          </Chip>
+                        ))}
+                      </Box>
+                    </td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        onClick={() => handleConfigurePool(pool)}
+                      >
+                        Configure
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
         </>
       ) : (
         <Alert color="primary" sx={{ mb: 2 }}>
@@ -217,8 +217,11 @@ const Pools: React.FC = () => {
                   });
                   setOpenAzureModal(true);
                 }}
+                disabled={nodePools.some((pool) => pool.platform === "azure")}
               >
-                Azure
+                Azure{" "}
+                {nodePools.some((pool) => pool.platform === "azure") &&
+                  "(Already configured)"}
               </Button>
               <Button
                 variant="outlined"
@@ -231,8 +234,11 @@ const Pools: React.FC = () => {
                   });
                   setOpenRunPodModal(true);
                 }}
+                disabled={nodePools.some((pool) => pool.platform === "runpod")}
               >
-                RunPod
+                RunPod{" "}
+                {nodePools.some((pool) => pool.platform === "runpod") &&
+                  "(Already configured)"}
               </Button>
               <Button
                 variant="outlined"
@@ -266,6 +272,7 @@ const Pools: React.FC = () => {
         open={openSSHModal}
         onClose={() => setOpenSSHModal(false)}
         poolName={selectedPool?.name}
+        selectedPool={selectedPool}
       />
     </PageWithTitle>
   );

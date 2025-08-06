@@ -48,7 +48,7 @@ def get_runpod_api_key():
 
 
 def save_runpod_config(
-    api_key: str, allowed_gpu_types: list[str], max_instances: int = 0
+    name: str, api_key: str, allowed_gpu_types: list[str], max_instances: int = 0
 ):
     """Save RunPod configuration to file"""
     # Load existing config to preserve the real API key if the new one is masked
@@ -59,6 +59,7 @@ def save_runpod_config(
         api_key = existing_config.get("api_key", "")
 
     config = {
+        "name": name,
         "api_key": api_key,
         "allowed_gpu_types": allowed_gpu_types,
         "max_instances": max_instances,

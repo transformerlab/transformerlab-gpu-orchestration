@@ -49,6 +49,7 @@ def load_azure_config():
 
 
 def save_azure_config(
+    name: str,
     subscription_id: str,
     tenant_id: str,
     client_id: str,
@@ -75,6 +76,7 @@ def save_azure_config(
     auth_method = "service_principal"
 
     config = {
+        "name": name,
         "subscription_id": subscription_id,
         "tenant_id": tenant_id,
         "client_id": client_id,

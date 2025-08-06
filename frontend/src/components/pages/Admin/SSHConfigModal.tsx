@@ -47,12 +47,14 @@ interface SSHConfigModalProps {
   open: boolean;
   onClose: () => void;
   poolName?: string;
+  selectedPool?: any; // The pool object from the main list
 }
 
 const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
   open,
   onClose,
   poolName = "SSH Pool",
+  selectedPool,
 }) => {
   const [clusters, setClusters] = useState<string[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
@@ -76,10 +78,17 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
 
   useEffect(() => {
     if (open) {
+      if (selectedPool) {
+        // If we have a specific pool, set it as the selected cluster
+        setSelectedCluster({
+          cluster_name: selectedPool.name,
+          nodes: [], // We'll fetch the actual nodes
+        });
+      }
       fetchClusters();
       fetchIdentityFiles();
     }
-  }, [open]);
+  }, [open, selectedPool]);
 
   const fetchClusters = async () => {
     try {
@@ -207,9 +216,12 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
     <Modal open={open} onClose={onClose}>
       <ModalDialog size="lg">
         <ModalClose />
-        <Typography level="h4">Configure {poolName}</Typography>
+        <Typography level="h4">
+          Configure {selectedPool?.name || poolName}
+        </Typography>
         <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
           SSH/Direct Connect Configuration
+          {selectedPool?.name && ` - ${selectedPool.name}`}
         </Typography>
 
         <Card variant="outlined" sx={{ p: 2, mt: 2 }}>
@@ -217,24 +229,45 @@ const SSHConfigModal: React.FC<SSHConfigModalProps> = ({
             <CircularProgress />
           ) : (
             <Stack spacing={3}>
-              <Typography level="h6">Existing Clusters</Typography>
-              {clusters.length > 0 ? (
-                <Stack spacing={1}>
-                  {clusters.map((cluster) => (
-                    <Chip key={cluster} variant="soft">
-                      {cluster}
-                    </Chip>
-                  ))}
-                </Stack>
+              {selectedPool ? (
+                // Show specific cluster configuration
+                <>
+                  <Typography level="h6">
+                    Configure Cluster: {selectedPool.name}
+                  </Typography>
+                  <Alert color="info">
+                    This cluster has {selectedPool.numberOfNodes} nodes
+                    configured.
+                  </Alert>
+
+                  <Divider />
+
+                  <Typography level="h6">Add New Node</Typography>
+                </>
               ) : (
-                <Alert color="warning">
-                  No SSH clusters configured. Add a new cluster to get started.
-                </Alert>
+                // Show all clusters
+                <>
+                  <Typography level="h6">Existing Clusters</Typography>
+                  {clusters.length > 0 ? (
+                    <Stack spacing={1}>
+                      {clusters.map((cluster) => (
+                        <Chip key={cluster} variant="soft">
+                          {cluster}
+                        </Chip>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Alert color="warning">
+                      No SSH clusters configured. Add a new cluster to get
+                      started.
+                    </Alert>
+                  )}
+
+                  <Divider />
+
+                  <Typography level="h6">Add New Cluster</Typography>
+                </>
               )}
-
-              <Divider />
-
-              <Typography level="h6">Add New Cluster</Typography>
               <Grid container spacing={2}>
                 <Grid xs={6}>
                   <FormControl>

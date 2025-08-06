@@ -19,6 +19,7 @@ import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useNotification } from "../../../components/NotificationSystem";
 
 interface RunPodConfig {
+  name: string;
   api_key: string;
   allowed_gpu_types: string[];
   is_configured: boolean;
@@ -44,6 +45,7 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
   poolName = "RunPod Pool",
 }) => {
   const [config, setConfig] = useState<RunPodConfig>({
+    name: "",
     api_key: "",
     allowed_gpu_types: [],
     is_configured: false,
@@ -156,6 +158,19 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
             <CircularProgress />
           ) : (
             <Stack spacing={2}>
+              <FormControl>
+                <FormLabel>Pool Name</FormLabel>
+                <Input
+                  value={config.name}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      name: e.target.value,
+                    })
+                  }
+                  placeholder="Enter pool name (e.g., RunPod GPU Pool)"
+                />
+              </FormControl>
               <FormControl>
                 <FormLabel>API Key</FormLabel>
                 <Input
