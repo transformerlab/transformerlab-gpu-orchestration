@@ -80,18 +80,6 @@ const adminSubItems = [
     path: "/dashboard/admin/pools",
   },
   {
-    content: "Dedicated Instances",
-    path: "/dashboard/admin/instances",
-  },
-  {
-    content: "RunPod Configuration",
-    path: "/dashboard/admin/runpod",
-  },
-  {
-    content: "Azure Configuration",
-    path: "/dashboard/admin/azure",
-  },
-  {
     content: "SSH Identity Files",
     path: "/dashboard/admin/identity",
   },

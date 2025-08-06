@@ -73,6 +73,7 @@ import asyncio
 
 # RunPod configuration models
 class RunPodConfigRequest(BaseModel):
+    name: str
     api_key: str
     allowed_gpu_types: list[str]
     max_instances: int = 0
@@ -84,6 +85,7 @@ class RunPodTestRequest(BaseModel):
 
 # Azure configuration models
 class AzureConfigRequest(BaseModel):
+    name: str
     subscription_id: str
     tenant_id: str
     client_id: str
@@ -102,6 +104,81 @@ class AzureTestRequest(BaseModel):
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key)])
+
+
+@router.get("/node-pools")
+async def list_node_pools(request: Request, response: Response):
+    """Get all node pools (Azure, RunPod, and SSH clusters)"""
+    try:
+        node_pools = []
+
+        # Get Azure config
+        try:
+            azure_config = load_azure_config()
+            if azure_config.get("is_configured"):
+                node_pools.append(
+                    {
+                        "name": azure_config.get("name", "Azure Pool"),
+                        "platform": "azure",
+                        "numberOfNodes": azure_config.get("max_instances", 0),
+                        "status": "enabled"
+                        if azure_config.get("is_configured")
+                        else "disabled",
+                        "access": ["Admin"],  # Default access
+                        "config": {
+                            "is_configured": azure_config.get("is_configured", False),
+                            "max_instances": azure_config.get("max_instances", 0),
+                        },
+                    }
+                )
+        except Exception as e:
+            print(f"Error loading Azure config: {e}")
+
+        # Get RunPod config
+        try:
+            runpod_config = load_runpod_config()
+            if runpod_config.get("is_configured"):
+                node_pools.append(
+                    {
+                        "name": runpod_config.get("name", "RunPod Pool"),
+                        "platform": "runpod",
+                        "numberOfNodes": runpod_config.get("max_instances", 0),
+                        "status": "enabled"
+                        if runpod_config.get("is_configured")
+                        else "disabled",
+                        "access": ["Admin"],  # Default access
+                        "config": {
+                            "is_configured": runpod_config.get("is_configured", False),
+                            "max_instances": runpod_config.get("max_instances", 0),
+                        },
+                    }
+                )
+        except Exception as e:
+            print(f"Error loading RunPod config: {e}")
+
+        # Get SSH clusters
+        try:
+            pools = load_ssh_node_pools()
+            for cluster_name, config in pools.items():
+                hosts_count = len(config.get("hosts", []))
+                node_pools.append(
+                    {
+                        "name": cluster_name,
+                        "platform": "direct",
+                        "numberOfNodes": hosts_count,
+                        "status": "enabled",
+                        "access": ["Admin"],  # Default access
+                        "config": {"is_configured": True, "max_instances": hosts_count},
+                    }
+                )
+        except Exception as e:
+            print(f"Error loading SSH clusters: {e}")
+
+        return {"node_pools": node_pools}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list node pools: {str(e)}"
+        )
 
 
 @router.get("/ssh-clusters")
@@ -824,6 +901,7 @@ async def save_runpod_config_route(
     try:
         # Save the configuration using utility function
         config = save_runpod_config(
+            config_request.name,
             config_request.api_key,
             config_request.allowed_gpu_types,
             config_request.max_instances,
@@ -1052,6 +1130,7 @@ async def save_azure_config_route(
     try:
         # Save the configuration using utility function
         config = save_azure_config(
+            config_request.name,
             config_request.subscription_id,
             config_request.tenant_id,
             config_request.client_id,
