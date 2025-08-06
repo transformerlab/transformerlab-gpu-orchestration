@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, Typography, Tooltip, Avatar } from "@mui/joy";
 
 interface NodeSquareProps {
@@ -15,6 +16,7 @@ interface NodeSquareProps {
   };
   nodeGpuInfo?: Record<string, any>;
   variant?: "mock" | "ssh";
+  clusterName?: string;
 }
 
 const getStatusBackground = (status: string, type: string) => {
@@ -37,6 +39,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
   node,
   nodeGpuInfo = {},
   variant = "mock",
+  clusterName,
 }) => {
   // Determine GPU display
   let gpuDisplay = "-";
@@ -69,14 +72,14 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
     ? getStatusBorderColor(node.status || "inactive", node.type || "")
     : undefined;
 
+  const navigate = useNavigate();
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Navigation to individual node pages is disabled
-    // if (isMockVariant && node.id) {
-    //   window.location.href = `/dashboard/nodes/node/${encodeURIComponent(
-    //     node.id
-    //   )}`;
-    // }
+    // Navigate to cluster page when node square is clicked
+    if (clusterName) {
+      navigate(`/dashboard/clusters/${clusterName}`);
+    }
   };
 
   return (
