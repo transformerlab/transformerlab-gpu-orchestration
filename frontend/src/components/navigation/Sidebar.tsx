@@ -59,7 +59,7 @@ const sidebarItems = [
   },
   {
     icon: <CircleDotIcon size={22} style={{ paddingLeft: "2px" }} />,
-    content: "My Machines",
+    content: "My Instances",
     chipCount: 15,
     path: "/dashboard/my-clusters",
   },
@@ -75,7 +75,7 @@ const adminSubItems = [
   { content: "Users", section: "users", path: "/dashboard/admin/users" },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
-    content: "Dedicated Machines",
+    content: "Dedicated Instances",
     section: "clouds",
     path: "/dashboard/admin/clouds",
   },
@@ -136,9 +136,6 @@ export default function Sidebar() {
       }}
     >
       <ListItem nested>
-        <ListSubheader sx={{ letterSpacing: "2px", mt: 2, fontWeight: "800" }}>
-          Cluster
-        </ListSubheader>
         <List
           aria-labelledby="nav-list-browse"
           sx={{ "& .JoyListItemButton-root": { p: "8px" } }}

@@ -81,7 +81,7 @@ const NodeDetails: React.FC = () => {
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Typography level="body-sm" sx={{ color: "text.secondary" }}>
-            Machine ID: 123e4567-e89b-12d3-a456-426614174000
+            Instance ID: 123e4567-e89b-12d3-a456-426614174000
           </Typography>
           <Button
             size="sm"

@@ -40,8 +40,8 @@ const MyClusters: React.FC = () => {
 
   return (
     <PageWithTitle
-      title="My Machines"
-      subtitle="View the machines or clusters currently reserved for you."
+      title="My Instances"
+      subtitle="View the instances or clusters currently reserved for you."
     >
       <Held
         skypilotLoading={skypilotLoading}
