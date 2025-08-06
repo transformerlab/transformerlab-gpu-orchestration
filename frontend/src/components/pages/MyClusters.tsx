@@ -40,8 +40,8 @@ const MyClusters: React.FC = () => {
 
   return (
     <PageWithTitle
-      title="My Clusters"
-      subtitle="A cluster is a group of nodes that run workloads."
+      title="My Machines"
+      subtitle="View the machines or clusters currently reserved for you."
     >
       <Held
         skypilotLoading={skypilotLoading}

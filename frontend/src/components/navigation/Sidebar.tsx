@@ -54,7 +54,7 @@ const sidebarItems = [
   { icon: <GpuIcon />, content: "Node Pools", path: "/dashboard/node-pools" },
   {
     icon: <HouseIcon />,
-    content: "My Clusters",
+    content: "My Machines",
     chipCount: 15,
     path: "/dashboard/my-clusters",
   },
