@@ -78,7 +78,9 @@ jobs:
         ACI_NAME="${{ env.ACI_NAME }}"
         DNS_LABEL="${{ env.DNS_LABEL }}"
         LOCATION="westus2" # <--- IMPORTANT: Ensure your desired Azure region here (e.g., westus2, canadacentral, westeurope)
-
+        LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}
+        LOG_ANALYTICS_WORKSPACE_KEY: ${{ secrets.LOG_ANALYTICS_WORKSPACE_KEY }}
+      
         # Construct the environment variables string for Azure CLI
         # Each var should be name=value, separated by a space.
         # Secrets are interpolated by GitHub Actions before being passed to the shell.
@@ -106,4 +108,6 @@ jobs:
           --location "$LOCATION" \
           --environment-variables $ENV_VARS_STRING \
           $REGISTRY_CREDS \
-          --restart-policy Always # Recommended for continuous services
+          --restart-policy Always # Recommended for continuous services \
+          --log-analytics-workspace "$LOG_ANALYTICS_WORKSPACE_ID" \
+          --log-analytics-workspace-key "$LOG_ANALYTICS_WORKSPACE_KEY"
