@@ -521,7 +521,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
               {fakeCluster.cluster_name}
             </Typography>
 
-            <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+            <Table sx={{ minWidth: 650, mb: 2 }}>
               <thead>
                 <tr>
                   <th>Job ID</th>
