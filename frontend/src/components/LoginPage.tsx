@@ -32,6 +32,9 @@ const LoginPage: React.FC = () => {
       console.debug("Login API response data:", response.data);
 
       // Redirect to the WorkOS login URL
+      if (!response.data || !response.data.login_url) {
+        throw new Error("Invalid login url response from server");
+      }
       window.location.href = response.data.login_url;
     } catch (err) {
       setError("Failed to initiate login. Please try again.");
