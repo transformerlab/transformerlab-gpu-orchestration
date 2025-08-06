@@ -20,7 +20,7 @@ import {
   Select,
   Option,
 } from "@mui/joy";
-import { Plus, Trash2, Mail } from "lucide-react";
+import { Plus, Trash2, Mail, Edit } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useAuth } from "../../../context/AuthContext";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -32,16 +32,24 @@ interface OrganizationMember {
   first_name: string;
   last_name: string;
   profile_picture_url?: string;
+  is_current_user?: boolean;
+  can_be_removed?: boolean;
+  can_change_role?: boolean;
 }
 
 interface OrganizationMembersResponse {
   members: OrganizationMember[];
+  admin_count?: number;
 }
 
 interface InvitationRequest {
   email: string;
   role_slug?: string;
   expires_in_days?: number;
+}
+
+interface UpdateRoleRequest {
+  role: string;
 }
 
 const Users: React.FC = () => {
@@ -66,6 +74,13 @@ const Users: React.FC = () => {
   });
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [changingRole, setChangingRole] = useState(false);
+  const [userToChangeRole, setUserToChangeRole] = useState<OrganizationMember | null>(null);
+  const [newRole, setNewRole] = useState<string>("member");
+  const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleSuccess, setRoleSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -97,7 +112,7 @@ const Users: React.FC = () => {
 
         const data: OrganizationMembersResponse = await response.json();
         console.log("API Response:", data);
-        setMembers(data.members);
+        setMembers(calculatePermissions(data.members));
       } catch (err) {
         console.error("Error fetching members:", err);
         setError(
@@ -132,6 +147,26 @@ const Users: React.FC = () => {
     return `https://i.pravatar.cc/150?img=${Math.abs(hash) % 70}`;
   };
 
+  // Helper function to calculate permissions based on current member list
+  const calculatePermissions = (memberList: OrganizationMember[]) => {
+    const adminCount = memberList.filter(m => {
+      const role = typeof m.role === "string" ? m.role : m.role?.slug;
+      return role === "admin";
+    }).length;
+
+    return memberList.map(member => {
+      const memberRole = typeof member.role === "string" ? member.role : member.role?.slug;
+      const isAdmin = memberRole === "admin";
+      const isOnlyAdmin = isAdmin && adminCount === 1;
+
+      return {
+        ...member,
+        can_be_removed: !isOnlyAdmin,
+        can_change_role: !isOnlyAdmin
+      };
+    });
+  };
+
   const handleRemoveUser = async (member: OrganizationMember) => {
     if (!user?.organization_id) {
       setError("No organization ID available");
@@ -156,8 +191,9 @@ const Users: React.FC = () => {
         throw new Error("Failed to remove user from organization");
       }
 
-      // Remove the user from the local state
-      setMembers(members.filter((m) => m.user_id !== member.user_id));
+      // Remove the user from the local state and recalculate permissions
+      const updatedMembers = members.filter((m) => m.user_id !== member.user_id);
+      setMembers(calculatePermissions(updatedMembers));
       setRemoveDialogOpen(false);
       setUserToRemove(null);
     } catch (err) {
@@ -242,6 +278,75 @@ const Users: React.FC = () => {
       role_slug: "member",
       expires_in_days: 7,
     });
+  };
+
+  const openRoleDialog = (member: OrganizationMember) => {
+    setUserToChangeRole(member);
+    setNewRole(
+      typeof member.role === "string" 
+        ? member.role 
+        : member.role?.slug || "member"
+    );
+    setRoleDialogOpen(true);
+    setRoleError(null);
+    setRoleSuccess(null);
+  };
+
+  const handleRoleChange = async () => {
+    if (!user?.organization_id || !userToChangeRole) {
+      setRoleError("Missing organization or user information");
+      return;
+    }
+
+    try {
+      setChangingRole(true);
+      setRoleError(null);
+      setRoleSuccess(null);
+
+      const response = await apiFetch(
+        buildApiUrl(
+          `admin/orgs/${user.organization_id}/members/${userToChangeRole.user_id}/role`
+        ),
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            role: newRole,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to update member role");
+      }
+
+      // Update the local state and recalculate permissions
+      const updatedMembers = members.map(member => 
+        member.user_id === userToChangeRole.user_id 
+          ? { ...member, role: newRole }
+          : member
+      );
+      setMembers(calculatePermissions(updatedMembers));
+
+      setRoleSuccess(`Role updated successfully to ${newRole}`);
+
+      setTimeout(() => {
+        setRoleDialogOpen(false);
+        setRoleSuccess(null);
+        setUserToChangeRole(null);
+      }, 1000);
+    } catch (err) {
+      console.error("Error updating role:", err);
+      setRoleError(
+        err instanceof Error ? err.message : "Failed to update role"
+      );
+    } finally {
+      setChangingRole(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -377,29 +482,59 @@ const Users: React.FC = () => {
                     </Chip>
                   </td>
                   <td>
-                    {(typeof member.role === "string" &&
-                      member.role === "admin") ||
-                    (typeof member.role === "object" &&
-                      member.role?.slug === "admin") ||
-                    !isAdmin ? (
+                    {!isAdmin ? (
                       <Typography
                         level="body-sm"
                         sx={{ color: "text.secondary" }}
                       ></Typography>
                     ) : (
-                      <IconButton
-                        size="sm"
-                        color="danger"
-                        variant="plain"
-                        onClick={() => openRemoveDialog(member)}
-                        disabled={removingUserId === member.user_id}
-                      >
-                        {removingUserId === member.user_id ? (
-                          <CircularProgress size="sm" />
-                        ) : (
-                          <Trash2 size={16} />
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        {member.can_change_role !== false && (
+                          <IconButton
+                            size="sm"
+                            color="primary"
+                            variant="plain"
+                            onClick={() => openRoleDialog(member)}
+                            disabled={changingRole}
+                            title={
+                              !member.can_change_role
+                                ? "Cannot change role of the last admin"
+                                : "Change role"
+                            }
+                          >
+                            <Edit size={16} />
+                          </IconButton>
                         )}
-                      </IconButton>
+                        {member.can_be_removed !== false && (
+                          <IconButton
+                            size="sm"
+                            color="danger"
+                            variant="plain"
+                            onClick={() => openRemoveDialog(member)}
+                            disabled={removingUserId === member.user_id}
+                            title={
+                              !member.can_be_removed
+                                ? "Cannot remove the last admin"
+                                : "Remove user"
+                            }
+                          >
+                            {removingUserId === member.user_id ? (
+                              <CircularProgress size="sm" />
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                          </IconButton>
+                        )}
+                        {(!member.can_change_role &&
+                          !member.can_be_removed) && (
+                            <Typography
+                              level="body-sm"
+                              sx={{ color: "text.secondary", fontStyle: "italic" }}
+                            >
+                              Cannot edit or remove only admin
+                            </Typography>
+                          )}
+                      </Box>
                     )}
                   </td>
                 </tr>
@@ -529,6 +664,65 @@ const Users: React.FC = () => {
               disabled={!inviteForm.email.trim()}
             >
               Send Invitation
+            </Button>
+          </DialogActions>
+        </ModalDialog>
+      </Modal>
+
+      <Modal open={roleDialogOpen} onClose={() => setRoleDialogOpen(false)}>
+        <ModalDialog>
+          <DialogTitle>Change User Role</DialogTitle>
+          <DialogContent>
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
+            >
+              {roleError && (
+                <Alert color="danger" size="sm">
+                  {roleError}
+                </Alert>
+              )}
+              {roleSuccess && (
+                <Alert color="success" size="sm">
+                  {roleSuccess}
+                </Alert>
+              )}
+
+              <Typography level="body-md">
+                Change role for{" "}
+                <strong>
+                  {userToChangeRole ? getDisplayName(userToChangeRole) : ""}
+                </strong>
+              </Typography>
+
+              <FormControl>
+                <FormLabel>New Role</FormLabel>
+                <Select
+                  value={newRole}
+                  onChange={(_, value) => setNewRole(value || "member")}
+                  disabled={changingRole}
+                >
+                  <Option value="member">Member</Option>
+                  <Option value="admin">Admin</Option>
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={() => setRoleDialogOpen(false)}
+              disabled={changingRole}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              color="primary"
+              onClick={handleRoleChange}
+              loading={changingRole}
+            >
+              Update Role
             </Button>
           </DialogActions>
         </ModalDialog>
