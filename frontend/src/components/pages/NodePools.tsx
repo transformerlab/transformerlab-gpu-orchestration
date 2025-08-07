@@ -1295,23 +1295,27 @@ const Nodes: React.FC = () => {
     user?.first_name || user?.email?.split("@")[0] || "ali";
 
   // Generate mock clusters with current user
-  const mockClustersWithCurrentUser: Cluster[] = [
-    {
-      id: "cluster-1",
-      name: "Azure ML Cluster",
-      nodes: generateRandomNodes(165, currentUserName),
-    },
-    {
-      id: "cluster-3",
-      name: "On-Premise Cluster",
-      nodes: generateRandomNodes(12, currentUserName),
-    },
-    {
-      id: "cluster-4",
-      name: "Vector Institute Cluster",
-      nodes: generateRandomNodes(278, currentUserName),
-    },
-  ];
+  // Memoize mockClustersWithCurrentUser so it only runs once per currentUserName
+  const mockClustersWithCurrentUser: Cluster[] = React.useMemo(
+    () => [
+      {
+        id: "cluster-1",
+        name: "Azure ML Cluster",
+        nodes: generateRandomNodes(165, currentUserName),
+      },
+      {
+        id: "cluster-3",
+        name: "On-Premise Cluster",
+        nodes: generateRandomNodes(12, currentUserName),
+      },
+      {
+        id: "cluster-4",
+        name: "Vector Institute Cluster",
+        nodes: generateRandomNodes(278, currentUserName),
+      },
+    ],
+    [currentUserName]
+  );
 
   return (
     <PageWithTitle
