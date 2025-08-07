@@ -20,6 +20,27 @@ import RunPodConfigModal from "./RunPodConfigModal";
 import SSHConfigModal from "./SSHConfigModal";
 import SSHClusterModal from "./SSHClusterModal";
 
+import RunPodIcon from "./icons/runpod.svg";
+import AzureIcon from "./icons/azure.svg";
+
+// This function returns an icon based on the platform provided:
+function CloudServiceIcon({ platform }: { platform: string }) {
+  switch (platform) {
+    case "azure":
+      return (
+        <img src={AzureIcon} alt="Azure" style={{ width: 16, height: 16 }} />
+      );
+    case "runpod":
+      return (
+        <img src={RunPodIcon} alt="RunPod" style={{ width: 16, height: 16 }} />
+      );
+    case "direct":
+      return <Server size={16} />;
+    default:
+      return <Server size={16} />;
+  }
+}
+
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const [openAzureModal, setOpenAzureModal] = useState(false);
@@ -125,13 +146,9 @@ const Pools: React.FC = () => {
                         size="sm"
                         variant="soft"
                         startDecorator={
-                          pool.platform === "azure" ? (
-                            <Cloud size={14} />
-                          ) : pool.platform === "runpod" ? (
-                            <Gpu size={14} />
-                          ) : (
-                            <Server size={14} />
-                          )
+                          <CloudServiceIcon
+                            platform={pool.platform || "unknown"}
+                          />
                         }
                       >
                         {pool.platform || "unknown"}
@@ -227,7 +244,7 @@ const Pools: React.FC = () => {
             <Stack direction="column" spacing={1}>
               <Button
                 variant="outlined"
-                startDecorator={<Cloud size={16} />}
+                startDecorator={<CloudServiceIcon platform="azure" />}
                 onClick={() => {
                   setOpenAdd(false);
                   setSelectedPool({
@@ -244,7 +261,7 @@ const Pools: React.FC = () => {
               </Button>
               <Button
                 variant="outlined"
-                startDecorator={<Gpu size={16} />}
+                startDecorator={<CloudServiceIcon platform="runpod" />}
                 onClick={() => {
                   setOpenAdd(false);
                   setSelectedPool({
