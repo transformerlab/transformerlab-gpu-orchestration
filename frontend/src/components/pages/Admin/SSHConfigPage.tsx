@@ -7,6 +7,9 @@ import {
   Input,
   FormControl,
   FormLabel,
+  Modal,
+  ModalDialog,
+  ModalClose,
   Stack,
   Table,
   Chip,
@@ -16,7 +19,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/joy";
-import { Plus, Trash2, Monitor, ArrowLeft, Save } from "lucide-react";
+import { Plus, Trash2, Monitor, ArrowLeft, Save, Server } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useNotification } from "../../../components/NotificationSystem";
@@ -60,7 +63,7 @@ const SSHConfigPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Form states
-  const [newClusterName, setNewClusterName] = useState("");
+  const [newClusterName, setNewClusterName] = useState(initialPoolName);
   const [newClusterUser, setNewClusterUser] = useState("");
   const [newClusterIdentityFile, setNewClusterIdentityFile] =
     useState<string>("");
@@ -72,12 +75,22 @@ const SSHConfigPage: React.FC = () => {
   const [newNodePassword, setNewNodePassword] = useState("");
 
   const [identityFiles, setIdentityFiles] = useState<IdentityFile[]>([]);
-  const [poolName, setPoolName] = useState(initialPoolName);
 
   useEffect(() => {
-    fetchClusters();
-    fetchIdentityFiles();
-  }, []);
+    const loadData = async () => {
+      await fetchIdentityFiles();
+
+      if (isConfigureMode) {
+        // In configure mode, load the specific cluster details
+        await fetchClusterDetails(newClusterName);
+      } else {
+        // In add mode, load all clusters
+        await fetchClusters();
+      }
+    };
+
+    loadData();
+  }, [isConfigureMode, newClusterName]);
 
   const fetchIdentityFiles = async () => {
     try {
@@ -136,18 +149,18 @@ const SSHConfigPage: React.FC = () => {
 
   const createCluster = async () => {
     try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("cluster_name", newClusterName);
+      if (newClusterUser) formData.append("user", newClusterUser);
+      if (newClusterPassword) formData.append("password", newClusterPassword);
+      if (newClusterIdentityFile)
+        formData.append("identity_file_path", newClusterIdentityFile);
+
       const response = await apiFetch(buildApiUrl("clusters"), {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          cluster_name: newClusterName,
-          user: newClusterUser,
-          identity_file: newClusterIdentityFile || undefined,
-          password: newClusterPassword || undefined,
-        }),
+        body: formData,
       });
 
       if (response.ok) {
@@ -178,6 +191,8 @@ const SSHConfigPage: React.FC = () => {
         type: "danger",
         message: "Error creating SSH cluster",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,20 +200,20 @@ const SSHConfigPage: React.FC = () => {
     if (!selectedCluster) return;
 
     try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("ip", newNodeIp);
+      formData.append("user", newNodeUser);
+      if (newNodePassword) formData.append("password", newNodePassword);
+      if (newNodeIdentityFile)
+        formData.append("identity_file_path", newNodeIdentityFile);
+
       const response = await apiFetch(
         buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
         {
           method: "POST",
           credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ip: newNodeIp,
-            user: newNodeUser,
-            identity_file: newNodeIdentityFile || undefined,
-            password: newNodePassword || undefined,
-          }),
+          body: formData,
         }
       );
 
@@ -225,6 +240,8 @@ const SSHConfigPage: React.FC = () => {
         type: "danger",
         message: "Error adding node",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -298,7 +315,7 @@ const SSHConfigPage: React.FC = () => {
         title={`${isConfigureMode ? "Configure" : "Add"} SSH Cluster`}
         subtitle={`${
           isConfigureMode ? "Configure" : "Add"
-        } SSH cluster settings for ${poolName}`}
+        } SSH cluster settings for ${newClusterName}`}
       >
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
@@ -312,7 +329,7 @@ const SSHConfigPage: React.FC = () => {
       title={`${isConfigureMode ? "Configure" : "Add"} SSH Cluster`}
       subtitle={`${
         isConfigureMode ? "Configure" : "Add"
-      } SSH cluster settings for ${poolName}`}
+      } SSH cluster settings for ${newClusterName}`}
       button={
         <Button
           variant="outlined"
@@ -324,107 +341,40 @@ const SSHConfigPage: React.FC = () => {
       }
     >
       <Stack spacing={3}>
-        {/* Pool Name Configuration */}
-        <Card variant="outlined">
-          <Typography level="h4" sx={{ mb: 2 }}>
-            Pool Configuration
-          </Typography>
-          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
-            Configure the name for this SSH cluster pool.
-          </Typography>
-          <Stack spacing={2}>
-            <FormControl>
-              <FormLabel>Pool Name</FormLabel>
-              <Input
-                value={poolName}
-                onChange={(e) => setPoolName(e.target.value)}
-                placeholder="Enter pool name"
-              />
-            </FormControl>
-          </Stack>
-        </Card>
-
-        {/* Create New Cluster */}
-        <Card variant="outlined">
-          <Typography level="h4" sx={{ mb: 2 }}>
-            <Plus
-              size={20}
-              style={{ marginRight: 8, verticalAlign: "middle" }}
-            />
-            Create New SSH Cluster
-          </Typography>
-          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
-            Create a new SSH cluster by providing the initial node details.
-          </Typography>
-
-          <Stack spacing={2}>
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <FormControl sx={{ flex: 1 }}>
-                <FormLabel>Cluster Name</FormLabel>
-                <Input
-                  value={newClusterName}
-                  onChange={(e) => setNewClusterName(e.target.value)}
-                  placeholder="Enter cluster name"
-                />
-              </FormControl>
-              <FormControl sx={{ flex: 1 }}>
-                <FormLabel>Default User</FormLabel>
-                <Input
-                  value={newClusterUser}
-                  onChange={(e) => setNewClusterUser(e.target.value)}
-                  placeholder="Enter default user (e.g., ubuntu)"
-                />
-              </FormControl>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <FormControl sx={{ flex: 1 }}>
-                <FormLabel>Identity File (Optional)</FormLabel>
-                <Select
-                  value={newClusterIdentityFile}
-                  onChange={(_, value) =>
-                    setNewClusterIdentityFile(value || "")
-                  }
-                  placeholder="Select identity file"
-                >
-                  <Option value="">No identity file</Option>
-                  {identityFiles.map((file) => (
-                    <Option key={file.path} value={file.path}>
-                      {file.display_name}
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl sx={{ flex: 1 }}>
-                <FormLabel>Password (Optional)</FormLabel>
-                <Input
-                  type="password"
-                  value={newClusterPassword}
-                  onChange={(e) => setNewClusterPassword(e.target.value)}
-                  placeholder="Enter password if no identity file"
-                />
-              </FormControl>
-            </Box>
-
+        {!isConfigureMode && (
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Typography level="h3">SSH Cluster Management</Typography>
             <Button
-              startDecorator={<Save size={16} />}
-              onClick={createCluster}
-              disabled={!newClusterName || !newClusterUser}
+              startDecorator={<Plus size={16} />}
+              onClick={() => setShowCreateModal(true)}
+              disabled={loading}
             >
               Create Cluster
             </Button>
-          </Stack>
-        </Card>
+          </Box>
+        )}
 
-        {/* Existing Clusters */}
+        {/* Cluster Nodes */}
         <Card variant="outlined">
-          <Typography level="h4" sx={{ mb: 2 }}>
-            <Monitor
-              size={20}
-              style={{ marginRight: 8, verticalAlign: "middle" }}
-            />
-            Existing SSH Clusters
-          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+            <Typography level="h4">
+              <Monitor
+                size={20}
+                style={{ marginRight: 8, verticalAlign: "middle" }}
+              />
+              Cluster Nodes
+            </Typography>
+            {selectedCluster && (
+              <Button
+                startDecorator={<Plus size={16} />}
+                size="sm"
+                onClick={() => setShowAddNodeModal(true)}
+                disabled={loading}
+              >
+                Add Node
+              </Button>
+            )}
+          </Box>
 
           {error && (
             <Alert color="danger" sx={{ mb: 2 }}>
@@ -432,7 +382,52 @@ const SSHConfigPage: React.FC = () => {
             </Alert>
           )}
 
-          {clusters.length === 0 ? (
+          {isConfigureMode ? (
+            // Show nodes for the current cluster being configured
+            selectedCluster ? (
+              selectedCluster.nodes.length === 0 ? (
+                <Typography level="body-md" sx={{ color: "text.secondary" }}>
+                  No nodes in this cluster. Add nodes to get started.
+                </Typography>
+              ) : (
+                <Table size="sm">
+                  <thead>
+                    <tr>
+                      <th>IP Address</th>
+                      <th>User</th>
+                      <th>Auth Method</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedCluster.nodes.map((node) => (
+                      <tr key={node.ip}>
+                        <td>{node.ip}</td>
+                        <td>{node.user}</td>
+                        <td>
+                          <Chip size="sm" variant="soft">
+                            {node.identity_file ? "Key" : "Password"}
+                          </Chip>
+                        </td>
+                        <td>
+                          <IconButton
+                            size="sm"
+                            color="danger"
+                            onClick={() => removeNode(node.ip)}
+                          >
+                            <Trash2 size={14} />
+                          </IconButton>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )
+            ) : (
+              <Alert color="warning">Loading cluster details...</Alert>
+            )
+          ) : // Show existing clusters for add mode
+          clusters.length === 0 ? (
             <Alert color="warning">
               No SSH clusters configured. Create your first cluster above.
             </Alert>
@@ -473,48 +468,59 @@ const SSHConfigPage: React.FC = () => {
                       <Typography level="title-sm" sx={{ mb: 1 }}>
                         Nodes in {clusterName}:
                       </Typography>
-                      <Table size="sm">
-                        <thead>
-                          <tr>
-                            <th>IP Address</th>
-                            <th>User</th>
-                            <th>Auth Method</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedCluster.nodes.map((node) => (
-                            <tr key={node.ip}>
-                              <td>{node.ip}</td>
-                              <td>{node.user}</td>
-                              <td>
-                                <Chip size="sm" variant="soft">
-                                  {node.identity_file ? "Key" : "Password"}
-                                </Chip>
-                              </td>
-                              <td>
-                                <IconButton
-                                  size="sm"
-                                  color="danger"
-                                  onClick={() => removeNode(node.ip)}
-                                >
-                                  <Trash2 size={14} />
-                                </IconButton>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
+                      {selectedCluster.nodes.length === 0 ? (
+                        <Typography
+                          level="body-md"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          No nodes in this cluster. Add nodes to get started.
+                        </Typography>
+                      ) : (
+                        <>
+                          <Table size="sm">
+                            <thead>
+                              <tr>
+                                <th>IP Address</th>
+                                <th>User</th>
+                                <th>Auth Method</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedCluster.nodes.map((node) => (
+                                <tr key={node.ip}>
+                                  <td>{node.ip}</td>
+                                  <td>{node.user}</td>
+                                  <td>
+                                    <Chip size="sm" variant="soft">
+                                      {node.identity_file ? "Key" : "Password"}
+                                    </Chip>
+                                  </td>
+                                  <td>
+                                    <IconButton
+                                      size="sm"
+                                      color="danger"
+                                      onClick={() => removeNode(node.ip)}
+                                    >
+                                      <Trash2 size={14} />
+                                    </IconButton>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </Table>
 
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        startDecorator={<Plus size={14} />}
-                        onClick={() => setShowAddNodeModal(true)}
-                        sx={{ mt: 2 }}
-                      >
-                        Add Node
-                      </Button>
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            startDecorator={<Plus size={14} />}
+                            onClick={() => setShowAddNodeModal(true)}
+                            sx={{ mt: 2 }}
+                          >
+                            Add Node
+                          </Button>
+                        </>
+                      )}
                     </Box>
                   )}
                 </Card>
@@ -523,73 +529,167 @@ const SSHConfigPage: React.FC = () => {
           )}
         </Card>
 
+        {/* Create Cluster Modal */}
+        <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)}>
+          <ModalDialog>
+            <ModalClose />
+            <Typography level="h4" sx={{ mb: 2 }}>
+              Create New Cluster
+            </Typography>
+            <Stack spacing={2}>
+              <FormControl required>
+                <FormLabel>Cluster Name</FormLabel>
+                <Input
+                  value={newClusterName}
+                  onChange={(e) => setNewClusterName(e.target.value)}
+                  placeholder="my-cluster"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Default User (optional)</FormLabel>
+                <Input
+                  value={newClusterUser}
+                  onChange={(e) => setNewClusterUser(e.target.value)}
+                  placeholder="ubuntu"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Default Identity File (optional)</FormLabel>
+                <Select
+                  value={newClusterIdentityFile}
+                  onChange={(_, value) =>
+                    setNewClusterIdentityFile(value || "")
+                  }
+                  placeholder="Select an identity file"
+                >
+                  <Option value="">No identity file</Option>
+                  {identityFiles.map((file) => (
+                    <Option key={file.path} value={file.path}>
+                      {file.display_name}
+                    </Option>
+                  ))}
+                </Select>
+                {newClusterIdentityFile && (
+                  <Typography
+                    level="body-sm"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Selected:{" "}
+                    {
+                      identityFiles.find(
+                        (f) => f.path === newClusterIdentityFile
+                      )?.display_name
+                    }
+                  </Typography>
+                )}
+              </FormControl>
+              <FormControl>
+                <FormLabel>Default Password (optional)</FormLabel>
+                <Input
+                  type="password"
+                  value={newClusterPassword}
+                  onChange={(e) => setNewClusterPassword(e.target.value)}
+                  placeholder="password"
+                />
+              </FormControl>
+              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                <Button
+                  variant="plain"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={createCluster}
+                  disabled={!newClusterName || loading}
+                >
+                  Create Cluster
+                </Button>
+              </Box>
+            </Stack>
+          </ModalDialog>
+        </Modal>
+
         {/* Add Node Modal */}
-        {showAddNodeModal && (
-          <Card variant="outlined">
+        <Modal
+          open={showAddNodeModal}
+          onClose={() => setShowAddNodeModal(false)}
+        >
+          <ModalDialog>
+            <ModalClose />
             <Typography level="h4" sx={{ mb: 2 }}>
               Add Node to {selectedCluster?.cluster_name}
             </Typography>
             <Stack spacing={2}>
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>IP Address</FormLabel>
-                  <Input
-                    value={newNodeIp}
-                    onChange={(e) => setNewNodeIp(e.target.value)}
-                    placeholder="Enter IP address"
-                  />
-                </FormControl>
-                <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>User</FormLabel>
-                  <Input
-                    value={newNodeUser}
-                    onChange={(e) => setNewNodeUser(e.target.value)}
-                    placeholder="Enter user"
-                  />
-                </FormControl>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>Identity File (Optional)</FormLabel>
-                  <Select
-                    value={newNodeIdentityFile}
-                    onChange={(_, value) => setNewNodeIdentityFile(value || "")}
-                    placeholder="Select identity file"
+              <FormControl required>
+                <FormLabel>IP Address</FormLabel>
+                <Input
+                  value={newNodeIp}
+                  onChange={(e) => setNewNodeIp(e.target.value)}
+                  placeholder="192.168.1.100"
+                />
+              </FormControl>
+              <FormControl required>
+                <FormLabel>User</FormLabel>
+                <Input
+                  value={newNodeUser}
+                  onChange={(e) => setNewNodeUser(e.target.value)}
+                  placeholder="ubuntu"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Identity File (optional)</FormLabel>
+                <Select
+                  value={newNodeIdentityFile}
+                  onChange={(_, value) => setNewNodeIdentityFile(value || "")}
+                  placeholder="Select an identity file"
+                >
+                  <Option value="">No identity file</Option>
+                  {identityFiles.map((file) => (
+                    <Option key={file.path} value={file.path}>
+                      {file.display_name}
+                    </Option>
+                  ))}
+                </Select>
+                {newNodeIdentityFile && (
+                  <Typography
+                    level="body-sm"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
                   >
-                    <Option value="">No identity file</Option>
-                    {identityFiles.map((file) => (
-                      <Option key={file.path} value={file.path}>
-                        {file.display_name}
-                      </Option>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>Password (Optional)</FormLabel>
-                  <Input
-                    type="password"
-                    value={newNodePassword}
-                    onChange={(e) => setNewNodePassword(e.target.value)}
-                    placeholder="Enter password if no identity file"
-                  />
-                </FormControl>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <Button onClick={addNode} disabled={!newNodeIp || !newNodeUser}>
-                  Add Node
-                </Button>
+                    Selected:{" "}
+                    {
+                      identityFiles.find((f) => f.path === newNodeIdentityFile)
+                        ?.display_name
+                    }
+                  </Typography>
+                )}
+              </FormControl>
+              <FormControl>
+                <FormLabel>Password (optional)</FormLabel>
+                <Input
+                  type="password"
+                  value={newNodePassword}
+                  onChange={(e) => setNewNodePassword(e.target.value)}
+                  placeholder="password"
+                />
+              </FormControl>
+              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 <Button
-                  variant="outlined"
+                  variant="plain"
                   onClick={() => setShowAddNodeModal(false)}
                 >
                   Cancel
                 </Button>
+                <Button
+                  onClick={addNode}
+                  disabled={!newNodeIp || !newNodeUser || loading}
+                >
+                  Add Node
+                </Button>
               </Box>
             </Stack>
-          </Card>
-        )}
+          </ModalDialog>
+        </Modal>
       </Stack>
     </PageWithTitle>
   );

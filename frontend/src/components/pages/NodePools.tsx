@@ -578,7 +578,7 @@ const CloudClusterCard: React.FC<{
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={handleReserveNode}>
-            Reserve a Node
+            Reserve Instance
           </Button>
         </Stack>
       </Card>
@@ -675,7 +675,7 @@ const ReserveNodeModal: React.FC<{
       <ModalDialog sx={{ maxWidth: 600 }}>
         <ModalClose />
         <Typography level="h4" sx={{ mb: 2 }}>
-          Reserve a Node - {clusterName}
+          Reserve an Instance - {clusterName}
         </Typography>
         <form onSubmit={handleSubmit}>
           <Card variant="outlined">
@@ -693,8 +693,9 @@ const ReserveNodeModal: React.FC<{
 
               <Alert color="primary" sx={{ mb: 2 }}>
                 <Typography level="body-sm">
-                  <strong>Direct Connect Mode:</strong> This will reserve a node
-                  from the {clusterName} cluster using direct SSH connection.
+                  <strong>Direct Connect Mode:</strong> This will reserve an
+                  instance from the {clusterName} cluster using direct SSH
+                  connection.
                 </Typography>
               </Alert>
 

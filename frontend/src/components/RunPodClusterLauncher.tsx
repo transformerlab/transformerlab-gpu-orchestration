@@ -209,7 +209,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         <ModalClose />
         <Typography level="h4" sx={{ mb: 2 }}>
           <Zap size={20} style={{ marginRight: 8, verticalAlign: "middle" }} />
-          Reserve a Node on RunPod
+          Reserve an Instance on RunPod
         </Typography>
 
         <Stack spacing={3}>
