@@ -80,7 +80,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
     e.stopPropagation();
     // Navigate to cluster page when node square is clicked
     if (clusterName) {
-      navigate(`/dashboard/clusters/${clusterName}`);
+      navigate(`/dashboard/node-pools/${clusterName}`);
     }
   };
 

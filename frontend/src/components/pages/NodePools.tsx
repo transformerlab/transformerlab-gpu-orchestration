@@ -228,17 +228,17 @@ const getStatusOrder = (
 
 const mockClusters: Cluster[] = [
   {
-    id: "cluster-1",
+    id: "azure-ml-cluster",
     name: "Azure ML Cluster",
     nodes: generateRandomNodes(165),
   },
   {
-    id: "cluster-3",
+    id: "on-prem-01",
     name: "On-Premise Cluster",
     nodes: generateRandomNodes(12),
   },
   {
-    id: "cluster-4",
+    id: "vector-institute-cluster",
     name: "Vector Institute Cluster",
     nodes: generateRandomNodes(278),
   },
@@ -294,7 +294,7 @@ const ClusterCard: React.FC<{
     >
       <Box sx={{ mb: 2 }}>
         <Button
-          onClick={() => navigate(`/dashboard/clusters/${cluster.id}`)}
+          onClick={() => navigate(`/dashboard/node-pools/${cluster.id}`)}
           sx={{
             width: "100%",
             display: "flex",
@@ -1299,17 +1299,17 @@ const Nodes: React.FC = () => {
   const mockClustersWithCurrentUser: Cluster[] = React.useMemo(
     () => [
       {
-        id: "cluster-1",
+        id: "azure-ml-cluster",
         name: "Azure ML Cluster",
         nodes: generateRandomNodes(165, currentUserName),
       },
       {
-        id: "cluster-3",
+        id: "on-prem-01",
         name: "On-Premise Cluster",
         nodes: generateRandomNodes(12, currentUserName),
       },
       {
-        id: "cluster-4",
+        id: "vector-institute-cluster",
         name: "Vector Institute Cluster",
         nodes: generateRandomNodes(278, currentUserName),
       },

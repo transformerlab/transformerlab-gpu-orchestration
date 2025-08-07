@@ -349,7 +349,7 @@ const Held: React.FC<HeldProps> = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(
-                                      `/dashboard/clusters/${
+                                      `/dashboard/node-pools/${
                                         node.cluster || "default"
                                       }`
                                     );

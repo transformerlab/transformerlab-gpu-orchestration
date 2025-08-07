@@ -167,17 +167,12 @@ const ClusterDetails: React.FC = () => {
     clusterName === "azure-cluster";
 
   return (
-    <PageWithTitle title={`${clusterName} - Cluster Details`}>
+    <PageWithTitle
+      title={`${clusterName}`}
+      backButton={true}
+      onBack={handleBack}
+    >
       <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
-        <Button
-          onClick={handleBack}
-          startDecorator={<ChevronLeftIcon />}
-          variant="soft"
-          sx={{ mb: 2 }}
-        >
-          Back
-        </Button>
-
         {isCloudCluster && cloudConfig ? (
           // Show cloud configuration table
           <Box sx={{ mb: 2 }}>
