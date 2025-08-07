@@ -121,134 +121,127 @@ const Pools: React.FC = () => {
         </Button>
       }
     >
-      {showFakeData ? (
-        <>
-          {loading && nodePools.length === 0 ? (
-            <Alert color="primary" sx={{ mb: 2 }}>
-              Loading node pools...
-            </Alert>
-          ) : nodePools.length > 0 ? (
-            <Table className="node-pools-table">
-              <thead>
-                <tr>
-                  <th>Pool Name</th>
-                  <th>Platform</th>
-                  <th>Nodes</th>
-                  <th>Status</th>
-                  <th>Configuration</th>
-                  <th>Access</th>
-                  <th>Actions</th>
+      <>
+        {loading && nodePools.length === 0 ? (
+          <Alert color="primary" sx={{ mb: 2 }}>
+            Loading node pools...
+          </Alert>
+        ) : nodePools.length > 0 ? (
+          <Table className="node-pools-table">
+            <thead>
+              <tr>
+                <th>Pool Name</th>
+                <th>Platform</th>
+                <th>Nodes</th>
+                <th>Status</th>
+                <th>Configuration</th>
+                <th>Access</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nodePools.map((pool: Pool) => (
+                <tr
+                  key={pool.platform === "direct" ? pool.name : pool.platform}
+                >
+                  <td>
+                    <Typography level="title-sm">
+                      {pool.name || "Unnamed Pool"}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      variant="soft"
+                      startDecorator={
+                        <CloudServiceIcon
+                          platform={pool.platform || "unknown"}
+                        />
+                      }
+                    >
+                      {pool.platform || "unknown"}
+                    </Chip>
+                  </td>
+                  <td>
+                    <Typography level="body-sm" fontWeight="lg">
+                      {pool.numberOfNodes || 0}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      color={
+                        (pool.status || "disabled") === "enabled"
+                          ? "success"
+                          : "warning"
+                      }
+                    >
+                      {pool.status || "disabled"}
+                    </Chip>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      color={
+                        pool.config?.is_configured || false
+                          ? "success"
+                          : "warning"
+                      }
+                      variant="soft"
+                    >
+                      {pool.config?.is_configured || false
+                        ? "Configured"
+                        : "Not Configured"}
+                    </Chip>
+                  </td>
+                  <td>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 0.5,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {(pool.access || []).map((team: string) => (
+                        <Chip
+                          key={team}
+                          size="sm"
+                          variant="soft"
+                          color={
+                            (team || "") === "Admin"
+                              ? "success"
+                              : (team || "") === "Research Team"
+                              ? "primary"
+                              : (team || "") === "Search ML Team"
+                              ? "warning"
+                              : "success"
+                          }
+                        >
+                          {team || "Unknown"}
+                        </Chip>
+                      ))}
+                    </Box>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="outlined"
+                      onClick={() => handleConfigurePool(pool)}
+                    >
+                      Configure
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {nodePools.map((pool: Pool) => (
-                  <tr
-                    key={pool.platform === "direct" ? pool.name : pool.platform}
-                  >
-                    <td>
-                      <Typography level="title-sm">
-                        {pool.name || "Unnamed Pool"}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        startDecorator={
-                          <CloudServiceIcon
-                            platform={pool.platform || "unknown"}
-                          />
-                        }
-                      >
-                        {pool.platform || "unknown"}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Typography level="body-sm" fontWeight="lg">
-                        {pool.numberOfNodes || 0}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        color={
-                          (pool.status || "disabled") === "enabled"
-                            ? "success"
-                            : "warning"
-                        }
-                      >
-                        {pool.status || "disabled"}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        color={
-                          pool.config?.is_configured || false
-                            ? "success"
-                            : "warning"
-                        }
-                        variant="soft"
-                      >
-                        {pool.config?.is_configured || false
-                          ? "Configured"
-                          : "Not Configured"}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 0.5,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        {(pool.access || []).map((team: string) => (
-                          <Chip
-                            key={team}
-                            size="sm"
-                            variant="soft"
-                            color={
-                              (team || "") === "Admin"
-                                ? "success"
-                                : (team || "") === "Research Team"
-                                ? "primary"
-                                : (team || "") === "Search ML Team"
-                                ? "warning"
-                                : "success"
-                            }
-                          >
-                            {team || "Unknown"}
-                          </Chip>
-                        ))}
-                      </Box>
-                    </td>
-                    <td>
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        onClick={() => handleConfigurePool(pool)}
-                      >
-                        Configure
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <Alert color="warning" sx={{ mb: 2 }}>
-              No node pools configured. Use "Add Node Pool" to create your first
-              pool.
-            </Alert>
-          )}
-        </>
-      ) : (
-        <Alert color="primary" sx={{ mb: 2 }}>
-          Node pool management functionality is not yet implemented. Enable fake
-          data in Settings to see sample data.
-        </Alert>
-      )}
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <Alert color="warning" sx={{ mb: 2 }}>
+            No node pools configured. Use "Add Node Pool" to create your first
+            pool.
+          </Alert>
+        )}
+      </>
 
       {/* Add Node Pool Modal */}
       <Modal open={openAdd} onClose={() => setOpenAdd(false)}>
