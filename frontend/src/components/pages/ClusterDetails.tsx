@@ -6,6 +6,8 @@ import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useFakeData } from "../../context/FakeDataContext";
 import PageWithTitle from "./templates/PageWithTitle";
 
+import mockClusterData from "./mockData/mockClusters.json";
+
 interface Node {
   id: string;
   ip: string;
@@ -109,31 +111,19 @@ const ClusterDetails: React.FC = () => {
           setError(err.message);
           // Only show fake data if showFakeData is enabled AND API failed
           if (showFakeData) {
-            const generateFakeNodes = (count: number): Node[] => {
-              const gpuTypes = [
-                "NVIDIA A100",
-                "NVIDIA V100",
-                "NVIDIA H100",
-                "NVIDIA RTX 4090",
-                "NVIDIA T4",
-              ];
-              const statuses = ["active", "inactive", "unhealthy"];
-
-              return Array.from({ length: count }, (_, i) => ({
-                id: `node-${i + 1}`,
-                ip: `10.0.${Math.floor(Math.random() * 256)}.${Math.floor(
-                  Math.random() * 256
-                )}`,
-                identity_file: `/home/user/.ssh/id_rsa_${clusterName}`,
-                gpu_info: gpuTypes[Math.floor(Math.random() * gpuTypes.length)],
-                status: statuses[
-                  Math.floor(Math.random() * statuses.length)
-                ] as "active" | "inactive" | "unhealthy",
-              }));
+            const generateFakeNodes = (): Node[] => {
+              return mockClusterData[0].nodes.map(
+                (node: any, index: number) => ({
+                  id: node.id || `node-${index}`,
+                  ip: node.ip || `10.0.0.${index + 1}`,
+                  identity_file: node.identity_file || "-",
+                  gpu_info: node.gpuType || "-",
+                  status: node.status || "active",
+                })
+              );
             };
 
-            const nodeCount = Math.floor(Math.random() * 11) + 15; // 15-25 nodes
-            const fakeNodes = generateFakeNodes(nodeCount);
+            const fakeNodes = generateFakeNodes();
             setNodes(fakeNodes);
           }
         })

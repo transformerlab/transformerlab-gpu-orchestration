@@ -27,6 +27,8 @@ import PageWithTitle from "./templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
 
+import mockClusterData from "./mockData/mockClusters.json";
+
 interface Node {
   id: string;
   type: "dedicated" | "on-demand"; // Node type
@@ -1246,26 +1248,7 @@ const Nodes: React.FC = () => {
 
   // Generate mock clusters with current user
   // Memoize mockClustersWithCurrentUser so it only runs once per currentUserName
-  const mockClustersWithCurrentUser: Cluster[] = React.useMemo(
-    () => [
-      {
-        id: "azure-ml-cluster",
-        name: "Azure ML Cluster",
-        nodes: generateRandomNodes(165, currentUserName),
-      },
-      {
-        id: "on-prem-01",
-        name: "On-Premise Cluster",
-        nodes: generateRandomNodes(12, currentUserName),
-      },
-      {
-        id: "vector-institute-cluster",
-        name: "Vector Institute Cluster",
-        nodes: generateRandomNodes(278, currentUserName),
-      },
-    ],
-    [currentUserName]
-  );
+  const mockClustersWithCurrentUser: Cluster[] = mockClusterData;
 
   return (
     <PageWithTitle
