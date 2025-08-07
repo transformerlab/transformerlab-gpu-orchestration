@@ -124,9 +124,6 @@ def get_runpod_config_for_display():
     display_configs = {}
     for key, config in config_data.get("configs", {}).items():
         display_config = config.copy()
-        display_config["api_key"] = (
-            "*" * len(config["api_key"]) if config["api_key"] else ""
-        )
         display_configs[key] = display_config
 
     return {
