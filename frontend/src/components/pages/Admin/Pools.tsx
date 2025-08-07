@@ -109,7 +109,7 @@ const Pools: React.FC = () => {
   return (
     <PageWithTitle
       title="Node Pools"
-      subtitle="Configure and manage node pools for different platforms (Azure, RunPod, SSH clusters)."
+      subtitle="Configure and manage node pools for different platforms (Azure, RunPod, Direct Connect Node Pools)."
       button={
         <Button
           variant="solid"
@@ -295,12 +295,12 @@ const Pools: React.FC = () => {
                   setOpenAdd(false);
                   const baseUrl = window.location.origin;
                   window.open(
-                    `${baseUrl}/dashboard/admin/ssh-config?mode=add&poolName=New SSH Cluster`,
+                    `${baseUrl}/dashboard/admin/ssh-config?mode=add&poolName=New Node Pool`,
                     "_blank"
                   );
                 }}
               >
-                Create SSH Cluster
+                Create Direct Connect Node Pool
               </Button>
             </Stack>
             <Button onClick={() => setOpenAdd(false)}>Cancel</Button>

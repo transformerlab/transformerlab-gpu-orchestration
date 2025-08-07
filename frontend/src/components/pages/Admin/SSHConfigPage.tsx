@@ -53,7 +53,7 @@ const SSHConfigPage: React.FC = () => {
 
   // Check if this is for configuring an existing pool or adding a new one
   const isConfigureMode = searchParams.get("mode") === "configure";
-  const initialPoolName = searchParams.get("poolName") || "SSH Cluster";
+  const initialPoolName = searchParams.get("poolName") || "Node Pool";
 
   const [clusters, setClusters] = useState<string[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
@@ -166,7 +166,7 @@ const SSHConfigPage: React.FC = () => {
       if (response.ok) {
         addNotification({
           type: "success",
-          message: "SSH cluster created successfully",
+          message: "Node Pool created successfully",
         });
         setShowCreateModal(false);
         setNewClusterName("");
@@ -183,13 +183,13 @@ const SSHConfigPage: React.FC = () => {
         const errorData = await response.json();
         addNotification({
           type: "danger",
-          message: errorData.detail || "Failed to create SSH cluster",
+          message: errorData.detail || "Failed to create Node Pool",
         });
       }
     } catch (err) {
       addNotification({
         type: "danger",
-        message: "Error creating SSH cluster",
+        message: "Error creating Node Pool",
       });
     } finally {
       setLoading(false);
@@ -255,7 +255,7 @@ const SSHConfigPage: React.FC = () => {
       if (response.ok) {
         addNotification({
           type: "success",
-          message: "Cluster deleted successfully",
+          message: "Node Pool deleted successfully",
         });
         fetchClusters();
         if (selectedCluster?.cluster_name === clusterName) {
@@ -265,13 +265,13 @@ const SSHConfigPage: React.FC = () => {
         const errorData = await response.json();
         addNotification({
           type: "danger",
-          message: errorData.detail || "Failed to delete cluster",
+          message: errorData.detail || "Failed to delete node pool",
         });
       }
     } catch (err) {
       addNotification({
         type: "danger",
-        message: "Error deleting cluster",
+        message: "Error deleting node pool",
       });
     }
   };
@@ -312,10 +312,10 @@ const SSHConfigPage: React.FC = () => {
   if (loading) {
     return (
       <PageWithTitle
-        title={`${isConfigureMode ? "Configure" : "Add"} SSH Cluster`}
+        title={`${isConfigureMode ? "Configure" : "Add"} Node Pool`}
         subtitle={`${
           isConfigureMode ? "Configure" : "Add"
-        } SSH cluster settings for ${newClusterName}`}
+        } Node Pool settings for ${newClusterName}`}
       >
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
@@ -326,10 +326,10 @@ const SSHConfigPage: React.FC = () => {
 
   return (
     <PageWithTitle
-      title={`${isConfigureMode ? "Configure" : "Add"} SSH Cluster`}
+      title={`${isConfigureMode ? "Configure" : "Add"} Node Pool`}
       subtitle={`${
         isConfigureMode ? "Configure" : "Add"
-      } SSH cluster settings for ${newClusterName}`}
+      } Node Pool settings for ${newClusterName}`}
       button={
         <Button
           variant="outlined"
@@ -343,13 +343,13 @@ const SSHConfigPage: React.FC = () => {
       <Stack spacing={3}>
         {!isConfigureMode && (
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-            <Typography level="h3">SSH Cluster Management</Typography>
+            <Typography level="h3">Node Pool Management</Typography>
             <Button
               startDecorator={<Plus size={16} />}
               onClick={() => setShowCreateModal(true)}
               disabled={loading}
             >
-              Create Cluster
+              Create Node Pool
             </Button>
           </Box>
         )}
@@ -362,7 +362,7 @@ const SSHConfigPage: React.FC = () => {
                 size={20}
                 style={{ marginRight: 8, verticalAlign: "middle" }}
               />
-              Cluster Nodes
+              Nodes
             </Typography>
             {selectedCluster && (
               <Button
@@ -429,7 +429,7 @@ const SSHConfigPage: React.FC = () => {
           ) : // Show existing clusters for add mode
           clusters.length === 0 ? (
             <Alert color="warning">
-              No SSH clusters configured. Create your first cluster above.
+              No Node Pools configured. Create your first node pool above.
             </Alert>
           ) : (
             <Stack spacing={2}>
@@ -534,15 +534,15 @@ const SSHConfigPage: React.FC = () => {
           <ModalDialog>
             <ModalClose />
             <Typography level="h4" sx={{ mb: 2 }}>
-              Create New Cluster
+              Create New Node Pool
             </Typography>
             <Stack spacing={2}>
               <FormControl required>
-                <FormLabel>Cluster Name</FormLabel>
+                <FormLabel>Node Pool Name</FormLabel>
                 <Input
                   value={newClusterName}
                   onChange={(e) => setNewClusterName(e.target.value)}
-                  placeholder="my-cluster"
+                  placeholder="my-node-pool"
                 />
               </FormControl>
               <FormControl>
