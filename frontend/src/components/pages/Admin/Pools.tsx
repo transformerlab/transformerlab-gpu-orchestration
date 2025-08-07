@@ -10,8 +10,9 @@ import {
   ModalDialog,
   Stack,
   Alert,
+  IconButton,
 } from "@mui/joy";
-import { Plus, Server, Gpu, Cloud } from "lucide-react";
+import { Plus, Server, Gpu, Cloud, Trash2 } from "lucide-react";
 import useSWR from "swr";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useFakeData } from "../../../context/FakeDataContext";
@@ -103,6 +104,32 @@ const Pools: React.FC = () => {
           `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
           "_blank"
         );
+    }
+  };
+
+  const handleDeletePool = async (pool: Pool) => {
+    if (pool.platform !== "direct") {
+      return; // Only allow deletion of direct platform pools
+    }
+
+    if (!window.confirm(`Are you sure you want to delete "${pool.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(buildApiUrl(`clusters/${pool.name}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        // Refresh the data
+        mutate();
+      } else {
+        console.error("Failed to delete pool");
+      }
+    } catch (error) {
+      console.error("Error deleting pool:", error);
     }
   };
 
@@ -223,13 +250,25 @@ const Pools: React.FC = () => {
                     </Box>
                   </td>
                   <td>
-                    <Button
-                      size="sm"
-                      variant="outlined"
-                      onClick={() => handleConfigurePool(pool)}
-                    >
-                      Configure
-                    </Button>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        onClick={() => handleConfigurePool(pool)}
+                      >
+                        Configure
+                      </Button>
+                      {pool.platform === "direct" && (
+                        <IconButton
+                          size="sm"
+                          color="danger"
+                          variant="plain"
+                          onClick={() => handleDeletePool(pool)}
+                        >
+                          <Trash2 size={14} />
+                        </IconButton>
+                      )}
+                    </Box>
                   </td>
                 </tr>
               ))}

@@ -57,7 +57,6 @@ const SSHConfigPage: React.FC = () => {
 
   const [clusters, setClusters] = useState<string[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddNodeModal, setShowAddNodeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,17 +167,15 @@ const SSHConfigPage: React.FC = () => {
           type: "success",
           message: "Node Pool created successfully",
         });
-        setShowCreateModal(false);
+
+        // After successful creation, fetch the cluster details to show the "Add Node" functionality
+        await fetchClusterDetails(newClusterName);
+
+        // Clear the form
         setNewClusterName("");
         setNewClusterUser("");
         setNewClusterIdentityFile("");
         setNewClusterPassword("");
-        fetchClusters();
-
-        // Navigate back to pools page after successful creation
-        setTimeout(() => {
-          navigate("/dashboard/admin/pools");
-        }, 1500);
       } else {
         const errorData = await response.json();
         addNotification({
@@ -341,50 +338,111 @@ const SSHConfigPage: React.FC = () => {
       }
     >
       <Stack spacing={3}>
-        {!isConfigureMode && (
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-            <Typography level="h3">Node Pool Management</Typography>
-            <Button
-              startDecorator={<Plus size={16} />}
-              onClick={() => setShowCreateModal(true)}
-              disabled={loading}
-            >
-              Create Node Pool
-            </Button>
-          </Box>
-        )}
-
-        {/* Cluster Nodes */}
-        <Card variant="outlined">
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-            <Typography level="h4">
-              <Monitor
+        {!isConfigureMode ? (
+          // For new cluster creation, show only the form
+          <Card variant="outlined">
+            <Typography level="h4" sx={{ mb: 2 }}>
+              <Server
                 size={20}
                 style={{ marginRight: 8, verticalAlign: "middle" }}
               />
-              Nodes
+              Create New Node Pool
             </Typography>
-            {selectedCluster && (
+            <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
+              Create a new node pool by providing cluster details and adding
+              nodes.
+            </Typography>
+
+            <Stack spacing={2}>
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <FormControl sx={{ flex: 1 }} required>
+                  <FormLabel>Node Pool Name</FormLabel>
+                  <Input
+                    value={newClusterName}
+                    onChange={(e) => setNewClusterName(e.target.value)}
+                    placeholder="my-node-pool"
+                  />
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>Default User (optional)</FormLabel>
+                  <Input
+                    value={newClusterUser}
+                    onChange={(e) => setNewClusterUser(e.target.value)}
+                    placeholder="ubuntu"
+                  />
+                </FormControl>
+              </Box>
+
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>Identity File (Optional)</FormLabel>
+                  <Select
+                    value={newClusterIdentityFile}
+                    onChange={(_, value) =>
+                      setNewClusterIdentityFile(value || "")
+                    }
+                    placeholder="Select identity file"
+                  >
+                    <Option value="">No identity file</Option>
+                    {identityFiles.map((file) => (
+                      <Option key={file.path} value={file.path}>
+                        {file.display_name}
+                      </Option>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>Password (Optional)</FormLabel>
+                  <Input
+                    type="password"
+                    value={newClusterPassword}
+                    onChange={(e) => setNewClusterPassword(e.target.value)}
+                    placeholder="Enter password if no identity file"
+                  />
+                </FormControl>
+              </Box>
+
               <Button
-                startDecorator={<Plus size={16} />}
-                size="sm"
-                onClick={() => setShowAddNodeModal(true)}
-                disabled={loading}
+                startDecorator={<Save size={16} />}
+                onClick={createCluster}
+                disabled={!newClusterName || loading}
               >
-                Add Node
+                Create Node Pool
               </Button>
+            </Stack>
+          </Card>
+        ) : (
+          // For configure mode, show the nodes management
+          <Card variant="outlined">
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
+            >
+              <Typography level="h4">
+                <Monitor
+                  size={20}
+                  style={{ marginRight: 8, verticalAlign: "middle" }}
+                />
+                Nodes
+              </Typography>
+              {selectedCluster && (
+                <Button
+                  startDecorator={<Plus size={16} />}
+                  size="sm"
+                  onClick={() => setShowAddNodeModal(true)}
+                  disabled={loading}
+                >
+                  Add Node
+                </Button>
+              )}
+            </Box>
+
+            {error && (
+              <Alert color="danger" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
             )}
-          </Box>
 
-          {error && (
-            <Alert color="danger" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {isConfigureMode ? (
-            // Show nodes for the current cluster being configured
-            selectedCluster ? (
+            {selectedCluster ? (
               selectedCluster.nodes.length === 0 ? (
                 <Typography level="body-md" sx={{ color: "text.secondary" }}>
                   No nodes in this cluster. Add nodes to get started.
@@ -425,190 +483,9 @@ const SSHConfigPage: React.FC = () => {
               )
             ) : (
               <Alert color="warning">Loading cluster details...</Alert>
-            )
-          ) : // Show existing clusters for add mode
-          clusters.length === 0 ? (
-            <Alert color="warning">
-              No Node Pools configured. Create your first node pool above.
-            </Alert>
-          ) : (
-            <Stack spacing={2}>
-              {clusters.map((clusterName) => (
-                <Card key={clusterName} variant="soft" sx={{ p: 2 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: 2,
-                    }}
-                  >
-                    <Typography level="title-lg">{clusterName}</Typography>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        onClick={() => fetchClusterDetails(clusterName)}
-                      >
-                        View Details
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        color="danger"
-                        onClick={() => deleteCluster(clusterName)}
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </Box>
-
-                  {selectedCluster?.cluster_name === clusterName && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography level="title-sm" sx={{ mb: 1 }}>
-                        Nodes in {clusterName}:
-                      </Typography>
-                      {selectedCluster.nodes.length === 0 ? (
-                        <Typography
-                          level="body-md"
-                          sx={{ color: "text.secondary" }}
-                        >
-                          No nodes in this cluster. Add nodes to get started.
-                        </Typography>
-                      ) : (
-                        <>
-                          <Table size="sm">
-                            <thead>
-                              <tr>
-                                <th>IP Address</th>
-                                <th>User</th>
-                                <th>Auth Method</th>
-                                <th>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {selectedCluster.nodes.map((node) => (
-                                <tr key={node.ip}>
-                                  <td>{node.ip}</td>
-                                  <td>{node.user}</td>
-                                  <td>
-                                    <Chip size="sm" variant="soft">
-                                      {node.identity_file ? "Key" : "Password"}
-                                    </Chip>
-                                  </td>
-                                  <td>
-                                    <IconButton
-                                      size="sm"
-                                      color="danger"
-                                      onClick={() => removeNode(node.ip)}
-                                    >
-                                      <Trash2 size={14} />
-                                    </IconButton>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </Table>
-
-                          <Button
-                            size="sm"
-                            variant="outlined"
-                            startDecorator={<Plus size={14} />}
-                            onClick={() => setShowAddNodeModal(true)}
-                            sx={{ mt: 2 }}
-                          >
-                            Add Node
-                          </Button>
-                        </>
-                      )}
-                    </Box>
-                  )}
-                </Card>
-              ))}
-            </Stack>
-          )}
-        </Card>
-
-        {/* Create Cluster Modal */}
-        <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)}>
-          <ModalDialog>
-            <ModalClose />
-            <Typography level="h4" sx={{ mb: 2 }}>
-              Create New Node Pool
-            </Typography>
-            <Stack spacing={2}>
-              <FormControl required>
-                <FormLabel>Node Pool Name</FormLabel>
-                <Input
-                  value={newClusterName}
-                  onChange={(e) => setNewClusterName(e.target.value)}
-                  placeholder="my-node-pool"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Default User (optional)</FormLabel>
-                <Input
-                  value={newClusterUser}
-                  onChange={(e) => setNewClusterUser(e.target.value)}
-                  placeholder="ubuntu"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Default Identity File (optional)</FormLabel>
-                <Select
-                  value={newClusterIdentityFile}
-                  onChange={(_, value) =>
-                    setNewClusterIdentityFile(value || "")
-                  }
-                  placeholder="Select an identity file"
-                >
-                  <Option value="">No identity file</Option>
-                  {identityFiles.map((file) => (
-                    <Option key={file.path} value={file.path}>
-                      {file.display_name}
-                    </Option>
-                  ))}
-                </Select>
-                {newClusterIdentityFile && (
-                  <Typography
-                    level="body-sm"
-                    sx={{ mt: 0.5, color: "text.secondary" }}
-                  >
-                    Selected:{" "}
-                    {
-                      identityFiles.find(
-                        (f) => f.path === newClusterIdentityFile
-                      )?.display_name
-                    }
-                  </Typography>
-                )}
-              </FormControl>
-              <FormControl>
-                <FormLabel>Default Password (optional)</FormLabel>
-                <Input
-                  type="password"
-                  value={newClusterPassword}
-                  onChange={(e) => setNewClusterPassword(e.target.value)}
-                  placeholder="password"
-                />
-              </FormControl>
-              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Button
-                  variant="plain"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={createCluster}
-                  disabled={!newClusterName || loading}
-                >
-                  Create Cluster
-                </Button>
-              </Box>
-            </Stack>
-          </ModalDialog>
-        </Modal>
+            )}
+          </Card>
+        )}
 
         {/* Add Node Modal */}
         <Modal
