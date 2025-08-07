@@ -119,6 +119,8 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
 
   const saveConfig = async () => {
     try {
+      console.log("Saving RunPod config:", config);
+      console.log("JSON Stringify config:", JSON.stringify(config));
       setSaving(true);
       const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
         method: "POST",
@@ -129,17 +131,14 @@ const RunPodConfigModal: React.FC<RunPodConfigModalProps> = ({
         body: JSON.stringify(config),
       });
 
+      console.log("API response:", response);
+
       if (response.ok) {
         addNotification({
           type: "success",
           message: "RunPod configuration saved successfully",
         });
-        await fetchRunPodConfig();
         onClose();
-        // Longer delay to ensure modal is fully closed before refreshing
-        setTimeout(() => {
-          onConfigSaved?.();
-        }, 300);
       } else {
         addNotification({
           type: "danger",

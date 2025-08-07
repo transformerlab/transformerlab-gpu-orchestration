@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -12,13 +12,10 @@ import {
   Alert,
 } from "@mui/joy";
 import { Plus, Server, Gpu, Cloud } from "lucide-react";
+import useSWR from "swr";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useFakeData } from "../../../context/FakeDataContext";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
-import AzureConfigModal from "./AzureConfigModal";
-import RunPodConfigModal from "./RunPodConfigModal";
-import SSHConfigModal from "./SSHConfigModal";
-import SSHClusterModal from "./SSHClusterModal";
 
 import RunPodIcon from "./icons/runpod.svg";
 import AzureIcon from "./icons/azure.svg";
@@ -43,57 +40,69 @@ function CloudServiceIcon({ platform }: { platform: string }) {
 
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
-  const [openAzureModal, setOpenAzureModal] = useState(false);
-  const [openRunPodModal, setOpenRunPodModal] = useState(false);
-  const [openSSHModal, setOpenSSHModal] = useState(false);
-  const [openSSHClusterModal, setOpenSSHClusterModal] = useState(false);
   const [selectedPool, setSelectedPool] = useState<any>(null);
-  const [nodePools, setNodePools] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  // Define pool type
+  interface Pool {
+    platform: string;
+    name?: string;
+    numberOfNodes?: number;
+    status?: string;
+    config?: {
+      is_configured: boolean;
+    };
+    access?: string[];
+  }
   const { showFakeData } = useFakeData();
 
-  const fetchNodePools = async () => {
-    try {
-      setLoading(true);
-      const response = await apiFetch(buildApiUrl("skypilot/node-pools"), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setNodePools(data.node_pools || []);
-      } else {
-        console.error("Error fetching node pools:", response.status);
-        // Keep existing data if fetch fails
-      }
-    } catch (err) {
-      console.error("Error fetching node pools:", err);
-      // Keep existing data if fetch fails
-    } finally {
-      setLoading(false);
+  // SWR fetcher function
+  const fetcher = async (url: string) => {
+    const response = await apiFetch(url, { credentials: "include" });
+    if (!response.ok) {
+      throw new Error("Failed to fetch");
     }
+    return response.json();
   };
 
-  useEffect(() => {
-    if (showFakeData) {
-      fetchNodePools();
-    }
-  }, [showFakeData]);
+  // Use SWR for data fetching
+  const { data, error, mutate } = useSWR(
+    buildApiUrl("skypilot/node-pools"),
+    fetcher
+  );
 
-  const handleConfigurePool = (pool: any) => {
+  const nodePools = data?.node_pools || [];
+  const loading = !data && !error;
+
+  const handleConfigurePool = (pool: Pool) => {
     setSelectedPool(pool);
-    // Open the appropriate modal based on platform
+    // Open the appropriate configuration page in a new tab based on platform
+    const baseUrl = window.location.origin;
+    const poolName = encodeURIComponent(pool.name || pool.platform);
+
     switch (pool.platform) {
       case "azure":
-        setOpenAzureModal(true);
+        window.open(
+          `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
+          "_blank"
+        );
         break;
       case "runpod":
-        setOpenRunPodModal(true);
+        window.open(
+          `${baseUrl}/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`,
+          "_blank"
+        );
         break;
       case "direct":
-        setOpenSSHModal(true);
+        window.open(
+          `${baseUrl}/dashboard/admin/ssh-config?mode=configure&poolName=${poolName}`,
+          "_blank"
+        );
         break;
       default:
-        setOpenAzureModal(true);
+        window.open(
+          `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
+          "_blank"
+        );
     }
   };
 
@@ -115,7 +124,7 @@ const Pools: React.FC = () => {
       {showFakeData ? (
         <>
           {loading && nodePools.length === 0 ? (
-            <Alert color="info" sx={{ mb: 2 }}>
+            <Alert color="primary" sx={{ mb: 2 }}>
               Loading node pools...
             </Alert>
           ) : nodePools.length > 0 ? (
@@ -132,7 +141,7 @@ const Pools: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {nodePools.map((pool) => (
+                {nodePools.map((pool: Pool) => (
                   <tr
                     key={pool.platform === "direct" ? pool.name : pool.platform}
                   >
@@ -187,8 +196,14 @@ const Pools: React.FC = () => {
                       </Chip>
                     </td>
                     <td>
-                      <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                        {(pool.access || []).map((team) => (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 0.5,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {(pool.access || []).map((team: string) => (
                           <Chip
                             key={team}
                             size="sm"
@@ -247,16 +262,18 @@ const Pools: React.FC = () => {
                 startDecorator={<CloudServiceIcon platform="azure" />}
                 onClick={() => {
                   setOpenAdd(false);
-                  setSelectedPool({
-                    platform: "azure",
-                    name: "New Azure Pool",
-                  });
-                  setOpenAzureModal(true);
+                  const baseUrl = window.location.origin;
+                  window.open(
+                    `${baseUrl}/dashboard/admin/azure-config?mode=add&poolName=New Azure Pool`,
+                    "_blank"
+                  );
                 }}
-                disabled={nodePools.some((pool) => pool.platform === "azure")}
+                disabled={nodePools.some(
+                  (pool: Pool) => pool.platform === "azure"
+                )}
               >
                 Azure{" "}
-                {nodePools.some((pool) => pool.platform === "azure") &&
+                {nodePools.some((pool: Pool) => pool.platform === "azure") &&
                   "(Already configured)"}
               </Button>
               <Button
@@ -264,16 +281,18 @@ const Pools: React.FC = () => {
                 startDecorator={<CloudServiceIcon platform="runpod" />}
                 onClick={() => {
                   setOpenAdd(false);
-                  setSelectedPool({
-                    platform: "runpod",
-                    name: "New RunPod Pool",
-                  });
-                  setOpenRunPodModal(true);
+                  const baseUrl = window.location.origin;
+                  window.open(
+                    `${baseUrl}/dashboard/admin/runpod-config?mode=add&poolName=New RunPod Pool`,
+                    "_blank"
+                  );
                 }}
-                disabled={nodePools.some((pool) => pool.platform === "runpod")}
+                disabled={nodePools.some(
+                  (pool: Pool) => pool.platform === "runpod"
+                )}
               >
                 RunPod{" "}
-                {nodePools.some((pool) => pool.platform === "runpod") &&
+                {nodePools.some((pool: Pool) => pool.platform === "runpod") &&
                   "(Already configured)"}
               </Button>
               <Button
@@ -281,7 +300,11 @@ const Pools: React.FC = () => {
                 startDecorator={<Server size={16} />}
                 onClick={() => {
                   setOpenAdd(false);
-                  setOpenSSHClusterModal(true);
+                  const baseUrl = window.location.origin;
+                  window.open(
+                    `${baseUrl}/dashboard/admin/ssh-config?mode=add&poolName=New SSH Cluster`,
+                    "_blank"
+                  );
                 }}
               >
                 Create SSH Cluster
@@ -291,31 +314,6 @@ const Pools: React.FC = () => {
           </Stack>
         </ModalDialog>
       </Modal>
-
-      {/* Configuration Modals */}
-      <AzureConfigModal
-        open={openAzureModal}
-        onClose={() => setOpenAzureModal(false)}
-        poolName={selectedPool?.name}
-        onConfigSaved={fetchNodePools}
-      />
-      <RunPodConfigModal
-        open={openRunPodModal}
-        onClose={() => setOpenRunPodModal(false)}
-        poolName={selectedPool?.name}
-        onConfigSaved={fetchNodePools}
-      />
-      <SSHConfigModal
-        open={openSSHModal}
-        onClose={() => setOpenSSHModal(false)}
-        poolName={selectedPool?.name}
-        selectedPool={selectedPool}
-      />
-      <SSHClusterModal
-        open={openSSHClusterModal}
-        onClose={() => setOpenSSHClusterModal(false)}
-        onClusterCreated={fetchNodePools}
-      />
     </PageWithTitle>
   );
 };

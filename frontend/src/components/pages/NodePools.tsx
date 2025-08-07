@@ -542,14 +542,11 @@ const CloudClusterCard: React.FC<{
                     mb: 3,
                   }}
                 >
-                  <Typography
-                    level="title-sm"
-                    sx={{ mb: 1, textTransform: "capitalize" }}
-                  >
+                  <Typography level="title-sm" sx={{ mb: 1 }}>
                     {nodeType === "on-demand"
                       ? "On-Demand"
-                      : nodeType.charAt(0).toUpperCase() +
-                        nodeType.slice(1)}{" "}
+                      : (nodeType || "").charAt(0).toUpperCase() +
+                        (nodeType || "").slice(1)}{" "}
                     Nodes ({nodesOfType.length})
                   </Typography>
                   <Box

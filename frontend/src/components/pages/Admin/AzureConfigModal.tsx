@@ -232,12 +232,7 @@ const AzureConfigModal: React.FC<AzureConfigModalProps> = ({
           type: "success",
           message: "Azure configuration saved successfully",
         });
-        await fetchAzureConfig();
         onClose();
-        // Small delay to ensure modal is closed before refreshing
-        setTimeout(() => {
-          onConfigSaved?.();
-        }, 100);
       } else {
         addNotification({
           type: "danger",
