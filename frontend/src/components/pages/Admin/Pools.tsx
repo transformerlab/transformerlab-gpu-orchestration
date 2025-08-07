@@ -11,12 +11,15 @@ import {
   Stack,
   Alert,
   IconButton,
+  Card,
+  Divider,
 } from "@mui/joy";
-import { Plus, Server, Gpu, Cloud, Trash2 } from "lucide-react";
+import { Plus, Server, Gpu, Cloud, Trash2, Settings, Star } from "lucide-react";
 import useSWR from "swr";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useFakeData } from "../../../context/FakeDataContext";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
+import { useNotification } from "../../../components/NotificationSystem";
 
 import RunPodIcon from "./icons/runpod.svg";
 import AzureIcon from "./icons/azure.svg";
@@ -42,6 +45,7 @@ function CloudServiceIcon({ platform }: { platform: string }) {
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const [selectedPool, setSelectedPool] = useState<any>(null);
+  const { addNotification } = useNotification();
 
   // Define pool type
   interface Pool {
@@ -51,6 +55,8 @@ const Pools: React.FC = () => {
     status?: string;
     config?: {
       is_configured: boolean;
+      config_key?: string;
+      is_default?: boolean;
     };
     access?: string[];
   }
@@ -79,17 +85,18 @@ const Pools: React.FC = () => {
     // Open the appropriate configuration page in a new tab based on platform
     const baseUrl = window.location.origin;
     const poolName = encodeURIComponent(pool.name || pool.platform);
+    const configKey = pool.config?.config_key;
 
     switch (pool.platform) {
       case "azure":
         window.open(
-          `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
+          `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}&configKey=${configKey}`,
           "_blank"
         );
         break;
       case "runpod":
         window.open(
-          `${baseUrl}/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`,
+          `${baseUrl}/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}&configKey=${configKey}`,
           "_blank"
         );
         break;
@@ -104,6 +111,104 @@ const Pools: React.FC = () => {
           `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
           "_blank"
         );
+    }
+  };
+
+  const handleSetDefault = async (platform: string, configKey: string) => {
+    try {
+      const endpoint =
+        platform === "azure"
+          ? buildApiUrl(`skypilot/azure/config/${configKey}/set-default`)
+          : buildApiUrl(`skypilot/runpod/config/${configKey}/set-default`);
+
+      const response = await apiFetch(endpoint, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        addNotification({
+          type: "success",
+          message: `${
+            platform === "azure" ? "Azure" : "RunPod"
+          } config set as default successfully`,
+        });
+        // Refresh the data
+        mutate();
+        // Refresh the specific config data
+        if (platform === "azure") {
+          // Trigger a refetch of Azure configs
+          window.location.reload();
+        } else {
+          // Trigger a refetch of RunPod configs
+          window.location.reload();
+        }
+      } else {
+        const errorData = await response.json();
+        addNotification({
+          type: "danger",
+          message:
+            errorData.detail || `Failed to set ${platform} config as default`,
+        });
+      }
+    } catch (err) {
+      addNotification({
+        type: "danger",
+        message: `Error setting ${platform} config as default`,
+      });
+    }
+  };
+
+  const handleDeleteConfig = async (platform: string, configKey: string) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete this ${platform} configuration?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const endpoint =
+        platform === "azure"
+          ? buildApiUrl(`skypilot/azure/config/${configKey}`)
+          : buildApiUrl(`skypilot/runpod/config/${configKey}`);
+
+      const response = await apiFetch(endpoint, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        addNotification({
+          type: "success",
+          message: `${
+            platform === "azure" ? "Azure" : "RunPod"
+          } configuration deleted successfully`,
+        });
+        // Refresh the data
+        mutate();
+        // Refresh the specific config data
+        if (platform === "azure") {
+          // Trigger a refetch of Azure configs
+          window.location.reload();
+        } else {
+          // Trigger a refetch of RunPod configs
+          window.location.reload();
+        }
+      } else {
+        const errorData = await response.json();
+        addNotification({
+          type: "danger",
+          message:
+            errorData.detail || `Failed to delete ${platform} configuration`,
+        });
+      }
+    } catch (err) {
+      addNotification({
+        type: "danger",
+        message: `Error deleting ${platform} configuration`,
+      });
     }
   };
 
@@ -169,12 +274,23 @@ const Pools: React.FC = () => {
             <tbody>
               {nodePools.map((pool: Pool) => (
                 <tr
-                  key={pool.platform === "direct" ? pool.name : pool.platform}
+                  key={
+                    pool.platform === "direct"
+                      ? pool.name
+                      : `${pool.platform}-${pool.config?.config_key}`
+                  }
                 >
                   <td>
-                    <Typography level="title-sm">
-                      {pool.name || "Unnamed Pool"}
-                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography level="title-sm">
+                        {pool.name || "Unnamed Pool"}
+                      </Typography>
+                      {pool.config?.is_default && (
+                        <Chip size="sm" color="success" variant="soft">
+                          Default
+                        </Chip>
+                      )}
+                    </Box>
                   </td>
                   <td>
                     <Chip
@@ -207,19 +323,21 @@ const Pools: React.FC = () => {
                     </Chip>
                   </td>
                   <td>
-                    <Chip
-                      size="sm"
-                      color={
-                        pool.config?.is_configured || false
-                          ? "success"
-                          : "warning"
-                      }
-                      variant="soft"
-                    >
-                      {pool.config?.is_configured || false
-                        ? "Configured"
-                        : "Not Configured"}
-                    </Chip>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Chip
+                        size="sm"
+                        color={
+                          pool.config?.is_configured || false
+                            ? "success"
+                            : "warning"
+                        }
+                        variant="soft"
+                      >
+                        {pool.config?.is_configured || false
+                          ? "Configured"
+                          : "Not Configured"}
+                      </Chip>
+                    </Box>
                   </td>
                   <td>
                     <Box
@@ -258,6 +376,23 @@ const Pools: React.FC = () => {
                       >
                         Configure
                       </Button>
+                      {(pool.platform === "azure" ||
+                        pool.platform === "runpod") && (
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          startDecorator={<Star size={14} />}
+                          onClick={() =>
+                            handleSetDefault(
+                              pool.platform,
+                              pool.config?.config_key || ""
+                            )
+                          }
+                          disabled={pool.config?.is_default}
+                        >
+                          {pool.config?.is_default ? "Default" : "Set Default"}
+                        </Button>
+                      )}
                       {pool.platform === "direct" && (
                         <IconButton
                           size="sm"
@@ -300,13 +435,8 @@ const Pools: React.FC = () => {
                     "_blank"
                   );
                 }}
-                disabled={nodePools.some(
-                  (pool: Pool) => pool.platform === "azure"
-                )}
               >
-                Azure{" "}
-                {nodePools.some((pool: Pool) => pool.platform === "azure") &&
-                  "(Already configured)"}
+                Azure
               </Button>
               <Button
                 variant="outlined"
@@ -319,13 +449,8 @@ const Pools: React.FC = () => {
                     "_blank"
                   );
                 }}
-                disabled={nodePools.some(
-                  (pool: Pool) => pool.platform === "runpod"
-                )}
               >
-                RunPod{" "}
-                {nodePools.some((pool: Pool) => pool.platform === "runpod") &&
-                  "(Already configured)"}
+                RunPod
               </Button>
               <Button
                 variant="outlined"

@@ -232,6 +232,7 @@ const AzureAdmin: React.FC = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          name: "Azure Pool", // Add a default name for AzureAdmin
           subscription_id: config.subscription_id,
           tenant_id: config.tenant_id,
           client_id: config.client_id,

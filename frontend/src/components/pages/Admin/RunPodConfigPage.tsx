@@ -42,6 +42,7 @@ const RunPodConfigPage: React.FC = () => {
   // Check if this is for configuring an existing pool or adding a new one
   const isConfigureMode = searchParams.get("mode") === "configure";
   const initialPoolName = searchParams.get("poolName") || "RunPod Pool";
+  const configKey = searchParams.get("configKey");
 
   const [config, setConfig] = useState<RunPodConfig>({
     api_key: "",
@@ -60,11 +61,12 @@ const RunPodConfigPage: React.FC = () => {
     output: string;
     message: string;
   } | null>(null);
+  const [existingConfigs, setExistingConfigs] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
       // Always fetch available GPU types first
-      await fetchAvailableGpuTypes();
+      await Promise.all([fetchAvailableGpuTypes(), fetchExistingConfigs()]);
 
       // Then fetch existing config if in configure mode
       if (isConfigureMode) {
@@ -75,6 +77,20 @@ const RunPodConfigPage: React.FC = () => {
     loadData();
   }, [isConfigureMode]);
 
+  const fetchExistingConfigs = async () => {
+    try {
+      const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExistingConfigs(data);
+      }
+    } catch (err) {
+      console.error("Error fetching existing RunPod configs:", err);
+    }
+  };
+
   const fetchRunPodConfig = async () => {
     try {
       setLoading(true);
@@ -83,7 +99,33 @@ const RunPodConfigPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+
+        // If a specific config key is provided, load that config
+        if (configKey && data.configs && data.configs[configKey]) {
+          const specificConfig = data.configs[configKey];
+          setConfig({
+            api_key: specificConfig.api_key || "",
+            allowed_gpu_types: specificConfig.allowed_gpu_types || [],
+            is_configured: data.is_configured || false,
+            max_instances: specificConfig.max_instances || 0,
+          });
+          setPoolName(specificConfig.name || initialPoolName);
+        }
+        // Otherwise use the default config
+        else if (
+          data.default_config &&
+          data.configs &&
+          data.configs[data.default_config]
+        ) {
+          const defaultConfig = data.configs[data.default_config];
+          setConfig({
+            api_key: defaultConfig.api_key || "",
+            allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
+            is_configured: data.is_configured || false,
+            max_instances: defaultConfig.max_instances || 0,
+          });
+          setPoolName(defaultConfig.name || initialPoolName);
+        }
       } else {
         addNotification({
           type: "danger",
@@ -135,9 +177,14 @@ const RunPodConfigPage: React.FC = () => {
         });
 
         // If we're in configure mode and have existing config, ensure all selected types are included
-        if (isConfigureMode && config.allowed_gpu_types.length > 0) {
+        if (
+          isConfigureMode &&
+          config.allowed_gpu_types &&
+          config.allowed_gpu_types.length > 0
+        ) {
           const missingTypes = config.allowed_gpu_types.filter(
-            (selectedType) => !gpuTypes.some((gpu) => gpu.name === selectedType)
+            (selectedType) =>
+              !gpuTypes.some((gpu: GpuType) => gpu.name === selectedType)
           );
 
           // Add missing types to the available list
@@ -168,23 +215,47 @@ const RunPodConfigPage: React.FC = () => {
       setSaving(true);
       setSkyCheckResult(null);
 
+      const requestBody: any = {
+        name: poolName,
+        api_key: config.api_key,
+        allowed_gpu_types: config.allowed_gpu_types,
+        max_instances: config.max_instances,
+      };
+
+      // Only include config_key if it's not null
+      if (configKey) {
+        requestBody.config_key = configKey;
+      }
+
       const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: poolName,
-          api_key: config.api_key,
-          allowed_gpu_types: config.allowed_gpu_types,
-          max_instances: config.max_instances,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+
+        // Handle the new multiple config structure
+        if (
+          data.configs &&
+          data.default_config &&
+          data.configs[data.default_config]
+        ) {
+          const defaultConfig = data.configs[data.default_config];
+          setConfig({
+            api_key: defaultConfig.api_key || "",
+            allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
+            is_configured: data.is_configured || false,
+            max_instances: defaultConfig.max_instances || 0,
+          });
+        } else {
+          // Fallback to legacy structure
+          setConfig(data);
+        }
 
         if (data.sky_check_result) {
           setSkyCheckResult(data.sky_check_result);
@@ -510,7 +581,7 @@ const RunPodConfigPage: React.FC = () => {
                   Select GPU Types to Allow
                 </Typography>
                 <Chip size="sm" variant="soft" color="primary">
-                  {config.allowed_gpu_types.length} selected
+                  {config.allowed_gpu_types?.length || 0} selected
                 </Chip>
               </Box>
 
@@ -524,7 +595,7 @@ const RunPodConfigPage: React.FC = () => {
                       option.count !== "1" ? "s" : ""
                     })`
                   }
-                  value={availableGpuTypes.filter((gpu) =>
+                  value={availableGpuTypes.filter((gpu: GpuType) =>
                     config.allowed_gpu_types.includes(
                       `${gpu.display_name}:${parseFloat(gpu.count)}`
                     )
@@ -674,8 +745,8 @@ const RunPodConfigPage: React.FC = () => {
               }}
             >
               <Typography>Allowed GPU Types</Typography>
-              <Chip variant="soft" color="primary" size="sm">
-                {config.allowed_gpu_types.length} selected
+              <Chip size="sm" variant="soft" color="primary">
+                {config.allowed_gpu_types?.length || 0} selected
               </Chip>
             </Box>
             <Box

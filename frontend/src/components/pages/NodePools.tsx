@@ -1122,7 +1122,23 @@ const Nodes: React.FC = () => {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
-          setRunpodConfig(data);
+          // Handle the new multi-config structure
+          if (
+            data.default_config &&
+            data.configs &&
+            data.configs[data.default_config]
+          ) {
+            const defaultConfig = data.configs[data.default_config];
+            setRunpodConfig({
+              api_key: defaultConfig.api_key || "",
+              allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
+              is_configured: data.is_configured || false,
+              max_instances: defaultConfig.max_instances || 0,
+            });
+          } else {
+            // Fallback to legacy structure
+            setRunpodConfig(data);
+          }
         } else {
           setRunpodConfig({
             api_key: "",
@@ -1146,16 +1162,37 @@ const Nodes: React.FC = () => {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
-          setAzureConfig({
-            subscription_id: data.subscription_id || "",
-            tenant_id: data.tenant_id || "",
-            client_id: data.client_id || "",
-            client_secret: data.client_secret || "",
-            allowed_instance_types: data.allowed_instance_types || [],
-            allowed_regions: data.allowed_regions || [],
-            is_configured: data.is_configured || false,
-            max_instances: data.max_instances || 0,
-          });
+          // Handle the new multi-config structure
+          if (
+            data.default_config &&
+            data.configs &&
+            data.configs[data.default_config]
+          ) {
+            const defaultConfig = data.configs[data.default_config];
+            setAzureConfig({
+              subscription_id: defaultConfig.subscription_id || "",
+              tenant_id: defaultConfig.tenant_id || "",
+              client_id: defaultConfig.client_id || "",
+              client_secret: defaultConfig.client_secret || "",
+              allowed_instance_types:
+                defaultConfig.allowed_instance_types || [],
+              allowed_regions: defaultConfig.allowed_regions || [],
+              is_configured: data.is_configured || false,
+              max_instances: defaultConfig.max_instances || 0,
+            });
+          } else {
+            // Fallback to legacy structure
+            setAzureConfig({
+              subscription_id: data.subscription_id || "",
+              tenant_id: data.tenant_id || "",
+              client_id: data.client_id || "",
+              client_secret: data.client_secret || "",
+              allowed_instance_types: data.allowed_instance_types || [],
+              allowed_regions: data.allowed_regions || [],
+              is_configured: data.is_configured || false,
+              max_instances: data.max_instances || 0,
+            });
+          }
         } else {
           setAzureConfig({
             subscription_id: "",

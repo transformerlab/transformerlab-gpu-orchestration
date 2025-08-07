@@ -81,26 +81,58 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       });
       if (response.ok) {
         const data = await response.json();
-        setAzureConfig({
-          allowed_instance_types: data.allowed_instance_types || [],
-          allowed_regions: data.allowed_regions || [],
-          is_configured: data.is_configured || false,
-        });
-        // Set the first allowed instance type as default
+
+        // Handle the new multi-config structure
         if (
-          data.allowed_instance_types &&
-          Array.isArray(data.allowed_instance_types) &&
-          data.allowed_instance_types.length > 0
+          data.default_config &&
+          data.configs &&
+          data.configs[data.default_config]
         ) {
-          setSelectedInstanceType(data.allowed_instance_types[0]);
-        }
-        // Set the first allowed region as default
-        if (
-          data.allowed_regions &&
-          Array.isArray(data.allowed_regions) &&
-          data.allowed_regions.length > 0
-        ) {
-          setSelectedRegion(data.allowed_regions[0]);
+          const defaultConfig = data.configs[data.default_config];
+          setAzureConfig({
+            allowed_instance_types: defaultConfig.allowed_instance_types || [],
+            allowed_regions: defaultConfig.allowed_regions || [],
+            is_configured: data.is_configured || false,
+          });
+          // Set the first allowed instance type as default
+          if (
+            defaultConfig.allowed_instance_types &&
+            Array.isArray(defaultConfig.allowed_instance_types) &&
+            defaultConfig.allowed_instance_types.length > 0
+          ) {
+            setSelectedInstanceType(defaultConfig.allowed_instance_types[0]);
+          }
+          // Set the first allowed region as default
+          if (
+            defaultConfig.allowed_regions &&
+            Array.isArray(defaultConfig.allowed_regions) &&
+            defaultConfig.allowed_regions.length > 0
+          ) {
+            setSelectedRegion(defaultConfig.allowed_regions[0]);
+          }
+        } else {
+          // Fallback to legacy structure
+          setAzureConfig({
+            allowed_instance_types: data.allowed_instance_types || [],
+            allowed_regions: data.allowed_regions || [],
+            is_configured: data.is_configured || false,
+          });
+          // Set the first allowed instance type as default
+          if (
+            data.allowed_instance_types &&
+            Array.isArray(data.allowed_instance_types) &&
+            data.allowed_instance_types.length > 0
+          ) {
+            setSelectedInstanceType(data.allowed_instance_types[0]);
+          }
+          // Set the first allowed region as default
+          if (
+            data.allowed_regions &&
+            Array.isArray(data.allowed_regions) &&
+            data.allowed_regions.length > 0
+          ) {
+            setSelectedRegion(data.allowed_regions[0]);
+          }
         }
       }
     } catch (err) {

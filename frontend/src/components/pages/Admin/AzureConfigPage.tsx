@@ -46,6 +46,7 @@ const AzureConfigPage: React.FC = () => {
   // Check if this is for configuring an existing pool or adding a new one
   const isConfigureMode = searchParams.get("mode") === "configure";
   const initialPoolName = searchParams.get("poolName") || "Azure Pool";
+  const configKey = searchParams.get("configKey");
 
   const [config, setConfig] = useState<AzureConfig>({
     subscription_id: "",
@@ -74,6 +75,7 @@ const AzureConfigPage: React.FC = () => {
     output: string;
     message: string;
   } | null>(null);
+  const [existingConfigs, setExistingConfigs] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,6 +83,7 @@ const AzureConfigPage: React.FC = () => {
       await Promise.all([
         fetchAvailableInstanceTypes(),
         fetchAvailableRegions(),
+        fetchExistingConfigs(),
       ]);
 
       // Then fetch existing config if in configure mode
@@ -92,25 +95,90 @@ const AzureConfigPage: React.FC = () => {
     loadData();
   }, [isConfigureMode]);
 
-  const fetchAzureConfig = async () => {
+  const fetchExistingConfigs = async () => {
     try {
-      setLoading(true);
       const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        setConfig({
-          subscription_id: data.subscription_id || "",
-          tenant_id: data.tenant_id || "",
-          client_id: data.client_id || "",
-          client_secret: data.client_secret || "",
-          allowed_instance_types: data.allowed_instance_types || [],
-          allowed_regions: data.allowed_regions || [],
-          is_configured: data.is_configured || false,
-          auth_method: "service_principal",
-          max_instances: data.max_instances || 0,
-        });
+        setExistingConfigs(data);
+      }
+    } catch (err) {
+      console.error("Error fetching existing Azure configs:", err);
+    }
+  };
+
+  const fetchAzureConfig = async () => {
+    try {
+      setLoading(true);
+
+      // If we're configuring a specific config, get the actual credentials
+      let endpoint = "skypilot/azure/config";
+      if (configKey) {
+        endpoint = `skypilot/azure/credentials?config_key=${encodeURIComponent(
+          configKey
+        )}`;
+      }
+
+      const response = await apiFetch(buildApiUrl(endpoint), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // If a specific config key is provided, load that config
+        if (configKey && data.configs && data.configs[configKey]) {
+          const specificConfig = data.configs[configKey];
+          setConfig({
+            subscription_id: specificConfig.subscription_id || "",
+            tenant_id: specificConfig.tenant_id || "",
+            client_id: specificConfig.client_id || "",
+            client_secret: specificConfig.client_secret || "",
+            allowed_instance_types: specificConfig.allowed_instance_types || [],
+            allowed_regions: specificConfig.allowed_regions || [],
+            is_configured: data.is_configured || false,
+            auth_method: "service_principal",
+            max_instances: specificConfig.max_instances || 0,
+          });
+          setPoolName(specificConfig.name || initialPoolName);
+        }
+        // If we got a single config from credentials endpoint
+        else if (configKey && data.subscription_id) {
+          setConfig({
+            subscription_id: data.subscription_id || "",
+            tenant_id: data.tenant_id || "",
+            client_id: data.client_id || "",
+            client_secret: data.client_secret || "",
+            allowed_instance_types: data.allowed_instance_types || [],
+            allowed_regions: data.allowed_regions || [],
+            is_configured: true,
+            auth_method: "service_principal",
+            max_instances: data.max_instances || 0,
+          });
+          setPoolName(data.name || initialPoolName);
+        }
+        // Otherwise use the default config
+        else if (
+          data.default_config &&
+          data.configs &&
+          data.configs[data.default_config]
+        ) {
+          const defaultConfig = data.configs[data.default_config];
+          setConfig({
+            subscription_id: defaultConfig.subscription_id || "",
+            tenant_id: defaultConfig.tenant_id || "",
+            client_id: defaultConfig.client_id || "",
+            client_secret: defaultConfig.client_secret || "",
+            allowed_instance_types: defaultConfig.allowed_instance_types || [],
+            allowed_regions: defaultConfig.allowed_regions || [],
+            is_configured: data.is_configured || false,
+            auth_method: "service_principal",
+            max_instances: defaultConfig.max_instances || 0,
+          });
+          setPoolName(defaultConfig.name || initialPoolName);
+        }
       } else {
         addNotification({
           type: "danger",
@@ -226,27 +294,56 @@ const AzureConfigPage: React.FC = () => {
       setSaving(true);
       setSkyCheckResult(null);
 
+      const requestBody: any = {
+        name: poolName,
+        subscription_id: config.subscription_id,
+        tenant_id: config.tenant_id,
+        client_id: config.client_id,
+        client_secret: config.client_secret,
+        allowed_instance_types: config.allowed_instance_types,
+        allowed_regions: config.allowed_regions,
+        max_instances: config.max_instances,
+      };
+
+      // Only include config_key if it's not null
+      if (configKey) {
+        requestBody.config_key = configKey;
+      }
+
       const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: poolName,
-          subscription_id: config.subscription_id,
-          tenant_id: config.tenant_id,
-          client_id: config.client_id,
-          client_secret: config.client_secret,
-          allowed_instance_types: config.allowed_instance_types,
-          allowed_regions: config.allowed_regions,
-          max_instances: config.max_instances,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+
+        // Handle the new multiple config structure
+        if (
+          data.configs &&
+          data.default_config &&
+          data.configs[data.default_config]
+        ) {
+          const defaultConfig = data.configs[data.default_config];
+          setConfig({
+            subscription_id: defaultConfig.subscription_id || "",
+            tenant_id: defaultConfig.tenant_id || "",
+            client_id: defaultConfig.client_id || "",
+            client_secret: defaultConfig.client_secret || "",
+            allowed_instance_types: defaultConfig.allowed_instance_types || [],
+            allowed_regions: defaultConfig.allowed_regions || [],
+            is_configured: data.is_configured || false,
+            auth_method: "service_principal",
+            max_instances: defaultConfig.max_instances || 0,
+          });
+        } else {
+          // Fallback to legacy structure
+          setConfig(data);
+        }
 
         if (data.sky_check_result) {
           setSkyCheckResult(data.sky_check_result);
@@ -675,7 +772,7 @@ const AzureConfigPage: React.FC = () => {
                   Select Instance Types to Allow
                 </Typography>
                 <Chip size="sm" variant="soft" color="primary">
-                  {config.allowed_instance_types.length} selected
+                  {config.allowed_instance_types?.length || 0} selected
                 </Chip>
               </Box>
 
@@ -923,7 +1020,7 @@ const AzureConfigPage: React.FC = () => {
             >
               <Typography>Allowed Instance Types</Typography>
               <Chip variant="soft" color="primary" size="sm">
-                {config.allowed_instance_types.length} selected
+                {config.allowed_instance_types?.length || 0} selected
               </Chip>
             </Box>
             <Box
