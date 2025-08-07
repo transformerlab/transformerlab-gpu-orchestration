@@ -104,11 +104,6 @@ function randomIp() {
 const generateRandomNodes = (count: number, currentUser?: string): Node[] => {
   const users = [currentUser || "ali", "bob", "catherine"];
   const types: ("dedicated" | "on-demand")[] = ["dedicated", "on-demand"];
-  const statuses: ("active" | "inactive" | "unhealthy")[] = [
-    "active",
-    "inactive",
-    "unhealthy",
-  ];
 
   return Array.from({ length: count }, (_, i) => {
     const type = types[Math.floor(Math.random() * types.length)];
@@ -226,24 +221,6 @@ const getStatusOrder = (
   return sort1 * 100 + sort2 * 10 + sort3;
 };
 
-const mockClusters: Cluster[] = [
-  {
-    id: "azure-ml-cluster",
-    name: "Azure ML Cluster",
-    nodes: generateRandomNodes(165),
-  },
-  {
-    id: "on-prem-01",
-    name: "On-Premise Cluster",
-    nodes: generateRandomNodes(12),
-  },
-  {
-    id: "vector-institute-cluster",
-    name: "Vector Institute Cluster",
-    nodes: generateRandomNodes(278),
-  },
-];
-
 const ClusterCard: React.FC<{
   cluster: Cluster;
   onLaunchCluster?: () => void;
@@ -260,16 +237,7 @@ const ClusterCard: React.FC<{
   currentUser,
 }) => {
   const navigate = useNavigate();
-  const dedicatedCount = cluster.nodes.filter(
-    (n) => n.type === "dedicated"
-  ).length;
-  const onDemandCount = cluster.nodes.filter(
-    (n) => n.type === "on-demand"
-  ).length;
   const activeCount = cluster.nodes.filter((n) => n.status === "active").length;
-  const unhealthyCount = cluster.nodes.filter(
-    (n) => n.status === "unhealthy"
-  ).length;
   const assignedToYouCount = cluster.nodes.filter(
     (n) => n.user === currentUser
   ).length;
@@ -411,7 +379,7 @@ const CloudClusterCard: React.FC<{
   clusterName: string;
   nodeGpuInfo: Record<string, any>;
   currentUser?: string;
-}> = ({ cluster, clusterName, nodeGpuInfo, currentUser }) => {
+}> = ({ cluster, clusterName, currentUser }) => {
   const navigate = useNavigate();
   // State for modals
   const [showReserveModal, setShowReserveModal] = useState(false);
@@ -480,11 +448,7 @@ const CloudClusterCard: React.FC<{
     setShowReserveModal(true);
   };
 
-  const handleLaunchJob = () => {
-    setShowLaunchJobModal(true);
-  };
-
-  const handleClusterLaunched = (newClusterName: string) => {
+  const handleClusterLaunched = () => {
     // Refresh the page or update the cluster status
     window.location.reload();
   };
@@ -560,7 +524,7 @@ const CloudClusterCard: React.FC<{
               alignItems: "flex-start",
             }}
           >
-            {["dedicated", "on-demand"].map((nodeType, idx) => {
+            {["dedicated", "on-demand"].map((nodeType) => {
               const nodesOfType = sortedNodes.filter(
                 (node) => node.type === nodeType
               );
@@ -662,18 +626,6 @@ const ReserveNodeModal: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  const resetForm = () => {
-    setCommand('echo "Welcome to Lattice"');
-    setSetup("");
-    setCpus("");
-    setMemory("");
-    setAccelerators("");
-    setRegion("");
-    setZone("");
-    setError(null);
-    setSuccess(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1130,8 +1082,6 @@ const Nodes: React.FC = () => {
     { refreshInterval: 2000 }
   );
 
-  const skyPilotClusters = skyPilotStatus?.clusters || [];
-
   // State for all cluster details
   const [clusterDetails, setClusterDetails] = useState<{
     [name: string]: Cluster | null;
@@ -1283,7 +1233,7 @@ const Nodes: React.FC = () => {
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
 
-  const handleClusterLaunched = (clusterName: string) => {
+  const handleClusterLaunched = () => {
     // Refresh the page or update the cluster status
     window.location.reload();
   };
