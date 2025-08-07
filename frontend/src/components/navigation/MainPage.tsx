@@ -31,6 +31,9 @@ import ClusterDetails from "../pages/ClusterDetails";
 
 import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import Pools from "../pages/Admin/Pools";
+import AzureConfigPage from "../pages/Admin/AzureConfigPage";
+import RunPodConfigPage from "../pages/Admin/RunPodConfigPage";
+import SSHConfigPage from "../pages/Admin/SSHConfigPage";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -84,6 +87,9 @@ const Dashboard: React.FC = () => {
           <Route path="admin/api-keys" element={<APIKeys />} />
           <Route path="admin/teams" element={<Teams />} />
           <Route path="admin/pools" element={<Pools />} />
+          <Route path="admin/azure-config" element={<AzureConfigPage />} />
+          <Route path="admin/runpod-config" element={<RunPodConfigPage />} />
+          <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route
