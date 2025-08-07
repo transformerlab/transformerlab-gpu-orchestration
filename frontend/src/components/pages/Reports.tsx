@@ -201,13 +201,10 @@ const Reports: React.FC = () => {
     : [];
 
   return (
-    <PageWithTitle title="Reports" subtitle="View who did what">
+    <PageWithTitle title="Reports">
       {/* Fake Data Section */}
       {showFakeData && (
         <>
-          <Typography level="h3" sx={{ mb: 3, mt: 2 }}>
-            Sample Data
-          </Typography>
           {reports.map((report) => (
             <ReportCard key={report.id} report={report} />
           ))}
@@ -218,7 +215,7 @@ const Reports: React.FC = () => {
       )}
 
       <Typography level="h3" sx={{ mb: 3 }}>
-        {showFakeData ? "Real Data" : "Reports Data"}
+        {showFakeData ? "" : "Reports Data"}
       </Typography>
 
       {loading && (
