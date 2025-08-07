@@ -101,18 +101,33 @@ def save_azure_config(
         "auth_method": "service_principal",
     }
 
-    # If config_key is provided, update existing config, otherwise create new one
+    # Generate the new config key based on the name
+    new_config_key = name.lower().replace(" ", "_").replace("-", "_")
+
+    # If config_key is provided, check if we're updating an existing config
     if config_key and config_key in config_data.get("configs", {}):
-        # Update existing config
-        config_data["configs"][config_key] = new_config
+        # Check if the name has changed
+        if config_key != new_config_key:
+            # Name has changed, so we need to create a new config key and remove the old one
+            # Remove the old config
+            del config_data["configs"][config_key]
+
+            # If this was the default config, update the default to the new key
+            if config_data.get("default_config") == config_key:
+                config_data["default_config"] = new_config_key
+
+            # Add the new config with the new key
+            config_data["configs"][new_config_key] = new_config
+        else:
+            # Name hasn't changed, just update the existing config
+            config_data["configs"][config_key] = new_config
     else:
         # Create new config
-        config_key = name.lower().replace(" ", "_").replace("-", "_")
-        config_data["configs"][config_key] = new_config
+        config_data["configs"][new_config_key] = new_config
 
     # If this is the first config, set it as default
     if not config_data["default_config"]:
-        config_data["default_config"] = config_key
+        config_data["default_config"] = new_config_key
 
     return save_azure_configs(config_data["configs"], config_data["default_config"])
 
