@@ -66,9 +66,6 @@ const ObjectStorage: React.FC = () => {
       `}</style>
       {showFakeData ? (
         <>
-          <Alert color="warning" sx={{ mb: 2 }}>
-            This page is showing sample data. Real object storage management functionality will be implemented soon.
-          </Alert>
           <Table className="object-storage-table">
             <thead>
               <tr>
@@ -92,7 +89,8 @@ const ObjectStorage: React.FC = () => {
         </>
       ) : (
         <Alert color="info" sx={{ mb: 2 }}>
-          Object storage management functionality is not yet implemented. Enable fake data in Settings to see sample data.
+          Object storage management functionality is not yet implemented. Enable
+          fake data in Settings to see sample data.
         </Alert>
       )}
 

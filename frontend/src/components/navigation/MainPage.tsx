@@ -65,7 +65,6 @@ const Dashboard: React.FC = () => {
       <Box sx={{ gridArea: "main", px: 3, py: 2, overflowY: "auto" }}>
         <Routes>
           <Route path="/" element={<Navigate to="node-pools" replace />} />
-          <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/node-pools" element={<Nodes />} />
           <Route path="/my-clusters" element={<MyClusters />} />
           <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
@@ -80,6 +79,7 @@ const Dashboard: React.FC = () => {
             path="/skypilot-tester"
             element={<SkyPilotClusterLauncher />}
           />
+          {/* Admin routes */}
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/api-keys" element={<APIKeys />} />
           <Route path="admin/teams" element={<Teams />} />
@@ -93,9 +93,7 @@ const Dashboard: React.FC = () => {
                 title="Volumes"
                 subtitle="Manage volume mounts and storage."
               >
-                <Alert color="primary" sx={{ mb: 2 }}>
-                  Volume management functionality is not yet implemented.
-                </Alert>
+                &nbsp;
               </PageWithTitle>
             }
           />
