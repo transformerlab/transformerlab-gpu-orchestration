@@ -508,14 +508,6 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
 
       return (
         <Box>
-          <Typography level="h3" sx={{ mb: 3 }}>
-            Sample Jobs Data
-          </Typography>
-          <Typography level="body-sm" color="neutral" sx={{ mb: 3 }}>
-            This is sample data. Launch real clusters from the Interactive
-            Development Environment to see actual jobs.
-          </Typography>
-
           <Box sx={{ mb: 4 }}>
             <Typography level="h4" sx={{ mb: 2 }}>
               {fakeCluster.cluster_name}
