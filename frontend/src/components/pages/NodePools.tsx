@@ -1340,24 +1340,38 @@ const Nodes: React.FC = () => {
           })()}
 
         {/* Azure Cluster */}
-        {azureConfig.is_configured && (
-          <ClusterCard
-            cluster={{
-              id: "azure-cluster",
-              name: "Azure Cluster",
-              nodes: generateDedicatedNodes(
-                azureConfig.max_instances,
-                azureInstances.current_count,
-                currentUserEmail
-              ),
-            }}
-            onLaunchCluster={() => setShowAzureLauncher(true)}
-            launchDisabled={!azureInstances.can_launch}
-            launchButtonText="Request Instances"
-            allowedGpuTypes={azureConfig.allowed_instance_types}
-            currentUser={currentUserEmail}
-          />
-        )}
+        {azureConfig.is_configured &&
+          (() => {
+            // Check if there are any active Azure clusters in SkyPilot status
+            const activeAzureClusters =
+              skyPilotStatus?.clusters?.filter(
+                (c: any) =>
+                  c.status === "ClusterStatus.UP" ||
+                  c.status === "ClusterStatus.INIT"
+              ) || [];
+
+            // Use actual cluster count from SkyPilot status, fallback to azureInstances
+            const actualActiveCount = activeAzureClusters.length;
+
+            return (
+              <ClusterCard
+                cluster={{
+                  id: "azure-cluster",
+                  name: "Azure Cluster",
+                  nodes: generateDedicatedNodes(
+                    azureConfig.max_instances,
+                    azureInstances.current_count,
+                    currentUserEmail
+                  ),
+                }}
+                onLaunchCluster={() => setShowAzureLauncher(true)}
+                launchDisabled={!azureInstances.can_launch}
+                launchButtonText="Request Instances"
+                allowedGpuTypes={azureConfig.allowed_instance_types}
+                currentUser={currentUserEmail}
+              />
+            );
+          })()}
       </Box>
 
       {/* RunPod Cluster Launcher Modal */}
