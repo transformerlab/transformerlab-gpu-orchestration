@@ -22,10 +22,18 @@ import { Rocket, Zap } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
 import { useNotification } from "./NotificationSystem";
 
+interface RunPodConfig {
+  api_key: string;
+  allowed_gpu_types: string[];
+  is_configured: boolean;
+  max_instances: number;
+}
+
 interface RunPodClusterLauncherProps {
   open: boolean;
   onClose: () => void;
   onClusterLaunched?: (clusterName: string) => void;
+  runpodConfig: RunPodConfig;
 }
 
 interface LaunchClusterResponse {
@@ -45,6 +53,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   open,
   onClose,
   onClusterLaunched,
+  runpodConfig,
 }) => {
   const [clusterName, setClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
@@ -53,65 +62,27 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
-  const [runpodConfig, setRunpodConfig] = useState({
-    api_key: "",
-    allowed_gpu_types: [] as string[],
-    is_configured: false,
-    max_instances: 0,
-  });
-  const [loading, setLoading] = useState(false);
+  const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
   const { addNotification } = useNotification();
 
   useEffect(() => {
     if (open) {
-      fetchRunPodConfig();
       fetchAvailableGpuTypes();
-    }
-  }, [open]);
-
-  const fetchRunPodConfig = async () => {
-    try {
-      const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-
-        // Handle the new multi-config structure
-        if (
-          data.default_config &&
-          data.configs &&
-          data.configs[data.default_config]
-        ) {
-          const defaultConfig = data.configs[data.default_config];
-          setRunpodConfig({
-            api_key: defaultConfig.api_key || "",
-            allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
-            is_configured: data.is_configured || false,
-            max_instances: defaultConfig.max_instances || 0,
-          });
-          // Set the first allowed GPU type as default
-          if (
-            defaultConfig.allowed_gpu_types &&
-            defaultConfig.allowed_gpu_types.length > 0
-          ) {
-            setSelectedGpuType(defaultConfig.allowed_gpu_types[0]);
-          }
-        } else {
-          // Fallback to legacy structure
-          setRunpodConfig(data);
-          // Set the first allowed GPU type as default
-          if (data.allowed_gpu_types && data.allowed_gpu_types.length > 0) {
-            setSelectedGpuType(data.allowed_gpu_types[0]);
-          }
-        }
+      // Set the first allowed GPU type as default when config is available
+      if (
+        runpodConfig.allowed_gpu_types &&
+        runpodConfig.allowed_gpu_types.length > 0
+      ) {
+        setSelectedGpuType(runpodConfig.allowed_gpu_types[0]);
       }
-    } catch (err) {
-      console.error("Error fetching RunPod config:", err);
+    } else {
+      // Reset loading state when modal closes
+      setIsLoadingGpuTypes(false);
     }
-  };
+  }, [open, runpodConfig.allowed_gpu_types]);
 
   const fetchAvailableGpuTypes = async () => {
+    setIsLoadingGpuTypes(true);
     try {
       const response = await apiFetch(
         buildApiUrl("skypilot/runpod/gpu-types"),
@@ -136,6 +107,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       }
     } catch (err) {
       console.error("Error fetching GPU types:", err);
+    } finally {
+      setIsLoadingGpuTypes(false);
     }
   };
 
@@ -154,9 +127,16 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   };
 
   const launchCluster = async () => {
-    try {
-      setLoading(true);
+    // Close modal immediately and reset form
+    handleClose();
 
+    // Show immediate notification that request is being processed
+    addNotification({
+      type: "warning",
+      message: `Launching RunPod cluster "${clusterName}"...`,
+    });
+
+    try {
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
       formData.append("command", command);
@@ -178,12 +158,11 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
           type: "success",
           message: `${data.message} (Request ID: ${data.request_id})`,
         });
-        setTimeout(() => {
-          if (onClusterLaunched) {
-            onClusterLaunched(clusterName);
-          }
-          handleClose();
-        }, 2000);
+
+        // Trigger cluster list refresh
+        if (onClusterLaunched) {
+          onClusterLaunched(clusterName);
+        }
       } else {
         const errorData = await response.json();
         addNotification({
@@ -196,38 +175,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         type: "danger",
         message: "Error launching RunPod cluster",
       });
-    } finally {
-      setLoading(false);
     }
   };
-
-  if (!runpodConfig.is_configured) {
-    return (
-      <Modal open={open} onClose={handleClose}>
-        <ModalDialog sx={{ maxWidth: 500 }}>
-          <ModalClose />
-          <Typography level="h4" sx={{ mb: 2 }}>
-            <Zap
-              size={20}
-              style={{ marginRight: 8, verticalAlign: "middle" }}
-            />
-            RunPod Node Launcher
-          </Typography>
-          <Alert color="warning">
-            RunPod is not configured. Please configure it in the Admin section
-            first.
-          </Alert>
-          <Box
-            sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 2 }}
-          >
-            <Button variant="plain" onClick={handleClose}>
-              Close
-            </Button>
-          </Box>
-        </ModalDialog>
-      </Modal>
-    );
-  }
 
   return (
     <Modal open={open} onClose={handleClose}>
@@ -291,9 +240,29 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
                   setSelectedGpuType("");
                 }
               }}
-              placeholder="Select GPU type"
+              placeholder={
+                isLoadingGpuTypes
+                  ? "Loading available GPU types..."
+                  : availableGpuTypes.length === 0
+                  ? "No GPU types available"
+                  : "Select GPU type"
+              }
+              disabled={isLoadingGpuTypes}
             >
               {(() => {
+                if (isLoadingGpuTypes) {
+                  return (
+                    <Option value="" disabled>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <CircularProgress size="sm" />
+                        Loading GPU types...
+                      </Box>
+                    </Option>
+                  );
+                }
+
                 // Only filter if we have both config and GPU types loaded
                 if (
                   !runpodConfig.allowed_gpu_types ||
@@ -323,10 +292,11 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               level="body-xs"
               sx={{ mt: 0.5, color: "text.secondary" }}
             >
-              {availableGpuTypes.filter((gpu) =>
-                runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-              ).length === 0 &&
-                availableGpuTypes.length > 0 && (
+              {!isLoadingGpuTypes &&
+                availableGpuTypes.length > 0 &&
+                availableGpuTypes.filter((gpu) =>
+                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                ).length === 0 && (
                   <span style={{ color: "orange" }}>
                     {" "}
                     No GPU types are allowed in the current configuration.
@@ -348,34 +318,50 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
                 size="sm"
                 variant="soft"
                 color={
-                  availableGpuTypes.filter((gpu) =>
-                    runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-                  ).length > 0
+                  isLoadingGpuTypes
+                    ? "neutral"
+                    : availableGpuTypes.filter((gpu) =>
+                        runpodConfig.allowed_gpu_types?.includes(
+                          gpu.full_string
+                        )
+                      ).length > 0
                     ? "primary"
                     : "warning"
                 }
               >
-                {availableGpuTypes.filter((gpu) =>
-                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-                ).length || 0}{" "}
-                GPU types allowed
+                {isLoadingGpuTypes ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <CircularProgress size="sm" />
+                    Loading...
+                  </Box>
+                ) : (
+                  `${
+                    availableGpuTypes.filter((gpu) =>
+                      runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                    ).length || 0
+                  } GPU types allowed`
+                )}
               </Chip>
             </Stack>
-            {availableGpuTypes.filter((gpu) =>
-              runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-            ).length === 0 && (
-              <Typography level="body-xs" sx={{ mt: 1, color: "warning.500" }}>
-                No GPU types are configured as allowed. Please configure allowed
-                GPU types in the Admin section.
-              </Typography>
-            )}
+            {!isLoadingGpuTypes &&
+              availableGpuTypes.filter((gpu) =>
+                runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+              ).length === 0 && (
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 1, color: "warning.500" }}
+                >
+                  No GPU types are configured as allowed. Please configure
+                  allowed GPU types in the Admin section.
+                </Typography>
+              )}
           </Card>
         </Stack>
 
         <Box
           sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 3 }}
         >
-          <Button variant="plain" onClick={handleClose} disabled={loading}>
+          <Button variant="plain" onClick={handleClose}>
             Cancel
           </Button>
           <Button
@@ -384,26 +370,26 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             disabled={
               !clusterName ||
               !selectedGpuType ||
-              loading ||
+              isLoadingGpuTypes ||
               availableGpuTypes.filter((gpu) =>
                 runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
               ).length === 0
             }
-            loading={loading}
             color="success"
           >
             Reserve a RunPod Node
           </Button>
         </Box>
-        {availableGpuTypes.filter((gpu) =>
-          runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-        ).length === 0 && (
-          <Alert color="warning" sx={{ mt: 2 }}>
-            No GPU types are allowed in the current configuration. Please
-            configure allowed GPU types in the Admin section before launching
-            clusters.
-          </Alert>
-        )}
+        {!isLoadingGpuTypes &&
+          availableGpuTypes.filter((gpu) =>
+            runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+          ).length === 0 && (
+            <Alert color="warning" sx={{ mt: 2 }}>
+              No GPU types are allowed in the current configuration. Please
+              configure allowed GPU types in the Admin section before launching
+              clusters.
+            </Alert>
+          )}
       </ModalDialog>
     </Modal>
   );
