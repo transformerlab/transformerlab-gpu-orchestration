@@ -89,7 +89,7 @@ const SSHConfigPage: React.FC = () => {
     };
 
     loadData();
-  }, [isConfigureMode, newClusterName]);
+  }, [isConfigureMode, initialPoolName]);
 
   const fetchIdentityFiles = async () => {
     try {
