@@ -136,10 +136,6 @@ const FakeCharts: React.FC<FakeChartsProps> = ({
 
   return (
     <Box>
-      <Typography level="h3" sx={{ mb: 2 }}>
-        {machineName} Monitoring
-      </Typography>
-
       <Box
         sx={{
           display: "grid",
