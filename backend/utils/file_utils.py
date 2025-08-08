@@ -310,17 +310,31 @@ def save_cluster_platforms(platforms_data):
         )
 
 
-def set_cluster_platform(cluster_name: str, platform: str):
-    """Set the platform for a specific cluster"""
+def set_cluster_platform(cluster_name: str, platform: str, user_info: dict = None):
+    """Set the platform and user info for a specific cluster"""
     platforms = load_cluster_platforms()
-    platforms[cluster_name] = platform
+    platforms[cluster_name] = {"platform": platform, "user_info": user_info or {}}
     save_cluster_platforms(platforms)
 
 
 def get_cluster_platform(cluster_name: str) -> str:
     """Get the platform for a specific cluster"""
     platforms = load_cluster_platforms()
-    return platforms.get(cluster_name, "unknown")
+    cluster_data = platforms.get(cluster_name, {})
+    if isinstance(cluster_data, str):
+        # Backward compatibility with old format
+        return cluster_data
+    return cluster_data.get("platform", "unknown")
+
+
+def get_cluster_user_info(cluster_name: str) -> dict:
+    """Get the user info for a specific cluster"""
+    platforms = load_cluster_platforms()
+    cluster_data = platforms.get(cluster_name, {})
+    if isinstance(cluster_data, str):
+        # Backward compatibility with old format
+        return {}
+    return cluster_data.get("user_info", {})
 
 
 def remove_cluster_platform(cluster_name: str):

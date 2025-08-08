@@ -152,14 +152,12 @@ const generateRandomNodes = (count: number, currentUser?: string): Node[] => {
   });
 };
 
-// Generate dedicated nodes for RunPod and Azure clusters
+// Generate dedicated nodes
 const generateDedicatedNodes = (
   count: number,
   activeCount: number = 0,
   currentUser?: string
 ): Node[] => {
-  const users = [currentUser || "ali", "bob", "catherine"];
-
   return Array.from({ length: count }, (_, i) => {
     // Only the first 'activeCount' nodes should be active
     const status: "active" | "inactive" | "unhealthy" =
@@ -168,9 +166,9 @@ const generateDedicatedNodes = (
     let jobName: string | undefined;
     let experimentName: string | undefined;
 
-    // If active, randomly assign some nodes to users
-    if (status === "active" && Math.random() < 0.3) {
-      user = users[Math.floor(Math.random() * users.length)];
+    // If active, assign to current user (not random)
+    if (status === "active") {
+      user = currentUser || "ali";
       jobName = jobNames[Math.floor(Math.random() * jobNames.length)];
       experimentName =
         experimentNames[Math.floor(Math.random() * experimentNames.length)];
@@ -1253,6 +1251,7 @@ const Nodes: React.FC = () => {
 
   const currentUserName =
     user?.first_name || user?.email?.split("@")[0] || "ali";
+  const currentUserEmail = user?.email || "ali@example.com";
 
   // Generate mock clusters with current user
   // Memoize mockClustersWithCurrentUser so it only runs once per currentUserName
@@ -1267,7 +1266,7 @@ const Nodes: React.FC = () => {
       {showFakeData ? (
         mockClustersWithCurrentUser.map((cluster) => (
           <div key={cluster.id}>
-            <ClusterCard cluster={cluster} currentUser={currentUserName} />
+            <ClusterCard cluster={cluster} currentUser={currentUserEmail} />
           </div>
         ))
       ) : (
@@ -1303,28 +1302,42 @@ const Nodes: React.FC = () => {
         )}
 
         {/* RunPod Cluster */}
-        {runpodConfig.is_configured && (
-          <ClusterCard
-            cluster={{
-              id: "runpod-cluster",
-              name: "RunPod Cluster",
-              nodes: generateDedicatedNodes(
-                runpodConfig.max_instances,
-                runpodInstances.current_count,
-                currentUserName
-              ),
-            }}
-            onLaunchCluster={() => {
-              if (runpodConfig.is_configured) {
-                setShowRunPodLauncher(true);
-              }
-            }}
-            launchDisabled={!runpodInstances.can_launch}
-            launchButtonText="Request Instances"
-            allowedGpuTypes={runpodConfig.allowed_gpu_types}
-            currentUser={currentUserName}
-          />
-        )}
+        {runpodConfig.is_configured &&
+          (() => {
+            // Check if there are any active RunPod clusters in SkyPilot status
+            const activeRunpodClusters =
+              skyPilotStatus?.clusters?.filter(
+                (c: any) =>
+                  c.status === "ClusterStatus.UP" ||
+                  c.status === "ClusterStatus.INIT"
+              ) || [];
+
+            // Use actual cluster count from SkyPilot status, fallback to runpodInstances
+            const actualActiveCount = activeRunpodClusters.length;
+
+            return (
+              <ClusterCard
+                cluster={{
+                  id: "runpod-cluster",
+                  name: "RunPod Cluster",
+                  nodes: generateDedicatedNodes(
+                    runpodConfig.max_instances,
+                    runpodInstances.current_count,
+                    currentUserEmail
+                  ),
+                }}
+                onLaunchCluster={() => {
+                  if (runpodConfig.is_configured) {
+                    setShowRunPodLauncher(true);
+                  }
+                }}
+                launchDisabled={!runpodInstances.can_launch}
+                launchButtonText="Request Instances"
+                allowedGpuTypes={runpodConfig.allowed_gpu_types}
+                currentUser={currentUserEmail}
+              />
+            );
+          })()}
 
         {/* Azure Cluster */}
         {azureConfig.is_configured && (
@@ -1335,14 +1348,14 @@ const Nodes: React.FC = () => {
               nodes: generateDedicatedNodes(
                 azureConfig.max_instances,
                 azureInstances.current_count,
-                currentUserName
+                currentUserEmail
               ),
             }}
             onLaunchCluster={() => setShowAzureLauncher(true)}
             launchDisabled={!azureInstances.can_launch}
             launchButtonText="Request Instances"
             allowedGpuTypes={azureConfig.allowed_instance_types}
-            currentUser={currentUserName}
+            currentUser={currentUserEmail}
           />
         )}
       </Box>

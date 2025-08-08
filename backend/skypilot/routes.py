@@ -76,6 +76,8 @@ from utils.file_utils import (
     save_ssh_node_info,
     get_cluster_platform,
     load_cluster_platforms,
+    set_cluster_platform,
+    get_cluster_user_info,
 )
 from auth.api_key_auth import get_user_or_api_key
 from auth.utils import get_current_user
@@ -352,7 +354,7 @@ async def launch_skypilot_cluster(
             jupyter_port=jupyter_port,
             vscode_port=vscode_port,
         )
-        # Record usage event for cluster launch
+        # Record usage event for cluster launch and store user info
         try:
             user_info = get_current_user(request, response)
             user_id = user_info["id"]
@@ -362,6 +364,16 @@ async def launch_skypilot_cluster(
                 usage_type="cluster_launch",
                 duration_minutes=None,
             )
+
+            # Store user info with cluster platform
+            platform = cloud or "unknown"
+            # Store both name and email, use email as unique identifier
+            cluster_user_info = {
+                "name": user_info.get("first_name", ""),
+                "email": user_info.get("email", ""),
+                "id": user_info.get("id", ""),
+            }
+            set_cluster_platform(cluster_name, platform, cluster_user_info)
         except Exception as e:
             print(f"Warning: Failed to record usage event for cluster launch: {e}")
         return LaunchClusterResponse(
@@ -388,6 +400,7 @@ async def get_skypilot_cluster_status(
         cluster_records = get_skypilot_status(cluster_list)
         clusters = []
         for record in cluster_records:
+            user_info = get_cluster_user_info(record["name"])
             clusters.append(
                 ClusterStatusResponse(
                     cluster_name=record["name"],
@@ -397,6 +410,7 @@ async def get_skypilot_cluster_status(
                     autostop=record.get("autostop"),
                     to_down=record.get("to_down"),
                     resources_str=record.get("resources_str"),
+                    user_info=user_info,
                 )
             )
         return StatusResponse(clusters=clusters)
@@ -1374,7 +1388,7 @@ async def get_runpod_instances(request: Request, response: Response):
         runpod_clusters = [
             cluster
             for cluster in skyPilotStatus
-            if platforms.get(cluster.get("name", "")) == "runpod"
+            if platforms.get(cluster.get("name", ""))["platform"] == "runpod"
         ]
 
         current_count = len(runpod_clusters)
