@@ -33,6 +33,52 @@ async def auth_callback(request: Request, code: str):
             code=code,
             session={"seal_session": True, "cookie_password": WORKOS_COOKIE_PASSWORD},
         )
+
+        # If the user doesn't have an organization, create one
+        refreshed_auth = auth_response
+        try:
+            if not getattr(auth_response, "organization_id", None):
+                user = auth_response.user
+                name_parts = [
+                    part for part in [user.first_name, user.last_name] if part
+                ]
+                if name_parts:
+                    org_name = " ".join(name_parts) + "'s Organization"
+                else:
+                    org_name = (
+                        user.email.split("@")[0] + "'s Organization"
+                        if getattr(user, "email", None)
+                        else "Default Organization"
+                    )
+
+                organization = workos_client.organizations.create_organization(
+                    name=org_name
+                )
+
+                try:
+                    workos_client.user_management.create_organization_membership(
+                        organization_id=organization.id,
+                        user_id=user.id,
+                        role_slug="admin",
+                    )
+                except Exception:
+                    pass
+
+                try:
+                    refreshed_auth = (
+                        workos_client.user_management.authenticate_with_refresh_token(
+                            refresh_token=auth_response.refresh_token,
+                            organization_id=organization.id,
+                            session={
+                                "seal_session": True,
+                                "cookie_password": WORKOS_COOKIE_PASSWORD,
+                            },
+                        )
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
         frontend_url = os.getenv("FRONTEND_URL")
         if not frontend_url:
             referer = request.headers.get("referer", "")
@@ -44,7 +90,7 @@ async def auth_callback(request: Request, code: str):
         response = RedirectResponse(url=dashboard_url)
         response.set_cookie(
             "wos_session",
-            auth_response.sealed_session,
+            refreshed_auth.sealed_session,
             secure=False,
             httponly=True,
             samesite="lax",
@@ -144,12 +190,12 @@ async def refresh_session(request: Request, response: Response):
         session_cookie = request.cookies.get("wos_session")
         if not session_cookie:
             raise HTTPException(status_code=401, detail="No session found")
-        
+
         session = workos_client.user_management.load_sealed_session(
             sealed_session=session_cookie,
             cookie_password=WORKOS_COOKIE_PASSWORD,
         )
-        
+
         refreshed_session = session.refresh()
         if refreshed_session.authenticated:
             response.set_cookie(
@@ -161,7 +207,7 @@ async def refresh_session(request: Request, response: Response):
                 max_age=86400 * 7,
                 path="/",
             )
-            
+
             user = refreshed_session.user
             return {
                 "authenticated": True,
@@ -178,4 +224,6 @@ async def refresh_session(request: Request, response: Response):
         else:
             raise HTTPException(status_code=401, detail="Session refresh failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to refresh session: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to refresh session: {str(e)}"
+        )
