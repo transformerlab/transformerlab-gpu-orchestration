@@ -578,7 +578,7 @@ const CloudClusterCard: React.FC<{
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={handleReserveNode}>
-            Reserve Instance
+            Request Instance
           </Button>
         </Stack>
       </Card>
