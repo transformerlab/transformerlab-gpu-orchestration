@@ -69,7 +69,13 @@ from skypilot.azure_utils import (
     get_current_azure_config,
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
-from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
+from utils.file_utils import (
+    load_ssh_node_pools,
+    load_ssh_node_info,
+    save_ssh_node_info,
+    get_cluster_platform,
+    load_cluster_platforms,
+)
 from auth.api_key_auth import get_user_or_api_key
 from auth.utils import get_current_user
 from reports.utils import record_usage
@@ -1109,12 +1115,14 @@ async def get_azure_instances(request: Request, response: Response):
         # Get current configuration
         config = get_current_azure_config()
 
-        # Count current Azure clusters
+        # Count current Azure clusters using platform information
         skyPilotStatus = get_skypilot_status()
+        platforms = load_cluster_platforms()
+
         azure_clusters = [
             cluster
             for cluster in skyPilotStatus
-            if cluster.get("name", "").lower().find("azure") != -1
+            if platforms.get(cluster.get("name", "")) == "azure"
         ]
 
         current_count = len(azure_clusters)
@@ -1341,12 +1349,13 @@ async def get_runpod_instances(request: Request, response: Response):
         # Get current configuration
         config = get_current_runpod_config()
 
-        # Count current RunPod clusters
+        # Count current RunPod clusters using platform information
         skyPilotStatus = get_skypilot_status()
+        platforms = load_cluster_platforms()
         runpod_clusters = [
             cluster
             for cluster in skyPilotStatus
-            if cluster.get("name", "").lower().find("runpod") != -1
+            if platforms.get(cluster.get("name", "")) == "runpod"
         ]
 
         current_count = len(runpod_clusters)
@@ -1390,4 +1399,30 @@ async def stop_port_forward(request: Request, response: Response, cluster_name: 
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to stop port forward: {str(e)}"
+        )
+
+
+@router.get("/cluster-platform/{cluster_name}")
+async def get_cluster_platform_info(
+    cluster_name: str, request: Request, response: Response
+):
+    """Get platform information for a specific cluster."""
+    try:
+        platform_info = get_cluster_platform(cluster_name)
+        return platform_info
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster platform info: {str(e)}"
+        )
+
+
+@router.get("/cluster-platforms")
+async def get_all_cluster_platforms(request: Request, response: Response):
+    """Get platform information for all clusters."""
+    try:
+        platforms = load_cluster_platforms()
+        return {"platforms": platforms}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster platforms: {str(e)}"
         )

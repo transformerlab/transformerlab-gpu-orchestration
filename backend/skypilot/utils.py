@@ -6,6 +6,7 @@ import sky
 from typing import Optional
 
 import asyncio
+from utils.file_utils import set_cluster_platform
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -207,6 +208,28 @@ def launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
+
+        # Store platform information for the cluster
+        if cloud:
+            platform = cloud.lower()
+            if platform == "ssh":
+                platform = "ssh"
+            elif platform == "runpod":
+                platform = "runpod"
+            elif platform == "azure":
+                platform = "azure"
+            else:
+                platform = "unknown"
+
+            try:
+                set_cluster_platform(cluster_name, platform)
+                print(
+                    f"[SkyPilot] Stored platform '{platform}' for cluster '{cluster_name}'"
+                )
+            except Exception as e:
+                print(
+                    f"[SkyPilot] Warning: Failed to store platform for cluster '{cluster_name}': {e}"
+                )
 
         # Setup port forwarding for interactive development modes
         if launch_mode in ["jupyter", "vscode"]:

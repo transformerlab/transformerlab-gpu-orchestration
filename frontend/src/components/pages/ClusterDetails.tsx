@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Typography, Table, Sheet, Chip, Stack } from "@mui/joy";
-import { ChevronLeftIcon } from "lucide-react";
+import {
+  Box,
+  Button,
+  Typography,
+  Card,
+  Stack,
+  Chip,
+  Alert,
+  CircularProgress,
+  Table,
+  Sheet,
+} from "@mui/joy";
 import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Server, Terminal, Cloud, Zap, Globe } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
+import useSWR from "swr";
 import { useFakeData } from "../../context/FakeDataContext";
 import PageWithTitle from "./templates/PageWithTitle";
-
 import mockClusterData from "./mockData/mockClusters.json";
 
 interface Node {
@@ -16,14 +27,40 @@ interface Node {
   status?: string;
 }
 
+interface CloudConfig {
+  api_key?: string;
+  subscription_id?: string;
+  tenant_id?: string;
+  client_id?: string;
+  client_secret?: string;
+  allowed_gpu_types?: string[];
+  allowed_instance_types?: string[];
+  allowed_regions?: string[];
+  max_instances: number;
+  current_instances: number;
+  can_launch: boolean;
+  is_configured: boolean;
+}
+
 const ClusterDetails: React.FC = () => {
   const { clusterName } = useParams<{ clusterName: string }>();
   const navigate = useNavigate();
   const { showFakeData } = useFakeData();
   const [nodes, setNodes] = useState<Node[]>([]);
+  const [cloudConfig, setCloudConfig] = useState<CloudConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [cloudConfig, setCloudConfig] = useState<any>(null);
+
+  // Fetch cluster platform information
+  const { data: clusterPlatforms } = useSWR(
+    clusterName ? buildApiUrl("skypilot/cluster-platforms") : null,
+    (url: string) =>
+      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
+    { refreshInterval: 5000 }
+  );
+
+  const platforms = clusterPlatforms?.platforms || {};
+  const clusterPlatform = platforms[clusterName || ""] || "unknown";
 
   useEffect(() => {
     if (!clusterName) return;
@@ -31,20 +68,16 @@ const ClusterDetails: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // Check if this is a cloud cluster (RunPod or Azure)
-    const isCloudCluster =
-      clusterName.toLowerCase().includes("runpod") ||
-      clusterName.toLowerCase().includes("azure") ||
-      clusterName === "runpod-cluster" ||
-      clusterName === "azure-cluster";
+    // Check if this is a cloud cluster based on platform information
+    const isCloudCluster = clusterPlatform === "runpod" || clusterPlatform === "azure";
 
     if (isCloudCluster) {
       // For cloud clusters, fetch configuration instead of nodes
-      const configEndpoint = clusterName.toLowerCase().includes("runpod")
+      const configEndpoint = clusterPlatform === "runpod"
         ? "skypilot/runpod/config"
         : "skypilot/azure/config";
 
-      const instancesEndpoint = clusterName.toLowerCase().includes("runpod")
+      const instancesEndpoint = clusterPlatform === "runpod"
         ? "skypilot/runpod/instances"
         : "skypilot/azure/instances";
 
@@ -131,7 +164,7 @@ const ClusterDetails: React.FC = () => {
           setLoading(false);
         });
     }
-  }, [clusterName, showFakeData]);
+  }, [clusterName, clusterPlatform, showFakeData]);
 
   const handleBack = () => {
     navigate(-1);

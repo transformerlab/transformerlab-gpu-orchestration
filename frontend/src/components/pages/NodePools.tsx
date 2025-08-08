@@ -1283,7 +1283,7 @@ const Nodes: React.FC = () => {
 
   // Generate mock clusters with current user
   // Memoize mockClustersWithCurrentUser so it only runs once per currentUserName
-  const mockClustersWithCurrentUser: Cluster[] = mockClusterData;
+  const mockClustersWithCurrentUser: Cluster[] = mockClusterData as Cluster[];
 
   return (
     <PageWithTitle
