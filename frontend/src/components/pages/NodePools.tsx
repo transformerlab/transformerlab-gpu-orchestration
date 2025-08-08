@@ -339,7 +339,7 @@ const ClusterCard: React.FC<{
                     flexWrap: "wrap",
                     gap: "1px",
                     p: 2,
-                    backgroundColor: "#e5e5e371",
+                    backgroundColor: "background.level1",
                     borderRadius: "md",
                     maxHeight: 1000,
                     overflow: "auto",
