@@ -569,7 +569,7 @@ const CloudClusterCard: React.FC<{
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={handleReserveNode}>
-            Request Instance
+            Request Instances
           </Button>
         </Stack>
       </Card>
