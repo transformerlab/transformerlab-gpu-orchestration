@@ -142,14 +142,15 @@ def launch_cluster_with_skypilot(
                 )
 
         if cloud and cloud.lower() == "ssh":
-            from utils.file_utils import load_ssh_node_pools
+            # Validate using DB and rely on SkyPilot's ssh_up with infra name
+            from clusters.utils import is_ssh_cluster
 
-            pools = load_ssh_node_pools()
-            if cluster_name not in pools:
+            if not is_ssh_cluster(cluster_name):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"SSH cluster '{cluster_name}' not found in SSH node pools. "
-                    f"Please create the SSH cluster first using the SSH Clusters tab.",
+                    detail=(
+                        f"SSH cluster '{cluster_name}' not found. Create it in SSH Clusters first."
+                    ),
                 )
             try:
                 print(

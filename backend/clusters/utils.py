@@ -8,6 +8,8 @@ from utils.file_utils import (
 from models import SSHNode
 import threading
 from skypilot.utils import fetch_and_parse_gpu_resources
+from config import SessionLocal
+from db_models import SSHNodePool as SSHNodePoolDB, SSHNodeEntry as SSHNodeDB
 
 
 def create_cluster_in_pools(
@@ -30,6 +32,32 @@ def create_cluster_in_pools(
         cluster_config.update(defaults)
     pools[cluster_name] = cluster_config
     save_ssh_node_pools(pools)
+    try:
+        db = SessionLocal()
+        existing = (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+        )
+        if existing is None:
+            db.add(
+                SSHNodePoolDB(
+                    name=cluster_name,
+                    default_user=user,
+                    identity_file_path=identity_file,
+                    password=password,
+                )
+            )
+        else:
+            existing.default_user = user
+            existing.identity_file_path = identity_file
+            existing.password = password
+        db.commit()
+    except Exception as e:
+        print(f"Warning: Failed to persist SSH node pool to DB: {e}")
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
     return cluster_config
 
 
@@ -55,6 +83,40 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
     pools[cluster_name]["hosts"].append(node_dict)
     save_ssh_node_pools(pools)
 
+    try:
+        db = SessionLocal()
+        pool = (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+        )
+        if pool is None:
+            pool = SSHNodePoolDB(name=cluster_name)
+            db.add(pool)
+            db.commit()
+            db.refresh(pool)
+        existing_node = (
+            db.query(SSHNodeDB)
+            .filter(SSHNodeDB.pool_id == pool.id, SSHNodeDB.ip == node.ip)
+            .first()
+        )
+        if existing_node is None:
+            db.add(
+                SSHNodeDB(
+                    pool_id=pool.id,
+                    ip=node.ip,
+                    user=node.user,
+                    identity_file_path=node.identity_file,
+                    password=node.password,
+                )
+            )
+            db.commit()
+    except Exception as e:
+        print(f"Warning: Failed to persist SSH node to DB: {e}")
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
     def update_gpu_info_thread():
         import asyncio
 
@@ -77,11 +139,14 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
 
 
 def is_ssh_cluster(cluster_name: str):
+    db = SessionLocal()
     try:
-        pools = load_ssh_node_pools()
-        return cluster_name in pools
-    except Exception:
-        return False
+        return (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+            is not None
+        )
+    finally:
+        db.close()
 
 
 def is_down_only_cluster(cluster_name: str):
@@ -90,9 +155,8 @@ def is_down_only_cluster(cluster_name: str):
     This includes SSH clusters and RunPod clusters.
     """
     try:
-        # Check if it's an SSH cluster
-        pools = load_ssh_node_pools()
-        if cluster_name in pools:
+        # Check if it's an SSH cluster (DB-backed)
+        if is_ssh_cluster(cluster_name):
             return True
 
         # Check if it's a RunPod cluster by looking at SkyPilot status
@@ -110,3 +174,107 @@ def is_down_only_cluster(cluster_name: str):
         return False
     except Exception:
         return False
+
+
+def delete_cluster_in_pools(cluster_name: str):
+    pools = load_ssh_node_pools()
+    if cluster_name not in pools:
+        raise HTTPException(
+            status_code=404, detail=f"Cluster '{cluster_name}' not found"
+        )
+    del pools[cluster_name]
+    save_ssh_node_pools(pools)
+    try:
+        db = SessionLocal()
+        pool = (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+        )
+        if pool is not None:
+            db.delete(pool)
+            db.commit()
+    except Exception as e:
+        print(f"Warning: Failed to delete SSH node pool from DB: {e}")
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def remove_node_from_cluster(cluster_name: str, node_ip: str):
+    pools = load_ssh_node_pools()
+    if cluster_name not in pools:
+        raise HTTPException(
+            status_code=404, detail=f"Cluster '{cluster_name}' not found"
+        )
+    hosts = pools[cluster_name].get("hosts", [])
+    filtered = [host for host in hosts if host.get("ip") != node_ip]
+    if len(filtered) == len(hosts):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Node with IP '{node_ip}' not found in cluster '{cluster_name}'",
+        )
+    pools[cluster_name]["hosts"] = filtered
+    save_ssh_node_pools(pools)
+    try:
+        db = SessionLocal()
+        pool = (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+        )
+        if pool is not None:
+            node_rec = (
+                db.query(SSHNodeDB)
+                .filter(SSHNodeDB.pool_id == pool.id, SSHNodeDB.ip == node_ip)
+                .first()
+            )
+            if node_rec is not None:
+                db.delete(node_rec)
+                db.commit()
+    except Exception as e:
+        print(f"Warning: Failed to delete SSH node from DB: {e}")
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def list_cluster_names_from_db() -> list[str]:
+    db = SessionLocal()
+    try:
+        return [row.name for row in db.query(SSHNodePoolDB).all()]
+    finally:
+        db.close()
+
+
+def get_cluster_config_from_db(cluster_name: str) -> dict:
+    db = SessionLocal()
+    try:
+        pool = (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+        )
+        if pool is None:
+            raise HTTPException(
+                status_code=404, detail=f"Cluster '{cluster_name}' not found"
+            )
+        nodes = db.query(SSHNodeDB).filter(SSHNodeDB.pool_id == pool.id).all()
+        hosts = []
+        for n in nodes:
+            host = {"ip": n.ip}
+            if n.user:
+                host["user"] = n.user
+            if n.identity_file_path:
+                host["identity_file"] = n.identity_file_path
+            if n.password:
+                host["password"] = n.password
+            hosts.append(host)
+        cfg: dict = {"hosts": hosts}
+        if pool.default_user:
+            cfg["user"] = pool.default_user
+        if pool.identity_file_path:
+            cfg["identity_file"] = pool.identity_file_path
+        if pool.password:
+            cfg["password"] = pool.password
+        return cfg
+    finally:
+        db.close()

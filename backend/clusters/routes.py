@@ -9,17 +9,18 @@ from fastapi import (
     BackgroundTasks,
 )
 from models import ClusterResponse, ClustersListResponse, SSHNode
-from clusters.utils import create_cluster_in_pools, add_node_to_cluster
+from clusters.utils import (
+    create_cluster_in_pools,
+    add_node_to_cluster,
+    delete_cluster_in_pools,
+    remove_node_from_cluster,
+)
 from utils.file_utils import (
-    load_ssh_node_pools,
-    save_ssh_node_pools,
-    cleanup_identity_file,
     save_identity_file,
     save_named_identity_file,
     get_available_identity_files,
     delete_named_identity_file,
     rename_identity_file,
-    get_identity_files_dir,
 )
 from auth.api_key_auth import get_user_or_api_key
 from auth.utils import get_current_user
@@ -31,8 +32,9 @@ router = APIRouter(prefix="/clusters", dependencies=[Depends(get_user_or_api_key
 
 @router.get("", response_model=ClustersListResponse)
 async def list_clusters(request: Request, response: Response):
-    pools = load_ssh_node_pools()
-    return ClustersListResponse(clusters=list(pools.keys()))
+    from clusters.utils import list_cluster_names_from_db
+
+    return ClustersListResponse(clusters=list_cluster_names_from_db())
 
 
 @router.post("", response_model=ClusterResponse)
@@ -144,21 +146,18 @@ async def rename_identity_file_route(
 
 @router.get("/{cluster_name}", response_model=ClusterResponse)
 async def get_cluster(cluster_name: str, request: Request, response: Response):
-    pools = load_ssh_node_pools()
-    if cluster_name not in pools:
-        raise HTTPException(
-            status_code=404, detail=f"Cluster '{cluster_name}' not found"
-        )
-    cluster_config = pools[cluster_name]
-    nodes = []
-    for host in cluster_config.get("hosts", []):
-        node = SSHNode(
+    from clusters.utils import get_cluster_config_from_db
+
+    cfg = get_cluster_config_from_db(cluster_name)
+    nodes = [
+        SSHNode(
             ip=host["ip"],
-            user=host["user"],
+            user=host.get("user"),
             identity_file=host.get("identity_file"),
             password=host.get("password"),
         )
-        nodes.append(node)
+        for host in cfg.get("hosts", [])
+    ]
     return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
 
 
@@ -187,7 +186,7 @@ async def add_node(
         ip=ip, user=user, identity_file=identity_file_path_final, password=password
     )
     cluster_config = add_node_to_cluster(cluster_name, node, background_tasks)
-    
+
     # Record availability event
     try:
         user_info = get_current_user(request, response)
@@ -200,11 +199,11 @@ async def add_node(
             availability_type="node_added",
             total_nodes=total_nodes,
             available_nodes=available_nodes,
-            node_ip=ip
+            node_ip=ip,
         )
     except Exception as e:
         print(f"Warning: Failed to record availability event: {e}")
-    
+
     nodes = []
     for host in cluster_config.get("hosts", []):
         node_obj = SSHNode(
@@ -219,14 +218,7 @@ async def add_node(
 
 @router.delete("/{cluster_name}")
 async def delete_cluster(cluster_name: str, request: Request, response: Response):
-    pools = load_ssh_node_pools()
-    if cluster_name not in pools:
-        raise HTTPException(
-            status_code=404, detail=f"Cluster '{cluster_name}' not found"
-        )
-    # Remove cluster from pools without deleting identity files
-    del pools[cluster_name]
-    save_ssh_node_pools(pools)
+    delete_cluster_in_pools(cluster_name)
     return {"message": f"Cluster '{cluster_name}' deleted successfully"}
 
 
@@ -234,21 +226,7 @@ async def delete_cluster(cluster_name: str, request: Request, response: Response
 async def remove_node(
     cluster_name: str, node_ip: str, request: Request, response: Response
 ):
-    pools = load_ssh_node_pools()
-    if cluster_name not in pools:
-        raise HTTPException(
-            status_code=404, detail=f"Cluster '{cluster_name}' not found"
-        )
-    hosts = pools[cluster_name].get("hosts", [])
-    original_length = len(hosts)
-    # Remove node without deleting its identity file
-    pools[cluster_name]["hosts"] = [host for host in hosts if host.get("ip") != node_ip]
-    if len(pools[cluster_name]["hosts"]) == original_length:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Node with IP '{node_ip}' not found in cluster '{cluster_name}'",
-        )
-    save_ssh_node_pools(pools)
+    remove_node_from_cluster(cluster_name, node_ip)
     return {
         "message": f"Node with IP '{node_ip}' removed from cluster '{cluster_name}' successfully"
     }

@@ -181,18 +181,23 @@ async def list_node_pools(request: Request, response: Response):
         except Exception as e:
             print(f"Error loading RunPod config: {e}")
 
-        # Get SSH clusters
+        # Get SSH clusters (DB-backed)
         try:
-            pools = load_ssh_node_pools()
-            for cluster_name, config in pools.items():
-                hosts_count = len(config.get("hosts", []))
+            from clusters.utils import (
+                list_cluster_names_from_db,
+                get_cluster_config_from_db,
+            )
+
+            for cluster_name in list_cluster_names_from_db():
+                cfg = get_cluster_config_from_db(cluster_name)
+                hosts_count = len(cfg.get("hosts", []))
                 node_pools.append(
                     {
                         "name": cluster_name,
                         "platform": "direct",
                         "numberOfNodes": hosts_count,
                         "status": "enabled",
-                        "access": ["Admin"],  # Default access
+                        "access": ["Admin"],
                         "config": {"is_configured": True, "max_instances": hosts_count},
                     }
                 )
@@ -209,17 +214,21 @@ async def list_node_pools(request: Request, response: Response):
 @router.get("/ssh-clusters")
 async def list_ssh_clusters(request: Request, response: Response):
     try:
-        pools = load_ssh_node_pools()
+        from clusters.utils import (
+            list_cluster_names_from_db,
+            get_cluster_config_from_db,
+        )
+
         ssh_clusters = []
-        for cluster_name, config in pools.items():
-            hosts_count = len(config.get("hosts", []))
+        for cluster_name in list_cluster_names_from_db():
+            cfg = get_cluster_config_from_db(cluster_name)
+            hosts_count = len(cfg.get("hosts", []))
+            has_defaults = any(k in cfg for k in ["user", "identity_file", "password"])
             ssh_clusters.append(
                 {
                     "name": cluster_name,
                     "hosts_count": hosts_count,
-                    "has_defaults": any(
-                        key in config for key in ["user", "identity_file", "password"]
-                    ),
+                    "has_defaults": has_defaults,
                 }
             )
         return {"ssh_clusters": ssh_clusters}
