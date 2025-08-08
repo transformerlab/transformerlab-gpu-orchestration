@@ -20,6 +20,7 @@ import {
   ModalClose,
   Textarea,
   IconButton,
+  ButtonGroup,
 } from "@mui/joy";
 import {
   Info,
@@ -37,6 +38,11 @@ import {
   Users,
   HardDrive,
   FileText,
+  EllipsisIcon,
+  Trash2Icon,
+  StopCircleIcon,
+  ContainerIcon,
+  SquareTerminalIcon,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -300,7 +306,7 @@ const MyClusterDetails: React.FC = () => {
     // Remove "JobStatus." prefix if present
     const cleanStatus = status.replace("JobStatus.", "");
     const statusLower = cleanStatus.toLowerCase();
-
+    console.log("Job status:", status, "Cleaned:", cleanStatus);
     if (statusLower.includes("running") || statusLower.includes("pending")) {
       return "success";
     } else if (
@@ -413,7 +419,16 @@ const MyClusterDetails: React.FC = () => {
         )
       }
     >
-      <Stack spacing={3}>
+      <Stack spacing={2}>
+        <ButtonGroup>
+          <Button startDecorator={<Trash2Icon />}>Terminate</Button>
+          <Button startDecorator={<StopCircleIcon />}>Stop</Button>
+          <Button startDecorator={<SquareTerminalIcon />}>Connect</Button>
+          <Button startDecorator={<EllipsisIcon />}></Button>
+        </ButtonGroup>
+      </Stack>
+
+      <Stack gap={3} mt={3}>
         {/* Cluster Information Cards */}
         <Grid container spacing={2}>
           {/* Basic Info Card */}
@@ -570,6 +585,8 @@ const MyClusterDetails: React.FC = () => {
             </List>
           </Card>
         )}
+
+        <Divider />
 
         {/* Jobs Section */}
         <Card>

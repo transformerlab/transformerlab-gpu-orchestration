@@ -180,7 +180,7 @@ const Held: React.FC<HeldProps> = ({
         console.error("Failed to terminate cluster:", errorData.detail);
       }
     } catch (err) {
-      console.error("Error downing cluster:", err);
+      console.error("Error terminating cluster:", err);
     } finally {
       setOperationLoading((prev) => ({
         ...prev,
