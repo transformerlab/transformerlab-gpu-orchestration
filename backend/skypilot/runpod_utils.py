@@ -411,6 +411,74 @@ def get_runpod_gpu_types():
         return []
 
 
+def get_runpod_gpu_types_with_pricing():
+    """Get available GPU types from SkyPilot's RunPod catalog with pricing information"""
+    try:
+        from sky.catalog.common import read_catalog
+
+        # Read the RunPod catalog using SkyPilot's read_catalog function
+        df = read_catalog("runpod/vms.csv")
+
+        gpu_types = {}  # Use dict to store detailed info
+
+        # Extract GPU types from the catalog
+        for _, row in df.iterrows():
+            accelerator_name = str(row.get("AcceleratorName", "")).strip()
+            accelerator_count_raw = row.get("AcceleratorCount", 1)
+            price_per_hour = row.get(
+                "Price", None
+            )  # Use "Price" column instead of "PricePerHour"
+
+            # Skip rows with NaN or empty values
+            if (
+                accelerator_name
+                and accelerator_name != "AcceleratorName"
+                and accelerator_name.lower() != "nan"
+                and accelerator_count_raw is not None
+                and str(accelerator_count_raw).lower() != "nan"
+            ):
+                # Convert count to integer to ensure consistent format
+                try:
+                    accelerator_count = int(float(accelerator_count_raw))
+                except (ValueError, TypeError):
+                    accelerator_count = 1
+
+                # Format: GPU_NAME:COUNT (without price to match config format)
+                gpu_type = f"{accelerator_name}:{accelerator_count}"
+
+                # Format price information
+                price_str = "Unknown"
+                if price_per_hour is not None and str(price_per_hour).lower() != "nan":
+                    try:
+                        price_float = float(price_per_hour)
+                        price_str = f"${price_float:.2f}"
+                    except (ValueError, TypeError):
+                        price_str = "Unknown"
+
+                gpu_types[gpu_type] = {
+                    "name": gpu_type,
+                    "display_name": accelerator_name,
+                    "count": str(accelerator_count),
+                    "price": price_str,
+                    "price_per_hour": price_per_hour,
+                }
+
+        gpu_types_list = list(gpu_types.values())
+
+        if gpu_types_list:
+            print(
+                f"✅ Found {len(gpu_types_list)} GPU types from SkyPilot RunPod catalog with pricing"
+            )
+        else:
+            print("⚠️ No GPU types found in SkyPilot RunPod catalog")
+
+        return gpu_types_list
+
+    except Exception as e:
+        print(f"❌ Error getting GPU types with pricing from SkyPilot catalog: {e}")
+        return []
+
+
 def create_runpod_sky_yaml(
     cluster_name, command, setup=None, accelerators=None, region=None
 ):
