@@ -475,6 +475,8 @@ const AzureConfigPage: React.FC = () => {
         subtitle={`${
           isConfigureMode ? "Configure" : "Add"
         } Azure credentials and settings for ${poolName}`}
+        backButton
+        onBack={() => navigate("/dashboard/admin/pools")}
       >
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
@@ -489,15 +491,8 @@ const AzureConfigPage: React.FC = () => {
       subtitle={`${
         isConfigureMode ? "Configure" : "Add"
       } Azure credentials and settings for ${poolName}`}
-      button={
-        <Button
-          variant="outlined"
-          startDecorator={<ArrowLeft size={16} />}
-          onClick={() => navigate("/dashboard/admin/pools")}
-        >
-          Back to Pools
-        </Button>
-      }
+      backButton
+      onBack={() => navigate("/dashboard/admin/pools")}
     >
       <Stack spacing={3}>
         {/* Pool Name Configuration */}

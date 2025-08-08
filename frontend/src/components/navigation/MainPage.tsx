@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
       >
         <Sidebar />
       </Box>
-      <Box sx={{ gridArea: "main", px: 3, py: 2, overflowY: "auto" }}>
+      <Box sx={{ gridArea: "main", px: 3, overflowY: "auto" }}>
         <Routes>
           <Route path="/" element={<Navigate to="node-pools" replace />} />
           <Route path="/node-pools" element={<Nodes />} />

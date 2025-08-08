@@ -23,6 +23,7 @@ import { useNotification } from "../../../components/NotificationSystem";
 
 import RunPodIcon from "./icons/runpod.svg";
 import AzureIcon from "./icons/azure.svg";
+import { useNavigate } from "react-router-dom";
 
 // This function returns an icon based on the platform provided:
 function CloudServiceIcon({ platform }: { platform: string }) {
@@ -46,6 +47,8 @@ const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const [selectedPool, setSelectedPool] = useState<any>(null);
   const { addNotification } = useNotification();
+
+  const navigate = useNavigate();
 
   // Define pool type
   interface Pool {
@@ -89,27 +92,23 @@ const Pools: React.FC = () => {
 
     switch (pool.platform) {
       case "azure":
-        window.open(
-          `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}&configKey=${configKey}`,
-          "_blank"
+        navigate(
+          `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`
         );
         break;
       case "runpod":
-        window.open(
-          `${baseUrl}/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}&configKey=${configKey}`,
-          "_blank"
+        navigate(
+          `/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`
         );
         break;
       case "direct":
-        window.open(
-          `${baseUrl}/dashboard/admin/ssh-config?mode=configure&poolName=${poolName}`,
-          "_blank"
+        navigate(
+          `/dashboard/admin/ssh-config?mode=configure&poolName=${poolName}`
         );
         break;
       default:
-        window.open(
-          `${baseUrl}/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
-          "_blank"
+        navigate(
+          `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`
         );
     }
   };

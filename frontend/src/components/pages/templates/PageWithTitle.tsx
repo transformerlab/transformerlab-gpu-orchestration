@@ -14,6 +14,7 @@ interface PageWithTitleProps {
   backButton?: boolean;
   onBack?: () => void;
   children: React.ReactNode;
+  sticky?: boolean; // keep the title row pinned to the top
 }
 
 const PageWithTitle: React.FC<PageWithTitleProps> = ({
@@ -25,6 +26,7 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
   backButton = false,
   onBack,
   children,
+  sticky = false,
 }) => {
   return (
     <Box
@@ -41,6 +43,16 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
           alignItems: "center",
           justifyContent: "space-between",
           mb: 2,
+          ...(sticky && {
+            position: "sticky",
+            top: 0,
+            zIndex: 1100,
+            bgcolor: "background.body",
+            // optional: add a subtle divider when stuck
+            // borderBottom: "1px solid",
+            // borderColor: "divider",
+            py: 1,
+          }),
         }}
       >
         <Box sx={{ mb: 4 }}>
