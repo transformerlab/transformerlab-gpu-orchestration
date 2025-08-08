@@ -343,6 +343,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title="Cluster Details"
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Alert color="danger">Cluster name not provided</Alert>
       </PageWithTitle>
@@ -354,6 +356,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title={clusterName}
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
           <CircularProgress />
@@ -367,6 +371,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title={clusterName}
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Alert color="danger">{error}</Alert>
       </PageWithTitle>
@@ -378,6 +384,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title={clusterName}
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Alert color="warning">Cluster not found</Alert>
       </PageWithTitle>
@@ -664,7 +672,7 @@ const MyClusterDetails: React.FC = () => {
       </Stack>
 
       {/* Job Logs Modal */}
-      <Modal open={!!selectedJobLogs} onClose={closeJobLogs}>
+      <Modal open={!!selectedJobLogs || logsLoading} onClose={closeJobLogs}>
         <ModalDialog
           size="lg"
           sx={{
@@ -676,19 +684,30 @@ const MyClusterDetails: React.FC = () => {
         >
           <ModalClose />
           <Typography level="h4" sx={{ mb: 2 }}>
-            Job Logs - {selectedJobLogs?.jobName} (ID: {selectedJobLogs?.jobId})
+            Job Logs -{" "}
+            {logsLoading ? (
+              <>&nbsp;</>
+            ) : (
+              `${selectedJobLogs?.jobName} (ID: ${selectedJobLogs?.jobId})`
+            )}
           </Typography>
-          <Textarea
-            value={selectedJobLogs?.logs || ""}
-            readOnly
-            minRows={20}
-            maxRows={40}
-            sx={{
-              fontFamily: "monospace",
-              fontSize: "0.875rem",
-              backgroundColor: "background.level1",
-            }}
-          />
+          {logsLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Textarea
+              value={selectedJobLogs?.logs || ""}
+              readOnly
+              minRows={20}
+              maxRows={40}
+              sx={{
+                fontFamily: "monospace",
+                fontSize: "0.875rem",
+                backgroundColor: "background.level1",
+              }}
+            />
+          )}
         </ModalDialog>
       </Modal>
     </PageWithTitle>

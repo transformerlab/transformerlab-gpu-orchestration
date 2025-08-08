@@ -740,34 +740,34 @@ const Held: React.FC<HeldProps> = ({
         Dedicated Instances
       </Typography>
 
-      <Table variant="outlined" sx={{ minWidth: 650 }}>
+      <Table sx={{ minWidth: 650 }}>
         <thead>
           <tr>
             <th>Cluster Name</th>
-            <th>Status</th>
+            <th width="80px">Status</th>
             <th>Resources</th>
             <th>Launched At</th>
-            <th>Last Use</th>
-            <th>Auto-stop</th>
             <th style={{ width: "250px", minWidth: "250px" }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {myClusters.map((cluster) => (
-            <tr
-              key={cluster.cluster_name}
-              style={{
-                transition: "background-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.04)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "";
-              }}
-            >
+            <tr key={cluster.cluster_name}>
               <td>
                 <Typography level="body-sm" fontWeight="bold">
+                  <NodeSquare
+                    currentUser="Ali"
+                    node={{
+                      id: cluster.cluster_name,
+                      ip: "128.0.0.1",
+                      status: "active",
+                      type: "dedicated",
+                      user: "Ali",
+                      gpuType: "RTX3090", // Assuming dedicated clusters don't have GPU types
+                    }}
+                    variant="mock"
+                  />
+                  &nbsp;
                   {cluster.cluster_name}
                 </Typography>
               </td>
@@ -803,16 +803,16 @@ const Held: React.FC<HeldProps> = ({
                   {formatTimestamp(cluster.launched_at)}
                 </Typography>
               </td>
-              <td>
+              {/* <td>
                 <Typography level="body-sm">
                   {cluster.last_use || "-"}
                 </Typography>
-              </td>
-              <td>
+              </td> */}
+              {/* <td>
                 <Typography level="body-sm">
                   {formatAutostop(cluster.autostop, cluster.to_down)}
                 </Typography>
-              </td>
+              </td> */}
               <td>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Button
@@ -963,17 +963,9 @@ const Held: React.FC<HeldProps> = ({
       />
 
       {/* Show fake clusters alongside real clusters if enabled */}
-      {showFakeData && (
+      {showFakeData && myClusters.length === 0 && (
         <>
-          <Box sx={{ mb: 3, mt: 4 }}>
-            <Typography level="h3" sx={{ mb: 2 }}>
-              Sample Clusters
-            </Typography>
-            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              Additional sample clusters for demonstration purposes.
-            </Typography>
-          </Box>
-          <Table variant="outlined" sx={{ minWidth: 650 }}>
+          <Table sx={{ minWidth: 650 }}>
             <thead>
               <tr>
                 <th>Cluster Name</th>
@@ -988,7 +980,7 @@ const Held: React.FC<HeldProps> = ({
             <tbody>
               {[
                 {
-                  cluster_name: "sample-cluster-1",
+                  cluster_name: "llm-train1",
                   status: "UP",
                   resources_str: "2x NVIDIA A100, 32 vCPUs",
                   launched_at: Math.floor(Date.now() / 1000) - 7200,
@@ -997,7 +989,7 @@ const Held: React.FC<HeldProps> = ({
                   to_down: false,
                 },
                 {
-                  cluster_name: "demo-cluster-2",
+                  cluster_name: "llm-train2",
                   status: "INIT",
                   resources_str: "4x NVIDIA V100, 64 vCPUs",
                   launched_at: Math.floor(Date.now() / 1000) - 300,
