@@ -58,7 +58,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   onClusterLaunched,
 }) => {
   const [showLaunchModal, setShowLaunchModal] = useState(false);
-  const [loading, setLoading] = useState(false);
+
   const [sshClusters, setSshClusters] = useState<SSHCluster[]>([]);
   const { addNotification } = useNotification();
 
@@ -313,9 +313,22 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
   };
 
   const launchCluster = async () => {
-    try {
-      setLoading(true);
+    // Close modal immediately and reset form
+    setShowLaunchModal(false);
+    resetForm();
 
+    // Show immediate notification that request is being processed
+    addNotification({
+      type: "warning",
+      message: `Launching cluster "${clusterName}"...`,
+    });
+
+    // Add cluster to skeleton state immediately
+    if (onClusterLaunched) {
+      onClusterLaunched(clusterName);
+    }
+
+    try {
       // Always use multipart/form-data
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
@@ -355,11 +368,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
           type: "success",
           message: `${data.message} (Request ID: ${data.request_id})`,
         });
-        setShowLaunchModal(false);
-        resetForm();
-        if (onClusterLaunched) {
-          onClusterLaunched(clusterName);
-        }
       } else {
         const errorData = await response.json();
         addNotification({
@@ -372,8 +380,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         type: "danger",
         message: "Error launching cluster",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -435,7 +441,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         <Button
           startDecorator={<Rocket size={16} />}
           onClick={() => setShowLaunchModal(true)}
-          disabled={loading}
           color="success"
         >
           Launch a Cluster on a Cloud Node Pool

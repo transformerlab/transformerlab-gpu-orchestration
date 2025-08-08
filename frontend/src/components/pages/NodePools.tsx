@@ -1341,7 +1341,11 @@ const Nodes: React.FC = () => {
                 currentUserName
               ),
             }}
-            onLaunchCluster={() => setShowRunPodLauncher(true)}
+            onLaunchCluster={() => {
+              if (runpodConfig.is_configured) {
+                setShowRunPodLauncher(true);
+              }
+            }}
             launchDisabled={!runpodInstances.can_launch}
             launchButtonText="Request Instances"
             allowedGpuTypes={runpodConfig.allowed_gpu_types}
@@ -1375,6 +1379,7 @@ const Nodes: React.FC = () => {
         open={showRunPodLauncher}
         onClose={() => setShowRunPodLauncher(false)}
         onClusterLaunched={handleClusterLaunched}
+        runpodConfig={runpodConfig}
       />
 
       {/* Azure Cluster Launcher Modal */}
