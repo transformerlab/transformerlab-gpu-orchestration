@@ -451,13 +451,13 @@ const CloudClusterCard: React.FC<{
   };
 
   const handleClusterLaunched = () => {
-    // Refresh the page or update the cluster status
-    window.location.reload();
+    // useSWR will automatically refresh the data, no need to reload the page
+    console.log("Cluster launched - data will refresh automatically");
   };
 
   const handleJobSubmitted = () => {
-    // Refresh the page or update the job status
-    window.location.reload();
+    // useSWR will automatically refresh the data, no need to reload the page
+    console.log("Job submitted - data will refresh automatically");
   };
 
   return (
@@ -1044,31 +1044,52 @@ const Nodes: React.FC = () => {
     max_instances: 0,
   });
 
-  // State for RunPod instance count and limits
-  const [runpodInstances, setRunpodInstances] = useState<{
-    current_count: number;
-    max_instances: number;
-    can_launch: boolean;
-  }>({
-    current_count: 0,
-    max_instances: 0,
-    can_launch: true,
-  });
-
-  // State for Azure instance count and limits
-  const [azureInstances, setAzureInstances] = useState<{
-    current_count: number;
-    max_instances: number;
-    can_launch: boolean;
-  }>({
-    current_count: 0,
-    max_instances: 0,
-    can_launch: true,
-  });
-
   // --- Node Pools/Clouds Section ---
   const fetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
+
+  // State for RunPod instance count and limits - using useSWR for auto-refresh
+  const { data: runpodInstancesData } = useSWR(
+    runpodConfig.is_configured
+      ? buildApiUrl("skypilot/runpod/instances")
+      : null,
+    fetcher,
+    {
+      refreshInterval: 2000,
+      fallbackData: {
+        current_count: 0,
+        max_instances: 0,
+        can_launch: true,
+      },
+    }
+  );
+
+  // State for Azure instance count and limits - using useSWR for auto-refresh
+  const { data: azureInstancesData } = useSWR(
+    azureConfig.is_configured ? buildApiUrl("skypilot/azure/instances") : null,
+    fetcher,
+    {
+      refreshInterval: 2000,
+      fallbackData: {
+        current_count: 0,
+        max_instances: 0,
+        can_launch: true,
+      },
+    }
+  );
+
+  // Derive the instances data from useSWR
+  const runpodInstances = runpodInstancesData || {
+    current_count: 0,
+    max_instances: 0,
+    can_launch: true,
+  };
+
+  const azureInstances = azureInstancesData || {
+    current_count: 0,
+    max_instances: 0,
+    can_launch: true,
+  };
   const { data, isLoading } = useSWR(buildApiUrl("clusters"), fetcher, {
     refreshInterval: 2000,
   });
@@ -1218,61 +1239,13 @@ const Nodes: React.FC = () => {
           max_instances: 0,
         })
       );
-
-    // Fetch RunPod instance count and limits
-    apiFetch(buildApiUrl("skypilot/runpod/instances"), {
-      credentials: "include",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setRunpodInstances(data);
-        }
-      })
-      .catch(() => {
-        // If the endpoint doesn't exist yet, use default values
-        setRunpodInstances({
-          current_count: 0,
-          max_instances: 0,
-          can_launch: true,
-        });
-      });
-
-    // Fetch Azure instance count and limits
-    apiFetch(buildApiUrl("skypilot/azure/instances"), {
-      credentials: "include",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setAzureInstances({
-            current_count: data.current_count || 0,
-            max_instances: data.max_instances || 0,
-            can_launch: data.can_launch !== undefined ? data.can_launch : true,
-          });
-        } else {
-          setAzureInstances({
-            current_count: 0,
-            max_instances: 0,
-            can_launch: true,
-          });
-        }
-      })
-      .catch(() => {
-        // If the endpoint doesn't exist yet, use default values
-        setAzureInstances({
-          current_count: 0,
-          max_instances: 0,
-          can_launch: true,
-        });
-      });
   }, []);
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
 
   const handleClusterLaunched = () => {
-    // Refresh the page or update the cluster status
-    window.location.reload();
+    // useSWR will automatically refresh the data, no need to reload the page
+    console.log("Cluster launched - data will refresh automatically");
   };
 
   const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
