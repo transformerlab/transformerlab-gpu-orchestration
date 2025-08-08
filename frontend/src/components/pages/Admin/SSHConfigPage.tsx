@@ -310,9 +310,8 @@ const SSHConfigPage: React.FC = () => {
     return (
       <PageWithTitle
         title={`${isConfigureMode ? "Configure" : "Add"} Node Pool`}
-        subtitle={`${
-          isConfigureMode ? "Configure" : "Add"
-        } Node Pool settings for ${newClusterName}`}
+        backButton
+        onBack={() => navigate("/dashboard/admin/pools")}
       >
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
@@ -323,19 +322,9 @@ const SSHConfigPage: React.FC = () => {
 
   return (
     <PageWithTitle
-      title={`${isConfigureMode ? "Configure" : "Add"} Node Pool`}
-      subtitle={`${
-        isConfigureMode ? "Configure" : "Add"
-      } Node Pool settings for ${newClusterName}`}
-      button={
-        <Button
-          variant="outlined"
-          startDecorator={<ArrowLeft size={16} />}
-          onClick={() => navigate("/dashboard/admin/pools")}
-        >
-          Back to Pools
-        </Button>
-      }
+      title={`${isConfigureMode ? "Configure" : "Add"} Direct Node Pool`}
+      backButton
+      onBack={() => navigate("/dashboard/admin/pools")}
     >
       <Stack spacing={3}>
         {!isConfigureMode ? (
