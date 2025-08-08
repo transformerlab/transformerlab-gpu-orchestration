@@ -96,6 +96,7 @@ class ClusterStatusResponse(BaseModel):
     autostop: Optional[int] = None
     to_down: Optional[bool] = None
     resources_str: Optional[str] = None
+    user_info: Optional[dict] = None
 
 
 class StatusResponse(BaseModel):
