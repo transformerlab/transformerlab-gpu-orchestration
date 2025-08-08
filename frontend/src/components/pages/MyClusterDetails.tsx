@@ -343,6 +343,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title="Cluster Details"
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Alert color="danger">Cluster name not provided</Alert>
       </PageWithTitle>
@@ -354,6 +356,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title={clusterName}
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
           <CircularProgress />
@@ -367,6 +371,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title={clusterName}
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Alert color="danger">{error}</Alert>
       </PageWithTitle>
@@ -378,6 +384,8 @@ const MyClusterDetails: React.FC = () => {
       <PageWithTitle
         title={clusterName}
         subtitle="Cluster information and jobs"
+        backButton={true}
+        onBack={() => navigate("/dashboard/my-clusters")}
       >
         <Alert color="warning">Cluster not found</Alert>
       </PageWithTitle>

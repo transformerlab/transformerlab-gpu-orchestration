@@ -744,7 +744,7 @@ const Held: React.FC<HeldProps> = ({
         <thead>
           <tr>
             <th>Cluster Name</th>
-            <th>Status</th>
+            <th width="80px">Status</th>
             <th>Resources</th>
             <th>Launched At</th>
             <th style={{ width: "250px", minWidth: "250px" }}>Actions</th>
