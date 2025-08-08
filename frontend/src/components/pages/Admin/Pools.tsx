@@ -83,6 +83,14 @@ const Pools: React.FC = () => {
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
 
+  // Check if Azure or RunPod configurations already exist
+  const hasAzureConfig = nodePools.some(
+    (pool: Pool) => pool.platform === "azure"
+  );
+  const hasRunPodConfig = nodePools.some(
+    (pool: Pool) => pool.platform === "runpod"
+  );
+
   const handleConfigurePool = (pool: Pool) => {
     setSelectedPool(pool);
     // Open the appropriate configuration page in a new tab based on platform
@@ -299,11 +307,6 @@ const Pools: React.FC = () => {
                       <Typography level="title-sm">
                         {pool.name || "Unnamed Pool"}
                       </Typography>
-                      {pool.config?.is_default && (
-                        <Chip size="sm" color="success" variant="soft">
-                          Default
-                        </Chip>
-                      )}
                     </Box>
                   </td>
                   <td>
@@ -381,23 +384,6 @@ const Pools: React.FC = () => {
                       >
                         Configure
                       </Button>
-                      {(pool.platform === "azure" ||
-                        pool.platform === "runpod") &&
-                        !pool.config?.is_default && (
-                          <Button
-                            size="sm"
-                            variant="outlined"
-                            startDecorator={<Star size={14} />}
-                            onClick={() =>
-                              handleSetDefault(
-                                pool.platform,
-                                pool.config?.config_key || ""
-                              )
-                            }
-                          >
-                            Set Default
-                          </Button>
-                        )}
                       {pool.platform === "direct" && (
                         <IconButton
                           size="sm"
@@ -428,11 +414,23 @@ const Pools: React.FC = () => {
           <Typography level="h4">Add Node Pool</Typography>
           <Stack spacing={2} direction="column" sx={{ mt: 1 }}>
             <Typography level="body-md">Choose a platform:</Typography>
+            {(hasAzureConfig || hasRunPodConfig) && (
+              <Alert color="primary" size="sm">
+                Note: Only one Azure and one RunPod configuration is allowed per
+                system.
+              </Alert>
+            )}
             <Stack direction="column" spacing={1}>
               <Button
                 variant="outlined"
                 startDecorator={<CloudServiceIcon platform="azure" />}
+                disabled={hasAzureConfig}
+                sx={{
+                  opacity: hasAzureConfig ? 0.6 : 1,
+                  cursor: hasAzureConfig ? "not-allowed" : "pointer",
+                }}
                 onClick={() => {
+                  if (hasAzureConfig) return;
                   setOpenAdd(false);
                   const baseUrl = window.location.origin;
                   window.open(
@@ -441,12 +439,18 @@ const Pools: React.FC = () => {
                   );
                 }}
               >
-                Azure
+                Azure {hasAzureConfig && "(Already Configured)"}
               </Button>
               <Button
                 variant="outlined"
                 startDecorator={<CloudServiceIcon platform="runpod" />}
+                disabled={hasRunPodConfig}
+                sx={{
+                  opacity: hasRunPodConfig ? 0.6 : 1,
+                  cursor: hasRunPodConfig ? "not-allowed" : "pointer",
+                }}
                 onClick={() => {
+                  if (hasRunPodConfig) return;
                   setOpenAdd(false);
                   const baseUrl = window.location.origin;
                   window.open(
@@ -455,7 +459,7 @@ const Pools: React.FC = () => {
                   );
                 }}
               >
-                RunPod
+                RunPod {hasRunPodConfig && "(Already Configured)"}
               </Button>
               <Button
                 variant="outlined"
