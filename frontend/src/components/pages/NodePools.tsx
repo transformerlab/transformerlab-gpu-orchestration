@@ -578,7 +578,7 @@ const CloudClusterCard: React.FC<{
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={handleReserveNode}>
-            Reserve Instance
+            Request Instance
           </Button>
         </Stack>
       </Card>
@@ -1283,7 +1283,7 @@ const Nodes: React.FC = () => {
 
   // Generate mock clusters with current user
   // Memoize mockClustersWithCurrentUser so it only runs once per currentUserName
-  const mockClustersWithCurrentUser: Cluster[] = mockClusterData;
+  const mockClustersWithCurrentUser: Cluster[] = mockClusterData as Cluster[];
 
   return (
     <PageWithTitle

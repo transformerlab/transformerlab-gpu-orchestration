@@ -128,6 +128,17 @@ const MyClusterDetails: React.FC = () => {
 
   const jobs = jobsData?.jobs || [];
 
+  // Fetch cluster platform information
+  const { data: clusterPlatforms } = useSWR(
+    clusterName ? buildApiUrl("skypilot/cluster-platforms") : null,
+    (url: string) =>
+      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
+    { refreshInterval: 5000 }
+  );
+
+  const platforms = clusterPlatforms?.platforms || {};
+  const clusterPlatform = platforms[clusterName || ""] || "unknown";
+
   useEffect(() => {
     if (clusterName) {
       fetchClusterInfo();
@@ -243,24 +254,14 @@ const MyClusterDetails: React.FC = () => {
       return "SSH Cluster";
     }
 
-    // Try to determine cloud provider from cluster name or other indicators
-    const clusterNameLower = clusterName?.toLowerCase() || "";
-    if (clusterNameLower.includes("azure") || clusterNameLower.includes("az")) {
+    // Use platform information from backend instead of checking cluster names
+    if (clusterPlatform === "azure") {
       return "Azure Cluster";
-    } else if (
-      clusterNameLower.includes("runpod") ||
-      clusterNameLower.includes("rp")
-    ) {
+    } else if (clusterPlatform === "runpod") {
       return "RunPod Cluster";
-    } else if (
-      clusterNameLower.includes("aws") ||
-      clusterNameLower.includes("amazon")
-    ) {
+    } else if (clusterPlatform === "aws") {
       return "AWS Cluster";
-    } else if (
-      clusterNameLower.includes("gcp") ||
-      clusterNameLower.includes("google")
-    ) {
+    } else if (clusterPlatform === "gcp") {
       return "GCP Cluster";
     }
 
@@ -274,13 +275,10 @@ const MyClusterDetails: React.FC = () => {
       return <Terminal size={20} />;
     }
 
-    const clusterNameLower = clusterName?.toLowerCase() || "";
-    if (clusterNameLower.includes("azure") || clusterNameLower.includes("az")) {
+    // Use platform information from backend instead of checking cluster names
+    if (clusterPlatform === "azure") {
       return <Cloud size={20} />;
-    } else if (
-      clusterNameLower.includes("runpod") ||
-      clusterNameLower.includes("rp")
-    ) {
+    } else if (clusterPlatform === "runpod") {
       return <Zap size={20} />;
     }
 

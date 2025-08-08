@@ -493,6 +493,24 @@ const AzureConfigPage: React.FC = () => {
       } Azure credentials and settings for ${poolName}`}
       backButton
       onBack={() => navigate("/dashboard/admin/pools")}
+      sticky={true}
+      button={
+        <Button
+          startDecorator={<Save size={16} />}
+          onClick={saveConfig}
+          disabled={
+            saving ||
+            !config.subscription_id ||
+            !config.tenant_id ||
+            !config.client_id ||
+            !config.client_secret
+          }
+          loading={saving}
+          size="sm"
+        >
+          Save Configuration
+        </Button>
+      }
     >
       <Stack spacing={3}>
         {/* Pool Name Configuration */}
@@ -633,20 +651,6 @@ const AzureConfigPage: React.FC = () => {
               </FormControl>
             </Box>
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Button
-                startDecorator={<Save size={16} />}
-                onClick={saveConfig}
-                disabled={
-                  saving ||
-                  !config.subscription_id ||
-                  !config.tenant_id ||
-                  !config.client_id ||
-                  !config.client_secret
-                }
-                loading={saving}
-              >
-                Save Configuration
-              </Button>
               <Button
                 variant="outlined"
                 onClick={testConnection}

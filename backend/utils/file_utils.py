@@ -275,3 +275,57 @@ def save_ssh_node_info(data):
         raise HTTPException(
             status_code=500, detail=f"Failed to save SSH node info: {str(e)}"
         )
+
+
+def get_cluster_platforms_path():
+    """Get the path to the cluster platforms metadata file"""
+    sky_dir = Path.home() / ".sky" / "lattice_data"
+    sky_dir.mkdir(parents=True, exist_ok=True)
+    return sky_dir / "cluster_platforms.json"
+
+
+def load_cluster_platforms():
+    """Load cluster platform metadata"""
+    platforms_path = get_cluster_platforms_path()
+    if not platforms_path.exists():
+        return {}
+    try:
+        with open(platforms_path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading cluster platforms: {e}")
+        return {}
+
+
+def save_cluster_platforms(platforms_data):
+    """Save cluster platform metadata"""
+    platforms_path = get_cluster_platforms_path()
+    try:
+        with open(platforms_path, "w") as f:
+            json.dump(platforms_data, f, indent=2)
+    except Exception as e:
+        print(f"Error saving cluster platforms: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save cluster platforms: {str(e)}"
+        )
+
+
+def set_cluster_platform(cluster_name: str, platform: str):
+    """Set the platform for a specific cluster"""
+    platforms = load_cluster_platforms()
+    platforms[cluster_name] = platform
+    save_cluster_platforms(platforms)
+
+
+def get_cluster_platform(cluster_name: str) -> str:
+    """Get the platform for a specific cluster"""
+    platforms = load_cluster_platforms()
+    return platforms.get(cluster_name, "unknown")
+
+
+def remove_cluster_platform(cluster_name: str):
+    """Remove platform metadata for a cluster (when it's deleted)"""
+    platforms = load_cluster_platforms()
+    if cluster_name in platforms:
+        del platforms[cluster_name]
+        save_cluster_platforms(platforms)

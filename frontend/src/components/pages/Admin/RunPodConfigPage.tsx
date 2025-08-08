@@ -399,6 +399,18 @@ const RunPodConfigPage: React.FC = () => {
       title={`${isConfigureMode ? "Configure" : "Add"} RunPod Pool`}
       backButton
       onBack={() => navigate("/dashboard/admin/pools")}
+      sticky={true}
+      button={
+        <Button
+          startDecorator={<Save size={16} />}
+          onClick={saveConfig}
+          disabled={saving || !config.api_key}
+          loading={saving}
+          size="sm"
+        >
+          Save Configuration
+        </Button>
+      }
     >
       <Stack spacing={3}>
         {/* Pool Name Configuration */}
@@ -453,14 +465,6 @@ const RunPodConfigPage: React.FC = () => {
             </FormControl>
 
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Button
-                startDecorator={<Save size={16} />}
-                onClick={saveConfig}
-                disabled={saving || !config.api_key}
-                loading={saving}
-              >
-                Save Configuration
-              </Button>
               <Button
                 variant="outlined"
                 onClick={testConnection}
