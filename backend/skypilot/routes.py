@@ -43,6 +43,7 @@ from skypilot.port_forwarding import port_forward_manager
 from skypilot.runpod_utils import (
     verify_runpod_setup,
     get_runpod_gpu_types,
+    get_runpod_gpu_types_with_pricing,
     setup_runpod_config,
     save_runpod_config,
     get_runpod_config_for_display,
@@ -1188,13 +1189,31 @@ async def verify_runpod(request: Request, response: Response):
 
 @router.get("/runpod/gpu-types")
 async def get_runpod_gpu_types_route(request: Request, response: Response):
-    """Get available GPU types from RunPod"""
+    """Get available GPU types from RunPod with pricing information"""
     try:
-        gpu_types = get_runpod_gpu_types()
-        return {"gpu_types": gpu_types}
+        gpu_types_with_pricing = get_runpod_gpu_types_with_pricing()
+        # Return both the detailed format and the simple format for backward compatibility
+        gpu_types_simple = [gpu["name"] for gpu in gpu_types_with_pricing]
+        return {
+            "gpu_types": gpu_types_simple,
+            "gpu_types_with_pricing": gpu_types_with_pricing,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get RunPod GPU types: {str(e)}"
+        )
+
+
+@router.get("/runpod/gpu-types-with-pricing")
+async def get_runpod_gpu_types_with_pricing_route(request: Request, response: Response):
+    """Get available GPU types from RunPod with detailed pricing information."""
+    try:
+        gpu_types_with_pricing = get_runpod_gpu_types_with_pricing()
+        return {"gpu_types_with_pricing": gpu_types_with_pricing}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get RunPod GPU types with pricing: {str(e)}",
         )
 
 

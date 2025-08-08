@@ -152,29 +152,47 @@ const RunPodConfigPage: React.FC = () => {
       );
       if (response.ok) {
         const data = await response.json();
-        const gpuTypes = data.gpu_types.map((gpu: string) => {
-          // Parse GPU type in format "GPU_NAME:COUNT:PRICE"
-          const parts = gpu.split(":");
-          let display_name = gpu;
-          let count = "1";
-          let price = "Unknown";
 
-          if (parts.length >= 3) {
-            display_name = parts[0];
-            count = parts[1];
-            price = parts[2];
-          } else if (parts.length === 2) {
-            display_name = parts[0];
-            count = parts[1];
-          }
+        // Use the new detailed pricing information if available
+        let gpuTypes: GpuType[] = [];
 
-          return {
-            name: gpu,
-            display_name,
-            count,
-            price,
-          };
-        });
+        if (
+          data.gpu_types_with_pricing &&
+          data.gpu_types_with_pricing.length > 0
+        ) {
+          // Use the new detailed format with pricing
+          gpuTypes = data.gpu_types_with_pricing.map((gpu: any) => ({
+            name: gpu.name,
+            display_name: gpu.display_name,
+            count: gpu.count,
+            price: gpu.price,
+          }));
+        } else {
+          // Fallback to parsing the simple format
+          gpuTypes = data.gpu_types.map((gpu: string) => {
+            // Parse GPU type in format "GPU_NAME:COUNT:PRICE"
+            const parts = gpu.split(":");
+            let display_name = gpu;
+            let count = "1";
+            let price = "Unknown";
+
+            if (parts.length >= 3) {
+              display_name = parts[0];
+              count = parts[1];
+              price = parts[2];
+            } else if (parts.length === 2) {
+              display_name = parts[0];
+              count = parts[1];
+            }
+
+            return {
+              name: gpu,
+              display_name,
+              count,
+              price,
+            };
+          });
+        }
 
         // If we're in configure mode and have existing config, ensure all selected types are included
         if (
