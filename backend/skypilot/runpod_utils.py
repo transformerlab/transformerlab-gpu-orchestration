@@ -375,15 +375,22 @@ def get_runpod_gpu_types():
         # Extract GPU types from the catalog
         for _, row in df.iterrows():
             accelerator_name = str(row.get("AcceleratorName", "")).strip()
-            accelerator_count = str(row.get("AcceleratorCount", "1"))
+            accelerator_count_raw = row.get("AcceleratorCount", 1)
 
             # Skip rows with NaN or empty values
             if (
                 accelerator_name
                 and accelerator_name != "AcceleratorName"
                 and accelerator_name.lower() != "nan"
-                and accelerator_count.lower() != "nan"
+                and accelerator_count_raw is not None
+                and str(accelerator_count_raw).lower() != "nan"
             ):
+                # Convert count to integer to ensure consistent format
+                try:
+                    accelerator_count = int(float(accelerator_count_raw))
+                except (ValueError, TypeError):
+                    accelerator_count = 1
+
                 # Format: GPU_NAME:COUNT (without price to match config format)
                 gpu_type = f"{accelerator_name}:{accelerator_count}"
                 gpu_types.add(gpu_type)
