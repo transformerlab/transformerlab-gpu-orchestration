@@ -624,7 +624,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
               No jobs found for this cluster
             </Typography>
           ) : (
-            <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+            <Table sx={{ minWidth: 650, mb: 2 }}>
               <thead>
                 <tr>
                   <th>Job ID</th>
@@ -819,7 +819,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
               sample-cluster
             </Typography>
 
-            <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+            <Table sx={{ minWidth: 650, mb: 2 }}>
               <thead>
                 <tr>
                   <th>Job ID</th>
@@ -927,7 +927,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                     Saved on: {formatSavedAt(pastCluster.saved_at)}
                   </Typography>
 
-                  <Table variant="outlined" sx={{ minWidth: 650, mb: 2 }}>
+                  <Table sx={{ minWidth: 650, mb: 2 }}>
                     <thead>
                       <tr>
                         <th>Job ID</th>

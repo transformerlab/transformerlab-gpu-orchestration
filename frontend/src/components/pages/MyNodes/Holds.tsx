@@ -740,7 +740,7 @@ const Held: React.FC<HeldProps> = ({
         Dedicated Instances
       </Typography>
 
-      <Table variant="outlined" sx={{ minWidth: 650 }}>
+      <Table sx={{ minWidth: 650 }}>
         <thead>
           <tr>
             <th>Cluster Name</th>
@@ -973,7 +973,7 @@ const Held: React.FC<HeldProps> = ({
               Additional sample clusters for demonstration purposes.
             </Typography>
           </Box>
-          <Table variant="outlined" sx={{ minWidth: 650 }}>
+          <Table sx={{ minWidth: 650 }}>
             <thead>
               <tr>
                 <th>Cluster Name</th>

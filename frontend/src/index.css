@@ -1,0 +1,4 @@
+/* by default, Mui tables overflow, this changes that */
+.MuiTable-root td {
+    overflow: hidden;
+}
