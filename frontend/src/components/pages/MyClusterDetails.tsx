@@ -48,6 +48,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import useSWR from "swr";
 import PageWithTitle from "./templates/PageWithTitle";
+import FakeCharts from "../widgets/FakeCharts";
 
 interface ClusterTypeInfo {
   cluster_name: string;
@@ -587,6 +588,8 @@ const MyClusterDetails: React.FC = () => {
         )}
 
         <Divider />
+
+        <FakeCharts />
 
         {/* Jobs Section */}
         <Card>
