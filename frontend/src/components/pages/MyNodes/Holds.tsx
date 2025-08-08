@@ -963,16 +963,8 @@ const Held: React.FC<HeldProps> = ({
       />
 
       {/* Show fake clusters alongside real clusters if enabled */}
-      {showFakeData && (
+      {showFakeData && myClusters.length === 0 && (
         <>
-          <Box sx={{ mb: 3, mt: 4 }}>
-            <Typography level="h3" sx={{ mb: 2 }}>
-              Sample Clusters
-            </Typography>
-            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              Additional sample clusters for demonstration purposes.
-            </Typography>
-          </Box>
           <Table sx={{ minWidth: 650 }}>
             <thead>
               <tr>
@@ -988,7 +980,7 @@ const Held: React.FC<HeldProps> = ({
             <tbody>
               {[
                 {
-                  cluster_name: "sample-cluster-1",
+                  cluster_name: "llm-train1",
                   status: "UP",
                   resources_str: "2x NVIDIA A100, 32 vCPUs",
                   launched_at: Math.floor(Date.now() / 1000) - 7200,
@@ -997,7 +989,7 @@ const Held: React.FC<HeldProps> = ({
                   to_down: false,
                 },
                 {
-                  cluster_name: "demo-cluster-2",
+                  cluster_name: "llm-train2",
                   status: "INIT",
                   resources_str: "4x NVIDIA V100, 64 vCPUs",
                   launched_at: Math.floor(Date.now() / 1000) - 300,
