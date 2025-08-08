@@ -49,6 +49,7 @@ import { buildApiUrl, apiFetch } from "../../utils/api";
 import useSWR from "swr";
 import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
+import LogViewer from "../widgets/LogViewer";
 
 interface ClusterTypeInfo {
   cluster_name: string;
@@ -701,17 +702,7 @@ const MyClusterDetails: React.FC = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <Textarea
-              value={selectedJobLogs?.logs || ""}
-              readOnly
-              minRows={20}
-              maxRows={40}
-              sx={{
-                fontFamily: "monospace",
-                fontSize: "0.875rem",
-                backgroundColor: "background.level1",
-              }}
-            />
+            <LogViewer log={selectedJobLogs?.logs} />
           )}
         </ModalDialog>
       </Modal>
