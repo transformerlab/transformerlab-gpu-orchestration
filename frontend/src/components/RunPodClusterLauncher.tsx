@@ -57,6 +57,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     api_key: "",
     allowed_gpu_types: [] as string[],
     is_configured: false,
+    max_instances: 0,
   });
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
@@ -75,10 +76,34 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       });
       if (response.ok) {
         const data = await response.json();
-        setRunpodConfig(data);
-        // Set the first allowed GPU type as default
-        if (data.allowed_gpu_types && data.allowed_gpu_types.length > 0) {
-          setSelectedGpuType(data.allowed_gpu_types[0]);
+
+        // Handle the new multi-config structure
+        if (
+          data.default_config &&
+          data.configs &&
+          data.configs[data.default_config]
+        ) {
+          const defaultConfig = data.configs[data.default_config];
+          setRunpodConfig({
+            api_key: defaultConfig.api_key || "",
+            allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
+            is_configured: data.is_configured || false,
+            max_instances: defaultConfig.max_instances || 0,
+          });
+          // Set the first allowed GPU type as default
+          if (
+            defaultConfig.allowed_gpu_types &&
+            defaultConfig.allowed_gpu_types.length > 0
+          ) {
+            setSelectedGpuType(defaultConfig.allowed_gpu_types[0]);
+          }
+        } else {
+          // Fallback to legacy structure
+          setRunpodConfig(data);
+          // Set the first allowed GPU type as default
+          if (data.allowed_gpu_types && data.allowed_gpu_types.length > 0) {
+            setSelectedGpuType(data.allowed_gpu_types[0]);
+          }
         }
       }
     } catch (err) {
@@ -98,13 +123,14 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         const data = await response.json();
         const gpuTypes = data.gpu_types.map((gpu: string) => {
           const [name, count, price] = gpu.split(":");
-          return {
+          const gpuType = {
             name,
             count: count || "1",
             display_name: `${name} (${count || "1"}x)`,
             price: price || "0",
             full_string: gpu, // Keep the original string for unique identification
           };
+          return gpuType;
         });
         setAvailableGpuTypes(gpuTypes);
       }
@@ -267,21 +293,46 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               }}
               placeholder="Select GPU type"
             >
-              {availableGpuTypes
-                .filter((gpu) =>
-                  runpodConfig.allowed_gpu_types.includes(gpu.name)
-                )
-                .map((gpu) => (
+              {(() => {
+                // Only filter if we have both config and GPU types loaded
+                if (
+                  !runpodConfig.allowed_gpu_types ||
+                  availableGpuTypes.length === 0
+                ) {
+                  return [];
+                }
+
+                const filteredGpus = availableGpuTypes.filter((gpu) => {
+                  // Check if the GPU is in the allowed list
+                  // Both config and API now use "GPU_NAME:COUNT" format with integer counts
+                  const isAllowed = runpodConfig.allowed_gpu_types?.includes(
+                    gpu.full_string
+                  );
+                  return isAllowed;
+                });
+
+                // Only show allowed GPUs, don't fallback to all available GPUs
+                return filteredGpus.map((gpu) => (
                   <Option key={gpu.full_string} value={gpu.full_string}>
                     {gpu.display_name}
                   </Option>
-                ))}
+                ));
+              })()}
             </Select>
             <Typography
               level="body-xs"
               sx={{ mt: 0.5, color: "text.secondary" }}
             >
-              {runpodConfig.allowed_gpu_types.length} GPU types available
+              {availableGpuTypes.filter((gpu) =>
+                runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+              ).length === 0 &&
+                availableGpuTypes.length > 0 && (
+                  <span style={{ color: "orange" }}>
+                    {" "}
+                    No GPU types are allowed in the current configuration.
+                    Please configure allowed GPU types in the Admin section.
+                  </span>
+                )}
             </Typography>
           </FormControl>
 
@@ -293,10 +344,31 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               <Chip size="sm" variant="soft" color="success">
                 Configured
               </Chip>
-              <Chip size="sm" variant="soft" color="primary">
-                {runpodConfig.allowed_gpu_types.length} GPU types allowed
+              <Chip
+                size="sm"
+                variant="soft"
+                color={
+                  availableGpuTypes.filter((gpu) =>
+                    runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                  ).length > 0
+                    ? "primary"
+                    : "warning"
+                }
+              >
+                {availableGpuTypes.filter((gpu) =>
+                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                ).length || 0}{" "}
+                GPU types allowed
               </Chip>
             </Stack>
+            {availableGpuTypes.filter((gpu) =>
+              runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+            ).length === 0 && (
+              <Typography level="body-xs" sx={{ mt: 1, color: "warning.500" }}>
+                No GPU types are configured as allowed. Please configure allowed
+                GPU types in the Admin section.
+              </Typography>
+            )}
           </Card>
         </Stack>
 
@@ -309,13 +381,29 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
           <Button
             startDecorator={<Rocket size={16} />}
             onClick={launchCluster}
-            disabled={!clusterName || !selectedGpuType || loading}
+            disabled={
+              !clusterName ||
+              !selectedGpuType ||
+              loading ||
+              availableGpuTypes.filter((gpu) =>
+                runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+              ).length === 0
+            }
             loading={loading}
             color="success"
           >
             Reserve a RunPod Node
           </Button>
         </Box>
+        {availableGpuTypes.filter((gpu) =>
+          runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+        ).length === 0 && (
+          <Alert color="warning" sx={{ mt: 2 }}>
+            No GPU types are allowed in the current configuration. Please
+            configure allowed GPU types in the Admin section before launching
+            clusters.
+          </Alert>
+        )}
       </ModalDialog>
     </Modal>
   );

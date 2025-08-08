@@ -50,6 +50,9 @@ from skypilot.runpod_utils import (
     load_runpod_config,
     run_sky_check_runpod,
     create_runpod_config_toml,
+    set_runpod_default_config,
+    delete_runpod_config,
+    get_current_runpod_config,
 )
 from skypilot.azure_utils import (
     verify_azure_setup,
@@ -61,6 +64,9 @@ from skypilot.azure_utils import (
     test_azure_connection,
     load_azure_config,
     run_sky_check_azure,
+    set_azure_default_config,
+    delete_azure_config,
+    get_current_azure_config,
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import load_ssh_node_pools, load_ssh_node_info, save_ssh_node_info
@@ -77,6 +83,7 @@ class RunPodConfigRequest(BaseModel):
     api_key: str
     allowed_gpu_types: list[str]
     max_instances: int = 0
+    config_key: str = None  # Optional config key for updating existing configs
 
 
 class RunPodTestRequest(BaseModel):
@@ -93,6 +100,7 @@ class AzureConfigRequest(BaseModel):
     allowed_instance_types: list[str]
     allowed_regions: list[str]
     max_instances: int = 0
+    config_key: str = None  # Optional config key for updating existing configs
 
 
 class AzureTestRequest(BaseModel):
@@ -112,47 +120,55 @@ async def list_node_pools(request: Request, response: Response):
     try:
         node_pools = []
 
-        # Get Azure config
+        # Get Azure configs - show each config as a separate entry
         try:
-            azure_config = load_azure_config()
-            if azure_config.get("is_configured"):
-                node_pools.append(
-                    {
-                        "name": azure_config.get("name", "Azure Pool"),
-                        "platform": "azure",
-                        "numberOfNodes": azure_config.get("max_instances", 0),
-                        "status": "enabled"
-                        if azure_config.get("is_configured")
-                        else "disabled",
-                        "access": ["Admin"],  # Default access
-                        "config": {
-                            "is_configured": azure_config.get("is_configured", False),
-                            "max_instances": azure_config.get("max_instances", 0),
-                        },
-                    }
-                )
+            azure_config_data = load_azure_config()
+            if azure_config_data.get("configs"):
+                for config_key, config in azure_config_data["configs"].items():
+                    node_pools.append(
+                        {
+                            "name": config.get("name", "Azure Pool"),
+                            "platform": "azure",
+                            "numberOfNodes": config.get("max_instances", 0),
+                            "status": "enabled",
+                            "access": ["Admin"],  # Default access
+                            "config": {
+                                "is_configured": azure_config_data.get(
+                                    "is_configured", False
+                                ),
+                                "max_instances": config.get("max_instances", 0),
+                                "config_key": config_key,
+                                "is_default": azure_config_data.get("default_config")
+                                == config_key,
+                            },
+                        }
+                    )
         except Exception as e:
             print(f"Error loading Azure config: {e}")
 
-        # Get RunPod config
+        # Get RunPod configs - show each config as a separate entry
         try:
-            runpod_config = load_runpod_config()
-            if runpod_config.get("is_configured"):
-                node_pools.append(
-                    {
-                        "name": runpod_config.get("name", "RunPod Pool"),
-                        "platform": "runpod",
-                        "numberOfNodes": runpod_config.get("max_instances", 0),
-                        "status": "enabled"
-                        if runpod_config.get("is_configured")
-                        else "disabled",
-                        "access": ["Admin"],  # Default access
-                        "config": {
-                            "is_configured": runpod_config.get("is_configured", False),
-                            "max_instances": runpod_config.get("max_instances", 0),
-                        },
-                    }
-                )
+            runpod_config_data = load_runpod_config()
+            if runpod_config_data.get("configs"):
+                for config_key, config in runpod_config_data["configs"].items():
+                    node_pools.append(
+                        {
+                            "name": config.get("name", "RunPod Pool"),
+                            "platform": "runpod",
+                            "numberOfNodes": config.get("max_instances", 0),
+                            "status": "enabled",
+                            "access": ["Admin"],  # Default access
+                            "config": {
+                                "is_configured": runpod_config_data.get(
+                                    "is_configured", False
+                                ),
+                                "max_instances": config.get("max_instances", 0),
+                                "config_key": config_key,
+                                "is_default": runpod_config_data.get("default_config")
+                                == config_key,
+                            },
+                        }
+                    )
         except Exception as e:
             print(f"Error loading RunPod config: {e}")
 
@@ -841,216 +857,6 @@ async def get_ssh_node_info(request: Request, response: Response):
         )
 
 
-@router.get("/runpod/setup")
-async def setup_runpod(request: Request, response: Response):
-    """Setup RunPod configuration"""
-    try:
-        setup_runpod_config()
-        # Run sky check to validate the setup
-        is_valid, output = run_sky_check_runpod()
-        return {
-            "message": "RunPod configuration setup successfully",
-            "sky_check_valid": is_valid,
-            "sky_check_output": output,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to setup RunPod: {str(e)}")
-
-
-@router.get("/runpod/verify")
-async def verify_runpod(request: Request, response: Response):
-    """Verify RunPod setup"""
-    try:
-        is_valid = verify_runpod_setup()
-        return {"valid": is_valid}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to verify RunPod setup: {str(e)}"
-        )
-
-
-@router.get("/runpod/gpu-types")
-async def get_runpod_gpu_types_route(request: Request, response: Response):
-    """Get available GPU types from RunPod"""
-    try:
-        gpu_types = get_runpod_gpu_types()
-        return {"gpu_types": gpu_types}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get RunPod GPU types: {str(e)}"
-        )
-
-
-@router.get("/runpod/config")
-async def get_runpod_config(request: Request, response: Response):
-    """Get current RunPod configuration"""
-    try:
-        config = get_runpod_config_for_display()
-        return config
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to load RunPod configuration: {str(e)}"
-        )
-
-
-@router.post("/runpod/config")
-async def save_runpod_config_route(
-    request: Request, response: Response, config_request: RunPodConfigRequest
-):
-    """Save RunPod configuration"""
-    try:
-        # Save the configuration using utility function
-        config = save_runpod_config(
-            config_request.name,
-            config_request.api_key,
-            config_request.allowed_gpu_types,
-            config_request.max_instances,
-        )
-
-        # Set environment variable for current session only if a real API key was provided
-        if config_request.api_key and not config_request.api_key.startswith("*"):
-            os.environ["RUNPOD_API_KEY"] = config_request.api_key
-        elif config.get("api_key"):
-            # Use the saved API key from config
-            os.environ["RUNPOD_API_KEY"] = config["api_key"]
-
-        # Create config.toml file and run sky check if API key is provided
-        sky_check_result = None
-        if config.get("api_key"):
-            try:
-                # Create the config.toml file
-                if create_runpod_config_toml(config["api_key"]):
-                    # Run sky check to validate the setup
-                    is_valid, output = run_sky_check_runpod()
-                    sky_check_result = {
-                        "valid": is_valid,
-                        "output": output,
-                        "message": "Sky check runpod completed successfully"
-                        if is_valid
-                        else "Sky check runpod failed",
-                    }
-                else:
-                    sky_check_result = {
-                        "valid": False,
-                        "output": "Failed to create config.toml file",
-                        "message": "Failed to create RunPod config.toml file",
-                    }
-            except Exception as e:
-                sky_check_result = {
-                    "valid": False,
-                    "output": str(e),
-                    "message": f"Error during RunPod setup: {str(e)}",
-                }
-
-        # Return the saved config with sky check results
-        result = get_runpod_config_for_display()
-        if sky_check_result:
-            result["sky_check_result"] = sky_check_result
-
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save RunPod configuration: {str(e)}"
-        )
-
-
-@router.post("/runpod/test")
-async def test_runpod_connection_route(
-    request: Request, response: Response, test_request: RunPodTestRequest
-):
-    """Test RunPod API connection"""
-    try:
-        # Test the connection using utility function
-        is_valid = test_runpod_connection(test_request.api_key)
-        if is_valid:
-            return {"message": "RunPod connection test successful"}
-        else:
-            raise HTTPException(status_code=400, detail="RunPod connection test failed")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to test RunPod connection: {str(e)}"
-        )
-
-
-@router.get("/runpod/sky-check")
-async def run_sky_check_runpod_route(request: Request, response: Response):
-    """Run 'sky check runpod' to validate the RunPod setup"""
-    try:
-        is_valid, output = run_sky_check_runpod()
-        return {
-            "valid": is_valid,
-            "output": output,
-            "message": "Sky check runpod completed successfully"
-            if is_valid
-            else "Sky check runpod failed",
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to run sky check runpod: {str(e)}"
-        )
-
-
-@router.get("/port-forwards")
-async def get_active_port_forwards(request: Request, response: Response):
-    """Get list of active port forwards."""
-    try:
-        active_forwards = port_forward_manager.get_active_forwards()
-        return {"port_forwards": active_forwards}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get active port forwards: {str(e)}"
-        )
-
-
-@router.post("/port-forwards/{cluster_name}/stop")
-async def stop_port_forward(request: Request, response: Response, cluster_name: str):
-    """Stop port forwarding for a specific cluster."""
-    try:
-        success = port_forward_manager.stop_port_forward(cluster_name)
-        if success:
-            return {"message": f"Port forwarding stopped for cluster {cluster_name}"}
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No active port forward found for cluster {cluster_name}",
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to stop port forward: {str(e)}"
-        )
-
-
-@router.get("/runpod/instances")
-async def get_runpod_instances(request: Request, response: Response):
-    """Get current RunPod instance count and limits"""
-    try:
-        # Get current configuration
-        config = load_runpod_config()
-
-        # Count current RunPod clusters
-        skyPilotStatus = get_skypilot_status()
-        runpod_clusters = [
-            cluster
-            for cluster in skyPilotStatus
-            if cluster.get("name", "").lower().find("runpod") != -1
-        ]
-
-        current_count = len(runpod_clusters)
-        max_instances = config.get("max_instances", 0)
-
-        return {
-            "current_count": current_count,
-            "max_instances": max_instances,
-            "can_launch": max_instances == 0 or current_count < max_instances,
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get RunPod instance count: {str(e)}"
-        )
-
-
 # Azure routes
 @router.get("/azure/setup")
 async def setup_azure(request: Request, response: Response):
@@ -1122,12 +928,46 @@ async def get_azure_config_actual(request: Request, response: Response):
         )
 
 
+@router.get("/azure/credentials")
+async def get_azure_credentials(
+    request: Request, response: Response, config_key: str = None
+):
+    """Get Azure configuration with actual credentials (for display)"""
+    try:
+        config_data = load_azure_config()
+
+        if config_key:
+            # Return specific config's actual credentials
+            if config_key in config_data.get("configs", {}):
+                return config_data["configs"][config_key]
+            else:
+                raise HTTPException(
+                    status_code=404, detail=f"Azure config '{config_key}' not found"
+                )
+        else:
+            # Return current default config's actual credentials
+            config = get_current_azure_config()
+            if config:
+                return config
+            else:
+                raise HTTPException(
+                    status_code=404, detail="No Azure configuration found"
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load Azure credentials: {str(e)}"
+        )
+
+
 @router.post("/azure/config")
 async def save_azure_config_route(
     request: Request, response: Response, config_request: AzureConfigRequest
 ):
     """Save Azure configuration"""
     try:
+        print("CONFIG REQUEST", config_request)
         # Save the configuration using utility function
         config = save_azure_config(
             config_request.name,
@@ -1138,6 +978,7 @@ async def save_azure_config_route(
             config_request.allowed_instance_types,
             config_request.allowed_regions,
             config_request.max_instances,
+            config_request.config_key,
         )
 
         # Set environment variables for current session only if real credentials were provided
@@ -1165,6 +1006,10 @@ async def save_azure_config_route(
             os.environ["AZURE_CLIENT_SECRET"] = config_request.client_secret
         elif config.get("client_secret"):
             os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
+
+        # Set the new config as default
+        config_key = config_request.name.lower().replace(" ", "_").replace("-", "_")
+        set_azure_default_config(config_key)
 
         # Run sky check to validate the setup if credentials are provided
         sky_check_result = None
@@ -1203,6 +1048,34 @@ async def save_azure_config_route(
         )
 
 
+@router.post("/azure/config/{config_key}/set-default")
+async def set_azure_default_config_route(
+    request: Request, response: Response, config_key: str
+):
+    """Set a specific Azure config as default"""
+    try:
+        result = set_azure_default_config(config_key)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to set Azure default config: {str(e)}"
+        )
+
+
+@router.delete("/azure/config/{config_key}")
+async def delete_azure_config_route(
+    request: Request, response: Response, config_key: str
+):
+    """Delete an Azure configuration"""
+    try:
+        result = delete_azure_config(config_key)
+        return {"message": f"Azure config '{config_key}' deleted successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete Azure config: {str(e)}"
+        )
+
+
 @router.post("/azure/test")
 async def test_azure_connection_route(
     request: Request, response: Response, test_request: AzureTestRequest
@@ -1234,7 +1107,7 @@ async def get_azure_instances(request: Request, response: Response):
     """Get current Azure instance count and limits"""
     try:
         # Get current configuration
-        config = load_azure_config()
+        config = get_current_azure_config()
 
         # Count current Azure clusters
         skyPilotStatus = get_skypilot_status()
@@ -1245,7 +1118,7 @@ async def get_azure_instances(request: Request, response: Response):
         ]
 
         current_count = len(azure_clusters)
-        max_instances = config.get("max_instances", 0)
+        max_instances = config.get("max_instances", 0) if config else 0
 
         return {
             "current_count": current_count,
@@ -1273,4 +1146,248 @@ async def run_sky_check_azure_route(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to run sky check azure: {str(e)}"
+        )
+
+
+# RunPod routes
+@router.get("/runpod/setup")
+async def setup_runpod(request: Request, response: Response):
+    """Setup RunPod configuration"""
+    try:
+        setup_runpod_config()
+        # Run sky check to validate the setup
+        is_valid, output = run_sky_check_runpod()
+        return {
+            "message": "RunPod configuration setup successfully",
+            "sky_check_valid": is_valid,
+            "sky_check_output": output,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to setup RunPod: {str(e)}")
+
+
+@router.get("/runpod/verify")
+async def verify_runpod(request: Request, response: Response):
+    """Verify RunPod setup"""
+    try:
+        is_valid = verify_runpod_setup()
+        return {"valid": is_valid}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to verify RunPod setup: {str(e)}"
+        )
+
+
+@router.get("/runpod/gpu-types")
+async def get_runpod_gpu_types_route(request: Request, response: Response):
+    """Get available GPU types from RunPod"""
+    try:
+        gpu_types = get_runpod_gpu_types()
+        return {"gpu_types": gpu_types}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get RunPod GPU types: {str(e)}"
+        )
+
+
+@router.get("/runpod/config")
+async def get_runpod_config(request: Request, response: Response):
+    """Get current RunPod configuration"""
+    try:
+        config = get_runpod_config_for_display()
+        return config
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load RunPod configuration: {str(e)}"
+        )
+
+
+@router.post("/runpod/config")
+async def save_runpod_config_route(
+    request: Request, response: Response, config_request: RunPodConfigRequest
+):
+    """Save RunPod configuration"""
+    try:
+        # Save the configuration using utility function
+        config = save_runpod_config(
+            config_request.name,
+            config_request.api_key,
+            config_request.allowed_gpu_types,
+            config_request.max_instances,
+            config_request.config_key,
+        )
+
+        # Set environment variable for current session only if a real API key was provided
+        if config_request.api_key and not config_request.api_key.startswith("*"):
+            os.environ["RUNPOD_API_KEY"] = config_request.api_key
+        elif config.get("api_key"):
+            # Use the saved API key from config
+            os.environ["RUNPOD_API_KEY"] = config["api_key"]
+
+        # Set the new config as default
+        config_key = config_request.name.lower().replace(" ", "_").replace("-", "_")
+        set_runpod_default_config(config_key)
+
+        # Create config.toml file and run sky check if API key is provided
+        sky_check_result = None
+        if config.get("api_key"):
+            try:
+                # Create the config.toml file
+                if create_runpod_config_toml(config["api_key"]):
+                    # Run sky check to validate the setup
+                    is_valid, output = run_sky_check_runpod()
+                    sky_check_result = {
+                        "valid": is_valid,
+                        "output": output,
+                        "message": "Sky check runpod completed successfully"
+                        if is_valid
+                        else "Sky check runpod failed",
+                    }
+                else:
+                    sky_check_result = {
+                        "valid": False,
+                        "output": "Failed to create config.toml file",
+                        "message": "Failed to create RunPod config.toml file",
+                    }
+            except Exception as e:
+                sky_check_result = {
+                    "valid": False,
+                    "output": str(e),
+                    "message": f"Error during RunPod setup: {str(e)}",
+                }
+
+        # Return the saved config with sky check results
+        result = get_runpod_config_for_display()
+        if sky_check_result:
+            result["sky_check_result"] = sky_check_result
+
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save RunPod configuration: {str(e)}"
+        )
+
+
+@router.post("/runpod/config/{config_key}/set-default")
+async def set_runpod_default_config_route(
+    request: Request, response: Response, config_key: str
+):
+    """Set a specific RunPod config as default"""
+    try:
+        result = set_runpod_default_config(config_key)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to set RunPod default config: {str(e)}"
+        )
+
+
+@router.delete("/runpod/config/{config_key}")
+async def delete_runpod_config_route(
+    request: Request, response: Response, config_key: str
+):
+    """Delete a RunPod configuration"""
+    try:
+        result = delete_runpod_config(config_key)
+        return {"message": f"RunPod config '{config_key}' deleted successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete RunPod config: {str(e)}"
+        )
+
+
+@router.post("/runpod/test")
+async def test_runpod_connection_route(
+    request: Request, response: Response, test_request: RunPodTestRequest
+):
+    """Test RunPod API connection"""
+    try:
+        # Test the connection using utility function
+        is_valid = test_runpod_connection(test_request.api_key)
+        if is_valid:
+            return {"message": "RunPod connection test successful"}
+        else:
+            raise HTTPException(status_code=400, detail="RunPod connection test failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to test RunPod connection: {str(e)}"
+        )
+
+
+@router.get("/runpod/sky-check")
+async def run_sky_check_runpod_route(request: Request, response: Response):
+    """Run 'sky check runpod' to validate the RunPod setup"""
+    try:
+        is_valid, output = run_sky_check_runpod()
+        return {
+            "valid": is_valid,
+            "output": output,
+            "message": "Sky check runpod completed successfully"
+            if is_valid
+            else "Sky check runpod failed",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to run sky check runpod: {str(e)}"
+        )
+
+
+@router.get("/runpod/instances")
+async def get_runpod_instances(request: Request, response: Response):
+    """Get current RunPod instance count and limits"""
+    try:
+        # Get current configuration
+        config = get_current_runpod_config()
+
+        # Count current RunPod clusters
+        skyPilotStatus = get_skypilot_status()
+        runpod_clusters = [
+            cluster
+            for cluster in skyPilotStatus
+            if cluster.get("name", "").lower().find("runpod") != -1
+        ]
+
+        current_count = len(runpod_clusters)
+        max_instances = config.get("max_instances", 0) if config else 0
+
+        return {
+            "current_count": current_count,
+            "max_instances": max_instances,
+            "can_launch": max_instances == 0 or current_count < max_instances,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get RunPod instance count: {str(e)}"
+        )
+
+
+@router.get("/port-forwards")
+async def get_active_port_forwards(request: Request, response: Response):
+    """Get list of active port forwards."""
+    try:
+        active_forwards = port_forward_manager.get_active_forwards()
+        return {"port_forwards": active_forwards}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get active port forwards: {str(e)}"
+        )
+
+
+@router.post("/port-forwards/{cluster_name}/stop")
+async def stop_port_forward(request: Request, response: Response, cluster_name: str):
+    """Stop port forwarding for a specific cluster."""
+    try:
+        success = port_forward_manager.stop_port_forward(cluster_name)
+        if success:
+            return {"message": f"Port forwarding stopped for cluster {cluster_name}"}
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No active port forward found for cluster {cluster_name}",
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to stop port forward: {str(e)}"
         )

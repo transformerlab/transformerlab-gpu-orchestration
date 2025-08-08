@@ -9,8 +9,6 @@ import asyncio
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
-    print("COMING IN HERE TO FETCH AND PARSE GPU RESOURCES")
-
     async def run_cmd(cmd, capture_output=True):
         try:
             process = await asyncio.create_subprocess_exec(
