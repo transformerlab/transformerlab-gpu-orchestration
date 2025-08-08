@@ -177,7 +177,7 @@ const Held: React.FC<HeldProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Failed to down cluster:", errorData.detail);
+        console.error("Failed to terminate cluster:", errorData.detail);
       }
     } catch (err) {
       console.error("Error downing cluster:", err);

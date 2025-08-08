@@ -911,8 +911,8 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
               </Box>
             ) : pastJobClusters.length === 0 ? (
               <Typography color="neutral" sx={{ mb: 2 }}>
-                No past jobs found. Jobs from torn down clusters will appear
-                here.
+                No past jobs found. Jobs from torn terminate clusters will
+                appear here.
               </Typography>
             ) : (
               pastJobClusters.map((pastCluster) => (

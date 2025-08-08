@@ -350,7 +350,9 @@ def down_cluster_with_skypilot(cluster_name: str):
         request_id = sky.down(cluster_name=cluster_name)
         return request_id
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to down cluster: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to terminate cluster: {str(e)}"
+        )
 
 
 def submit_job_to_existing_cluster(

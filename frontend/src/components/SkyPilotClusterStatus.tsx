@@ -447,10 +447,10 @@ const SkyPilotClusterStatus: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Failed to down cluster:", errorData.detail);
+        console.error("Failed to terminate cluster:", errorData.detail);
         addNotification({
           type: "danger",
-          message: errorData.detail || "Failed to down cluster",
+          message: errorData.detail || "Failed to terminate cluster",
         });
       } else {
         console.error("Error downing cluster:", err);

@@ -575,10 +575,12 @@ async def down_skypilot_cluster(
         return DownClusterResponse(
             request_id=request_id,
             cluster_name=cluster_name,
-            message=f"Cluster '{cluster_name}' down initiated successfully",
+            message=f"Cluster '{cluster_name}' termination initiated successfully",
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to down cluster: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to terminate cluster: {str(e)}"
+        )
 
 
 @router.get("/cluster-type/{cluster_name}")

@@ -204,7 +204,7 @@ const MyClusterDetails: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Failed to down cluster:", errorData.detail);
+        console.error("Failed to terminate cluster:", errorData.detail);
       }
     } catch (err) {
       console.error("Error downing cluster:", err);
@@ -408,7 +408,7 @@ const MyClusterDetails: React.FC = () => {
             loading={operationLoading.down}
             onClick={handleDownCluster}
           >
-            Down Cluster
+            Terminate Cluster
           </Button>
         )
       }
@@ -419,13 +419,6 @@ const MyClusterDetails: React.FC = () => {
           {/* Basic Info Card */}
           <Grid xs={12} md={6}>
             <Card>
-              <Typography
-                level="title-sm"
-                sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
-              >
-                <Info size={16} />
-                Basic Information
-              </Typography>
               <Stack spacing={1}>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography level="body-sm" color="neutral">
@@ -493,13 +486,6 @@ const MyClusterDetails: React.FC = () => {
           {/* Timing Info Card */}
           <Grid xs={12} md={6}>
             <Card>
-              <Typography
-                level="title-sm"
-                sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
-              >
-                <Clock size={16} />
-                Timing Information
-              </Typography>
               <Stack spacing={1}>
                 {clusterData.launched_at && (
                   <Box
@@ -591,7 +577,6 @@ const MyClusterDetails: React.FC = () => {
             level="title-sm"
             sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
           >
-            <Play size={16} />
             Jobs ({jobs.length})
           </Typography>
 
