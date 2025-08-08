@@ -258,14 +258,29 @@ const Pools: React.FC = () => {
             Loading node pools...
           </Alert>
         ) : nodePools.length > 0 ? (
-          <Table className="node-pools-table">
+          <Table
+            className="node-pools-table"
+            sx={{
+              "& th:nth-child(4), & td:nth-child(4)": {
+                /* Status column */ width: "100px",
+                minWidth: "100px",
+              },
+              "& th:nth-child(5), & td:nth-child(5)": {
+                /* Access column */ width: "150px",
+                minWidth: "150px",
+              },
+              "& th:nth-child(6), & td:nth-child(6)": {
+                /* Actions column */ width: "200px",
+                minWidth: "200px",
+              },
+            }}
+          >
             <thead>
               <tr>
                 <th>Pool Name</th>
                 <th>Platform</th>
                 <th>Nodes</th>
                 <th>Status</th>
-                <th>Configuration</th>
                 <th>Access</th>
                 <th>Actions</th>
               </tr>
@@ -322,23 +337,6 @@ const Pools: React.FC = () => {
                     </Chip>
                   </td>
                   <td>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Chip
-                        size="sm"
-                        color={
-                          pool.config?.is_configured || false
-                            ? "success"
-                            : "warning"
-                        }
-                        variant="soft"
-                      >
-                        {pool.config?.is_configured || false
-                          ? "Configured"
-                          : "Not Configured"}
-                      </Chip>
-                    </Box>
-                  </td>
-                  <td>
                     <Box
                       sx={{
                         display: "flex",
@@ -367,7 +365,15 @@ const Pools: React.FC = () => {
                     </Box>
                   </td>
                   <td>
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 1,
+                        justifyContent: "flex-start",
+                        alignItems: "center",
+                        minWidth: "fit-content",
+                      }}
+                    >
                       <Button
                         size="sm"
                         variant="outlined"
@@ -376,22 +382,22 @@ const Pools: React.FC = () => {
                         Configure
                       </Button>
                       {(pool.platform === "azure" ||
-                        pool.platform === "runpod") && (
-                        <Button
-                          size="sm"
-                          variant="outlined"
-                          startDecorator={<Star size={14} />}
-                          onClick={() =>
-                            handleSetDefault(
-                              pool.platform,
-                              pool.config?.config_key || ""
-                            )
-                          }
-                          disabled={pool.config?.is_default}
-                        >
-                          {pool.config?.is_default ? "Default" : "Set Default"}
-                        </Button>
-                      )}
+                        pool.platform === "runpod") &&
+                        !pool.config?.is_default && (
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            startDecorator={<Star size={14} />}
+                            onClick={() =>
+                              handleSetDefault(
+                                pool.platform,
+                                pool.config?.config_key || ""
+                              )
+                            }
+                          >
+                            Set Default
+                          </Button>
+                        )}
                       {pool.platform === "direct" && (
                         <IconButton
                           size="sm"
