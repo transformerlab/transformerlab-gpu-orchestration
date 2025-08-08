@@ -385,37 +385,27 @@ const MyClusterDetails: React.FC = () => {
   }
 
   return (
-    <PageWithTitle title={clusterName} subtitle="Cluster information and jobs">
-      <Stack spacing={3}>
-        {/* Header with back button and actions */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+    <PageWithTitle
+      title={clusterName}
+      subtitle="Cluster information and jobs"
+      sticky={true}
+      backButton={true}
+      onBack={() => navigate("/dashboard/my-clusters")}
+      button={
+        clusterData.status.toLowerCase().includes("up") && (
           <Button
-            variant="plain"
-            startDecorator={<ArrowLeft />}
-            onClick={() => navigate("/dashboard/my-clusters")}
+            variant="outlined"
+            color="danger"
+            startDecorator={<Trash2 />}
+            loading={operationLoading.down}
+            onClick={handleDownCluster}
           >
-            Back to Clusters
+            Down Cluster
           </Button>
-
-          {clusterData.status.toLowerCase().includes("up") && (
-            <Button
-              variant="outlined"
-              color="danger"
-              startDecorator={<Trash2 />}
-              loading={operationLoading.down}
-              onClick={handleDownCluster}
-            >
-              Down Cluster
-            </Button>
-          )}
-        </Box>
-
+        )
+      }
+    >
+      <Stack spacing={3}>
         {/* Cluster Information Cards */}
         <Grid container spacing={2}>
           {/* Basic Info Card */}
