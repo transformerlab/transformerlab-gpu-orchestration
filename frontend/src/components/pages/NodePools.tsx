@@ -339,7 +339,7 @@ const ClusterCard: React.FC<{
                     flexWrap: "wrap",
                     gap: "1px",
                     p: 2,
-                    backgroundColor: "#e5e5e371",
+                    backgroundColor: "background.level1",
                     borderRadius: "md",
                     maxHeight: 1000,
                     overflow: "auto",
@@ -540,13 +540,6 @@ const CloudClusterCard: React.FC<{
                     mb: 3,
                   }}
                 >
-                  <Typography level="title-sm" sx={{ mb: 1 }}>
-                    {nodeType === "on-demand"
-                      ? "On-Demand"
-                      : (nodeType || "").charAt(0).toUpperCase() +
-                        (nodeType || "").slice(1)}{" "}
-                    Nodes ({nodesOfType.length})
-                  </Typography>
                   <Box
                     sx={{
                       display: "flex",
