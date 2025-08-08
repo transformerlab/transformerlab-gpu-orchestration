@@ -17,12 +17,13 @@ import {
   Alert,
 } from "@mui/joy";
 import { useNavigate } from "react-router-dom";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon, Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import useSWR from "swr";
 import NodeSquare from "../widgets/NodeSquare";
 import RunPodClusterLauncher from "../RunPodClusterLauncher";
 import AzureClusterLauncher from "../AzureClusterLauncher";
+import InstanceLauncher from "../InstanceLauncher";
 import PageWithTitle from "./templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
@@ -1241,6 +1242,7 @@ const Nodes: React.FC = () => {
 
   const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
   const [showAzureLauncher, setShowAzureLauncher] = useState(false);
+  const [showInstanceLauncher, setShowInstanceLauncher] = useState(false);
 
   const currentUserName =
     user?.first_name || user?.email?.split("@")[0] || "ali";
@@ -1254,6 +1256,15 @@ const Nodes: React.FC = () => {
     <PageWithTitle
       title={`${user?.organization_name}'s Node Pools`}
       subtitle="View all the nodes, across all clouds, available in your organization. From here you can see each node's status and what is available to you."
+      button={
+        <Button
+          startDecorator={<Rocket size={16} />}
+          onClick={() => setShowInstanceLauncher(true)}
+          color="primary"
+        >
+          Launch an Instance
+        </Button>
+      }
     >
       {/* Existing Node Pools/Clusters UI */}
       {showFakeData ? (
@@ -1380,6 +1391,12 @@ const Nodes: React.FC = () => {
         open={showAzureLauncher}
         onClose={() => setShowAzureLauncher(false)}
         onClusterLaunched={handleClusterLaunched}
+      />
+
+      {/* Instance Launcher Modal */}
+      <InstanceLauncher
+        open={showInstanceLauncher}
+        onClose={() => setShowInstanceLauncher(false)}
       />
     </PageWithTitle>
   );
