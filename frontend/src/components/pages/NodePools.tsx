@@ -296,11 +296,6 @@ const ClusterCard: React.FC<{
                 {Math.round((activeCount / cluster.nodes.length) * 100)}% Total
                 Capacity In Use
               </Chip>
-              {allowedGpuTypes && allowedGpuTypes.length > 0 && (
-                <Chip size="sm" color="neutral" variant="soft">
-                  {allowedGpuTypes.length} Allowed Instances
-                </Chip>
-              )}
             </Stack>
           </Box>
           <div>
