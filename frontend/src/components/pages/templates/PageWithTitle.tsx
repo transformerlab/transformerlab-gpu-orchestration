@@ -43,6 +43,7 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
           alignItems: "center",
           justifyContent: "space-between",
           mb: 2,
+          gap: 2,
           ...(sticky && {
             position: "sticky",
             top: 0,
