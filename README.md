@@ -83,17 +83,3 @@ alembic history --verbose
    ```
 
 Then run `docker-run.sh build-and-run`
-
-### Frontend Structure
-
-```
-src/
-├── components/
-│   ├── LoginPage.tsx      # Login page with WorkOS
-│   ├── AuthCallback.tsx   # OAuth callback handler
-│   ├── Dashboard.tsx      # Main dashboard
-│   └── ProtectedRoute.tsx # Route protection
-├── context/
-│   └── AuthContext.tsx    # Authentication state management
-└── App.tsx               # Main app with routing
-```
