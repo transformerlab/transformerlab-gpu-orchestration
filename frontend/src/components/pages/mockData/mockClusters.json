@@ -1,6 +1,6 @@
 [
   {
-    "id": "azure-ml-cluster",
+    "id": "ml-cluster",
     "name": "Azure ML Cluster",
     "nodes": [
       {
