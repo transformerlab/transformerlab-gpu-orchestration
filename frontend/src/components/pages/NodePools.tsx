@@ -85,155 +85,81 @@ const Nodes: React.FC = () => {
   const nodeGpuInfo = nodePoolsData?.ssh_node_info || {};
   const nodePools = nodePoolsData?.node_pools || [];
 
-  // Extract cluster names from direct provider pools
-  const clusterNames = nodePools
-    .filter((pool: any) => pool.provider === "direct")
-    .map((pool: any) => pool.name);
-
-  // State for all cluster details
-  const [clusterDetails, setClusterDetails] = useState<{
-    [name: string]: Cluster | null;
-  }>({});
-  const [loadingClusters, setLoadingClusters] = useState(false);
-
+  // Extract configurations from node_pools response
   useEffect(() => {
-    if (!Array.isArray(clusterNames) || clusterNames.length === 0) return;
-    setLoadingClusters(true);
-
-    // Extract cluster details from node_pools for direct providers
-    const details: { [name: string]: Cluster | null } = {};
-    nodePools
-      .filter((pool: any) => pool.provider === "direct")
-      .forEach((pool: any) => {
-        const clusterName = pool.name;
-        const config = pool.config;
-        if (config && config.hosts) {
-          // Convert the pool data to Cluster format
-          details[clusterName] = {
-            id: clusterName,
-            name: clusterName,
-            nodes: config.hosts.map((host: any) => ({
-              id: host.ip || host.hostname || "unknown",
-              ip: host.ip || host.hostname || "unknown",
-              user: host.user || "unknown",
-              status: "available",
-              gpu_info: nodeGpuInfo[host.ip] || null,
-            })),
-          };
-        } else {
-          details[clusterName] = null;
-        }
+    // Extract RunPod configuration from node_pools
+    const runpodPool = nodePools.find(
+      (pool: any) => pool.provider === "runpod"
+    );
+    if (runpodPool && runpodPool.config) {
+      setRunpodConfig({
+        api_key: "", // Not exposed in node_pools for security
+        allowed_gpu_types: runpodPool.config.allowed_gpu_types || [],
+        is_configured: runpodPool.config.is_configured || false,
+        max_instances: runpodPool.max_instances || 0,
       });
+    } else {
+      setRunpodConfig({
+        api_key: "",
+        allowed_gpu_types: [],
+        is_configured: false,
+        max_instances: 0,
+      });
+    }
 
-    setClusterDetails(details);
-    setLoadingClusters(false);
-  }, [JSON.stringify(clusterNames), JSON.stringify(nodePools)]);
+    // Extract Azure configuration from node_pools
+    const azurePool = nodePools.find((pool: any) => pool.provider === "azure");
+    if (azurePool && azurePool.config) {
+      setAzureConfig({
+        subscription_id: "", // Not exposed in node_pools for security
+        tenant_id: "",
+        client_id: "",
+        client_secret: "",
+        allowed_instance_types: azurePool.config.allowed_instance_types || [],
+        allowed_regions: azurePool.config.allowed_regions || [],
+        is_configured: azurePool.config.is_configured || false,
+        max_instances: azurePool.max_instances || 0,
+      });
+    } else {
+      setAzureConfig({
+        subscription_id: "",
+        tenant_id: "",
+        client_id: "",
+        client_secret: "",
+        allowed_instance_types: [],
+        allowed_regions: [],
+        is_configured: false,
+        max_instances: 0,
+      });
+    }
+  }, [nodePools]);
 
-  // nodeGpuInfo is now fetched from the comprehensive node-pools endpoint
+  // Extract cluster details from node_pools for direct providers
+  const clusterDetails: { [name: string]: Cluster | null } = {};
+  nodePools
+    .filter((pool: any) => pool.provider === "direct")
+    .forEach((pool: any) => {
+      const clusterName = pool.name;
+      const config = pool.config;
+      if (config && config.hosts) {
+        // Convert the pool data to Cluster format
+        clusterDetails[clusterName] = {
+          id: clusterName,
+          name: clusterName,
+          nodes: config.hosts.map((host: any) => ({
+            id: host.ip || host.hostname || "unknown",
+            ip: host.ip || host.hostname || "unknown",
+            user: host.user || "unknown",
+            status: "available",
+            gpu_info: nodeGpuInfo[host.ip] || null,
+          })),
+        };
+      } else {
+        clusterDetails[clusterName] = null;
+      }
+    });
 
-  useEffect(() => {
-    // Fetch RunPod configuration
-    apiFetch(buildApiUrl("skypilot/runpod/config"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          // Handle the new multi-config structure
-          if (
-            data.default_config &&
-            data.configs &&
-            data.configs[data.default_config]
-          ) {
-            const defaultConfig = data.configs[data.default_config];
-            setRunpodConfig({
-              api_key: defaultConfig.api_key || "",
-              allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
-              is_configured: data.is_configured || false,
-              max_instances: defaultConfig.max_instances || 0,
-            });
-          } else {
-            // Fallback to legacy structure
-            setRunpodConfig(data);
-          }
-        } else {
-          setRunpodConfig({
-            api_key: "",
-            allowed_gpu_types: [],
-            is_configured: false,
-            max_instances: 0,
-          });
-        }
-      })
-      .catch(() =>
-        setRunpodConfig({
-          api_key: "",
-          allowed_gpu_types: [],
-          is_configured: false,
-          max_instances: 0,
-        })
-      );
-
-    // Fetch Azure configuration
-    apiFetch(buildApiUrl("skypilot/azure/config"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          // Handle the new multi-config structure
-          if (
-            data.default_config &&
-            data.configs &&
-            data.configs[data.default_config]
-          ) {
-            const defaultConfig = data.configs[data.default_config];
-            setAzureConfig({
-              subscription_id: defaultConfig.subscription_id || "",
-              tenant_id: defaultConfig.tenant_id || "",
-              client_id: defaultConfig.client_id || "",
-              client_secret: defaultConfig.client_secret || "",
-              allowed_instance_types:
-                defaultConfig.allowed_instance_types || [],
-              allowed_regions: defaultConfig.allowed_regions || [],
-              is_configured: data.is_configured || false,
-              max_instances: defaultConfig.max_instances || 0,
-            });
-          } else {
-            // Fallback to legacy structure
-            setAzureConfig({
-              subscription_id: data.subscription_id || "",
-              tenant_id: data.tenant_id || "",
-              client_id: data.client_id || "",
-              client_secret: data.client_secret || "",
-              allowed_instance_types: data.allowed_instance_types || [],
-              allowed_regions: data.allowed_regions || [],
-              is_configured: data.is_configured || false,
-              max_instances: data.max_instances || 0,
-            });
-          }
-        } else {
-          setAzureConfig({
-            subscription_id: "",
-            tenant_id: "",
-            client_id: "",
-            client_secret: "",
-            allowed_instance_types: [],
-            allowed_regions: [],
-            is_configured: false,
-            max_instances: 0,
-          });
-        }
-      })
-      .catch(() =>
-        setAzureConfig({
-          subscription_id: "",
-          tenant_id: "",
-          client_id: "",
-          client_secret: "",
-          allowed_instance_types: [],
-          allowed_regions: [],
-          is_configured: false,
-          max_instances: 0,
-        })
-      );
-  }, []);
+  const loadingClusters = false; // No longer needed since we're using node_pools directly
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
 
@@ -289,7 +215,7 @@ const Nodes: React.FC = () => {
       )}
       {/* --- Clouds Section --- */}
       <Box sx={{ mt: 6 }}>
-        {isLoading || loadingClusters ? (
+        {isLoading ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
             <Typography level="body-md" sx={{ color: "text.secondary" }}>
               Loading node pools...
