@@ -10,31 +10,17 @@ import {
   Box,
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
-import { ClipboardCopyIcon, KeyRoundIcon, SettingsIcon } from "lucide-react";
 import UserSettingsModal from "../user-settings/UserSettingsModal";
 
 const UserDropdown: React.FC = () => {
   const { user, logout } = useAuth();
-  const [apiKeyCopied, setApiKeyCopied] = React.useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = React.useState(false);
 
   if (!user) return null;
 
-  const handleCopyApiKey = async (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      await navigator.clipboard.writeText("API123456789");
-      setApiKeyCopied(true);
-      setTimeout(() => setApiKeyCopied(false), 3000);
-    } catch (err) {
-      console.error("Failed to copy API key:", err);
-    }
-  };
-
   return (
     <>
-      <Dropdown open={apiKeyCopied || undefined}>
+  <Dropdown>
         <MenuButton
           variant="plain"
           sx={{
@@ -92,28 +78,6 @@ const UserDropdown: React.FC = () => {
               </Typography>
             </Box>
           </MenuItem> */}
-          <MenuItem onMouseDown={handleCopyApiKey}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-              <Typography
-                level="title-sm"
-                startDecorator={
-                  apiKeyCopied ? (
-                    <ClipboardCopyIcon size="16px" />
-                  ) : (
-                    <KeyRoundIcon size="16px" />
-                  )
-                }
-                color={apiKeyCopied ? "success" : "primary"}
-              >
-                {apiKeyCopied ? "API key copied to clipboard!" : "API Key"}
-              </Typography>
-              {!apiKeyCopied && (
-                <Typography level="body-xs">
-                  Copy your API key to the clipboard
-                </Typography>
-              )}
-            </Box>
-          </MenuItem>
           <MenuItem onClick={() => setSettingsModalOpen(true)}>
             <Typography level="title-sm">Settings</Typography>
           </MenuItem>
