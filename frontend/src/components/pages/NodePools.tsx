@@ -56,198 +56,115 @@ const Nodes: React.FC = () => {
   const fetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
-  // State for RunPod instance count and limits - using useSWR for auto-refresh
-  const { data: runpodInstancesData } = useSWR(
-    runpodConfig.is_configured
-      ? buildApiUrl("skypilot/runpod/instances")
-      : null,
+  // Fetch comprehensive node pools data from the new endpoint
+  const { data: nodePoolsData, isLoading } = useSWR(
+    buildApiUrl("node-pools"),
     fetcher,
     {
       refreshInterval: 2000,
       fallbackData: {
-        current_count: 0,
-        max_instances: 0,
-        can_launch: true,
+        node_pools: [],
+        instances: {
+          current_count: 0,
+          max_instances: 0,
+          can_launch: true,
+        },
+        ssh_node_info: {},
+        sky_pilot_status: [],
       },
     }
   );
 
-  // State for Azure instance count and limits - using useSWR for auto-refresh
-  const { data: azureInstancesData } = useSWR(
-    azureConfig.is_configured ? buildApiUrl("skypilot/azure/instances") : null,
-    fetcher,
-    {
-      refreshInterval: 2000,
-      fallbackData: {
-        current_count: 0,
-        max_instances: 0,
-        can_launch: true,
-      },
-    }
-  );
-
-  // Derive the instances data from useSWR
-  const runpodInstances = runpodInstancesData || {
+  // Extract data from the comprehensive response
+  const instances = nodePoolsData?.instances || {
     current_count: 0,
     max_instances: 0,
     can_launch: true,
   };
+  const skyPilotStatus = nodePoolsData?.sky_pilot_status || [];
+  const nodeGpuInfo = nodePoolsData?.ssh_node_info || {};
+  const nodePools = nodePoolsData?.node_pools || [];
 
-  const azureInstances = azureInstancesData || {
-    current_count: 0,
-    max_instances: 0,
-    can_launch: true,
-  };
-  const { data, isLoading } = useSWR(buildApiUrl("clusters"), fetcher, {
-    refreshInterval: 2000,
-  });
-  const clusterNames = data?.clusters || [];
-
-  // Fetch SkyPilot cluster status to determine which clusters are running
-  const { data: skyPilotStatus } = useSWR(
-    buildApiUrl("skypilot/status"),
-    (url: string) =>
-      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 2000 }
-  );
-
-  // State for all cluster details
-  const [clusterDetails, setClusterDetails] = useState<{
-    [name: string]: Cluster | null;
-  }>({});
-  const [loadingClusters, setLoadingClusters] = useState(false);
-
+  // Extract configurations from node_pools response
   useEffect(() => {
-    if (!Array.isArray(clusterNames) || clusterNames.length === 0) return;
-    setLoadingClusters(true);
-    Promise.all(
-      clusterNames.map((name: string) =>
-        apiFetch(buildApiUrl(`clusters/${name}`), { credentials: "include" })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data) => ({ name, data }))
-          .catch(() => ({ name, data: null }))
-      )
-    ).then((results) => {
-      const details: { [name: string]: Cluster | null } = {};
-      results.forEach(({ name, data }) => {
-        details[name] = data;
+    // Extract RunPod configuration from node_pools
+    const runpodPool = nodePools.find(
+      (pool: any) => pool.provider === "runpod"
+    );
+    if (runpodPool && runpodPool.config) {
+      setRunpodConfig({
+        api_key: "", // Not exposed in node_pools for security
+        allowed_gpu_types: runpodPool.config.allowed_gpu_types || [],
+        is_configured: runpodPool.config.is_configured || false,
+        max_instances: runpodPool.max_instances || 0,
       });
-      setClusterDetails(details);
-      setLoadingClusters(false);
+    } else {
+      setRunpodConfig({
+        api_key: "",
+        allowed_gpu_types: [],
+        is_configured: false,
+        max_instances: 0,
+      });
+    }
+
+    // Extract Azure configuration from node_pools
+    const azurePool = nodePools.find((pool: any) => pool.provider === "azure");
+    if (azurePool && azurePool.config) {
+      setAzureConfig({
+        subscription_id: "", // Not exposed in node_pools for security
+        tenant_id: "",
+        client_id: "",
+        client_secret: "",
+        allowed_instance_types: azurePool.config.allowed_instance_types || [],
+        allowed_regions: azurePool.config.allowed_regions || [],
+        is_configured: azurePool.config.is_configured || false,
+        max_instances: azurePool.max_instances || 0,
+      });
+    } else {
+      setAzureConfig({
+        subscription_id: "",
+        tenant_id: "",
+        client_id: "",
+        client_secret: "",
+        allowed_instance_types: [],
+        allowed_regions: [],
+        is_configured: false,
+        max_instances: 0,
+      });
+    }
+  }, [nodePools]);
+
+  // Extract cluster details from node_pools for direct providers
+  const clusterDetails: { [name: string]: Cluster | null } = {};
+  nodePools
+    .filter((pool: any) => pool.provider === "direct")
+    .forEach((pool: any) => {
+      const clusterName = pool.name;
+      const config = pool.config;
+      if (config && config.hosts) {
+        // Convert the pool data to Cluster format
+        clusterDetails[clusterName] = {
+          id: clusterName,
+          name: clusterName,
+          nodes: config.hosts.map((host: any) => ({
+            id: host.ip || host.hostname || "unknown",
+            ip: host.ip || host.hostname || "unknown",
+            user: host.user || "unknown",
+            status: "available",
+            gpu_info: nodeGpuInfo[host.ip] || null,
+            // Preserve the resources information for ReserveNodeModal
+            resources: host.resources || {},
+            // Add other fields that might be needed
+            identity_file: host.identity_file,
+            password: host.password,
+          })),
+        };
+      } else {
+        clusterDetails[clusterName] = null;
+      }
     });
-  }, [JSON.stringify(clusterNames)]);
 
-  const [nodeGpuInfo, setNodeGpuInfo] = useState<Record<string, any>>({});
-
-  useEffect(() => {
-    // Fetch GPU info for all nodes
-    apiFetch(buildApiUrl("skypilot/ssh-node-info"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : {}))
-      .then((data) => setNodeGpuInfo(data))
-      .catch(() => setNodeGpuInfo({}));
-
-    // Fetch RunPod configuration
-    apiFetch(buildApiUrl("skypilot/runpod/config"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          // Handle the new multi-config structure
-          if (
-            data.default_config &&
-            data.configs &&
-            data.configs[data.default_config]
-          ) {
-            const defaultConfig = data.configs[data.default_config];
-            setRunpodConfig({
-              api_key: defaultConfig.api_key || "",
-              allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
-              is_configured: data.is_configured || false,
-              max_instances: defaultConfig.max_instances || 0,
-            });
-          } else {
-            // Fallback to legacy structure
-            setRunpodConfig(data);
-          }
-        } else {
-          setRunpodConfig({
-            api_key: "",
-            allowed_gpu_types: [],
-            is_configured: false,
-            max_instances: 0,
-          });
-        }
-      })
-      .catch(() =>
-        setRunpodConfig({
-          api_key: "",
-          allowed_gpu_types: [],
-          is_configured: false,
-          max_instances: 0,
-        })
-      );
-
-    // Fetch Azure configuration
-    apiFetch(buildApiUrl("skypilot/azure/config"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          // Handle the new multi-config structure
-          if (
-            data.default_config &&
-            data.configs &&
-            data.configs[data.default_config]
-          ) {
-            const defaultConfig = data.configs[data.default_config];
-            setAzureConfig({
-              subscription_id: defaultConfig.subscription_id || "",
-              tenant_id: defaultConfig.tenant_id || "",
-              client_id: defaultConfig.client_id || "",
-              client_secret: defaultConfig.client_secret || "",
-              allowed_instance_types:
-                defaultConfig.allowed_instance_types || [],
-              allowed_regions: defaultConfig.allowed_regions || [],
-              is_configured: data.is_configured || false,
-              max_instances: defaultConfig.max_instances || 0,
-            });
-          } else {
-            // Fallback to legacy structure
-            setAzureConfig({
-              subscription_id: data.subscription_id || "",
-              tenant_id: data.tenant_id || "",
-              client_id: data.client_id || "",
-              client_secret: data.client_secret || "",
-              allowed_instance_types: data.allowed_instance_types || [],
-              allowed_regions: data.allowed_regions || [],
-              is_configured: data.is_configured || false,
-              max_instances: data.max_instances || 0,
-            });
-          }
-        } else {
-          setAzureConfig({
-            subscription_id: "",
-            tenant_id: "",
-            client_id: "",
-            client_secret: "",
-            allowed_instance_types: [],
-            allowed_regions: [],
-            is_configured: false,
-            max_instances: 0,
-          });
-        }
-      })
-      .catch(() =>
-        setAzureConfig({
-          subscription_id: "",
-          tenant_id: "",
-          client_id: "",
-          client_secret: "",
-          allowed_instance_types: [],
-          allowed_regions: [],
-          is_configured: false,
-          max_instances: 0,
-        })
-      );
-  }, []);
+  const loadingClusters = false; // No longer needed since we're using node_pools directly
   const { user } = useAuth();
   const { showFakeData } = useFakeData();
 
@@ -303,7 +220,7 @@ const Nodes: React.FC = () => {
       )}
       {/* --- Clouds Section --- */}
       <Box sx={{ mt: 6 }}>
-        {isLoading || loadingClusters ? (
+        {isLoading ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
             <Typography level="body-md" sx={{ color: "text.secondary" }}>
               Loading node pools...
@@ -331,16 +248,12 @@ const Nodes: React.FC = () => {
         {/* RunPod Cluster */}
         {runpodConfig.is_configured &&
           (() => {
-            // Check if there are any active RunPod clusters in SkyPilot status
-            const activeRunpodClusters =
-              skyPilotStatus?.clusters?.filter(
-                (c: any) =>
-                  c.status === "ClusterStatus.UP" ||
-                  c.status === "ClusterStatus.INIT"
-              ) || [];
+            // Find RunPod pool from node pools
+            const runpodPool = nodePools.find(
+              (pool: any) => pool.provider === "runpod"
+            );
 
-            // Use actual cluster count from SkyPilot status, fallback to runpodInstances
-            const actualActiveCount = activeRunpodClusters.length;
+            if (!runpodPool) return null;
 
             return (
               <ClusterCard
@@ -348,8 +261,8 @@ const Nodes: React.FC = () => {
                   id: "runpod-cluster",
                   name: "RunPod Cluster",
                   nodes: generateDedicatedNodes(
-                    runpodConfig.max_instances,
-                    runpodInstances.current_count,
+                    runpodPool.max_instances,
+                    runpodPool.current_instances,
                     currentUserEmail
                   ),
                 }}
@@ -359,7 +272,7 @@ const Nodes: React.FC = () => {
                     setShowRunPodLauncher(true);
                   }
                 }}
-                launchDisabled={!runpodInstances.can_launch}
+                launchDisabled={!runpodPool.can_launch}
                 launchButtonText="Request Instance"
                 allowedGpuTypes={runpodConfig.allowed_gpu_types}
                 currentUser={currentUserEmail}
@@ -370,16 +283,12 @@ const Nodes: React.FC = () => {
         {/* Azure Cluster */}
         {azureConfig.is_configured &&
           (() => {
-            // Check if there are any active Azure clusters in SkyPilot status
-            const activeAzureClusters =
-              skyPilotStatus?.clusters?.filter(
-                (c: any) =>
-                  c.status === "ClusterStatus.UP" ||
-                  c.status === "ClusterStatus.INIT"
-              ) || [];
+            // Find Azure pool from node pools
+            const azurePool = nodePools.find(
+              (pool: any) => pool.provider === "azure"
+            );
 
-            // Use actual cluster count from SkyPilot status, fallback to azureInstances
-            const actualActiveCount = activeAzureClusters.length;
+            if (!azurePool) return null;
 
             return (
               <ClusterCard
@@ -387,14 +296,14 @@ const Nodes: React.FC = () => {
                   id: "azure-cluster",
                   name: "Azure Cluster",
                   nodes: generateDedicatedNodes(
-                    azureConfig.max_instances,
-                    azureInstances.current_count,
+                    azurePool.max_instances,
+                    azurePool.current_instances,
                     currentUserEmail
                   ),
                 }}
                 clusterType="regular"
                 onLaunchCluster={() => setShowAzureLauncher(true)}
-                launchDisabled={!azureInstances.can_launch}
+                launchDisabled={!azurePool.can_launch}
                 launchButtonText="Request Instance"
                 allowedGpuTypes={azureConfig.allowed_instance_types}
                 currentUser={currentUserEmail}
