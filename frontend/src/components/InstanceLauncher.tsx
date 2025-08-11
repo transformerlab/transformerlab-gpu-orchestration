@@ -16,6 +16,7 @@ import {
   Alert,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
+import { buildApiUrl, apiFetch } from "../utils/api";
 
 interface InstanceLauncherProps {
   open: boolean;
@@ -26,6 +27,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   open,
   onClose,
 }) => {
+  const [instanceName, setInstanceName] = useState("");
   const [setupCommand, setSetupCommand] = useState("");
   const [vcpus, setVcpus] = useState("");
   const [memory, setMemory] = useState("");
@@ -34,29 +36,80 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
-    // Simulate API call delay
-    setTimeout(() => {
-      setSuccess(true);
+    try {
+      // Use the instance name from the form
+      const clusterName = instanceName || `instance-${Date.now()}`;
+
+      // Create form data for the API call
+      const formData = new FormData();
+      formData.append("cluster_name", clusterName);
+      formData.append("command", "echo 'Instance launched successfully'");
+
+      if (setupCommand) {
+        formData.append("setup", setupCommand);
+      }
+
+      if (vcpus) {
+        formData.append("cpus", vcpus);
+      }
+
+      if (memory) {
+        formData.append("memory", memory);
+      }
+
+      if (gpus) {
+        formData.append("accelerators", gpus);
+      }
+
+      if (region) {
+        formData.append("region", region);
+      }
+
+      if (zone) {
+        formData.append("zone", zone);
+      }
+
+      const response = await apiFetch(buildApiUrl("skypilot/launch"), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuccess(true);
+        setLoading(false);
+
+        // Close modal after showing success message
+        setTimeout(() => {
+          setSuccess(false);
+          onClose();
+          // Reset form
+          setInstanceName("");
+          setSetupCommand("");
+          setVcpus("");
+          setMemory("");
+          setGpus("");
+          setZone("");
+          setRegion("");
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || "Failed to launch instance");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error launching instance:", err);
+      setError("Failed to launch instance. Please try again.");
       setLoading(false);
-
-      // Close modal after showing success message
-      setTimeout(() => {
-        setSuccess(false);
-        onClose();
-        // Reset form
-        setSetupCommand("");
-        setVcpus("");
-        setMemory("");
-        setGpus("");
-        setZone("");
-        setRegion("");
-      }, 2000);
-    }, 1500);
+    }
   };
 
   return (
@@ -75,6 +128,22 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
                   ✅ Instance launched successfully!
                 </Alert>
               )}
+
+              {error && (
+                <Alert color="danger" sx={{ mb: 2 }}>
+                  ❌ {error}
+                </Alert>
+              )}
+
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Instance Name</FormLabel>
+                <Input
+                  value={instanceName}
+                  onChange={(e) => setInstanceName(e.target.value)}
+                  placeholder="e.g., my-instance, training-cluster"
+                  required
+                />
+              </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
                 <FormLabel>Setup Command (optional)</FormLabel>
