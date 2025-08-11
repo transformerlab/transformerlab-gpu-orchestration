@@ -21,7 +21,6 @@
 1. **WorkOS Setup**: Create a WorkOS account at [workos.com](https://workos.com) and configure your SSO connection
 2. **Run Setup Script**: `./setup.sh` (installs all dependencies and runs database migrations)
 3. **Configure Environment**: Copy `.env.example` to `.env` and add your WorkOS credentials
-4. **Configure Environment for Frontend**: Copy `./frontend/.env.example` to `./frontend/.env` following the instructions there
 
 You are setup
 
