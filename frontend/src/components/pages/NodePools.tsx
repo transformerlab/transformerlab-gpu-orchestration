@@ -469,7 +469,7 @@ const CloudClusterCard: React.FC<{
       >
         <Box sx={{ mb: 2 }}>
           <Button
-            onClick={() => navigate(`/dashboard/clusters/${clusterName}`)}
+            onClick={() => navigate(`/dashboard/node-pools/${clusterName}`)}
             sx={{
               width: "100%",
               display: "flex",

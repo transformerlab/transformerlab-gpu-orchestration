@@ -68,16 +68,33 @@ const ClusterDetails: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // Check if this is a cloud cluster based on platform information
-    const isCloudCluster = clusterPlatform === "runpod" || clusterPlatform === "azure";
+    // Check if this is a cloud cluster based on platform information or cluster name
+    const isCloudCluster =
+      clusterPlatform === "runpod" ||
+      clusterPlatform === "azure" ||
+      clusterName?.toLowerCase().includes("runpod") ||
+      clusterName?.toLowerCase().includes("azure") ||
+      clusterName === "runpod-cluster" ||
+      clusterName === "azure-cluster";
 
     if (isCloudCluster) {
       // For cloud clusters, fetch configuration instead of nodes
-      const configEndpoint = clusterPlatform === "runpod"
+      // Determine which cloud platform to use
+      const isRunPod =
+        clusterPlatform === "runpod" ||
+        clusterName?.toLowerCase().includes("runpod") ||
+        clusterName === "runpod-cluster";
+
+      const isAzure =
+        clusterPlatform === "azure" ||
+        clusterName?.toLowerCase().includes("azure") ||
+        clusterName === "azure-cluster";
+
+      const configEndpoint = isRunPod
         ? "skypilot/runpod/config"
         : "skypilot/azure/config";
 
-      const instancesEndpoint = clusterPlatform === "runpod"
+      const instancesEndpoint = isRunPod
         ? "skypilot/runpod/instances"
         : "skypilot/azure/instances";
 
@@ -93,11 +110,25 @@ const ClusterDetails: React.FC = () => {
         })
         .then(([config, instances]) => {
           if (config) {
+            // Handle the new multi-config structure
+            let processedConfig = config;
+            if (
+              config.default_config &&
+              config.configs &&
+              config.configs[config.default_config]
+            ) {
+              const defaultConfig = config.configs[config.default_config];
+              processedConfig = {
+                ...defaultConfig,
+                is_configured: config.is_configured || false,
+              };
+            }
+
             setCloudConfig({
-              ...config,
+              ...processedConfig,
               current_instances: instances?.current_count || 0,
               max_instances:
-                instances?.max_instances || config.max_instances || 0,
+                instances?.max_instances || processedConfig.max_instances || 0,
               can_launch:
                 instances?.can_launch !== undefined
                   ? instances.can_launch
@@ -187,7 +218,9 @@ const ClusterDetails: React.FC = () => {
     clusterName?.toLowerCase().includes("runpod") ||
     clusterName?.toLowerCase().includes("azure") ||
     clusterName === "runpod-cluster" ||
-    clusterName === "azure-cluster";
+    clusterName === "azure-cluster" ||
+    clusterPlatform === "runpod" ||
+    clusterPlatform === "azure";
 
   return (
     <PageWithTitle
@@ -248,7 +281,11 @@ const ClusterDetails: React.FC = () => {
 
             <Box sx={{ mb: 3 }}>
               <Typography level="title-lg" sx={{ mb: 2 }}>
-                Allowed GPU Types ({cloudConfig.allowed_gpu_types?.length || 0})
+                Allowed GPU/Instance Types (
+                {cloudConfig.allowed_gpu_types?.length ||
+                  cloudConfig.allowed_instance_types?.length ||
+                  0}
+                )
               </Typography>
               <Box
                 sx={{
@@ -257,17 +294,23 @@ const ClusterDetails: React.FC = () => {
                   gap: 1,
                 }}
               >
-                {cloudConfig.allowed_gpu_types?.map(
-                  (gpuType: string, index: number) => (
-                    <Chip key={index} size="sm" variant="soft" color="primary">
-                      {gpuType}
-                    </Chip>
-                  )
-                ) || (
-                  <Typography level="body-sm" color="neutral">
-                    No GPU types configured
-                  </Typography>
-                )}
+                {(
+                  cloudConfig.allowed_gpu_types ||
+                  cloudConfig.allowed_instance_types ||
+                  []
+                ).map((type: string, index: number) => (
+                  <Chip key={index} size="sm" variant="soft" color="primary">
+                    {type}
+                  </Chip>
+                ))}
+                {(!cloudConfig.allowed_gpu_types ||
+                  cloudConfig.allowed_gpu_types.length === 0) &&
+                  (!cloudConfig.allowed_instance_types ||
+                    cloudConfig.allowed_instance_types.length === 0) && (
+                    <Typography level="body-sm" color="neutral">
+                      No GPU/instance types configured
+                    </Typography>
+                  )}
               </Box>
             </Box>
 
