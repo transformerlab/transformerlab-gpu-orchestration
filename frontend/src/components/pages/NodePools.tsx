@@ -576,6 +576,7 @@ const CloudClusterCard: React.FC<{
           open={showReserveModal}
           onClose={() => setShowReserveModal(false)}
           clusterName={clusterName}
+          cluster={cluster}
           onClusterLaunched={handleClusterLaunched}
         />
       )}
@@ -600,8 +601,9 @@ const ReserveNodeModal: React.FC<{
   open: boolean;
   onClose: () => void;
   clusterName: string;
+  cluster?: any;
   onClusterLaunched?: (clusterName: string) => void;
-}> = ({ open, onClose, clusterName, onClusterLaunched }) => {
+}> = ({ open, onClose, clusterName, cluster, onClusterLaunched }) => {
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [cpus, setCpus] = useState("");
@@ -612,6 +614,31 @@ const ReserveNodeModal: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Calculate max resources from cluster nodes
+  const maxResources = React.useMemo(() => {
+    console.log("cluster", cluster);
+    if (!cluster || !cluster.nodes || !Array.isArray(cluster.nodes)) {
+      return { maxVcpus: "", maxMemory: "" };
+    }
+
+    let maxVcpus = 0;
+    let maxMemory = 0;
+
+    cluster.nodes.forEach((node: any) => {
+      if (node.resources) {
+        const vcpus = parseInt(node.resources.vcpus || "0");
+        const memory = parseInt(node.resources.memory_gb || "0");
+        if (vcpus > maxVcpus) maxVcpus = vcpus;
+        if (memory > maxMemory) maxMemory = memory;
+      }
+    });
+
+    return {
+      maxVcpus: maxVcpus > 0 ? maxVcpus.toString() : "",
+      maxMemory: maxMemory > 0 ? maxMemory.toString() : "",
+    };
+  }, [cluster]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -701,12 +728,25 @@ const ReserveNodeModal: React.FC<{
                 <Typography level="title-sm" sx={{ mb: 1 }}>
                   Resource Configuration
                 </Typography>
+                {maxResources.maxVcpus || maxResources.maxMemory ? (
+                  <Alert color="primary" sx={{ mb: 2 }}>
+                    <Typography level="body-sm">
+                      <strong>Available Resources:</strong> Max vCPUs:{" "}
+                      {maxResources.maxVcpus || "Not specified"}, Max Memory:{" "}
+                      {maxResources.maxMemory || "Not specified"} GB
+                    </Typography>
+                  </Alert>
+                ) : null}
                 <FormControl sx={{ mb: 1 }}>
                   <FormLabel>CPUs</FormLabel>
                   <Input
                     value={cpus}
                     onChange={(e) => setCpus(e.target.value)}
-                    placeholder="e.g., 4, 8+"
+                    placeholder={
+                      maxResources.maxVcpus
+                        ? `Max: ${maxResources.maxVcpus}`
+                        : "e.g., 4, 8+"
+                    }
                   />
                 </FormControl>
                 <FormControl sx={{ mb: 1 }}>
@@ -714,7 +754,11 @@ const ReserveNodeModal: React.FC<{
                   <Input
                     value={memory}
                     onChange={(e) => setMemory(e.target.value)}
-                    placeholder="e.g., 16, 32+"
+                    placeholder={
+                      maxResources.maxMemory
+                        ? `Max: ${maxResources.maxMemory} GB`
+                        : "e.g., 16, 32+"
+                    }
                   />
                 </FormControl>
                 <FormControl sx={{ mb: 1 }}>

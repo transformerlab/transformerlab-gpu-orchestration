@@ -30,6 +30,10 @@ interface SSHNode {
   user: string;
   identity_file?: string;
   password?: string;
+  resources?: {
+    vcpus?: string;
+    memory_gb?: string;
+  };
 }
 
 interface Cluster {
@@ -67,11 +71,15 @@ const SSHConfigPage: React.FC = () => {
   const [newClusterIdentityFile, setNewClusterIdentityFile] =
     useState<string>("");
   const [newClusterPassword, setNewClusterPassword] = useState("");
+  const [newClusterVcpus, setNewClusterVcpus] = useState("");
+  const [newClusterMemoryGb, setNewClusterMemoryGb] = useState("");
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
   const [newNodeIdentityFile, setNewNodeIdentityFile] = useState<string>("");
   const [newNodePassword, setNewNodePassword] = useState("");
+  const [newNodeVcpus, setNewNodeVcpus] = useState("");
+  const [newNodeMemoryGb, setNewNodeMemoryGb] = useState("");
 
   const [identityFiles, setIdentityFiles] = useState<IdentityFile[]>([]);
 
@@ -155,6 +163,8 @@ const SSHConfigPage: React.FC = () => {
       if (newClusterPassword) formData.append("password", newClusterPassword);
       if (newClusterIdentityFile)
         formData.append("identity_file_path", newClusterIdentityFile);
+      if (newClusterVcpus) formData.append("vcpus", newClusterVcpus);
+      if (newClusterMemoryGb) formData.append("memory_gb", newClusterMemoryGb);
 
       const response = await apiFetch(buildApiUrl("clusters"), {
         method: "POST",
@@ -176,6 +186,8 @@ const SSHConfigPage: React.FC = () => {
         setNewClusterUser("");
         setNewClusterIdentityFile("");
         setNewClusterPassword("");
+        setNewClusterVcpus("");
+        setNewClusterMemoryGb("");
       } else {
         const errorData = await response.json();
         addNotification({
@@ -204,6 +216,8 @@ const SSHConfigPage: React.FC = () => {
       if (newNodePassword) formData.append("password", newNodePassword);
       if (newNodeIdentityFile)
         formData.append("identity_file_path", newNodeIdentityFile);
+      if (newNodeVcpus) formData.append("vcpus", newNodeVcpus);
+      if (newNodeMemoryGb) formData.append("memory_gb", newNodeMemoryGb);
 
       const response = await apiFetch(
         buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
@@ -224,6 +238,8 @@ const SSHConfigPage: React.FC = () => {
         setNewNodeUser("");
         setNewNodeIdentityFile("");
         setNewNodePassword("");
+        setNewNodeVcpus("");
+        setNewNodeMemoryGb("");
         fetchClusterDetails(selectedCluster.cluster_name);
       } else {
         const errorData = await response.json();
@@ -391,6 +407,27 @@ const SSHConfigPage: React.FC = () => {
                 </FormControl>
               </Box>
 
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>vCPUs (Optional)</FormLabel>
+                  <Input
+                    type="number"
+                    value={newClusterVcpus}
+                    onChange={(e) => setNewClusterVcpus(e.target.value)}
+                    placeholder="e.g., 4, 8, 16"
+                  />
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>Memory (GB) (Optional)</FormLabel>
+                  <Input
+                    type="number"
+                    value={newClusterMemoryGb}
+                    onChange={(e) => setNewClusterMemoryGb(e.target.value)}
+                    placeholder="e.g., 8, 16, 32"
+                  />
+                </FormControl>
+              </Box>
+
               <Button
                 startDecorator={<Save size={16} />}
                 onClick={createCluster}
@@ -443,6 +480,7 @@ const SSHConfigPage: React.FC = () => {
                       <th>IP Address</th>
                       <th>User</th>
                       <th>Auth Method</th>
+                      <th>Resources</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -455,6 +493,29 @@ const SSHConfigPage: React.FC = () => {
                           <Chip size="sm" variant="soft">
                             {node.identity_file ? "Key" : "Password"}
                           </Chip>
+                        </td>
+                        <td>
+                          {node.resources ? (
+                            <Box>
+                              {node.resources.vcpus && (
+                                <Typography level="body-xs">
+                                  vCPUs: {node.resources.vcpus}
+                                </Typography>
+                              )}
+                              {node.resources.memory_gb && (
+                                <Typography level="body-xs">
+                                  Memory: {node.resources.memory_gb} GB
+                                </Typography>
+                              )}
+                            </Box>
+                          ) : (
+                            <Typography
+                              level="body-xs"
+                              sx={{ color: "text.secondary" }}
+                            >
+                              Not specified
+                            </Typography>
+                          )}
                         </td>
                         <td>
                           <IconButton
@@ -539,6 +600,26 @@ const SSHConfigPage: React.FC = () => {
                   placeholder="password"
                 />
               </FormControl>
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>vCPUs (optional)</FormLabel>
+                  <Input
+                    type="number"
+                    value={newNodeVcpus}
+                    onChange={(e) => setNewNodeVcpus(e.target.value)}
+                    placeholder="e.g., 4, 8, 16"
+                  />
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <FormLabel>Memory (GB) (optional)</FormLabel>
+                  <Input
+                    type="number"
+                    value={newNodeMemoryGb}
+                    onChange={(e) => setNewNodeMemoryGb(e.target.value)}
+                    placeholder="e.g., 8, 16, 32"
+                  />
+                </FormControl>
+              </Box>
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 <Button
                   variant="plain"

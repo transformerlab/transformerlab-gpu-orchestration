@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
+from werkzeug.utils import secure_filename
 
 import asyncio
 from utils.file_utils import set_cluster_platform
@@ -167,7 +168,7 @@ def launch_cluster_with_skypilot(
                 )
 
         task = sky.Task(
-            name=f"lattice-task-{cluster_name}",
+            name=f"lattice-task-{secure_filename(cluster_name)}",
             run=command,
             setup=setup,
         )

@@ -13,7 +13,11 @@ from db_models import SSHNodePool as SSHNodePoolDB, SSHNodeEntry as SSHNodeDB
 
 
 def create_cluster_in_pools(
-    cluster_name: str, user: str = None, identity_file: str = None, password: str = None
+    cluster_name: str,
+    user: str = None,
+    identity_file: str = None,
+    password: str = None,
+    resources: dict = None,
 ):
     pools = load_ssh_node_pools()
     if cluster_name in pools:
@@ -21,7 +25,7 @@ def create_cluster_in_pools(
             status_code=400, detail=f"Cluster '{cluster_name}' already exists"
         )
     cluster_config = {"hosts": []}
-    if user or identity_file or password:
+    if user or identity_file or password or resources:
         defaults = {}
         if user:
             defaults["user"] = user
@@ -29,6 +33,8 @@ def create_cluster_in_pools(
             defaults["identity_file"] = identity_file
         if password:
             defaults["password"] = password
+        if resources:
+            defaults["resources"] = resources
         cluster_config.update(defaults)
     pools[cluster_name] = cluster_config
     save_ssh_node_pools(pools)
@@ -44,12 +50,14 @@ def create_cluster_in_pools(
                     default_user=user,
                     identity_file_path=identity_file,
                     password=password,
+                    resources=resources,
                 )
             )
         else:
             existing.default_user = user
             existing.identity_file_path = identity_file
             existing.password = password
+            existing.resources = resources
         db.commit()
     except Exception as e:
         print(f"Warning: Failed to persist SSH node pool to DB: {e}")
@@ -59,6 +67,40 @@ def create_cluster_in_pools(
         except Exception:
             pass
     return cluster_config
+
+
+def update_pool_resources(pool: SSHNodePoolDB, db):
+    """Update pool resources to reflect the maximum available resources across all nodes"""
+    if not pool:
+        return
+
+    # Get all nodes in this pool
+    nodes = db.query(SSHNodeDB).filter(SSHNodeDB.pool_id == pool.id).all()
+
+    total_vcpus = 0
+    total_memory = 0
+
+    # Calculate total resources from all nodes
+    for node in nodes:
+        if node.resources:
+            vcpus = int(node.resources.get("vcpus", "0") or "0")
+            memory = int(node.resources.get("memory_gb", "0") or "0")
+            total_vcpus += vcpus
+            total_memory += memory
+
+    # Start with existing pool resources
+    pool_resources = pool.resources or {}
+
+    # Add or update with total values from nodes
+    if total_vcpus > 0:
+        pool_resources["vcpus"] = str(total_vcpus)
+    if total_memory > 0:
+        pool_resources["memory_gb"] = str(total_memory)
+
+    pool.resources = pool_resources if pool_resources else None
+    db.commit()
+
+    print(f"Updated pool {pool.name} resources: {pool.resources}")
 
 
 def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None):
@@ -72,6 +114,9 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
         node_dict["identity_file"] = node.identity_file
     if node.password:
         node_dict["password"] = node.password
+    if node.resources:
+        node_dict["resources"] = node.resources
+        print(f"Adding node {node.ip} with resources: {node.resources}")
     if "hosts" not in pools[cluster_name]:
         pools[cluster_name]["hosts"] = []
     for existing_node in pools[cluster_name]["hosts"]:
@@ -106,9 +151,13 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
                     user=node.user,
                     identity_file_path=node.identity_file,
                     password=node.password,
+                    resources=node.resources,
                 )
             )
             db.commit()
+
+            # Update pool resources to reflect the maximum available resources
+            update_pool_resources(pool, db)
     except Exception as e:
         print(f"Warning: Failed to persist SSH node to DB: {e}")
     finally:
@@ -230,6 +279,9 @@ def remove_node_from_cluster(cluster_name: str, node_ip: str):
             if node_rec is not None:
                 db.delete(node_rec)
                 db.commit()
+
+                # Update pool resources after removing the node
+                update_pool_resources(pool, db)
     except Exception as e:
         print(f"Warning: Failed to delete SSH node from DB: {e}")
     finally:
@@ -267,6 +319,8 @@ def get_cluster_config_from_db(cluster_name: str) -> dict:
                 host["identity_file"] = n.identity_file_path
             if n.password:
                 host["password"] = n.password
+            if n.resources:
+                host["resources"] = n.resources
             hosts.append(host)
         cfg: dict = {"hosts": hosts}
         if pool.default_user:
@@ -275,6 +329,8 @@ def get_cluster_config_from_db(cluster_name: str) -> dict:
             cfg["identity_file"] = pool.identity_file_path
         if pool.password:
             cfg["password"] = pool.password
+        if pool.resources:
+            cfg["resources"] = pool.resources
         return cfg
     finally:
         db.close()

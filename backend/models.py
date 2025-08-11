@@ -31,6 +31,9 @@ class SSHNode(BaseModel):
     user: str
     identity_file: Optional[str] = None
     password: Optional[str] = None
+    resources: Optional[Dict[str, Any]] = (
+        None  # e.g., {"vcpus": "4", "memory_gb": "16"}
+    )
 
 
 class ClusterRequest(BaseModel):

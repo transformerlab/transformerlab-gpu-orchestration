@@ -14,8 +14,9 @@ dependencies = [
     "skypilot[kubernetes,runpod,azure]==0.10.0",
     "sqlalchemy>=2.0.42",
     "uvicorn[standard]==0.35.0",
+    "werkzeug==3.1.3",
     "workos==5.24.0",
-    
+
     # explicity add prerelease packages needed for azure-cli (uv broken currently)
     # see: https://docs.skypilot.co/en/latest/getting-started/installation.html#:~:text=%23%20Azure%20CLI%20has%20an%20issue%20with%20uv%2C%20and%20requires%20%27%2D%2Dprerelease%20allow%27.%0Auv%20pip%20install%20%2D%2Dprerelease%20allow%20azure%2Dcli
     "azure-batch==15.0.0b2",
