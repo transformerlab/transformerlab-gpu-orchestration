@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Boolean, Text, ForeignKey, JSON
 from sqlalchemy.sql import func
 from config import Base
 import secrets
@@ -60,6 +60,8 @@ class SSHNodePool(Base):
     identity_file_path = Column(Text, nullable=True)
     # Note: storing passwords in plaintext is discouraged; prefer key-based auth
     password = Column(Text, nullable=True)
+    # Resource specifications for nodes in this pool (JSON format)
+    resources = Column(JSON, nullable=True)  # e.g., {"vcpus": "4", "memory_gb": "16"}
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -76,4 +78,6 @@ class SSHNodeEntry(Base):
     identity_file_path = Column(Text, nullable=True)
     # Note: storing passwords in plaintext is discouraged; prefer key-based auth
     password = Column(Text, nullable=True)
+    # Resource specifications for this specific node (JSON format)
+    resources = Column(JSON, nullable=True)  # e.g., {"vcpus": "4", "memory_gb": "16"}
     created_at = Column(DateTime, default=func.now())

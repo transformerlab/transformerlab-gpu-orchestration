@@ -46,6 +46,8 @@ async def create_cluster(
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
     identity_file_path: Optional[str] = Form(None),
+    vcpus: Optional[str] = Form(None),
+    memory_gb: Optional[str] = Form(None),
 ):
     identity_file_path_final = None
     if identity_file and identity_file.filename:
@@ -56,11 +58,22 @@ async def create_cluster(
     elif identity_file_path:
         # Use the selected identity file path
         identity_file_path_final = identity_file_path
+
+    # Build resources dict if vcpus or memory_gb are provided
+    resources = None
+    if vcpus or memory_gb:
+        resources = {}
+        if vcpus:
+            resources["vcpus"] = vcpus
+        if memory_gb:
+            resources["memory_gb"] = memory_gb
+
     create_cluster_in_pools(
         cluster_name,
         user,
         identity_file_path_final,
         password,
+        resources,
     )
     return ClusterResponse(cluster_name=cluster_name, nodes=[])
 
@@ -155,6 +168,7 @@ async def get_cluster(cluster_name: str, request: Request, response: Response):
             user=host.get("user"),
             identity_file=host.get("identity_file"),
             password=host.get("password"),
+            resources=host.get("resources"),
         )
         for host in cfg.get("hosts", [])
     ]
@@ -172,6 +186,8 @@ async def add_node(
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
     identity_file_path: Optional[str] = Form(None),
+    vcpus: Optional[str] = Form(None),
+    memory_gb: Optional[str] = Form(None),
 ):
     identity_file_path_final = None
     if identity_file and identity_file.filename:
@@ -182,8 +198,22 @@ async def add_node(
     elif identity_file_path:
         # Use the selected identity file path
         identity_file_path_final = identity_file_path
+
+    # Build resources dict if vcpus or memory_gb are provided
+    resources = None
+    if vcpus or memory_gb:
+        resources = {}
+        if vcpus:
+            resources["vcpus"] = vcpus
+        if memory_gb:
+            resources["memory_gb"] = memory_gb
+
     node = SSHNode(
-        ip=ip, user=user, identity_file=identity_file_path_final, password=password
+        ip=ip,
+        user=user,
+        identity_file=identity_file_path_final,
+        password=password,
+        resources=resources,
     )
     cluster_config = add_node_to_cluster(cluster_name, node, background_tasks)
 
@@ -211,6 +241,7 @@ async def add_node(
             user=host["user"],
             identity_file=host.get("identity_file"),
             password=host.get("password"),
+            resources=host.get("resources"),
         )
         nodes.append(node_obj)
     return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
