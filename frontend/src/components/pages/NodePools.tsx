@@ -56,60 +56,39 @@ const Nodes: React.FC = () => {
   const fetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
-  // State for RunPod instance count and limits - using useSWR for auto-refresh
-  const { data: runpodInstancesData } = useSWR(
-    runpodConfig.is_configured
-      ? buildApiUrl("skypilot/runpod/instances")
-      : null,
+  // Fetch comprehensive node pools data from the new endpoint
+  const { data: nodePoolsData, isLoading } = useSWR(
+    buildApiUrl("node-pools"),
     fetcher,
     {
       refreshInterval: 2000,
       fallbackData: {
-        current_count: 0,
-        max_instances: 0,
-        can_launch: true,
+        node_pools: [],
+        instances: {
+          current_count: 0,
+          max_instances: 0,
+          can_launch: true,
+        },
+        ssh_node_info: {},
+        sky_pilot_status: [],
       },
     }
   );
 
-  // State for Azure instance count and limits - using useSWR for auto-refresh
-  const { data: azureInstancesData } = useSWR(
-    azureConfig.is_configured ? buildApiUrl("skypilot/azure/instances") : null,
-    fetcher,
-    {
-      refreshInterval: 2000,
-      fallbackData: {
-        current_count: 0,
-        max_instances: 0,
-        can_launch: true,
-      },
-    }
-  );
-
-  // Derive the instances data from useSWR
-  const runpodInstances = runpodInstancesData || {
+  // Extract data from the comprehensive response
+  const instances = nodePoolsData?.instances || {
     current_count: 0,
     max_instances: 0,
     can_launch: true,
   };
+  const skyPilotStatus = nodePoolsData?.sky_pilot_status || [];
+  const nodeGpuInfo = nodePoolsData?.ssh_node_info || {};
+  const nodePools = nodePoolsData?.node_pools || [];
 
-  const azureInstances = azureInstancesData || {
-    current_count: 0,
-    max_instances: 0,
-    can_launch: true,
-  };
-  const { data, isLoading } = useSWR(buildApiUrl("clusters"), fetcher, {
-    refreshInterval: 2000,
-  });
-  const clusterNames = data?.clusters || [];
-
-  // Fetch SkyPilot cluster status to determine which clusters are running
-  const { data: skyPilotStatus } = useSWR(
-    buildApiUrl("skypilot/status"),
-    (url: string) =>
-      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 2000 }
-  );
+  // Extract cluster names from direct provider pools
+  const clusterNames = nodePools
+    .filter((pool: any) => pool.provider === "direct")
+    .map((pool: any) => pool.name);
 
   // State for all cluster details
   const [clusterDetails, setClusterDetails] = useState<{
@@ -120,32 +99,39 @@ const Nodes: React.FC = () => {
   useEffect(() => {
     if (!Array.isArray(clusterNames) || clusterNames.length === 0) return;
     setLoadingClusters(true);
-    Promise.all(
-      clusterNames.map((name: string) =>
-        apiFetch(buildApiUrl(`clusters/${name}`), { credentials: "include" })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data) => ({ name, data }))
-          .catch(() => ({ name, data: null }))
-      )
-    ).then((results) => {
-      const details: { [name: string]: Cluster | null } = {};
-      results.forEach(({ name, data }) => {
-        details[name] = data;
-      });
-      setClusterDetails(details);
-      setLoadingClusters(false);
-    });
-  }, [JSON.stringify(clusterNames)]);
 
-  const [nodeGpuInfo, setNodeGpuInfo] = useState<Record<string, any>>({});
+    // Extract cluster details from node_pools for direct providers
+    const details: { [name: string]: Cluster | null } = {};
+    nodePools
+      .filter((pool: any) => pool.provider === "direct")
+      .forEach((pool: any) => {
+        const clusterName = pool.name;
+        const config = pool.config;
+        if (config && config.hosts) {
+          // Convert the pool data to Cluster format
+          details[clusterName] = {
+            id: clusterName,
+            name: clusterName,
+            nodes: config.hosts.map((host: any) => ({
+              id: host.ip || host.hostname || "unknown",
+              ip: host.ip || host.hostname || "unknown",
+              user: host.user || "unknown",
+              status: "available",
+              gpu_info: nodeGpuInfo[host.ip] || null,
+            })),
+          };
+        } else {
+          details[clusterName] = null;
+        }
+      });
+
+    setClusterDetails(details);
+    setLoadingClusters(false);
+  }, [JSON.stringify(clusterNames), JSON.stringify(nodePools)]);
+
+  // nodeGpuInfo is now fetched from the comprehensive node-pools endpoint
 
   useEffect(() => {
-    // Fetch GPU info for all nodes
-    apiFetch(buildApiUrl("skypilot/ssh-node-info"), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : {}))
-      .then((data) => setNodeGpuInfo(data))
-      .catch(() => setNodeGpuInfo({}));
-
     // Fetch RunPod configuration
     apiFetch(buildApiUrl("skypilot/runpod/config"), { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
@@ -331,16 +317,12 @@ const Nodes: React.FC = () => {
         {/* RunPod Cluster */}
         {runpodConfig.is_configured &&
           (() => {
-            // Check if there are any active RunPod clusters in SkyPilot status
-            const activeRunpodClusters =
-              skyPilotStatus?.clusters?.filter(
-                (c: any) =>
-                  c.status === "ClusterStatus.UP" ||
-                  c.status === "ClusterStatus.INIT"
-              ) || [];
+            // Find RunPod pool from node pools
+            const runpodPool = nodePools.find(
+              (pool: any) => pool.provider === "runpod"
+            );
 
-            // Use actual cluster count from SkyPilot status, fallback to runpodInstances
-            const actualActiveCount = activeRunpodClusters.length;
+            if (!runpodPool) return null;
 
             return (
               <ClusterCard
@@ -348,8 +330,8 @@ const Nodes: React.FC = () => {
                   id: "runpod-cluster",
                   name: "RunPod Cluster",
                   nodes: generateDedicatedNodes(
-                    runpodConfig.max_instances,
-                    runpodInstances.current_count,
+                    runpodPool.max_instances,
+                    runpodPool.current_instances,
                     currentUserEmail
                   ),
                 }}
@@ -359,7 +341,7 @@ const Nodes: React.FC = () => {
                     setShowRunPodLauncher(true);
                   }
                 }}
-                launchDisabled={!runpodInstances.can_launch}
+                launchDisabled={!runpodPool.can_launch}
                 launchButtonText="Request Instance"
                 allowedGpuTypes={runpodConfig.allowed_gpu_types}
                 currentUser={currentUserEmail}
@@ -370,16 +352,12 @@ const Nodes: React.FC = () => {
         {/* Azure Cluster */}
         {azureConfig.is_configured &&
           (() => {
-            // Check if there are any active Azure clusters in SkyPilot status
-            const activeAzureClusters =
-              skyPilotStatus?.clusters?.filter(
-                (c: any) =>
-                  c.status === "ClusterStatus.UP" ||
-                  c.status === "ClusterStatus.INIT"
-              ) || [];
+            // Find Azure pool from node pools
+            const azurePool = nodePools.find(
+              (pool: any) => pool.provider === "azure"
+            );
 
-            // Use actual cluster count from SkyPilot status, fallback to azureInstances
-            const actualActiveCount = activeAzureClusters.length;
+            if (!azurePool) return null;
 
             return (
               <ClusterCard
@@ -387,14 +365,14 @@ const Nodes: React.FC = () => {
                   id: "azure-cluster",
                   name: "Azure Cluster",
                   nodes: generateDedicatedNodes(
-                    azureConfig.max_instances,
-                    azureInstances.current_count,
+                    azurePool.max_instances,
+                    azurePool.current_instances,
                     currentUserEmail
                   ),
                 }}
                 clusterType="regular"
                 onLaunchCluster={() => setShowAzureLauncher(true)}
-                launchDisabled={!azureInstances.can_launch}
+                launchDisabled={!azurePool.can_launch}
                 launchButtonText="Request Instance"
                 allowedGpuTypes={azureConfig.allowed_instance_types}
                 currentUser={currentUserEmail}

@@ -23,6 +23,7 @@ from clusters.routes import router as clusters_router
 from skypilot.routes import router as skypilot_router
 from reports.routes import router as reports_router
 from api_keys.routes import router as api_keys_router
+from node_pools.routes import router as node_pools_router
 
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=api_v1_prefix)
@@ -31,6 +32,7 @@ app.include_router(clusters_router, prefix=api_v1_prefix)
 app.include_router(skypilot_router, prefix=api_v1_prefix)
 app.include_router(reports_router, prefix=api_v1_prefix)
 app.include_router(api_keys_router, prefix=api_v1_prefix)
+app.include_router(node_pools_router, prefix=api_v1_prefix)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(
