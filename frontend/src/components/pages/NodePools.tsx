@@ -152,6 +152,11 @@ const Nodes: React.FC = () => {
             user: host.user || "unknown",
             status: "available",
             gpu_info: nodeGpuInfo[host.ip] || null,
+            // Preserve the resources information for ReserveNodeModal
+            resources: host.resources || {},
+            // Add other fields that might be needed
+            identity_file: host.identity_file,
+            password: host.password,
           })),
         };
       } else {
