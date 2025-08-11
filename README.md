@@ -39,6 +39,35 @@ You are setup
 2. Run `./start.sh --dev` in one window
 3. Run `npm start dev` in frontend in another window
 
+## Database Migrations (Alembic)
+
+This project uses Alembic with SQLAlchemy to manage database schema changes. Migrations live in `backend/alembic/versions` and target the metadata from `backend/config.py`.
+
+### Typical workflow
+
+1) Make model changes in `backend/db_models.py`.
+
+2) Create a migration (autogenerate):
+
+```bash
+cd backend
+source .venv/bin/activate
+alembic revision --autogenerate -m "describe your change"
+```
+
+3) Apply migrations (This automatically happens when running start.sh):
+
+```bash
+alembic upgrade head
+```
+
+4) Verify/history (optional):
+
+```bash
+alembic current
+alembic history --verbose
+```
+
 ## 🐳 Docker Deployment
 
 ### Method 1: Using `docker-run.sh` (Recommended)
