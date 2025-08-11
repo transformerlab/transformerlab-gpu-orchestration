@@ -17,6 +17,7 @@ import {
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useNotification } from "./NotificationSystem";
 
 interface InstanceLauncherProps {
   open: boolean;
@@ -35,8 +36,8 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   const [zone, setZone] = useState("");
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const { addNotification } = useNotification();
 
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,22 +85,25 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        setSuccess(true);
         setLoading(false);
 
-        // Close modal after showing success message
-        setTimeout(() => {
-          setSuccess(false);
-          onClose();
-          // Reset form
-          setInstanceName("");
-          setSetupCommand("");
-          setVcpus("");
-          setMemory("");
-          setGpus("");
-          setZone("");
-          setRegion("");
-        }, 2000);
+        // Close modal immediately
+        onClose();
+
+        // Reset form
+        setInstanceName("");
+        setSetupCommand("");
+        setVcpus("");
+        setMemory("");
+        setGpus("");
+        setZone("");
+        setRegion("");
+
+        // Show success notification
+        addNotification({
+          type: "success",
+          message: `Instance "${clusterName}" has been launched successfully!`,
+        });
       } else {
         const errorData = await response.json();
         setError(errorData.detail || "Failed to launch instance");
@@ -123,12 +127,6 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
         <form onSubmit={handleLaunch}>
           <Card variant="outlined">
             <CardContent>
-              {success && (
-                <Alert color="success" sx={{ mb: 2 }}>
-                  ✅ Instance launched successfully!
-                </Alert>
-              )}
-
               {error && (
                 <Alert color="danger" sx={{ mb: 2 }}>
                   ❌ {error}
