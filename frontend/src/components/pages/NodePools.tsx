@@ -233,7 +233,7 @@ const ClusterCard: React.FC<{
   cluster,
   onLaunchCluster,
   launchDisabled = false,
-  launchButtonText = "Request Instances",
+  launchButtonText = "Request Instance",
   allowedGpuTypes,
   currentUser,
 }) => {
@@ -570,7 +570,7 @@ const CloudClusterCard: React.FC<{
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={handleReserveNode}>
-            Request Instances
+            Request Instance
           </Button>
         </Stack>
       </Card>
@@ -1262,7 +1262,7 @@ const Nodes: React.FC = () => {
           onClick={() => setShowInstanceLauncher(true)}
           color="primary"
         >
-          Launch an Instance
+          Request Instance
         </Button>
       }
     >
@@ -1336,7 +1336,7 @@ const Nodes: React.FC = () => {
                   }
                 }}
                 launchDisabled={!runpodInstances.can_launch}
-                launchButtonText="Request Instances"
+                launchButtonText="Request Instance"
                 allowedGpuTypes={runpodConfig.allowed_gpu_types}
                 currentUser={currentUserEmail}
               />
@@ -1370,7 +1370,7 @@ const Nodes: React.FC = () => {
                 }}
                 onLaunchCluster={() => setShowAzureLauncher(true)}
                 launchDisabled={!azureInstances.can_launch}
-                launchButtonText="Request Instances"
+                launchButtonText="Request Instance"
                 allowedGpuTypes={azureConfig.allowed_instance_types}
                 currentUser={currentUserEmail}
               />

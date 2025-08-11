@@ -34,9 +34,10 @@ import SubmitJobModal from "../../SubmitJobModal";
 import { useNavigate } from "react-router-dom";
 import NodeSquare from "../../widgets/NodeSquare";
 import { useFakeData } from "../../../context/FakeDataContext";
+import InstanceStatusChip from "../../widgets/InstanceStatusChip";
 
 // Add a mock status generator for demonstration
-const statuses = ["provisioning", "running", "deallocating", "held"];
+const statuses = ["up", "stopped", "init"];
 function randomStatus(id: string) {
   // Simple deterministic hash based on id
   let hash = 0;
@@ -286,7 +287,7 @@ const Held: React.FC<HeldProps> = ({
               <thead>
                 <tr>
                   <th style={{ width: "150px" }}>&nbsp;</th>
-                  <th>Status</th>
+                  <th style={{ width: "120px" }}>Status</th>
                   <th>Cluster</th>
                   <th>Name/IP</th>
                   <th>Running for</th>
@@ -427,25 +428,7 @@ const Held: React.FC<HeldProps> = ({
                         </Box>
                       </td>
                       <td>
-                        <Chip
-                          size="sm"
-                          color={getStatusColor(statusValue)}
-                          variant="soft"
-                          startDecorator={
-                            statusValue === "provisioning" && (
-                              <CircularProgress
-                                size="sm"
-                                sx={{
-                                  "--CircularProgress-size": "10px",
-                                  "--CircularProgress-trackThickness": "2px",
-                                  "--CircularProgress-progressThickness": "2px",
-                                }}
-                              />
-                            )
-                          }
-                        >
-                          {statusValue}
-                        </Chip>
+                        <InstanceStatusChip status={statusValue} />
                       </td>
                       <td>
                         <Typography level="body-sm">
@@ -500,7 +483,7 @@ const Held: React.FC<HeldProps> = ({
                       <thead>
                         <tr>
                           <th style={{ width: "150px" }}>&nbsp;</th>
-                          <th>Status</th>
+                          <th style={{ width: "120px" }}>Status</th>
                           <th>Cluster</th>
                           <th>Name/IP</th>
                           <th>Running for</th>
@@ -554,13 +537,7 @@ const Held: React.FC<HeldProps> = ({
                                 </Box>
                               </td>
                               <td>
-                                <Chip
-                                  size="sm"
-                                  color={getStatusColor(statusValue)}
-                                  variant="soft"
-                                >
-                                  {statusValue}
-                                </Chip>
+                                <InstanceStatusChip status={statusValue} />
                               </td>
                               <td>
                                 <Typography level="body-sm">
@@ -623,7 +600,7 @@ const Held: React.FC<HeldProps> = ({
                 <thead>
                   <tr>
                     <th style={{ width: "150px" }}>&nbsp;</th>
-                    <th>Status</th>
+                    <th style={{ width: "120px" }}>Status</th>
                     <th>Cluster</th>
                     <th>Name/IP</th>
                     <th>Running for</th>
@@ -677,13 +654,7 @@ const Held: React.FC<HeldProps> = ({
                           </Box>
                         </td>
                         <td>
-                          <Chip
-                            size="sm"
-                            color={getStatusColor(statusValue)}
-                            variant="soft"
-                          >
-                            {statusValue}
-                          </Chip>
+                          <InstanceStatusChip status={statusValue} />
                         </td>
                         <td>
                           <Typography level="body-sm">
@@ -744,7 +715,7 @@ const Held: React.FC<HeldProps> = ({
         <thead>
           <tr>
             <th>Cluster Name</th>
-            <th width="80px">Status</th>
+            <th width="120px">Status</th>
             <th>Resources</th>
             <th>Launched At</th>
             <th style={{ width: "250px", minWidth: "250px" }}>Actions</th>
@@ -772,26 +743,7 @@ const Held: React.FC<HeldProps> = ({
                 </Typography>
               </td>
               <td>
-                <Chip
-                  size="sm"
-                  color={getStatusColor(cluster.status)}
-                  variant="soft"
-                  startDecorator={
-                    (cluster.status.toLowerCase().includes("init") ||
-                      cluster.status.toLowerCase().includes("starting")) && (
-                      <CircularProgress
-                        size="sm"
-                        sx={{
-                          "--CircularProgress-size": "10px",
-                          "--CircularProgress-trackThickness": "2px",
-                          "--CircularProgress-progressThickness": "2px",
-                        }}
-                      />
-                    )
-                  }
-                >
-                  {formatStatus(cluster.status)}
-                </Chip>
+                <InstanceStatusChip status={cluster.status} />
               </td>
               <td>
                 <Typography level="body-sm">
@@ -969,7 +921,7 @@ const Held: React.FC<HeldProps> = ({
             <thead>
               <tr>
                 <th>Cluster Name</th>
-                <th>Status</th>
+                <th style={{ width: "120px" }}>Status</th>
                 <th>Resources</th>
                 <th>Launched At</th>
                 <th>Last Use</th>
@@ -1017,28 +969,7 @@ const Held: React.FC<HeldProps> = ({
                     </Typography>
                   </td>
                   <td>
-                    <Chip
-                      size="sm"
-                      color={getStatusColor(cluster.status)}
-                      variant="soft"
-                      startDecorator={
-                        (cluster.status.toLowerCase().includes("init") ||
-                          cluster.status
-                            .toLowerCase()
-                            .includes("starting")) && (
-                          <CircularProgress
-                            size="sm"
-                            sx={{
-                              "--CircularProgress-size": "10px",
-                              "--CircularProgress-trackThickness": "2px",
-                              "--CircularProgress-progressThickness": "2px",
-                            }}
-                          />
-                        )
-                      }
-                    >
-                      {formatStatus(cluster.status)}
-                    </Chip>
+                    <InstanceStatusChip status={cluster.status} />
                   </td>
                   <td>
                     <Typography level="body-sm">
