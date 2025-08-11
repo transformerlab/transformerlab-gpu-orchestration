@@ -16,6 +16,7 @@ import {
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
+import { useNotification } from "../NotificationSystem";
 
 interface ReserveNodeModalProps {
   open: boolean;
@@ -32,6 +33,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   cluster,
   onClusterLaunched,
 }) => {
+  const { addNotification } = useNotification();
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [cpus, setCpus] = useState("");
@@ -40,8 +42,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [region, setRegion] = useState("");
   const [zone, setZone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   // Calculate max resources from cluster nodes
   const maxResources = React.useMemo(() => {
@@ -70,8 +70,33 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
+
+    // Validate resource limits
+    if (maxResources.maxVcpus && cpus) {
+      const requestedCpus = parseInt(cpus);
+      const maxCpus = parseInt(maxResources.maxVcpus);
+      if (requestedCpus > maxCpus) {
+        addNotification({
+          type: "danger",
+          message: `Requested vCPUs (${requestedCpus}) exceeds maximum available (${maxCpus})`,
+        });
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (maxResources.maxMemory && memory) {
+      const requestedMemory = parseInt(memory);
+      const maxMemory = parseInt(maxResources.maxMemory);
+      if (requestedMemory > maxMemory) {
+        addNotification({
+          type: "danger",
+          message: `Requested memory (${requestedMemory}GB) exceeds maximum available (${maxMemory}GB)`,
+        });
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const formData = new FormData();
@@ -95,17 +120,26 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        setSuccess(data.message || "Node reserved successfully");
+        addNotification({
+          type: "success",
+          message: data.message || "Node reserved successfully",
+        });
         setTimeout(() => {
           if (onClusterLaunched) onClusterLaunched(clusterName);
           onClose();
         }, 1200);
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || "Failed to reserve node");
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to reserve node",
+        });
       }
     } catch (err) {
-      setError("Error reserving node");
+      addNotification({
+        type: "danger",
+        message: "Error reserving node",
+      });
     } finally {
       setLoading(false);
     }
@@ -121,17 +155,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
         <form onSubmit={handleSubmit}>
           <Card variant="outlined">
             <CardContent>
-              {error && (
-                <Alert color="danger" sx={{ mb: 2 }}>
-                  {error}
-                </Alert>
-              )}
-              {success && (
-                <Alert color="success" sx={{ mb: 2 }}>
-                  {success}
-                </Alert>
-              )}
-
               <Alert color="primary" sx={{ mb: 2 }}>
                 <Typography level="body-sm">
                   <strong>Direct Connect Mode:</strong> This will reserve an
