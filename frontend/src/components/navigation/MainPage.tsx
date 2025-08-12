@@ -34,6 +34,8 @@ import Pools from "../pages/Admin/Pools";
 import AzureConfigPage from "../pages/Admin/AzureConfigPage";
 import RunPodConfigPage from "../pages/Admin/RunPodConfigPage";
 import SSHConfigPage from "../pages/Admin/SSHConfigPage";
+import { Volume } from "lucide-react";
+import Volumes from "../pages/Admin/Volumes";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -92,17 +94,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
-          <Route
-            path="admin/volumes"
-            element={
-              <PageWithTitle
-                title="Volumes"
-                subtitle="Manage volume mounts and storage."
-              >
-                &nbsp;
-              </PageWithTitle>
-            }
-          />
+          <Route path="admin/volumes" element={<Volumes />} />
           <Route
             path="admin/settings"
             element={

@@ -840,6 +840,12 @@ const Held: React.FC<HeldProps> = ({
                         </>
                       )}
                       <Divider />
+                      <MenuItem onClick={(e) => e.stopPropagation()}>
+                        <ListItemDecorator>
+                          <TerminalIcon />
+                        </ListItemDecorator>
+                        SSH
+                      </MenuItem>
                       <MenuItem
                         onClick={() =>
                           openInteractiveTaskModal(
