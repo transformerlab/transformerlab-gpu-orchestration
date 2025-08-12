@@ -548,11 +548,11 @@ const RunPodConfigPage: React.FC = () => {
               size={20}
               style={{ marginRight: 8, verticalAlign: "middle" }}
             />
-            Allowed GPU Types
+            Allowed GPU/CPU Types
           </Typography>
           <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
-            Select which RunPod GPU types users can choose from when creating
-            RunPod clusters.
+            Select which RunPod GPU/CPU types users can choose from when
+            creating RunPod clusters.
           </Typography>
 
           {loading && availableGpuTypes.length === 0 ? (
@@ -736,7 +736,7 @@ const RunPodConfigPage: React.FC = () => {
                 alignItems: "center",
               }}
             >
-              <Typography>Allowed GPU Types</Typography>
+              <Typography>Allowed GPU/CPU Types</Typography>
               <Chip size="sm" variant="soft" color="primary">
                 {config.allowed_gpu_types?.length || 0} selected
               </Chip>

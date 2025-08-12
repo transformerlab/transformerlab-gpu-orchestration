@@ -340,14 +340,8 @@ async def launch_skypilot_cluster(
                         accelerators
                     )
                     if mapped_instance_type != accelerators:
-                        print(
-                            f"🔄 Mapped RunPod display '{accelerators}' to instance type '{mapped_instance_type}'"
-                        )
                         instance_type = mapped_instance_type
                         # Clear accelerators for RunPod since we're using instance_type
-                        print(
-                            f"🔄 Using instance_type '{instance_type}' for RunPod (clearing accelerators)"
-                        )
                         accelerators = None
             except Exception as e:
                 raise HTTPException(
@@ -362,10 +356,6 @@ async def launch_skypilot_cluster(
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
-
-        print(
-            f"🚀 Launching cluster '{cluster_name}' with cloud={cloud}, instance_type={instance_type}, accelerators={accelerators}"
-        )
         request_id = launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             command=command,

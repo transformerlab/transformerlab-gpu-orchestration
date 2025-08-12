@@ -303,7 +303,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
                   <span style={{ color: "orange" }}>
                     {" "}
                     No GPU types are allowed in the current configuration.
-                    Please configure allowed GPU types in the Admin section.
+                    Please configure allowed GPU/CPU types in the Admin section.
                   </span>
                 )}
             </Typography>
