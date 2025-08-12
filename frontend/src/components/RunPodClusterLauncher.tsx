@@ -148,6 +148,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         formData.append("accelerators", selectedGpuFullString);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
+      if (selectedTemplate) formData.append("template", selectedTemplate);
 
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
