@@ -310,10 +310,14 @@ def save_cluster_platforms(platforms_data):
         )
 
 
-def set_cluster_platform(cluster_name: str, platform: str, user_info: dict = None):
-    """Set the platform and user info for a specific cluster"""
+def set_cluster_platform(cluster_name: str, platform: str, user_info: dict = None, template: str = None):
+    """Set the platform, user info, and template for a specific cluster"""
     platforms = load_cluster_platforms()
-    platforms[cluster_name] = {"platform": platform, "user_info": user_info or {}}
+    platforms[cluster_name] = {
+        "platform": platform, 
+        "user_info": user_info or {},
+        "template": template
+    }
     save_cluster_platforms(platforms)
 
 
@@ -335,6 +339,16 @@ def get_cluster_user_info(cluster_name: str) -> dict:
         # Backward compatibility with old format
         return {}
     return cluster_data.get("user_info", {})
+
+
+def get_cluster_template(cluster_name: str) -> str:
+    """Get the template for a specific cluster"""
+    platforms = load_cluster_platforms()
+    cluster_data = platforms.get(cluster_name, {})
+    if isinstance(cluster_data, str):
+        # Backward compatibility with old format
+        return None
+    return cluster_data.get("template")
 
 
 def remove_cluster_platform(cluster_name: str):

@@ -268,6 +268,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       if (idleMinutesToAutostop) {
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
       }
+      if (selectedTemplate) formData.append("template", selectedTemplate);
 
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",

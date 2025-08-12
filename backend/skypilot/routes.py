@@ -81,6 +81,7 @@ from utils.file_utils import (
     load_cluster_platforms,
     set_cluster_platform,
     get_cluster_user_info,
+    get_cluster_template,
 )
 from auth.api_key_auth import get_user_or_api_key
 from auth.utils import get_current_user
@@ -316,6 +317,7 @@ async def launch_skypilot_cluster(
     launch_mode: Optional[str] = Form(None),
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
+    template: Optional[str] = Form(None),
 ):
     try:
         file_mounts = None
@@ -399,7 +401,7 @@ async def launch_skypilot_cluster(
                 "email": user_info.get("email", ""),
                 "id": user_info.get("id", ""),
             }
-            set_cluster_platform(cluster_name, platform, cluster_user_info)
+            set_cluster_platform(cluster_name, platform, cluster_user_info, template)
         except Exception as e:
             print(f"Warning: Failed to record usage event for cluster launch: {e}")
         return LaunchClusterResponse(
@@ -1567,4 +1569,18 @@ async def get_all_cluster_platforms(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster platforms: {str(e)}"
+        )
+
+
+@router.get("/cluster-template/{cluster_name}")
+async def get_cluster_template_info(
+    cluster_name: str, request: Request, response: Response
+):
+    """Get template information for a specific cluster."""
+    try:
+        template = get_cluster_template(cluster_name)
+        return {"template": template}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster template info: {str(e)}"
         )

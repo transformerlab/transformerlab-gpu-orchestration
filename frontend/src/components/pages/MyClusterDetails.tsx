@@ -181,8 +181,17 @@ const MyClusterDetails: React.FC = () => {
     { refreshInterval: 5000 }
   );
 
+  // Fetch cluster template information
+  const { data: clusterTemplateData } = useSWR(
+    clusterName ? buildApiUrl(`skypilot/cluster-template/${clusterName}`) : null,
+    (url: string) =>
+      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
+    { refreshInterval: 5000 }
+  );
+
   const platforms = clusterPlatforms?.platforms || {};
   const clusterPlatform = platforms[clusterName || ""] || "unknown";
+  const clusterTemplate = clusterTemplateData?.template;
 
   useEffect(() => {
     if (clusterName) {
@@ -743,7 +752,8 @@ const MyClusterDetails: React.FC = () => {
 
         <Divider />
 
-        <FakeCharts />
+        {/* Only show usage graphs for Transformer Lab template */}
+        {clusterTemplate === "transformer-lab" && <FakeCharts />}
 
         {/* Jobs Section */}
         <Card>
