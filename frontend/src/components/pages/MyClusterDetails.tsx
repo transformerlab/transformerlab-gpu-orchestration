@@ -150,6 +150,8 @@ const MyClusterDetails: React.FC = () => {
     [key: string]: boolean;
   }>({});
 
+  const [sshClusterName, setSshClusterName] = useState<string | null>(null);
+
   // Fetch cluster status data
   const { data: statusData, isLoading: statusLoading } = useSWR(
     clusterName ? buildApiUrl("skypilot/status") : null,
@@ -183,7 +185,9 @@ const MyClusterDetails: React.FC = () => {
 
   // Fetch cluster template information
   const { data: clusterTemplateData } = useSWR(
-    clusterName ? buildApiUrl(`skypilot/cluster-template/${clusterName}`) : null,
+    clusterName
+      ? buildApiUrl(`skypilot/cluster-template/${clusterName}`)
+      : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 5000 }
@@ -604,6 +608,14 @@ const MyClusterDetails: React.FC = () => {
         </Box>
       </Stack>
 
+      <Button
+        onClick={() => {
+          setSshClusterName(clusterName);
+        }}
+      >
+        Connect via SSH
+      </Button>
+
       <Stack gap={3} mt={3}>
         {/* Cluster Information Cards */}
         <Grid container spacing={2}>
@@ -915,6 +927,40 @@ const MyClusterDetails: React.FC = () => {
         isClusterLaunching={false}
         isSshCluster={false}
       />
+
+      {/* SSH Modal */}
+      <Modal open={!!sshClusterName} onClose={() => setSshClusterName(null)}>
+        <ModalDialog
+          size="lg"
+          sx={{
+            maxWidth: "90vw",
+            maxHeight: "90vh",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <ModalClose />
+          <Typography level="h4" sx={{ mb: 2 }}>
+            SSH Terminal
+          </Typography>
+          <iframe
+            id="sshIframe"
+            name="sshIframe"
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            src={
+              sshClusterName
+                ? `http://localhost:8000/api/v1/terminal?cluster_name=${encodeURIComponent(
+                    sshClusterName
+                  )}`
+                : undefined
+            }
+          />
+        </ModalDialog>
+      </Modal>
     </PageWithTitle>
   );
 };
