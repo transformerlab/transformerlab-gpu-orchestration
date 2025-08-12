@@ -12,10 +12,13 @@ import {
   Zap,
   Info,
   MoreHorizontal,
+  Clock,
+  SquareTerminalIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import InteractiveTaskModal from "../../modals/InteractiveTaskModal";
 import SubmitJobModal from "../../modals/SubmitJobModal";
+import SSHModal from "../../modals/SSHModal";
 import { useNavigate } from "react-router-dom";
 import NodeSquare from "../../widgets/NodeSquare";
 import { useFakeData } from "../../../context/FakeDataContext";
@@ -120,6 +123,10 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
     open: false,
     clusterName: "",
   });
+
+  const [sshClusterName, setSshClusterName] = React.useState<string | null>(
+    null
+  );
 
   // Combine real and fake data - only show fake data if no real data exists
   const allClusters = React.useMemo(() => {
@@ -345,19 +352,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                   </ListItemDecorator>
                                   Restart
                                 </MenuItem>
-                                <MenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onTabChange) {
-                                      onTabChange(1);
-                                    }
-                                  }}
-                                >
-                                  <ListItemDecorator>
-                                    <TextIcon />
-                                  </ListItemDecorator>
-                                  Logs
-                                </MenuItem>
+
                                 <MenuItem onClick={(e) => e.stopPropagation()}>
                                   Metrics
                                 </MenuItem>
@@ -375,16 +370,43 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                   Submit a Job
                                 </MenuItem>
                                 <Divider />
-                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <MenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSshClusterName(node.cluster);
+                                  }}
+                                >
                                   <ListItemDecorator>
-                                    <TerminalIcon />
+                                    <SquareTerminalIcon />
                                   </ListItemDecorator>
-                                  SSH
+                                  Connect via SSH
                                 </MenuItem>
-                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <MenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openInteractiveTaskModal(
+                                      node.cluster || "default",
+                                      "vscode"
+                                    );
+                                  }}
+                                >
+                                  <ListItemDecorator>
+                                    <CodeIcon />
+                                  </ListItemDecorator>
                                   VSCode
                                 </MenuItem>
-                                <MenuItem onClick={(e) => e.stopPropagation()}>
+                                <MenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openInteractiveTaskModal(
+                                      node.cluster || "default",
+                                      "jupyter"
+                                    );
+                                  }}
+                                >
+                                  <ListItemDecorator>
+                                    <BookOpenIcon />
+                                  </ListItemDecorator>
                                   Jupyter
                                 </MenuItem>
                               </Menu>
@@ -566,9 +588,9 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                             <Divider />
                             <MenuItem disabled>
                               <ListItemDecorator>
-                                <TerminalIcon />
+                                <SquareTerminalIcon />
                               </ListItemDecorator>
-                              SSH
+                              Connect via SSH
                             </MenuItem>
                             <MenuItem disabled>
                               <ListItemDecorator>
@@ -583,12 +605,6 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               Jupyter
                             </MenuItem>
                             <Divider />
-                            <MenuItem disabled>
-                              <ListItemDecorator>
-                                <TextIcon />
-                              </ListItemDecorator>
-                              Logs
-                            </MenuItem>
                           </Menu>
                         </Dropdown>
                       </Box>
@@ -747,7 +763,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                           zIndex: 9999,
                         }}
                       >
-                        {cluster.status.toLowerCase().includes("up") && (
+                        {cluster.status.toLowerCase().includes("up") ? (
                           <>
                             <MenuItem
                               onClick={() =>
@@ -775,57 +791,55 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               </ListItemDecorator>
                               Submit a Job
                             </MenuItem>
+                            <MenuItem
+                              onClick={() => {
+                                setSshClusterName(cluster.cluster_name);
+                              }}
+                              disabled={isFakeData}
+                            >
+                              <ListItemDecorator>
+                                <SquareTerminalIcon />
+                              </ListItemDecorator>
+                              Connect via SSH
+                            </MenuItem>
+                            <Divider />
+                            <MenuItem
+                              onClick={() =>
+                                openInteractiveTaskModal(
+                                  cluster.cluster_name,
+                                  "vscode"
+                                )
+                              }
+                              disabled={isFakeData}
+                            >
+                              <ListItemDecorator>
+                                <CodeIcon />
+                              </ListItemDecorator>
+                              VSCode
+                            </MenuItem>
+                            <MenuItem
+                              onClick={() =>
+                                openInteractiveTaskModal(
+                                  cluster.cluster_name,
+                                  "jupyter"
+                                )
+                              }
+                              disabled={isFakeData}
+                            >
+                              <ListItemDecorator>
+                                <BookOpenIcon />
+                              </ListItemDecorator>
+                              Jupyter
+                            </MenuItem>
                           </>
+                        ) : (
+                          <MenuItem disabled>
+                            <ListItemDecorator>
+                              <Clock />
+                            </ListItemDecorator>
+                            Waiting for the instance to be ready...
+                          </MenuItem>
                         )}
-                        <Divider />
-                        <MenuItem disabled={isFakeData}>
-                          <ListItemDecorator>
-                            <TerminalIcon />
-                          </ListItemDecorator>
-                          SSH
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() =>
-                            openInteractiveTaskModal(
-                              cluster.cluster_name,
-                              "vscode"
-                            )
-                          }
-                          disabled={isFakeData}
-                        >
-                          <ListItemDecorator>
-                            <CodeIcon />
-                          </ListItemDecorator>
-                          VSCode
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() =>
-                            openInteractiveTaskModal(
-                              cluster.cluster_name,
-                              "jupyter"
-                            )
-                          }
-                          disabled={isFakeData}
-                        >
-                          <ListItemDecorator>
-                            <BookOpenIcon />
-                          </ListItemDecorator>
-                          Jupyter
-                        </MenuItem>
-                        <Divider />
-                        <MenuItem
-                          onClick={() => {
-                            if (onTabChange) {
-                              onTabChange(1);
-                            }
-                          }}
-                          disabled={isFakeData}
-                        >
-                          <ListItemDecorator>
-                            <TextIcon />
-                          </ListItemDecorator>
-                          Logs
-                        </MenuItem>
                       </Menu>
                     </Dropdown>
                   </Box>
@@ -858,6 +872,13 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
         }}
         isClusterLaunching={false}
         isSshCluster={false}
+      />
+
+      {/* SSH Modal */}
+      <SSHModal
+        open={!!sshClusterName}
+        onClose={() => setSshClusterName(null)}
+        clusterName={sshClusterName}
       />
     </Box>
   );

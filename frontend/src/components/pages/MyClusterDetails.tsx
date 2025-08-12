@@ -64,6 +64,7 @@ import LogViewer from "../widgets/LogViewer";
 import InstanceStatusChip from "../widgets/InstanceStatusChip";
 import InteractiveTaskModal from "../modals/InteractiveTaskModal";
 import SubmitJobModal from "../modals/SubmitJobModal";
+import SSHModal from "../modals/SSHModal";
 import { parseResourcesString } from "../../utils/resourceParser";
 import ResourceDisplay from "../widgets/ResourceDisplay";
 
@@ -928,38 +929,11 @@ const MyClusterDetails: React.FC = () => {
       />
 
       {/* SSH Modal */}
-      <Modal open={!!sshClusterName} onClose={() => setSshClusterName(null)}>
-        <ModalDialog
-          size="lg"
-          sx={{
-            maxWidth: "90vw",
-            maxHeight: "90vh",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <ModalClose />
-          <Typography level="h4" sx={{ mb: 2 }}>
-            SSH Terminal
-          </Typography>
-          <iframe
-            id="sshIframe"
-            name="sshIframe"
-            style={{
-              width: "100%",
-              height: "100%",
-              border: "none",
-            }}
-            src={
-              sshClusterName
-                ? `http://localhost:8000/api/v1/terminal?cluster_name=${encodeURIComponent(
-                    sshClusterName
-                  )}`
-                : undefined
-            }
-          />
-        </ModalDialog>
-      </Modal>
+      <SSHModal
+        open={!!sshClusterName}
+        onClose={() => setSshClusterName(null)}
+        clusterName={sshClusterName}
+      />
     </PageWithTitle>
   );
 };
