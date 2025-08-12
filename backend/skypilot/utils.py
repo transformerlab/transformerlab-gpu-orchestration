@@ -124,6 +124,7 @@ def launch_cluster_with_skypilot(
     launch_mode: Optional[str] = None,
     jupyter_port: Optional[int] = None,
     vscode_port: Optional[int] = None,
+    disk_size: Optional[int] = None,
 ):
     try:
         # Handle RunPod setup
@@ -200,6 +201,8 @@ def launch_cluster_with_skypilot(
             resources_kwargs["zone"] = zone
         if use_spot and cloud and cloud.lower() not in ["ssh", "runpod"]:
             resources_kwargs["use_spot"] = use_spot
+        if disk_size:
+            resources_kwargs["disk_size"] = disk_size
 
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
