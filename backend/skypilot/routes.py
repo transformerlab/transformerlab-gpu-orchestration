@@ -321,6 +321,7 @@ async def launch_skypilot_cluster(
         file_mounts = None
         workdir = None
         python_filename = None
+        disk_size = None
         if python_file is not None and python_file.filename:
             # Save the uploaded file to a persistent uploads directory
             python_filename = python_file.filename
@@ -339,6 +340,9 @@ async def launch_skypilot_cluster(
                     mapped_instance_type = map_runpod_display_to_instance_type(
                         accelerators
                     )
+                    if mapped_instance_type.lower().startswith("cpu"):
+                        # Using skypilot logic to have disk size lesser than 10x vCPUs
+                        disk_size = 5 * int(mapped_instance_type.split("-")[1])
                     if mapped_instance_type != accelerators:
                         instance_type = mapped_instance_type
                         # Clear accelerators for RunPod since we're using instance_type
@@ -374,6 +378,7 @@ async def launch_skypilot_cluster(
             launch_mode=launch_mode,
             jupyter_port=jupyter_port,
             vscode_port=vscode_port,
+            disk_size=disk_size,
         )
         # Record usage event for cluster launch and store user info
         try:
