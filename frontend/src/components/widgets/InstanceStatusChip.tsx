@@ -31,6 +31,10 @@ function getCircleColor(status: InstanceStatus): string {
   }
 }
 
+function isSpinning(status: InstanceStatus): boolean {
+  return status === "init" || status === "ClusterStatus.INIT";
+}
+
 /**
  * A component that displays the status of an instance using a MUI Chip
  * with appropriate colors based on the status.
@@ -54,7 +58,7 @@ const InstanceStatusChip: React.FC<InstanceStatusChipProps> = ({ status }) => {
       case "stopped":
       case "ClusterStatus.STOPPED":
         return {
-          color: "" as const,
+          color: "neutral" as const,
           label: "Stopped",
         };
       default:
@@ -75,7 +79,11 @@ const InstanceStatusChip: React.FC<InstanceStatusChipProps> = ({ status }) => {
       sx={{ borderRadius: "3px", padding: "4px 8px" }}
     >
       <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-        <TinyCircle size={5} color={getCircleColor(status)} />
+        <TinyCircle
+          size={5}
+          color={getCircleColor(status)}
+          spinning={isSpinning(status)}
+        />
         {label}
       </span>
     </Chip>
