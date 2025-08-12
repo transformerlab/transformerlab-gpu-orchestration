@@ -92,3 +92,29 @@ export const runpodApi = {
     return response.json();
   },
 };
+
+// Job management API functions
+export const jobApi = {
+  cancelJob: async (
+    clusterName: string,
+    jobId: number
+  ): Promise<{
+    request_id: string;
+    job_id: number;
+    cluster_name: string;
+    message: string;
+    result: any;
+  }> => {
+    const response = await apiFetch(
+      buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to cancel job: ${response.statusText}`);
+    }
+    return response.json();
+  },
+};
