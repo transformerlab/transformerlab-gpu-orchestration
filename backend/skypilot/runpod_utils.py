@@ -216,20 +216,9 @@ def delete_runpod_config(config_key: str):
 def test_runpod_connection(api_key: str):
     """Test RunPod API connection with a specific API key"""
     try:
-        # Temporarily set the API key
-        original_key = os.environ.get("RUNPOD_API_KEY")
-        os.environ["RUNPOD_API_KEY"] = api_key
-
-        try:
-            # Test the connection
-            is_valid = verify_runpod_setup()
-            return is_valid
-        finally:
-            # Restore original key
-            if original_key:
-                os.environ["RUNPOD_API_KEY"] = original_key
-            else:
-                os.environ.pop("RUNPOD_API_KEY", None)
+        # Test the connection with passed api_key
+        is_valid = verify_runpod_setup(api_key)
+        return is_valid
 
     except Exception as e:
         print(f"Error testing RunPod connection: {e}")
