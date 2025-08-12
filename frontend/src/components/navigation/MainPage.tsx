@@ -69,11 +69,11 @@ const Dashboard: React.FC = () => {
         <Routes>
           <Route path="/" element={<Navigate to="node-pools" replace />} />
           <Route path="/node-pools" element={<Nodes />} />
-          <Route path="/my-clusters" element={<MyClusters />} />
+          <Route path="/my-instances" element={<MyClusters />} />
           <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
           <Route path="/node-pools/:clusterName" element={<ClusterDetails />} />
           <Route
-            path="/my-cluster-info/:clusterName"
+            path="/my-instance-info/:clusterName"
             element={<MyClusterDetails />}
           />
           <Route path="/jobs" element={<Jobs />} />
