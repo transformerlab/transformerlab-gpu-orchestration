@@ -61,7 +61,7 @@ const sidebarItems = [
     icon: <CircleDotIcon size={22} style={{ paddingLeft: "2px" }} />,
     content: "My Instances",
     chipCount: 15,
-    path: "/dashboard/my-clusters",
+    path: "/dashboard/my-instances",
   },
   {
     icon: <StretchHorizontalIcon />,
@@ -73,7 +73,11 @@ const sidebarItems = [
 
 const adminSubItems = [
   { content: "Users", section: "users", path: "/dashboard/admin/users" },
-  { content: "API Keys", section: "api-keys", path: "/dashboard/admin/api-keys" },
+  {
+    content: "API Keys",
+    section: "api-keys",
+    path: "/dashboard/admin/api-keys",
+  },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
     content: "Node Pools",

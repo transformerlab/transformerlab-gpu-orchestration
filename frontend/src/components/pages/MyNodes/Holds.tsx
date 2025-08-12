@@ -773,7 +773,7 @@ const Held: React.FC<HeldProps> = ({
                     color="neutral"
                     onClick={() =>
                       navigate(
-                        `/dashboard/my-cluster-info/${cluster.cluster_name}`
+                        `/dashboard/my-instance-info/${cluster.cluster_name}`
                       )
                     }
                     startDecorator={<Info size="16px" />}
@@ -999,7 +999,7 @@ const Held: React.FC<HeldProps> = ({
                         color="neutral"
                         onClick={() =>
                           navigate(
-                            `/dashboard/my-cluster-info/${cluster.cluster_name}`
+                            `/dashboard/my-instance-info/${cluster.cluster_name}`
                           )
                         }
                         startDecorator={<Info size="16px" />}
