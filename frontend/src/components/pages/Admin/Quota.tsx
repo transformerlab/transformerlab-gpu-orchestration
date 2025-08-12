@@ -13,10 +13,6 @@ import {
   Option,
   Checkbox,
   Alert,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanel,
   Card,
   Grid,
   Divider,
@@ -99,12 +95,13 @@ const fakeUsers = [
 ];
 
 const Quota: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState(0);
   const [openOrgModal, setOpenOrgModal] = React.useState(false);
   const [openTeamModal, setOpenTeamModal] = React.useState(false);
   const [openUserModal, setOpenUserModal] = React.useState(false);
   const [selectedTeam, setSelectedTeam] = React.useState<any>(null);
   const [selectedUser, setSelectedUser] = React.useState<any>(null);
+  const [openAddTeamModal, setOpenAddTeamModal] = React.useState(false);
+  const [openAddUserModal, setOpenAddUserModal] = React.useState(false);
   const { showFakeData } = useFakeData();
 
   const handleEditOrg = () => {
@@ -119,6 +116,14 @@ const Quota: React.FC = () => {
   const handleEditUser = (user: any) => {
     setSelectedUser(user);
     setOpenUserModal(true);
+  };
+
+  const handleAddTeam = () => {
+    setOpenAddTeamModal(true);
+  };
+
+  const handleAddUser = () => {
+    setOpenAddUserModal(true);
   };
 
   const formatCredits = (credits: number) => {
@@ -148,17 +153,12 @@ const Quota: React.FC = () => {
     >
       {showFakeData ? (
         <>
-          <Tabs
-            value={activeTab}
-            onChange={(_, val) => setActiveTab(val as number)}
-          >
-            <TabList>
-              <Tab>Organization</Tab>
-              <Tab>Teams</Tab>
-              <Tab>Users</Tab>
-            </TabList>
-
-            <TabPanel value={0}>
+          {/* Organization Section */}
+          <Box sx={{ mb: 4 }}>
+            <Typography level="h4" component="h2" sx={{ mb: 2 }}>
+              Organization Quota
+            </Typography>
+            <Card variant="outlined" sx={{ mb: 3 }}>
               <Grid container spacing={2} alignItems="center">
                 <Grid xs={12} md={6}>
                   <Typography level="h4">{fakeOrgQuota.name}</Typography>
@@ -175,64 +175,191 @@ const Quota: React.FC = () => {
                   </Button>
                 </Grid>
               </Grid>
-            </TabPanel>
+            </Card>
+          </Box>
 
-            <TabPanel value={1}>
-              <Box sx={{ mb: 2 }}>
-                <Typography level="body-lg">
-                  Teams can have custom quota overrides or inherit from the
-                  organization-wide settings.
+          {/* Teams Section */}
+          <Box sx={{ mb: 4 }}>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+              <Grid xs>
+                <Typography level="h4" component="h2">
+                  Teams Quota
                 </Typography>
-              </Box>
+              </Grid>
+              <Grid xs="auto">
+                <Button
+                  startDecorator={<Plus size={16} />}
+                  onClick={handleAddTeam}
+                  variant="outlined"
+                >
+                  Add Team Quota
+                </Button>
+              </Grid>
+            </Grid>
+            <Box sx={{ mb: 2 }}>
+              <Typography level="body-lg">
+                Teams can have custom quota overrides or inherit from the
+                organization-wide settings.
+              </Typography>
+            </Box>
 
-              <Table>
-                <thead>
-                  <tr>
-                    <th>Team Name</th>
-                    <th>Monthly Quota</th>
-                    <th>Usage</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+            <Table>
+              <thead>
+                <tr>
+                  <th>Team Name</th>
+                  <th>Monthly Quota</th>
+                  <th>Usage</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fakeTeams.map((team) => (
+                  <tr key={team.id}>
+                    <td>{team.name}</td>
+                    <td>
+                      {team.monthly_quota_credits ? (
+                        <>{formatCredits(team.monthly_quota_credits)} credits</>
+                      ) : (
+                        <Typography color="neutral" fontSize="sm">
+                          Using org default (
+                          {formatCredits(fakeOrgQuota.monthly_quota_credits)}{" "}
+                          credits)
+                        </Typography>
+                      )}
+                    </td>
+                    <td>
+                      {formatCredits(team.credits_used)} /{" "}
+                      {formatCredits(
+                        team.monthly_quota_credits ||
+                          fakeOrgQuota.monthly_quota_credits
+                      )}{" "}
+                      credits
+                    </td>
+                    <td>
+                      <LinearProgress
+                        determinate
+                        value={getQuotaUsagePercent(
+                          team.credits_used,
+                          fakeOrgQuota.monthly_quota_credits
+                        )}
+                      />
+                      <Chip
+                        color={getQuotaUsageColor(
+                          team.credits_used,
+                          fakeOrgQuota.monthly_quota_credits
+                        )}
+                        size="sm"
+                        sx={{ marginTop: "5px" }}
+                      >
+                        {getQuotaUsagePercent(
+                          team.credits_used,
+                          fakeOrgQuota.monthly_quota_credits
+                        )}
+                        %
+                      </Chip>
+                    </td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        color="neutral"
+                        onClick={() => handleEditTeam(team)}
+                      >
+                        Edit
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {fakeTeams.map((team) => (
-                    <tr key={team.id}>
-                      <td>{team.name}</td>
+                ))}
+              </tbody>
+            </Table>
+          </Box>
+
+          {/* Users Section */}
+          <Box>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+              <Grid xs>
+                <Typography level="h4" component="h2">
+                  Users Quota
+                </Typography>
+              </Grid>
+              <Grid xs="auto">
+                <Button
+                  startDecorator={<Plus size={16} />}
+                  onClick={handleAddUser}
+                  variant="outlined"
+                >
+                  Add User Quota
+                </Button>
+              </Grid>
+            </Grid>
+            <Box sx={{ mb: 2 }}>
+              <Typography level="body-lg">
+                Individual users can have custom quota overrides or inherit from
+                their team or organization settings.
+              </Typography>
+            </Box>
+
+            <Table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Team</th>
+                  <th>Monthly Quota</th>
+                  <th>Usage</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fakeUsers.map((user) => {
+                  const team = fakeTeams.find((t) => t.id === user.team_id);
+                  const effectiveQuota =
+                    user.monthly_quota_credits ||
+                    team?.monthly_quota_credits ||
+                    fakeOrgQuota.monthly_quota_credits;
+
+                  return (
+                    <tr key={user.id}>
+                      <td>{user.name}</td>
+                      <td>{user.email}</td>
+                      <td>{getTeamName(user.team_id)}</td>
                       <td>
-                        {team.monthly_quota_credits ? (
+                        {user.monthly_quota_credits ? (
                           <>
-                            {formatCredits(team.monthly_quota_credits)} credits
+                            {formatCredits(user.monthly_quota_credits)} credits
                           </>
                         ) : (
                           <Typography color="neutral" fontSize="sm">
-                            Using org default (
-                            {formatCredits(fakeOrgQuota.monthly_quota_credits)}{" "}
-                            credits)
+                            Using team/org default (
+                            {formatCredits(effectiveQuota)} credits)
                           </Typography>
                         )}
                       </td>
                       <td>
-                        {formatCredits(team.credits_used)} /{" "}
-                        {formatCredits(
-                          team.monthly_quota_credits ||
-                            fakeOrgQuota.monthly_quota_credits
-                        )}{" "}
-                        credits
+                        {formatCredits(user.credits_used)} /{" "}
+                        {formatCredits(effectiveQuota)} credits
                       </td>
                       <td>
+                        <LinearProgress
+                          determinate
+                          value={getQuotaUsagePercent(
+                            user.credits_used,
+                            effectiveQuota
+                          )}
+                        />
                         <Chip
                           color={getQuotaUsageColor(
-                            team.credits_used,
-                            team.monthly_quota_credits ||
-                              fakeOrgQuota.monthly_quota_credits
+                            user.credits_used,
+                            effectiveQuota
                           )}
                           size="sm"
+                          sx={{ marginTop: "5px" }}
                         >
                           {getQuotaUsagePercent(
-                            team.credits_used,
-                            team.monthly_quota_credits ||
-                              fakeOrgQuota.monthly_quota_credits
+                            user.credits_used,
+                            effectiveQuota
                           )}
                           %
                         </Chip>
@@ -242,106 +369,17 @@ const Quota: React.FC = () => {
                           size="sm"
                           variant="outlined"
                           color="neutral"
-                          onClick={() => handleEditTeam(team)}
+                          onClick={() => handleEditUser(user)}
                         >
                           Edit
                         </Button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </TabPanel>
-
-            <TabPanel value={2}>
-              <Box sx={{ mb: 2 }}>
-                <Typography level="body-lg">
-                  Individual users can have custom quota overrides or inherit
-                  from their team or organization settings.
-                </Typography>
-              </Box>
-
-              <Table>
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Team</th>
-                    <th>Monthly Quota</th>
-                    <th>Usage</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fakeUsers.map((user) => {
-                    const team = fakeTeams.find((t) => t.id === user.team_id);
-                    const effectiveQuota =
-                      user.monthly_quota_credits ||
-                      team?.monthly_quota_credits ||
-                      fakeOrgQuota.monthly_quota_credits;
-
-                    return (
-                      <tr key={user.id}>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>{getTeamName(user.team_id)}</td>
-                        <td>
-                          {user.monthly_quota_credits ? (
-                            <>
-                              {formatCredits(user.monthly_quota_credits)}{" "}
-                              credits
-                            </>
-                          ) : (
-                            <Typography color="neutral" fontSize="sm">
-                              Using team/org default (
-                              {formatCredits(effectiveQuota)} credits)
-                            </Typography>
-                          )}
-                        </td>
-                        <td>
-                          {formatCredits(user.credits_used)} /{" "}
-                          {formatCredits(effectiveQuota)} credits
-                        </td>
-                        <td>
-                          <LinearProgress
-                            determinate
-                            value={getQuotaUsagePercent(
-                              user.credits_used,
-                              effectiveQuota
-                            )}
-                          />
-                          <Chip
-                            color={getQuotaUsageColor(
-                              user.credits_used,
-                              effectiveQuota
-                            )}
-                            size="sm"
-                          >
-                            {getQuotaUsagePercent(
-                              user.credits_used,
-                              effectiveQuota
-                            )}
-                            %
-                          </Chip>
-                        </td>
-                        <td>
-                          <Button
-                            size="sm"
-                            variant="outlined"
-                            color="neutral"
-                            onClick={() => handleEditUser(user)}
-                          >
-                            Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-            </TabPanel>
-          </Tabs>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </Box>
         </>
       ) : (
         <Alert color="info" sx={{ mb: 2 }}>
@@ -451,6 +489,60 @@ const Quota: React.FC = () => {
               </Stack>
             </>
           )}
+        </ModalDialog>
+      </Modal>
+
+      {/* Add Team Modal */}
+      <Modal open={openAddTeamModal} onClose={() => setOpenAddTeamModal(false)}>
+        <ModalDialog>
+          <Typography level="h4">Add New Team</Typography>
+          <Typography level="body-sm" mb={2}>
+            Create a new team with quota settings
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Input placeholder="Team Name" />
+            <Input
+              placeholder="Monthly Credits (leave empty for org default)"
+              slotProps={{
+                input: {
+                  type: "number",
+                },
+              }}
+            />
+            <Checkbox label="Use organization default" defaultChecked />
+            <Button onClick={() => setOpenAddTeamModal(false)}>Add Team</Button>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Add User Modal */}
+      <Modal open={openAddUserModal} onClose={() => setOpenAddUserModal(false)}>
+        <ModalDialog>
+          <Typography level="h4">Add New User</Typography>
+          <Typography level="body-sm" mb={2}>
+            Add a new user with quota settings
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Input placeholder="User Name" />
+            <Input placeholder="Email" type="email" />
+            <Select placeholder="Select Team">
+              {fakeTeams.map((team) => (
+                <Option key={team.id} value={team.id}>
+                  {team.name}
+                </Option>
+              ))}
+            </Select>
+            <Input
+              placeholder="Monthly Credits (leave empty for team/org default)"
+              slotProps={{
+                input: {
+                  type: "number",
+                },
+              }}
+            />
+            <Checkbox label="Use team/organization default" defaultChecked />
+            <Button onClick={() => setOpenAddUserModal(false)}>Add User</Button>
+          </Stack>
         </ModalDialog>
       </Modal>
     </PageWithTitle>
