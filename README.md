@@ -34,7 +34,7 @@ You are setup
 
 ### Run in Dev:
 
-1. Make sure your env files are set in the `/.env` and in `/frontend/.env` and make sure the frontend env redirect is set to VITE_API_URL=http://localhost:8000/api/v1 (not VITE_API_URL=/api/v1 which is only appropriate for production with one server)
+1. Make sure your env files are correctly set in `/backend/.env` and in `/frontend/.env` and make sure the frontend env redirect is set to VITE_API_URL=http://localhost:8000/api/v1 (not VITE_API_URL=/api/v1 which is only appropriate for production with one server)
 2. Run `./start.sh --dev` in one window
 3. Run `npm start dev` in frontend in another window
 
