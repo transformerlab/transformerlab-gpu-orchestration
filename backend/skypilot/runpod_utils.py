@@ -3,7 +3,6 @@ import runpod
 import json
 import subprocess
 from pathlib import Path
-from config import RUNPOD_API_KEY
 from typing import Dict
 
 # Path to store RunPod configuration
@@ -79,7 +78,7 @@ def get_runpod_api_key():
     default_key = config_data.get("default_config")
     if default_key and default_key in config_data.get("configs", {}):
         return config_data["configs"][default_key].get("api_key", "")
-    return RUNPOD_API_KEY
+    return os.getenv("RUNPOD_API_KEY", None)
 
 
 def save_runpod_config(
@@ -307,14 +306,16 @@ def setup_runpod_config():
     return True
 
 
-def verify_runpod_setup(api_key: str = None):
+def verify_runpod_setup(test_api_key: str = None):
     """
     Verify that RunPod is properly configured and API is accessible
-    Optionally takes a test api_key parameter to override the saved key.
+
+    Optionally takes a test api key parameter to override the saved key.
+    This is useful for verifying an API key before saving to config.
     """
     try:
-        # Use the provided API key if given, otherwise fetch it
-        api_key = api_key or get_runpod_api_key()
+        # Use the provided API key if given, otherwise fetch from config
+        api_key = test_api_key or get_runpod_api_key()
         if not api_key:
             print(
                 "❌ RunPod API key is required. Please configure it in the Admin section."
