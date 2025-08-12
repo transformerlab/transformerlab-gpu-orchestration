@@ -21,7 +21,7 @@ import {
   ExternalLink,
   X,
 } from "lucide-react";
-import SubmitJobModal from "./SubmitJobModal";
+import SubmitJobModal from "./modals/SubmitJobModal";
 import { buildApiUrl, apiFetch } from "../utils/api";
 import useSWR from "swr";
 import { useNotification } from "./NotificationSystem";
@@ -931,7 +931,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                                               "JobStatus.RUNNING" &&
                                               job.job_name &&
                                               job.job_name.includes(
-                                                "-jupyter-"
+                                                "jupyter"
                                               ) && (
                                                 <Button
                                                   size="sm"
