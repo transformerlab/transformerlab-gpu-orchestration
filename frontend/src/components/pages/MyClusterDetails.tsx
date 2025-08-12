@@ -50,6 +50,7 @@ import useSWR from "swr";
 import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
 import LogViewer from "../widgets/LogViewer";
+import InstanceStatusChip from "../widgets/InstanceStatusChip";
 
 interface ClusterTypeInfo {
   cluster_name: string;
@@ -469,19 +470,7 @@ const MyClusterDetails: React.FC = () => {
                   <Typography level="body-sm" color="neutral">
                     Status:
                   </Typography>
-                  <Chip
-                    size="sm"
-                    color={
-                      clusterData.status.toLowerCase().includes("up")
-                        ? "success"
-                        : clusterData.status.toLowerCase().includes("init")
-                        ? "primary"
-                        : "neutral"
-                    }
-                    variant="soft"
-                  >
-                    {formatClusterStatus(clusterData.status)}
-                  </Chip>
+                  <InstanceStatusChip status={clusterData.status} />
                 </Box>
 
                 {clusterData.resources_str && (
