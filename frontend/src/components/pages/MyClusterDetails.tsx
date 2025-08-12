@@ -21,6 +21,11 @@ import {
   Textarea,
   IconButton,
   ButtonGroup,
+  Dropdown,
+  Menu,
+  MenuButton,
+  MenuItem,
+  ListItemDecorator,
 } from "@mui/joy";
 import {
   Info,
@@ -43,6 +48,10 @@ import {
   StopCircleIcon,
   ContainerIcon,
   SquareTerminalIcon,
+  BookOpenIcon,
+  CodeIcon,
+  TextIcon,
+  MoreHorizontal,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -51,6 +60,8 @@ import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
 import LogViewer from "../widgets/LogViewer";
 import InstanceStatusChip from "../widgets/InstanceStatusChip";
+import InteractiveTaskModal from "../InteractiveTaskModal";
+import SubmitJobModal from "../SubmitJobModal";
 
 interface ClusterTypeInfo {
   cluster_name: string;
@@ -113,6 +124,23 @@ const MyClusterDetails: React.FC = () => {
     logs: string;
   } | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [interactiveTaskModal, setInteractiveTaskModal] = useState<{
+    open: boolean;
+    clusterName: string;
+    taskType: "vscode" | "jupyter";
+  }>({
+    open: false,
+    clusterName: "",
+    taskType: "vscode",
+  });
+
+  const [submitJobModal, setSubmitJobModal] = useState<{
+    open: boolean;
+    clusterName: string;
+  }>({
+    open: false,
+    clusterName: "",
+  });
 
   // Fetch cluster status data
   const { data: statusData, isLoading: statusLoading } = useSWR(
@@ -223,6 +251,70 @@ const MyClusterDetails: React.FC = () => {
         down: false,
       }));
     }
+  };
+
+  const handleStopCluster = async () => {
+    if (!clusterName) return;
+
+    try {
+      setOperationLoading((prev) => ({
+        ...prev,
+        stop: true,
+      }));
+      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ cluster_name: clusterName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to stop cluster:", errorData.detail);
+      }
+    } catch (err) {
+      console.error("Error stopping cluster:", err);
+    } finally {
+      setOperationLoading((prev) => ({
+        ...prev,
+        stop: false,
+      }));
+    }
+  };
+
+  const openInteractiveTaskModal = (
+    clusterName: string,
+    taskType: "vscode" | "jupyter"
+  ) => {
+    setInteractiveTaskModal({
+      open: true,
+      clusterName,
+      taskType,
+    });
+  };
+
+  const closeInteractiveTaskModal = () => {
+    setInteractiveTaskModal({
+      open: false,
+      clusterName: "",
+      taskType: "vscode",
+    });
+  };
+
+  const openSubmitJobModal = (clusterName: string) => {
+    setSubmitJobModal({
+      open: true,
+      clusterName,
+    });
+  };
+
+  const closeSubmitJobModal = () => {
+    setSubmitJobModal({
+      open: false,
+      clusterName: "",
+    });
   };
 
   const handleViewJobLogs = async (jobId: number, jobName: string) => {
@@ -423,12 +515,60 @@ const MyClusterDetails: React.FC = () => {
       }
     >
       <Stack spacing={2}>
-        <ButtonGroup>
-          <Button startDecorator={<Trash2Icon />}>Terminate</Button>
-          <Button startDecorator={<StopCircleIcon />}>Stop</Button>
-          <Button startDecorator={<SquareTerminalIcon />}>Connect</Button>
-          <Button startDecorator={<EllipsisIcon />}></Button>
-        </ButtonGroup>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Dropdown>
+            <MenuButton
+              variant="outlined"
+              size="sm"
+              startDecorator={<MoreHorizontal />}
+            >
+              Actions
+            </MenuButton>
+            <Menu size="sm" variant="soft" placement="bottom-end">
+              {clusterData.status.toLowerCase().includes("up") && (
+                <>
+                  <MenuItem onClick={() => openSubmitJobModal(clusterName!)}>
+                    <ListItemDecorator>
+                      <Zap />
+                    </ListItemDecorator>
+                    Submit a Job
+                  </MenuItem>
+                </>
+              )}
+              <Divider />
+              <MenuItem
+                onClick={() => openInteractiveTaskModal(clusterName!, "vscode")}
+              >
+                <ListItemDecorator>
+                  <CodeIcon />
+                </ListItemDecorator>
+                VSCode
+              </MenuItem>
+              <MenuItem
+                onClick={() =>
+                  openInteractiveTaskModal(clusterName!, "jupyter")
+                }
+              >
+                <ListItemDecorator>
+                  <BookOpenIcon />
+                </ListItemDecorator>
+                Jupyter
+              </MenuItem>
+              <Divider />
+              <MenuItem
+                onClick={() => {
+                  // Navigate to jobs page or show logs
+                  console.log("View logs for cluster:", clusterName);
+                }}
+              >
+                <ListItemDecorator>
+                  <TextIcon />
+                </ListItemDecorator>
+                Logs
+              </MenuItem>
+            </Menu>
+          </Dropdown>
+        </Box>
       </Stack>
 
       <Stack gap={3} mt={3}>
@@ -695,6 +835,30 @@ const MyClusterDetails: React.FC = () => {
           )}
         </ModalDialog>
       </Modal>
+
+      {/* Interactive Task Modal */}
+      <InteractiveTaskModal
+        open={interactiveTaskModal.open}
+        onClose={closeInteractiveTaskModal}
+        clusterName={interactiveTaskModal.clusterName}
+        taskType={interactiveTaskModal.taskType}
+        onTaskSubmitted={() => {
+          console.log("Task submitted successfully");
+        }}
+        isClusterLaunching={false}
+      />
+
+      {/* Submit Job Modal */}
+      <SubmitJobModal
+        open={submitJobModal.open}
+        onClose={closeSubmitJobModal}
+        clusterName={submitJobModal.clusterName}
+        onJobSubmitted={() => {
+          console.log("Job submitted successfully");
+        }}
+        isClusterLaunching={false}
+        isSshCluster={false}
+      />
     </PageWithTitle>
   );
 };
