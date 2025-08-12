@@ -791,7 +791,7 @@ const Held: React.FC<HeldProps> = ({
                       }
                       startDecorator={<Trash2Icon size="16px" />}
                     >
-                      Down
+                      Terminate
                     </Button>
                   )}
                   <Dropdown>
