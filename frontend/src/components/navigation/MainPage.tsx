@@ -36,6 +36,7 @@ import RunPodConfigPage from "../pages/Admin/RunPodConfigPage";
 import SSHConfigPage from "../pages/Admin/SSHConfigPage";
 import { Volume } from "lucide-react";
 import Volumes from "../pages/Admin/Volumes";
+import Quota from "../pages/Admin/Quota";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -95,6 +96,8 @@ const Dashboard: React.FC = () => {
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route path="admin/volumes" element={<Volumes />} />
+          <Route path="admin/quota" element={<Quota />} />
+
           <Route
             path="admin/settings"
             element={

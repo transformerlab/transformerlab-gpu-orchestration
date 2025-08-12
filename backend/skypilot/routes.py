@@ -463,6 +463,49 @@ async def get_skypilot_request_status(
         }
 
 
+@router.get("/ssh-session/{cluster_name}")
+async def start_web_ssh_session(
+    cluster_name: str, request: Request, response: Response
+):
+    """Start web SSH session using Wetty for this cluster.
+    This runs Wetty on this server and connects to the cluster via SSH.
+    Skypilot sets it up so that 'ssh <cluster_name>' connects to the right cluster.
+    """
+    try:
+        import subprocess
+
+        # Start Wetty with the SSH command
+        wetty_cmd = [
+            "wetty",
+            "--port",
+            "8080",
+            "--ssh-host",
+            cluster_name,
+            "--ssh-port",
+            "22",
+            "--ssh-command",
+            "ssh",
+            "--ssh-args",
+            "-o ConnectTimeout=30 -o StrictHostKeyChecking=no",
+        ]
+
+        # Print the command for debugging
+        print(f"Starting Wetty with command: {' '.join(wetty_cmd)}")
+
+        # Run Wetty in the background
+        process = subprocess.Popen(wetty_cmd)
+
+        # Return a success response with the port
+        return {
+            "message": f"Web SSH session started for cluster '{cluster_name}' using Wetty",
+            "port": 8080,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start web SSH session: {str(e)}"
+        )
+
+
 @router.get("/jobs/{cluster_name}", response_model=JobQueueResponse)
 async def get_cluster_jobs(cluster_name: str, request: Request, response: Response):
     try:

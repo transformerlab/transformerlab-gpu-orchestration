@@ -79,6 +79,7 @@ const adminSubItems = [
     path: "/dashboard/admin/api-keys",
   },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
+  { content: "Quotas", section: "quota", path: "/dashboard/admin/quota" },
   {
     content: "Node Pools",
     path: "/dashboard/admin/pools",
