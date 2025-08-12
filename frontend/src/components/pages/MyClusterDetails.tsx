@@ -53,9 +53,10 @@ import {
   TextIcon,
   MoreHorizontal,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import { buildApiUrl, apiFetch } from "../../utils/api";
+import { buildApiUrl, apiFetch, jobApi } from "../../utils/api";
 import useSWR from "swr";
 import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
@@ -144,6 +145,10 @@ const MyClusterDetails: React.FC = () => {
     open: false,
     clusterName: "",
   });
+
+  const [cancelLoading, setCancelLoading] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   // Fetch cluster status data
   const { data: statusData, isLoading: statusLoading } = useSWR(
@@ -349,6 +354,25 @@ const MyClusterDetails: React.FC = () => {
 
   const closeJobLogs = () => {
     setSelectedJobLogs(null);
+  };
+
+  const handleCancelJob = async (jobId: number) => {
+    if (!clusterName) return;
+
+    const cancelKey = `${clusterName}_${jobId}`;
+    try {
+      setCancelLoading((prev) => ({ ...prev, [cancelKey]: true }));
+      setError(null);
+
+      await jobApi.cancelJob(clusterName, jobId);
+      console.log("Job cancelled successfully");
+
+      // The jobs will be refreshed automatically by the SWR hook
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel job");
+    } finally {
+      setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
+    }
   };
 
   const getClusterTypeDisplay = () => {
@@ -791,16 +815,34 @@ const MyClusterDetails: React.FC = () => {
                       <Typography level="body-sm">{job.username}</Typography>
                     </td>
                     <td>
-                      <IconButton
-                        size="sm"
-                        variant="plain"
-                        onClick={() =>
-                          handleViewJobLogs(job.job_id, job.job_name)
-                        }
-                        disabled={logsLoading}
-                      >
-                        <FileText size={16} />
-                      </IconButton>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <IconButton
+                          size="sm"
+                          variant="plain"
+                          onClick={() =>
+                            handleViewJobLogs(job.job_id, job.job_name)
+                          }
+                          disabled={logsLoading}
+                        >
+                          <FileText size={16} />
+                        </IconButton>
+                        {/* Show cancel button only for running jobs */}
+                        {(job.status === "JobStatus.RUNNING" ||
+                          job.status === "JobStatus.PENDING" ||
+                          job.status === "JobStatus.SETTING_UP") && (
+                          <IconButton
+                            size="sm"
+                            variant="plain"
+                            color="danger"
+                            onClick={() => handleCancelJob(job.job_id)}
+                            disabled={
+                              cancelLoading[`${clusterName}_${job.job_id}`]
+                            }
+                          >
+                            <X size={16} />
+                          </IconButton>
+                        )}
+                      </Box>
                     </td>
                   </tr>
                 ))}
