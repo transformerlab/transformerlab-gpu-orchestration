@@ -47,6 +47,8 @@ interface GpuType {
   count: string;
   display_name: string;
   full_string: string;
+  price: string;
+  type: string;
 }
 
 const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
@@ -85,28 +87,28 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setIsLoadingGpuTypes(true);
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/runpod/gpu-types"),
+        buildApiUrl("skypilot/runpod/display-options-with-pricing"),
         {
           credentials: "include",
         }
       );
       if (response.ok) {
         const data = await response.json();
-        const gpuTypes = data.gpu_types.map((gpu: string) => {
-          const [name, count, price] = gpu.split(":");
-          const gpuType = {
-            name,
-            count: count || "1",
-            display_name: `${name} (${count || "1"}x)`,
-            price: price || "0",
-            full_string: gpu, // Keep the original string for unique identification
-          };
-          return gpuType;
-        });
+        console.log("RunPod display options in launcher:", data);
+        const gpuTypes = data.display_options_with_pricing.map(
+          (option: any) => ({
+            name: option.name,
+            count: option.accelerator_count || "1",
+            display_name: option.display_name,
+            price: option.price,
+            full_string: option.name, // Use the name as the full string
+            type: option.type,
+          })
+        );
         setAvailableGpuTypes(gpuTypes);
       }
     } catch (err) {
-      console.error("Error fetching GPU types:", err);
+      console.error("Error fetching display options:", err);
     } finally {
       setIsLoadingGpuTypes(false);
     }
@@ -142,7 +144,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       formData.append("command", command);
       if (setup) formData.append("setup", setup);
       formData.append("cloud", "runpod");
-      if (selectedGpuType) formData.append("accelerators", selectedGpuType);
+      if (selectedGpuFullString)
+        formData.append("accelerators", selectedGpuFullString);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
@@ -300,7 +303,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
                   <span style={{ color: "orange" }}>
                     {" "}
                     No GPU types are allowed in the current configuration.
-                    Please configure allowed GPU types in the Admin section.
+                    Please configure allowed GPU/CPU types in the Admin section.
                   </span>
                 )}
             </Typography>

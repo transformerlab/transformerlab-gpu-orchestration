@@ -44,6 +44,9 @@ from skypilot.runpod_utils import (
     verify_runpod_setup,
     get_runpod_gpu_types,
     get_runpod_gpu_types_with_pricing,
+    get_runpod_display_options,
+    get_runpod_display_options_with_pricing,
+    map_runpod_display_to_instance_type,
     setup_runpod_config,
     save_runpod_config,
     get_runpod_config_for_display,
@@ -90,7 +93,8 @@ import asyncio
 class RunPodConfigRequest(BaseModel):
     name: str
     api_key: str
-    allowed_gpu_types: list[str]
+    allowed_gpu_types: list[str]  # Keep for backward compatibility
+    allowed_display_options: list[str] = None  # New field for display options
     max_instances: int = 0
     config_key: str = None  # Optional config key for updating existing configs
 
@@ -330,6 +334,15 @@ async def launch_skypilot_cluster(
         if cloud == "runpod":
             try:
                 setup_runpod_config()
+                # Map display string to instance type if accelerators is provided
+                if accelerators:
+                    mapped_instance_type = map_runpod_display_to_instance_type(
+                        accelerators
+                    )
+                    if mapped_instance_type != accelerators:
+                        instance_type = mapped_instance_type
+                        # Clear accelerators for RunPod since we're using instance_type
+                        accelerators = None
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
@@ -343,7 +356,6 @@ async def launch_skypilot_cluster(
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
-
         request_id = launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             command=command,
@@ -1242,6 +1254,33 @@ async def get_runpod_gpu_types_with_pricing_route(request: Request, response: Re
         )
 
 
+@router.get("/runpod/display-options")
+async def get_runpod_display_options_route(request: Request, response: Response):
+    """Get available RunPod options with user-friendly display names"""
+    try:
+        display_options = get_runpod_display_options()
+        return {"display_options": display_options}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get RunPod display options: {str(e)}"
+        )
+
+
+@router.get("/runpod/display-options-with-pricing")
+async def get_runpod_display_options_with_pricing_route(
+    request: Request, response: Response
+):
+    """Get available RunPod options with user-friendly display names and pricing information."""
+    try:
+        display_options_with_pricing = get_runpod_display_options_with_pricing()
+        return {"display_options_with_pricing": display_options_with_pricing}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get RunPod display options with pricing: {str(e)}",
+        )
+
+
 @router.get("/runpod/config")
 async def get_runpod_config(request: Request, response: Response):
     """Get current RunPod configuration"""
@@ -1260,6 +1299,13 @@ async def save_runpod_config_route(
 ):
     """Save RunPod configuration"""
     try:
+        print(
+            f"🔍 RunPod config request - allowed_gpu_types: {config_request.allowed_gpu_types}"
+        )
+        print(
+            f"🔍 RunPod config request - allowed_display_options: {config_request.allowed_display_options}"
+        )
+
         # Save the configuration using utility function
         config = save_runpod_config(
             config_request.name,
@@ -1268,6 +1314,10 @@ async def save_runpod_config_route(
             config_request.max_instances,
             config_request.config_key,
         )
+
+        # If display options are provided, update the config
+        if config_request.allowed_display_options:
+            config["allowed_display_options"] = config_request.allowed_display_options
 
         # Set environment variable for current session only if a real API key was provided
         if config_request.api_key and not config_request.api_key.startswith("*"):

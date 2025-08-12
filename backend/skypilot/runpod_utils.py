@@ -90,6 +90,7 @@ def save_runpod_config(
     config_key: str = None,
 ):
     """Save RunPod configuration to file (legacy compatibility)"""
+    print(f"💾 Saving RunPod config - allowed_gpu_types: {allowed_gpu_types}")
     config_data = load_runpod_config()
 
     # Create new config entry
@@ -134,6 +135,9 @@ def save_runpod_config(
 def get_runpod_config_for_display():
     """Get RunPod configuration for display (with masked API key)"""
     config_data = load_runpod_config()
+    print(
+        f"📤 Returning RunPod config for display - configs: {config_data.get('configs', {})}"
+    )
 
     # Return all configs with masked API keys
     display_configs = {}
@@ -362,22 +366,110 @@ def verify_runpod_setup():
         return False
 
 
-def get_runpod_gpu_types():
-    """Get available GPU types from SkyPilot's RunPod catalog"""
+def map_runpod_display_to_instance_type(display_string: str) -> str:
+    """
+    Maps user-friendly display strings to actual RunPod instance types.
+
+    Examples:
+    - "RTX 4090:1" -> "NVIDIA RTX 4090"
+    - "CPU:8" -> "CPU-8"
+    - "A100:4" -> "NVIDIA A100"
+    """
+    try:
+        from sky.catalog.common import read_catalog
+        import pandas as pd
+
+        # Read the RunPod catalog
+        df = read_catalog("runpod/vms.csv")
+
+        # Handle CPU instances (format: "CPU:vCPUs-MemoryGiB")
+        if display_string.startswith("CPU:"):
+            try:
+                # Parse CPU:vCPUs-MemoryGiB format
+                parts = display_string.split(":")
+                if len(parts) == 2:
+                    cpu_memory_part = parts[1]
+                    if "-" in cpu_memory_part:
+                        vcpus_str, memory_part = cpu_memory_part.split("-", 1)
+                        vcpus = int(vcpus_str)
+                        memory_gb = int(memory_part.replace("GB", ""))
+
+                        # Find matching CPU instance
+                        cpu_rows = df[
+                            (df["AcceleratorName"].isna())
+                            | (df["AcceleratorName"] == "")
+                            | (df["AcceleratorName"].str.lower() == "nan")
+                        ]
+
+                        # Find the row with matching vCPUs and memory
+                        matching_row = cpu_rows[
+                            (cpu_rows["vCPUs"] == vcpus)
+                            & (cpu_rows["MemoryGiB"] == memory_gb)
+                        ]
+                        if not matching_row.empty:
+                            return matching_row.iloc[0]["InstanceType"]
+                    else:
+                        # Fallback to old format: CPU:vCPUs
+                        vcpus = int(cpu_memory_part)
+                        cpu_rows = df[
+                            (df["AcceleratorName"].isna())
+                            | (df["AcceleratorName"] == "")
+                            | (df["AcceleratorName"].str.lower() == "nan")
+                        ]
+
+                        # Find the row with matching vCPUs
+                        matching_row = cpu_rows[cpu_rows["vCPUs"] == vcpus]
+                        if not matching_row.empty:
+                            return matching_row.iloc[0]["InstanceType"]
+            except (ValueError, IndexError):
+                pass
+
+        # Handle GPU instances (format: "GPU_NAME:COUNT")
+        elif ":" in display_string:
+            gpu_name, count_str = display_string.split(":", 1)
+            try:
+                count = int(count_str)
+
+                # Find matching GPU instance
+                gpu_rows = df[
+                    (df["AcceleratorName"] == gpu_name)
+                    & (df["AcceleratorCount"] == count)
+                ]
+
+                if not gpu_rows.empty:
+                    return gpu_rows.iloc[0]["InstanceType"]
+            except (ValueError, IndexError):
+                pass
+
+        # If no mapping found, return the original string
+        print(f"⚠️ No instance type mapping found for '{display_string}', using as-is")
+        return display_string
+
+    except Exception as e:
+        print(f"❌ Error mapping display string to instance type: {e}")
+        return display_string
+
+
+def get_runpod_display_options():
+    """
+    Get available RunPod options with user-friendly display names.
+    Returns both GPU instances (AcceleratorName:Count) and CPU instances (CPU:vCPUs).
+    """
     try:
         from sky.catalog.common import read_catalog
 
         # Read the RunPod catalog using SkyPilot's read_catalog function
         df = read_catalog("runpod/vms.csv")
 
-        gpu_types = set()  # Use set to avoid duplicates
+        display_options = set()  # Use set to avoid duplicates
 
-        # Extract GPU types from the catalog
+        # Extract GPU instances from the catalog
         for _, row in df.iterrows():
             accelerator_name = str(row.get("AcceleratorName", "")).strip()
             accelerator_count_raw = row.get("AcceleratorCount", 1)
+            vcpus = row.get("vCPUs", 0)
 
-            # Skip rows with NaN or empty values
+            # Skip rows with NaN or empty values for required fields
             if (
                 accelerator_name
                 and accelerator_name != "AcceleratorName"
@@ -391,45 +483,79 @@ def get_runpod_gpu_types():
                 except (ValueError, TypeError):
                     accelerator_count = 1
 
-                # Format: GPU_NAME:COUNT (without price to match config format)
-                gpu_type = f"{accelerator_name}:{accelerator_count}"
-                gpu_types.add(gpu_type)
+                # Format: GPU_NAME:COUNT
+                display_option = f"{accelerator_name}:{accelerator_count}"
+                display_options.add(display_option)
 
-        gpu_types_list = sorted(list(gpu_types))
+        # Extract CPU instances (where AcceleratorName is blank/NaN)
+        for _, row in df.iterrows():
+            accelerator_name = str(row.get("AcceleratorName", "")).strip()
+            vcpus = row.get("vCPUs", 0)
 
-        if gpu_types_list:
+            # Include CPU instances (no accelerator or empty accelerator name)
+            if (
+                (
+                    not accelerator_name
+                    or accelerator_name == ""
+                    or accelerator_name.lower() == "nan"
+                    or accelerator_name == "AcceleratorName"
+                )
+                and vcpus is not None
+                and str(vcpus).lower() != "nan"
+                and vcpus > 0
+            ):
+                try:
+                    vcpus_int = int(float(vcpus))
+                    memory_gb = row.get("MemoryGiB", 0)
+                    memory_int = (
+                        int(float(memory_gb))
+                        if memory_gb and str(memory_gb).lower() != "nan"
+                        else 0
+                    )
+                    # Format: CPU:vCPUs-MemoryGiB
+                    display_option = f"CPU:{vcpus_int}-{memory_int}GB"
+                    display_options.add(display_option)
+                except (ValueError, TypeError):
+                    continue
+
+        display_options_list = sorted(list(display_options))
+
+        if display_options_list:
             print(
-                f"✅ Found {len(gpu_types_list)} GPU types from SkyPilot RunPod catalog"
+                f"✅ Found {len(display_options_list)} display options from SkyPilot RunPod catalog"
             )
         else:
-            print("⚠️ No GPU types found in SkyPilot RunPod catalog")
+            print("⚠️ No display options found in SkyPilot RunPod catalog")
 
-        return gpu_types_list
+        return display_options_list
 
     except Exception as e:
-        print(f"❌ Error getting GPU types from SkyPilot catalog: {e}")
+        print(f"❌ Error getting display options from SkyPilot catalog: {e}")
         return []
 
 
-def get_runpod_gpu_types_with_pricing():
-    """Get available GPU types from SkyPilot's RunPod catalog with pricing information"""
+def get_runpod_display_options_with_pricing():
+    """
+    Get available RunPod options with user-friendly display names and pricing information.
+    Returns both GPU instances (AcceleratorName:Count) and CPU instances (CPU:vCPUs).
+    """
     try:
         from sky.catalog.common import read_catalog
 
         # Read the RunPod catalog using SkyPilot's read_catalog function
         df = read_catalog("runpod/vms.csv")
 
-        gpu_types = {}  # Use dict to store detailed info
+        display_options = {}  # Use dict to store detailed info
 
-        # Extract GPU types from the catalog
+        # Extract GPU instances from the catalog
         for _, row in df.iterrows():
             accelerator_name = str(row.get("AcceleratorName", "")).strip()
             accelerator_count_raw = row.get("AcceleratorCount", 1)
-            price_per_hour = row.get(
-                "Price", None
-            )  # Use "Price" column instead of "PricePerHour"
+            price_per_hour = row.get("Price", None)
+            vcpus = row.get("vCPUs", 0)
+            memory_gb = row.get("MemoryGiB", 0)
 
-            # Skip rows with NaN or empty values
+            # Skip rows with NaN or empty values for required fields
             if (
                 accelerator_name
                 and accelerator_name != "AcceleratorName"
@@ -443,8 +569,8 @@ def get_runpod_gpu_types_with_pricing():
                 except (ValueError, TypeError):
                     accelerator_count = 1
 
-                # Format: GPU_NAME:COUNT (without price to match config format)
-                gpu_type = f"{accelerator_name}:{accelerator_count}"
+                # Format: GPU_NAME:COUNT
+                display_option = f"{accelerator_name}:{accelerator_count}"
 
                 # Format price information
                 price_str = "Unknown"
@@ -455,28 +581,101 @@ def get_runpod_gpu_types_with_pricing():
                     except (ValueError, TypeError):
                         price_str = "Unknown"
 
-                gpu_types[gpu_type] = {
-                    "name": gpu_type,
-                    "display_name": accelerator_name,
-                    "count": str(accelerator_count),
+                display_options[display_option] = {
+                    "name": display_option,
+                    "display_name": f"{accelerator_name} ({accelerator_count}x)",
+                    "type": "GPU",
+                    "accelerator_name": accelerator_name,
+                    "accelerator_count": str(accelerator_count),
+                    "vcpus": str(vcpus),
+                    "memory_gb": str(memory_gb),
                     "price": price_str,
                     "price_per_hour": price_per_hour,
                 }
 
-        gpu_types_list = list(gpu_types.values())
+        # Extract CPU instances (where AcceleratorName is blank/NaN)
+        for _, row in df.iterrows():
+            accelerator_name = str(row.get("AcceleratorName", "")).strip()
+            price_per_hour = row.get("Price", None)
+            vcpus = row.get("vCPUs", 0)
+            memory_gb = row.get("MemoryGiB", 0)
 
-        if gpu_types_list:
+            # Include CPU instances (no accelerator or empty accelerator name)
+            if (
+                (
+                    not accelerator_name
+                    or accelerator_name == ""
+                    or accelerator_name.lower() == "nan"
+                    or accelerator_name == "AcceleratorName"
+                )
+                and vcpus is not None
+                and str(vcpus).lower() != "nan"
+                and vcpus > 0
+            ):
+                try:
+                    vcpus_int = int(float(vcpus))
+                    memory_gb = row.get("MemoryGiB", 0)
+                    memory_int = (
+                        int(float(memory_gb))
+                        if memory_gb and str(memory_gb).lower() != "nan"
+                        else 0
+                    )
+                    # Format: CPU:vCPUs-MemoryGiB
+                    display_option = f"CPU:{vcpus_int}-{memory_int}GB"
+
+                    # Format price information
+                    price_str = "Unknown"
+                    if (
+                        price_per_hour is not None
+                        and str(price_per_hour).lower() != "nan"
+                    ):
+                        try:
+                            price_float = float(price_per_hour)
+                            price_str = f"${price_float:.2f}"
+                        except (ValueError, TypeError):
+                            price_str = "Unknown"
+
+                    display_options[display_option] = {
+                        "name": display_option,
+                        "display_name": f"CPU ({vcpus_int} vCPUs, {memory_int}GB RAM)",
+                        "type": "CPU",
+                        "accelerator_name": None,
+                        "accelerator_count": "0",
+                        "vcpus": str(vcpus_int),
+                        "memory_gb": str(memory_int),
+                        "price": price_str,
+                        "price_per_hour": price_per_hour,
+                    }
+                except (ValueError, TypeError):
+                    continue
+
+        display_options_list = list(display_options.values())
+
+        if display_options_list:
             print(
-                f"✅ Found {len(gpu_types_list)} GPU types from SkyPilot RunPod catalog with pricing"
+                f"✅ Found {len(display_options_list)} display options from SkyPilot RunPod catalog with pricing"
             )
         else:
-            print("⚠️ No GPU types found in SkyPilot RunPod catalog")
+            print("⚠️ No display options found in SkyPilot RunPod catalog")
 
-        return gpu_types_list
+        return display_options_list
 
     except Exception as e:
-        print(f"❌ Error getting GPU types with pricing from SkyPilot catalog: {e}")
+        print(
+            f"❌ Error getting display options with pricing from SkyPilot catalog: {e}"
+        )
         return []
+
+
+# Keep the old functions for backward compatibility
+def get_runpod_gpu_types():
+    """Get available GPU types from SkyPilot's RunPod catalog (legacy function)"""
+    return get_runpod_display_options()
+
+
+def get_runpod_gpu_types_with_pricing():
+    """Get available GPU types from SkyPilot's RunPod catalog with pricing information (legacy function)"""
+    return get_runpod_display_options_with_pricing()
 
 
 def create_runpod_sky_yaml(

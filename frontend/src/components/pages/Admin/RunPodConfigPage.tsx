@@ -29,9 +29,13 @@ interface RunPodConfig {
 
 interface GpuType {
   name: string;
-  count: string;
-  price: string;
   display_name: string;
+  type: string;
+  vcpus: string;
+  memory_gb: string;
+  price: string;
+  accelerator_name?: string;
+  accelerator_count?: string;
 }
 
 const RunPodConfigPage: React.FC = () => {
@@ -145,53 +149,33 @@ const RunPodConfigPage: React.FC = () => {
   const fetchAvailableGpuTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/runpod/gpu-types"),
+        buildApiUrl("skypilot/runpod/display-options-with-pricing"),
         {
           credentials: "include",
         }
       );
       if (response.ok) {
         const data = await response.json();
+        console.log("RunPod display options data:", data);
 
-        // Use the new detailed pricing information if available
+        // Use the new display options format
         let gpuTypes: GpuType[] = [];
 
         if (
-          data.gpu_types_with_pricing &&
-          data.gpu_types_with_pricing.length > 0
+          data.display_options_with_pricing &&
+          data.display_options_with_pricing.length > 0
         ) {
           // Use the new detailed format with pricing
-          gpuTypes = data.gpu_types_with_pricing.map((gpu: any) => ({
+          gpuTypes = data.display_options_with_pricing.map((gpu: any) => ({
             name: gpu.name,
             display_name: gpu.display_name,
-            count: gpu.count,
+            type: gpu.type,
+            vcpus: gpu.vcpus,
+            memory_gb: gpu.memory_gb,
             price: gpu.price,
+            accelerator_name: gpu.accelerator_name,
+            accelerator_count: gpu.accelerator_count,
           }));
-        } else {
-          // Fallback to parsing the simple format
-          gpuTypes = data.gpu_types.map((gpu: string) => {
-            // Parse GPU type in format "GPU_NAME:COUNT:PRICE"
-            const parts = gpu.split(":");
-            let display_name = gpu;
-            let count = "1";
-            let price = "Unknown";
-
-            if (parts.length >= 3) {
-              display_name = parts[0];
-              count = parts[1];
-              price = parts[2];
-            } else if (parts.length === 2) {
-              display_name = parts[0];
-              count = parts[1];
-            }
-
-            return {
-              name: gpu,
-              display_name,
-              count,
-              price,
-            };
-          });
         }
 
         // If we're in configure mode and have existing config, ensure all selected types are included
@@ -210,7 +194,9 @@ const RunPodConfigPage: React.FC = () => {
             gpuTypes.push({
               name: missingType,
               display_name: missingType,
-              count: "1",
+              type: "Unknown",
+              vcpus: "0",
+              memory_gb: "0",
               price: "Unknown",
             });
           });
@@ -219,11 +205,11 @@ const RunPodConfigPage: React.FC = () => {
         setAvailableGpuTypes(gpuTypes);
         return gpuTypes; // Return the GPU types for potential use
       } else {
-        console.error("Error fetching GPU types");
+        console.error("Error fetching display options");
         return [];
       }
     } catch (err) {
-      console.error("Error fetching GPU types:", err);
+      console.error("Error fetching display options:", err);
       return [];
     }
   };
@@ -562,11 +548,11 @@ const RunPodConfigPage: React.FC = () => {
               size={20}
               style={{ marginRight: 8, verticalAlign: "middle" }}
             />
-            Allowed GPU Types
+            Allowed GPU/CPU Types
           </Typography>
           <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
-            Select which RunPod GPU types users can choose from when creating
-            RunPod clusters.
+            Select which RunPod GPU/CPU types users can choose from when
+            creating RunPod clusters.
           </Typography>
 
           {loading && availableGpuTypes.length === 0 ? (
@@ -601,23 +587,14 @@ const RunPodConfigPage: React.FC = () => {
                 <Autocomplete
                   multiple
                   options={availableGpuTypes}
-                  getOptionLabel={(option) =>
-                    `${option.display_name} (${option.count} GPU${
-                      option.count !== "1" ? "s" : ""
-                    })`
-                  }
+                  getOptionLabel={(option) => `${option.name}`}
                   value={availableGpuTypes.filter((gpu: GpuType) =>
-                    config.allowed_gpu_types.includes(
-                      `${gpu.display_name}:${parseFloat(gpu.count)}`
-                    )
+                    config.allowed_gpu_types.includes(gpu.name)
                   )}
                   onChange={(_, newValue) => {
                     setConfig((prev) => ({
                       ...prev,
-                      allowed_gpu_types: newValue.map(
-                        (item) =>
-                          `${item.display_name}:${parseFloat(item.count)}`
-                      ),
+                      allowed_gpu_types: newValue.map((item) => item.name),
                     }));
                   }}
                   placeholder="Search and select RunPod GPU types..."
@@ -628,14 +605,18 @@ const RunPodConfigPage: React.FC = () => {
                           level="title-sm"
                           sx={{ fontWeight: "bold" }}
                         >
-                          {option.display_name}
+                          {option.name}
                         </Typography>
                         <Typography
                           level="body-xs"
                           sx={{ color: "neutral.500" }}
                         >
-                          {option.count} GPU{option.count !== "1" ? "s" : ""} •
-                          ${option.price}/hr
+                          {option.type === "GPU"
+                            ? `${option.accelerator_count || "1"}x ${
+                                option.accelerator_name || "GPU"
+                              }`
+                            : `${option.vcpus} vCPUs`}{" "}
+                          • {option.memory_gb}GB RAM • ${option.price}/hr
                         </Typography>
                       </Stack>
                     </Box>
@@ -654,7 +635,7 @@ const RunPodConfigPage: React.FC = () => {
                     setConfig((prev) => ({
                       ...prev,
                       allowed_gpu_types: availableGpuTypes.map(
-                        (gpu) => `${gpu.display_name}:${parseFloat(gpu.count)}`
+                        (gpu) => gpu.name
                       ),
                     }));
                   }}
@@ -755,7 +736,7 @@ const RunPodConfigPage: React.FC = () => {
                 alignItems: "center",
               }}
             >
-              <Typography>Allowed GPU Types</Typography>
+              <Typography>Allowed GPU/CPU Types</Typography>
               <Chip size="sm" variant="soft" color="primary">
                 {config.allowed_gpu_types?.length || 0} selected
               </Chip>
