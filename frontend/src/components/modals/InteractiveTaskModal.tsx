@@ -15,9 +15,9 @@ import {
   Alert,
   Stack,
 } from "@mui/joy";
-import { buildApiUrl, apiFetch } from "../utils/api";
+import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Code, BookOpen } from "lucide-react";
-import { useNotification } from "./NotificationSystem";
+import { useNotification } from "../NotificationSystem";
 
 type TaskType = "vscode" | "jupyter";
 
@@ -146,10 +146,7 @@ echo "c.NotebookApp.token = ''" >> ~/.jupyter/jupyter_notebook_config.py
 echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"
 jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser`
         );
-        formData.append(
-          "job_name",
-          `jupyter-${clusterName}-port${jupyterPort}`
-        );
+        formData.append("job_name", `jupyter-${clusterName}`);
         formData.append("job_type", "jupyter");
         formData.append("jupyter_port", jupyterPort);
 

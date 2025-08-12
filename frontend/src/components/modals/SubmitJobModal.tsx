@@ -15,8 +15,8 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/joy";
-import { buildApiUrl, apiFetch } from "../utils/api";
-import { useNotification } from "./NotificationSystem";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useNotification } from "../NotificationSystem";
 
 interface SubmitJobModalProps {
   open: boolean;

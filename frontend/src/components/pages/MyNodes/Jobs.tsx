@@ -247,7 +247,6 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                 ) {
                   // Check if this is a Jupyter job (multiple patterns)
                   if (
-                    job.job_name.includes("-jupyter-") ||
                     job.job_name.toLowerCase().includes("jupyter") ||
                     job.job_name.startsWith("jupyter")
                   ) {

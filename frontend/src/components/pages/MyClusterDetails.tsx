@@ -62,8 +62,8 @@ import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
 import LogViewer from "../widgets/LogViewer";
 import InstanceStatusChip from "../widgets/InstanceStatusChip";
-import InteractiveTaskModal from "../InteractiveTaskModal";
-import SubmitJobModal from "../SubmitJobModal";
+import InteractiveTaskModal from "../modals/InteractiveTaskModal";
+import SubmitJobModal from "../modals/SubmitJobModal";
 import { parseResourcesString } from "../../utils/resourceParser";
 import ResourceDisplay from "../widgets/ResourceDisplay";
 
