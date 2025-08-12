@@ -318,11 +318,14 @@ def setup_runpod_config():
     return True
 
 
-def verify_runpod_setup():
-    """Verify that RunPod is properly configured and API is accessible"""
+def verify_runpod_setup(api_key: str = None):
+    """
+    Verify that RunPod is properly configured and API is accessible
+    Optionally takes a test api_key parameter to override the saved key.
+    """
     try:
-        # Set the API key
-        api_key = get_runpod_api_key()
+        # Use the provided API key if given, otherwise fetch it
+        api_key = api_key or get_runpod_api_key()
         if not api_key:
             print(
                 "❌ RunPod API key is required. Please configure it in the Admin section."
