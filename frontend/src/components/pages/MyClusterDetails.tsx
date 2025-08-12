@@ -52,6 +52,7 @@ import {
   CodeIcon,
   TextIcon,
   MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -517,12 +518,9 @@ const MyClusterDetails: React.FC = () => {
       <Stack spacing={2}>
         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
           <Dropdown>
-            <MenuButton
-              variant="outlined"
-              size="sm"
-              startDecorator={<MoreHorizontal />}
-            >
+            <MenuButton variant="outlined" size="sm">
               Actions
+              <ChevronDown />
             </MenuButton>
             <Menu size="sm" variant="soft" placement="bottom-end">
               {clusterData.status.toLowerCase().includes("up") && (
