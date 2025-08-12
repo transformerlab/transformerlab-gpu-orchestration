@@ -3,7 +3,6 @@ import runpod
 import json
 import subprocess
 from pathlib import Path
-from config import RUNPOD_API_KEY
 from typing import Dict
 
 # Path to store RunPod configuration
@@ -79,7 +78,7 @@ def get_runpod_api_key():
     default_key = config_data.get("default_config")
     if default_key and default_key in config_data.get("configs", {}):
         return config_data["configs"][default_key].get("api_key", "")
-    return RUNPOD_API_KEY
+    return os.getenv("RUNPOD_API_KEY", None)
 
 
 def save_runpod_config(
@@ -216,20 +215,9 @@ def delete_runpod_config(config_key: str):
 def test_runpod_connection(api_key: str):
     """Test RunPod API connection with a specific API key"""
     try:
-        # Temporarily set the API key
-        original_key = os.environ.get("RUNPOD_API_KEY")
-        os.environ["RUNPOD_API_KEY"] = api_key
-
-        try:
-            # Test the connection
-            is_valid = verify_runpod_setup()
-            return is_valid
-        finally:
-            # Restore original key
-            if original_key:
-                os.environ["RUNPOD_API_KEY"] = original_key
-            else:
-                os.environ.pop("RUNPOD_API_KEY", None)
+        # Test the connection with passed api_key
+        is_valid = verify_runpod_setup(api_key)
+        return is_valid
 
     except Exception as e:
         print(f"Error testing RunPod connection: {e}")
@@ -318,11 +306,16 @@ def setup_runpod_config():
     return True
 
 
-def verify_runpod_setup():
-    """Verify that RunPod is properly configured and API is accessible"""
+def verify_runpod_setup(test_api_key: str = None):
+    """
+    Verify that RunPod is properly configured and API is accessible
+
+    Optionally takes a test api key parameter to override the saved key.
+    This is useful for verifying an API key before saving to config.
+    """
     try:
-        # Set the API key
-        api_key = get_runpod_api_key()
+        # Use the provided API key if given, otherwise fetch from config
+        api_key = test_api_key or get_runpod_api_key()
         if not api_key:
             print(
                 "❌ RunPod API key is required. Please configure it in the Admin section."
