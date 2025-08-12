@@ -562,7 +562,7 @@ const MyClusterDetails: React.FC = () => {
               <ChevronDown />
             </MenuButton>
             <Menu size="sm" variant="soft" placement="bottom-end">
-              {clusterData.status.toLowerCase().includes("up") && (
+              {clusterData.status.toLowerCase().includes("up") ? (
                 <>
                   <MenuItem onClick={() => openSubmitJobModal(clusterName!)}>
                     <ListItemDecorator>
@@ -570,51 +570,50 @@ const MyClusterDetails: React.FC = () => {
                     </ListItemDecorator>
                     Submit a Job
                   </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setSshClusterName(clusterName);
+                    }}
+                  >
+                    <ListItemDecorator>
+                      <SquareTerminalIcon />
+                    </ListItemDecorator>
+                    Connect via SSH
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem
+                    onClick={() =>
+                      openInteractiveTaskModal(clusterName!, "vscode")
+                    }
+                  >
+                    <ListItemDecorator>
+                      <CodeIcon />
+                    </ListItemDecorator>
+                    VSCode
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() =>
+                      openInteractiveTaskModal(clusterName!, "jupyter")
+                    }
+                  >
+                    <ListItemDecorator>
+                      <BookOpenIcon />
+                    </ListItemDecorator>
+                    Jupyter
+                  </MenuItem>
                 </>
+              ) : (
+                <MenuItem disabled>
+                  <ListItemDecorator>
+                    <Clock />
+                  </ListItemDecorator>
+                  Waiting for the instance to be ready...
+                </MenuItem>
               )}
-              <Divider />
-              <MenuItem
-                onClick={() => openInteractiveTaskModal(clusterName!, "vscode")}
-              >
-                <ListItemDecorator>
-                  <CodeIcon />
-                </ListItemDecorator>
-                VSCode
-              </MenuItem>
-              <MenuItem
-                onClick={() =>
-                  openInteractiveTaskModal(clusterName!, "jupyter")
-                }
-              >
-                <ListItemDecorator>
-                  <BookOpenIcon />
-                </ListItemDecorator>
-                Jupyter
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  // Navigate to jobs page or show logs
-                  console.log("View logs for cluster:", clusterName);
-                }}
-              >
-                <ListItemDecorator>
-                  <TextIcon />
-                </ListItemDecorator>
-                Logs
-              </MenuItem>
             </Menu>
           </Dropdown>
         </Box>
       </Stack>
-
-      <Button
-        onClick={() => {
-          setSshClusterName(clusterName);
-        }}
-      >
-        Connect via SSH
-      </Button>
 
       <Stack gap={3} mt={3}>
         {/* Cluster Information Cards */}
