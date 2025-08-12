@@ -35,6 +35,11 @@ import { useNavigate } from "react-router-dom";
 import NodeSquare from "../../widgets/NodeSquare";
 import { useFakeData } from "../../../context/FakeDataContext";
 import InstanceStatusChip from "../../widgets/InstanceStatusChip";
+import {
+  parseResourcesString,
+  formatResourcesCompact,
+} from "../../../utils/resourceParser";
+import ResourceDisplay from "../../widgets/ResourceDisplay";
 
 // Add a mock status generator for demonstration
 const statuses = ["up", "stopped", "init"];
@@ -446,9 +451,11 @@ const Held: React.FC<HeldProps> = ({
                         </Typography>
                       </td>
                       <td>
-                        <Typography level="body-sm">
-                          {node.resources || "-"}
-                        </Typography>
+                        <ResourceDisplay
+                          resourcesStr={node.resources || ""}
+                          variant="compact"
+                          size="sm"
+                        />
                       </td>
                       <td>
                         <Typography level="body-sm">
@@ -555,9 +562,11 @@ const Held: React.FC<HeldProps> = ({
                                 </Typography>
                               </td>
                               <td>
-                                <Typography level="body-sm">
-                                  {node.resources || "-"}
-                                </Typography>
+                                <ResourceDisplay
+                                  resourcesStr={node.resources || ""}
+                                  variant="compact"
+                                  size="sm"
+                                />
                               </td>
                               <td>
                                 <Typography level="body-sm">
@@ -672,9 +681,11 @@ const Held: React.FC<HeldProps> = ({
                           </Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm">
-                            {node.resources || "-"}
-                          </Typography>
+                          <ResourceDisplay
+                            resourcesStr={node.resources || ""}
+                            variant="compact"
+                            size="sm"
+                          />
                         </td>
                         <td>
                           <Typography level="body-sm">
@@ -746,9 +757,11 @@ const Held: React.FC<HeldProps> = ({
                 <InstanceStatusChip status={cluster.status} />
               </td>
               <td>
-                <Typography level="body-sm">
-                  {cluster.resources_str || "-"}
-                </Typography>
+                <ResourceDisplay
+                  resourcesStr={cluster.resources_str || ""}
+                  variant="detailed"
+                  size="sm"
+                />
               </td>
               <td>
                 <Typography level="body-sm">

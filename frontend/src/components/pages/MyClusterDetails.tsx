@@ -63,6 +63,8 @@ import LogViewer from "../widgets/LogViewer";
 import InstanceStatusChip from "../widgets/InstanceStatusChip";
 import InteractiveTaskModal from "../InteractiveTaskModal";
 import SubmitJobModal from "../SubmitJobModal";
+import { parseResourcesString } from "../../utils/resourceParser";
+import ResourceDisplay from "../widgets/ResourceDisplay";
 
 interface ClusterTypeInfo {
   cluster_name: string;
@@ -612,15 +614,15 @@ const MyClusterDetails: React.FC = () => {
                 </Box>
 
                 {clusterData.resources_str && (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <Typography level="body-sm" color="neutral">
+                  <Box>
+                    <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
                       Resources:
                     </Typography>
-                    <Typography level="body-sm">
-                      {clusterData.resources_str}
-                    </Typography>
+                    <ResourceDisplay
+                      resourcesStr={clusterData.resources_str}
+                      variant="detailed"
+                      size="md"
+                    />
                   </Box>
                 )}
               </Stack>
@@ -769,7 +771,11 @@ const MyClusterDetails: React.FC = () => {
                       </Chip>
                     </td>
                     <td>
-                      <Typography level="body-sm">{job.resources}</Typography>
+                      <ResourceDisplay
+                        resourcesStr={job.resources || ""}
+                        variant="compact"
+                        size="sm"
+                      />
                     </td>
                     <td>
                       <Typography level="body-sm">
