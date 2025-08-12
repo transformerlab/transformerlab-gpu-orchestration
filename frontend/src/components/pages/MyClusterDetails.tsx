@@ -64,6 +64,7 @@ import LogViewer from "../widgets/LogViewer";
 import InstanceStatusChip from "../widgets/InstanceStatusChip";
 import InteractiveTaskModal from "../modals/InteractiveTaskModal";
 import SubmitJobModal from "../modals/SubmitJobModal";
+import SSHModal from "../modals/SSHModal";
 import { parseResourcesString } from "../../utils/resourceParser";
 import ResourceDisplay from "../widgets/ResourceDisplay";
 
@@ -562,7 +563,7 @@ const MyClusterDetails: React.FC = () => {
               <ChevronDown />
             </MenuButton>
             <Menu size="sm" variant="soft" placement="bottom-end">
-              {clusterData.status.toLowerCase().includes("up") && (
+              {clusterData.status.toLowerCase().includes("up") ? (
                 <>
                   <MenuItem onClick={() => openSubmitJobModal(clusterName!)}>
                     <ListItemDecorator>
@@ -570,51 +571,50 @@ const MyClusterDetails: React.FC = () => {
                     </ListItemDecorator>
                     Submit a Job
                   </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setSshClusterName(clusterName);
+                    }}
+                  >
+                    <ListItemDecorator>
+                      <SquareTerminalIcon />
+                    </ListItemDecorator>
+                    Connect via SSH
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem
+                    onClick={() =>
+                      openInteractiveTaskModal(clusterName!, "vscode")
+                    }
+                  >
+                    <ListItemDecorator>
+                      <CodeIcon />
+                    </ListItemDecorator>
+                    VSCode
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() =>
+                      openInteractiveTaskModal(clusterName!, "jupyter")
+                    }
+                  >
+                    <ListItemDecorator>
+                      <BookOpenIcon />
+                    </ListItemDecorator>
+                    Jupyter
+                  </MenuItem>
                 </>
+              ) : (
+                <MenuItem disabled>
+                  <ListItemDecorator>
+                    <Clock />
+                  </ListItemDecorator>
+                  Waiting for the instance to be ready...
+                </MenuItem>
               )}
-              <Divider />
-              <MenuItem
-                onClick={() => openInteractiveTaskModal(clusterName!, "vscode")}
-              >
-                <ListItemDecorator>
-                  <CodeIcon />
-                </ListItemDecorator>
-                VSCode
-              </MenuItem>
-              <MenuItem
-                onClick={() =>
-                  openInteractiveTaskModal(clusterName!, "jupyter")
-                }
-              >
-                <ListItemDecorator>
-                  <BookOpenIcon />
-                </ListItemDecorator>
-                Jupyter
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  // Navigate to jobs page or show logs
-                  console.log("View logs for cluster:", clusterName);
-                }}
-              >
-                <ListItemDecorator>
-                  <TextIcon />
-                </ListItemDecorator>
-                Logs
-              </MenuItem>
             </Menu>
           </Dropdown>
         </Box>
       </Stack>
-
-      <Button
-        onClick={() => {
-          setSshClusterName(clusterName);
-        }}
-      >
-        Connect via SSH
-      </Button>
 
       <Stack gap={3} mt={3}>
         {/* Cluster Information Cards */}
@@ -929,38 +929,11 @@ const MyClusterDetails: React.FC = () => {
       />
 
       {/* SSH Modal */}
-      <Modal open={!!sshClusterName} onClose={() => setSshClusterName(null)}>
-        <ModalDialog
-          size="lg"
-          sx={{
-            maxWidth: "90vw",
-            maxHeight: "90vh",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <ModalClose />
-          <Typography level="h4" sx={{ mb: 2 }}>
-            SSH Terminal
-          </Typography>
-          <iframe
-            id="sshIframe"
-            name="sshIframe"
-            style={{
-              width: "100%",
-              height: "100%",
-              border: "none",
-            }}
-            src={
-              sshClusterName
-                ? `http://localhost:8000/api/v1/terminal?cluster_name=${encodeURIComponent(
-                    sshClusterName
-                  )}`
-                : undefined
-            }
-          />
-        </ModalDialog>
-      </Modal>
+      <SSHModal
+        open={!!sshClusterName}
+        onClose={() => setSshClusterName(null)}
+        clusterName={sshClusterName}
+      />
     </PageWithTitle>
   );
 };
