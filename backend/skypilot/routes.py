@@ -435,7 +435,7 @@ async def get_skypilot_cluster_status(
                     last_use=record.get("last_use"),
                     autostop=record.get("autostop"),
                     to_down=record.get("to_down"),
-                    resources_str=record.get("resources_str"),
+                    resources_str=record.get("resources_str_full"),
                     user_info=user_info,
                 )
             )

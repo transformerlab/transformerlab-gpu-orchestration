@@ -215,7 +215,7 @@ def is_down_only_cluster(cluster_name: str):
         for record in cluster_records:
             if record.get("name") == cluster_name:
                 # Check if it's a RunPod cluster by looking at resources
-                resources_str = record.get("resources_str", "")
+                resources_str = record.get("resources_str_full", "")
                 if "runpod" in resources_str.lower():
                     return True
                 break
