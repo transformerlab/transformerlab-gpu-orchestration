@@ -85,6 +85,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   // RunPod specific state
   const [runpodGpuTypes, setRunpodGpuTypes] = useState<string[]>([]);
+  const [runpodDisplayOptions, setRunpodDisplayOptions] = useState<string[]>([]);
   const [runpodSetupStatus, setRunpodSetupStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -202,8 +203,24 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
           if (setupResponse.ok) {
             const setupData = await setupResponse.json();
             setRunpodSetupStatus("success");
-            // Use configured GPU types
+            // Use configured GPU types for backward compatibility
             setRunpodGpuTypes(config.allowed_gpu_types);
+            
+            // Fetch display options for the UI
+            try {
+              const displayResponse = await apiFetch(
+                buildApiUrl("skypilot/runpod/display-options"),
+                {
+                  credentials: "include",
+                }
+              );
+              if (displayResponse.ok) {
+                const displayData = await displayResponse.json();
+                setRunpodDisplayOptions(displayData.display_options || []);
+              }
+            } catch (err) {
+              console.warn("Failed to fetch RunPod display options:", err);
+            }
 
             // Show sky check results if available
             if (setupData.sky_check_valid === false) {
@@ -543,7 +560,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                         )}
                         {runpodSetupStatus === "success" && (
                           <Typography level="body-sm" color="success">
-                            ✅ RunPod ready ({runpodGpuTypes.length} GPU types
+                            ✅ RunPod ready ({runpodDisplayOptions.length > 0 ? runpodDisplayOptions.length : runpodGpuTypes.length} options
                             available)
                           </Typography>
                         )}
@@ -624,7 +641,19 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
                 <FormControl>
                   <FormLabel>Accelerators</FormLabel>
-                  {cloud === "runpod" && runpodGpuTypes.length > 0 ? (
+                  {cloud === "runpod" && runpodDisplayOptions.length > 0 ? (
+                    <Select
+                      value={accelerators}
+                      onChange={(_, value) => setAccelerators(value || "")}
+                      placeholder="Select GPU type or CPU instance (e.g., RTX 4090:1, CPU:8-32GB)"
+                    >
+                      {runpodDisplayOptions.map((option) => (
+                        <Option key={option} value={option}>
+                          {option}
+                        </Option>
+                      ))}
+                    </Select>
+                  ) : cloud === "runpod" && runpodGpuTypes.length > 0 ? (
                     <Select
                       value={accelerators}
                       onChange={(_, value) => setAccelerators(value || "")}
@@ -652,7 +681,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                     <Input
                       value={accelerators}
                       onChange={(e) => setAccelerators(e.target.value)}
-                      placeholder="e.g., V100, V100:2, A100:4"
+                      placeholder="e.g., V100, V100:2, A100:4, CPU:8-32GB"
                     />
                   )}
                 </FormControl>

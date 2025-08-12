@@ -27,15 +27,20 @@ import { useNotification } from "../../../components/NotificationSystem";
 interface RunPodConfig {
   api_key: string;
   allowed_gpu_types: string[];
+  allowed_display_options?: string[];
   is_configured: boolean;
   max_instances: number;
 }
 
-interface GpuType {
+interface DisplayOption {
   name: string;
-  count: string;
-  price: string;
   display_name: string;
+  type: string;
+  vcpus: string;
+  memory_gb: string;
+  price: string;
+  accelerator_name?: string;
+  accelerator_count?: string;
 }
 
 const RunPodAdmin: React.FC = () => {
@@ -45,7 +50,9 @@ const RunPodAdmin: React.FC = () => {
     is_configured: false,
     max_instances: 0,
   });
-  const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
+  const [availableDisplayOptions, setAvailableDisplayOptions] = useState<
+    DisplayOption[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [skyChecking, setSkyChecking] = useState(false);
@@ -59,7 +66,7 @@ const RunPodAdmin: React.FC = () => {
 
   useEffect(() => {
     fetchRunPodConfig();
-    fetchAvailableGpuTypes();
+    fetchAvailableDisplayOptions();
   }, []);
 
   const fetchRunPodConfig = async () => {
@@ -70,7 +77,47 @@ const RunPodAdmin: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+        console.log("RunPod config data:", data); // Debug log
+        console.log(
+          "RunPod allowed_gpu_types from backend:",
+          data.configs?.[data.default_config]?.allowed_gpu_types
+        );
+        // Handle the new multi-config structure
+        if (data.configs && data.default_config) {
+          const defaultConfig = data.configs[data.default_config];
+          if (defaultConfig) {
+            // Clean up corrupted allowed_gpu_types data
+            const cleanedAllowedGpuTypes =
+              defaultConfig.allowed_gpu_types?.filter(
+                (gpu: string) => !gpu.includes(":NaN") && !gpu.includes("(1x)")
+              ) || [];
+
+            console.log(
+              "RunPod defaultConfig.allowed_gpu_types:",
+              defaultConfig.allowed_gpu_types
+            );
+            console.log(
+              "RunPod cleanedAllowedGpuTypes:",
+              cleanedAllowedGpuTypes
+            );
+
+            setConfig({
+              ...defaultConfig,
+              allowed_gpu_types: cleanedAllowedGpuTypes,
+              is_configured: data.is_configured,
+            });
+          } else {
+            setConfig({
+              api_key: "",
+              allowed_gpu_types: [],
+              is_configured: false,
+              max_instances: 0,
+            });
+          }
+        } else {
+          // Fallback to old single config structure
+          setConfig(data);
+        }
       } else {
         addNotification({
           type: "danger",
@@ -87,33 +134,27 @@ const RunPodAdmin: React.FC = () => {
     }
   };
 
-  const fetchAvailableGpuTypes = async () => {
+  const fetchAvailableDisplayOptions = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/runpod/gpu-types"),
+        buildApiUrl("skypilot/runpod/display-options-with-pricing"),
         {
           credentials: "include",
         }
       );
       if (response.ok) {
         const data = await response.json();
-        const gpuTypes = data.gpu_types.map((gpu: string) => {
-          const [name, count, price] = gpu.split(":");
-          return {
-            name,
-            count: count || "1",
-            price: price || "0",
-            display_name: `${name} (${count || "1"}x) - $${parseFloat(
-              price || "0"
-            ).toFixed(2)}/hr`,
-          };
-        });
-        setAvailableGpuTypes(gpuTypes);
+        console.log("RunPod display options data:", data);
+        console.log(
+          "RunPod display_options_with_pricing:",
+          data.display_options_with_pricing
+        );
+        setAvailableDisplayOptions(data.display_options_with_pricing || []);
       } else {
-        console.error("Error fetching GPU types:", err);
+        console.error("Error fetching display options");
       }
     } catch (err) {
-      console.error("Error fetching GPU types:", err);
+      console.error("Error fetching display options:", err);
     }
   };
 
@@ -122,17 +163,21 @@ const RunPodAdmin: React.FC = () => {
       setSaving(true);
       setSkyCheckResult(null);
 
+      const requestBody = {
+        name: "RunPod Config", // Default name
+        api_key: config.api_key,
+        allowed_gpu_types: config.allowed_gpu_types,
+        max_instances: config.max_instances,
+      };
+      console.log("RunPod save request body:", requestBody);
+
       const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          api_key: config.api_key,
-          allowed_gpu_types: config.allowed_gpu_types,
-          max_instances: config.max_instances,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -397,14 +442,14 @@ const RunPodAdmin: React.FC = () => {
             Allowed GPU Instances
           </Typography>
           <Typography level="body-sm" sx={{ mb: 2, color: "text.secondary" }}>
-            Select which GPU types users can choose from when creating RunPod
-            clusters.
+            Select which GPU types and CPU instances users can choose from when
+            creating RunPod clusters.
           </Typography>
 
-          {availableGpuTypes.length === 0 ? (
+          {availableDisplayOptions.length === 0 ? (
             <Alert color="warning">
-              No GPU types available. Please ensure RunPod is properly
-              configured and try refreshing.
+              No options available. Please ensure RunPod is properly configured
+              and try refreshing.
             </Alert>
           ) : (
             <Stack spacing={2}>
@@ -417,7 +462,7 @@ const RunPodAdmin: React.FC = () => {
                 }}
               >
                 <Typography level="title-sm">
-                  Select GPU Types to Allow
+                  Select Options to Allow
                 </Typography>
                 <Chip size="sm" variant="soft" color="primary">
                   {config.allowed_gpu_types.length} selected
@@ -425,12 +470,12 @@ const RunPodAdmin: React.FC = () => {
               </Box>
 
               <Grid container spacing={2}>
-                {availableGpuTypes.map((gpu) => {
+                {availableDisplayOptions.map((option) => {
                   const isSelected = config.allowed_gpu_types.includes(
-                    gpu.name
+                    option.name
                   );
                   return (
-                    <Grid xs={12} sm={6} md={4} key={gpu.name}>
+                    <Grid xs={12} sm={6} md={4} key={option.name}>
                       <Card
                         variant={isSelected ? "solid" : "outlined"}
                         color={isSelected ? "primary" : "neutral"}
@@ -449,9 +494,9 @@ const RunPodAdmin: React.FC = () => {
                             ...prev,
                             allowed_gpu_types: isSelected
                               ? prev.allowed_gpu_types.filter(
-                                  (g) => g !== gpu.name
+                                  (g) => g !== option.name
                                 )
-                              : [...prev.allowed_gpu_types, gpu.name],
+                              : [...prev.allowed_gpu_types, option.name],
                           }));
                         }}
                       >
@@ -487,7 +532,7 @@ const RunPodAdmin: React.FC = () => {
                               color: isSelected ? "white" : "inherit",
                             }}
                           >
-                            {gpu.name}
+                            {option.name}
                           </Typography>
                           <Typography
                             level="body-sm"
@@ -495,7 +540,17 @@ const RunPodAdmin: React.FC = () => {
                               color: isSelected ? "white" : "text.secondary",
                             }}
                           >
-                            {gpu.count}x GPU
+                            {option.type === "GPU"
+                              ? `${option.accelerator_count}x ${option.accelerator_name}`
+                              : `${option.vcpus} vCPUs`}
+                          </Typography>
+                          <Typography
+                            level="body-sm"
+                            sx={{
+                              color: isSelected ? "white" : "text.secondary",
+                            }}
+                          >
+                            {option.memory_gb}GB RAM
                           </Typography>
                           <Typography
                             level="body-sm"
@@ -504,7 +559,7 @@ const RunPodAdmin: React.FC = () => {
                               fontWeight: "bold",
                             }}
                           >
-                            ${parseFloat(gpu.price).toFixed(2)}/hr
+                            {option.price}/hr
                           </Typography>
                           <Chip
                             size="sm"
@@ -512,7 +567,7 @@ const RunPodAdmin: React.FC = () => {
                             color={isSelected ? "primary" : "neutral"}
                             sx={{ alignSelf: "flex-start" }}
                           >
-                            {gpu.count} Instance{gpu.count !== "1" ? "s" : ""}
+                            {option.type}
                           </Chip>
                         </Stack>
                       </Card>
@@ -528,8 +583,8 @@ const RunPodAdmin: React.FC = () => {
                   onClick={() => {
                     setConfig((prev) => ({
                       ...prev,
-                      allowed_gpu_types: availableGpuTypes.map(
-                        (gpu) => gpu.name
+                      allowed_gpu_types: availableDisplayOptions.map(
+                        (option) => option.name
                       ),
                     }));
                   }}
@@ -547,6 +602,24 @@ const RunPodAdmin: React.FC = () => {
                   }}
                 >
                   Clear All
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  color="warning"
+                  onClick={() => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      allowed_gpu_types: [],
+                    }));
+                    addNotification({
+                      type: "warning",
+                      message:
+                        "Cleared corrupted GPU types data. Please re-select your options.",
+                    });
+                  }}
+                >
+                  Fix Corrupted Data
                 </Button>
               </Box>
             </Stack>
