@@ -261,7 +261,7 @@ const Nodes: React.FC = () => {
               <ClusterCard
                 cluster={{
                   id: "runpod-cluster",
-                  name: runpodPool?.name,
+                  name: runpodPool?.name || "RunPod Node Pool",
                   nodes: generateDedicatedNodes(
                     runpodPool.max_instances,
                     runpodPool.current_instances,
@@ -297,7 +297,7 @@ const Nodes: React.FC = () => {
               <ClusterCard
                 cluster={{
                   id: "azure-cluster",
-                  name: "Azure Cluster",
+                  name: azurePool?.name || "Azure Node Pool",
                   nodes: generateDedicatedNodes(
                     azurePool.max_instances,
                     azurePool.current_instances,
