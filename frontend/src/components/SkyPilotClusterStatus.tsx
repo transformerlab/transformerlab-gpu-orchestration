@@ -414,12 +414,6 @@ const SkyPilotClusterStatus: React.FC = () => {
           type: "danger",
           message: errorData.detail || "Failed to stop cluster",
         });
-      } else {
-        console.error("Error stopping cluster:", err);
-        addNotification({
-          type: "danger",
-          message: "Error stopping cluster",
-        });
       }
     } catch (err) {
       console.error("Error stopping cluster:", err);
@@ -451,12 +445,6 @@ const SkyPilotClusterStatus: React.FC = () => {
         addNotification({
           type: "danger",
           message: errorData.detail || "Failed to terminate cluster",
-        });
-      } else {
-        console.error("Error downing cluster:", err);
-        addNotification({
-          type: "danger",
-          message: "Error downing cluster",
         });
       }
     } catch (err) {
@@ -930,9 +918,8 @@ const SkyPilotClusterStatus: React.FC = () => {
                                             {job.status ===
                                               "JobStatus.RUNNING" &&
                                               job.job_name &&
-                                              job.job_name.includes(
-                                                "jupyter"
-                                              ) && (
+                                              (job.job_name.includes("jupyter") ||
+                                                job.job_name.includes("vscode")) && (
                                                 <Button
                                                   size="sm"
                                                   variant="outlined"
@@ -945,11 +932,15 @@ const SkyPilotClusterStatus: React.FC = () => {
                                                     const port = portMatch
                                                       ? parseInt(portMatch[1])
                                                       : 8888;
+                                                    const jobType = job.job_name.includes("jupyter")
+                                                      ? "jupyter"
+                                                      : "vscode";
                                                     setupJobPortForward(
                                                       cluster.cluster_name,
                                                       job.job_id,
-                                                      "jupyter",
-                                                      port
+                                                      jobType,
+                                                      jobType === "jupyter" ? port : undefined,
+                                                      jobType === "vscode" ? port : undefined
                                                     );
                                                   }}
                                                 >

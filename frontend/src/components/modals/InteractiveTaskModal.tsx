@@ -85,15 +85,21 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
 
     try {
       if (taskType === "vscode") {
-        // VSCode uses the interactive task endpoint
+        // VSCode now uses the job submission endpoint like Jupyter
         const formData = new FormData();
-        formData.append("task_type", taskType);
-        if (vscodePort) {
-          formData.append("vscode_port", vscodePort);
-        }
+        formData.append(
+          "command",
+          `# Install code-server if not already installed
+curl -fsSL https://code-server.dev/install.sh | bash
+# Start code-server
+code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`
+        );
+        formData.append("job_name", `vscode-${clusterName}`);
+        formData.append("job_type", "vscode");
+        formData.append("vscode_port", vscodePort);
 
         const response = await apiFetch(
-          buildApiUrl(`skypilot/interactive/${clusterName}/launch`),
+          buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
           {
             method: "POST",
             credentials: "include",
@@ -104,13 +110,13 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
         if (response.ok) {
           const data = await response.json();
           let successMessage =
-            data.message || "Interactive task launched successfully";
+            data.message || "VSCode job submitted successfully";
 
-          // Add port forwarding information for VSCode
-          if (data.port_forward_info) {
-            const pf = data.port_forward_info;
-            successMessage += `\n\n🔗 Access URL: ${pf.access_url}`;
-            successMessage += `\n📡 Local Port: ${pf.local_port} → Remote Port: ${pf.remote_port}`;
+          if (data.request_id) {
+            successMessage += `\n\n📋 Job ID: ${data.request_id}`;
+            successMessage += `\n🔗 VSCode will be available at http://localhost:${vscodePort}`;
+            successMessage += `\n📝 Check the Jobs tab to monitor the VSCode job status`;
+            successMessage += `\n✅ Port forwarding will be set up automatically when the job starts running`;
           }
 
           addNotification({
@@ -127,7 +133,7 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
           const errorData = await response.json();
           addNotification({
             type: "danger",
-            message: errorData.detail || "Failed to launch interactive task",
+            message: errorData.detail || "Failed to submit VSCode job",
           });
         }
       } else if (taskType === "jupyter") {
@@ -228,15 +234,21 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
       return (
         <Alert color="primary" sx={{ mt: 2 }}>
           <Typography level="body-sm">
-            <strong>Automatic Port Forwarding:</strong>
+            <strong>Job Submission:</strong>
             <br />
-            ✅ Port forwarding will be set up automatically by the backend
+            ✅ VSCode will be submitted as a job to the cluster
             <br />
-            🔗 Once the task is running, you'll be able to access VSCode at the
-            forwarded URL
+            🔗 Once the job starts running, port forwarding will be set up
+            automatically
             <br />
-            📝 You can also use VSCode Remote-SSH extension:{" "}
-            <code>ssh {clusterName}</code>
+            📝 Check the Jobs tab to monitor the VSCode job status
+            <br />
+            ✅ You'll see a "Setup Port Forward" button when the job is running
+            <br />
+            🔗 Manual access:{" "}
+            <code>
+              ssh -L {vscodePort}:localhost:{vscodePort} {clusterName}
+            </code>
           </Typography>
         </Alert>
       );

@@ -711,12 +711,15 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                             Cancel
                           </Button>
                         )}
-                        {/* Show port forward button for Jupyter jobs */}
+                        {/* Show port forward button for Jupyter and VSCode jobs */}
                         {job.status === "JobStatus.RUNNING" &&
                           job.job_name &&
                           (job.job_name.includes("-jupyter-") ||
                             job.job_name.toLowerCase().includes("jupyter") ||
-                            job.job_name.startsWith("jupyter")) &&
+                            job.job_name.startsWith("jupyter") ||
+                            job.job_name.includes("-vscode-") ||
+                            job.job_name.toLowerCase().includes("vscode") ||
+                            job.job_name.startsWith("vscode")) &&
                           (() => {
                             const jobKey = `${cluster.cluster_name}_${job.job_id}`;
                             const hasPortForward =
@@ -729,6 +732,8 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                                 ? parseInt(portMatch[1])
                                 : 8888;
                               const localhostUrl = `http://localhost:${port}`;
+                              const isVscode = job.job_name.includes("vscode") || job.job_name.includes("-vscode-");
+                              const buttonText = isVscode ? "✅ VSCode Access Active" : "✅ Jupyter Access Active";
 
                               return (
                                 <Button
@@ -739,7 +744,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                                     window.open(localhostUrl, "_blank");
                                   }}
                                 >
-                                  ✅ Localhost Access Active
+                                  {buttonText}
                                 </Button>
                               );
                             } else {
@@ -756,11 +761,14 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                                     const port = portMatch
                                       ? parseInt(portMatch[1])
                                       : 8888;
+                                    const isVscode = job.job_name.includes("vscode") || job.job_name.includes("-vscode-");
+                                    const jobType = isVscode ? "vscode" : "jupyter";
                                     setupJobPortForward(
                                       cluster.cluster_name,
                                       job.job_id,
-                                      "jupyter",
-                                      port
+                                      jobType,
+                                      jobType === "jupyter" ? port : undefined,
+                                      jobType === "vscode" ? port : undefined
                                     );
                                   }}
                                 >

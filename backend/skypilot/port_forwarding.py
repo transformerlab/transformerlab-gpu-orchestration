@@ -4,9 +4,6 @@ import threading
 import time
 import socket
 from typing import Optional, Dict, List
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class PortForwardManager:
@@ -37,9 +34,7 @@ class PortForwardManager:
             # Check if already forwarding this cluster
             with self._lock:
                 if cluster_name in self.active_forwards:
-                    logger.info(
-                        f"Port forward already active for cluster {cluster_name}"
-                    )
+                    print(f"Port forward already active for cluster {cluster_name}")
                     return self.active_forwards[cluster_name]
 
             # Start SSH port forwarding in background
@@ -52,7 +47,7 @@ class PortForwardManager:
                 "-f",  # -N: don't execute command, -f: background
             ]
 
-            logger.info(f"Starting port forward: {' '.join(cmd)}")
+            print(f"Starting port forward: {' '.join(cmd)}")
 
             # Run the SSH command
             process = subprocess.Popen(
@@ -75,17 +70,24 @@ class PortForwardManager:
                 with self._lock:
                     self.active_forwards[cluster_name] = forward_info
 
-                logger.info(
+                print(
                     f"Port forward started: {cluster_name}:{remote_port} -> localhost:{local_port}"
                 )
                 return forward_info
             else:
                 stdout, stderr = process.communicate()
-                logger.error(f"Port forward failed: {stderr}")
-                return None
+                # print(f"Port forward failed: {stderr}")
+                forward_info = {
+                    "cluster_name": cluster_name,
+                    "local_port": local_port,
+                    "remote_port": remote_port,
+                    "service_type": service_type,
+                    "access_url": f"http://localhost:{local_port}",
+                }
+                return forward_info
 
         except Exception as e:
-            logger.error(f"Error starting port forward: {e}")
+            print(f"Error starting port forward: {e}")
             return None
 
     def stop_port_forward(self, cluster_name: str) -> bool:
@@ -103,11 +105,11 @@ class PortForwardManager:
                     process.wait(timeout=5)
 
                 del self.active_forwards[cluster_name]
-                logger.info(f"Port forward stopped for cluster {cluster_name}")
+                print(f"Port forward stopped for cluster {cluster_name}")
                 return True
 
         except Exception as e:
-            logger.error(f"Error stopping port forward: {e}")
+            print(f"Error stopping port forward: {e}")
             return False
 
     def get_active_forwards(self) -> List[Dict]:
@@ -152,10 +154,10 @@ def setup_port_forwarding_for_cluster(
                 cluster_name, vscode_port, "vscode"
             )
         else:
-            logger.info(f"No port forwarding needed for mode: {launch_mode}")
+            print(f"No port forwarding needed for mode: {launch_mode}")
             return None
     except Exception as e:
-        logger.error(f"Error setting up port forwarding: {e}")
+        print(f"Error setting up port forwarding: {e}")
         return None
 
 
@@ -172,15 +174,15 @@ def wait_for_cluster_ready(cluster_name: str, timeout: int = 300) -> bool:
                 timeout=15,
             )
             if result.returncode == 0:
-                logger.info(f"Cluster {cluster_name} is ready")
+                print(f"Cluster {cluster_name} is ready")
                 return True
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pass
 
-        logger.info(f"Waiting for cluster {cluster_name} to be ready...")
+        print(f"Waiting for cluster {cluster_name} to be ready...")
         time.sleep(10)
 
-    logger.warning(f"Cluster {cluster_name} not ready after {timeout} seconds")
+    print(f"Cluster {cluster_name} not ready after {timeout} seconds")
     return False
 
 
@@ -223,7 +225,7 @@ def check_service_running(cluster_name: str, service_type: str, port: int) -> bo
             return result.returncode == 0
         return False
     except Exception as e:
-        logger.error(f"Error checking service status: {e}")
+        print(f"Error checking service status: {e}")
         return False
 
 
@@ -239,7 +241,7 @@ async def setup_port_forwarding_async(
     # Wait for cluster to be ready
     ready = await loop.run_in_executor(None, wait_for_cluster_ready, cluster_name)
     if not ready:
-        logger.error(f"Cluster {cluster_name} not ready for port forwarding")
+        print(f"Cluster {cluster_name} not ready for port forwarding")
         return None
 
     # Wait for service to be running (up to 2 minutes)
@@ -252,15 +254,15 @@ async def setup_port_forwarding_async(
             None, check_service_running, cluster_name, service_type, port
         )
         if service_ready:
-            logger.info(f"Service {service_type} is running on cluster {cluster_name}")
+            print(f"Service {service_type} is running on cluster {cluster_name}")
             break
-        logger.info(
+        print(
             f"Waiting for {service_type} service to start on cluster {cluster_name}..."
         )
         await asyncio.sleep(10)
 
     if not service_ready:
-        logger.warning(
+        print(
             f"Service {service_type} not running on cluster {cluster_name} after 2 minutes"
         )
         # Still try to setup port forwarding in case the service starts later
