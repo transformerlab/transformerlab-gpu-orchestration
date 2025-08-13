@@ -24,7 +24,7 @@ const LoginPage: React.FC = () => {
       console.debug("Login API response:", response);
       console.debug("Login API response data:", response.data);
 
-      // Redirect to the WorkOS login URL
+      // Redirect to the login URL
       if (!response.data || !response.data.login_url) {
         throw new Error("Invalid login url response from server");
       }
@@ -88,7 +88,7 @@ const LoginPage: React.FC = () => {
               Connecting...
             </>
           ) : (
-            "Sign in with WorkOS"
+            "Sign in"
           )}
         </Button>
       </Card>

@@ -74,11 +74,12 @@ alembic history --verbose
 1. **Create environment file**: Copy `.env.example` to `.env` and configure:
 
    ```env
-   WORKOS_API_KEY=your_api_key_here
-   WORKOS_CLIENT_ID=your_client_id_here
+   # Preferred generic envs
+   AUTH_API_KEY=your_api_key_here
+   AUTH_CLIENT_ID=your_client_id_here
+   AUTH_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback
+   AUTH_COOKIE_PASSWORD=your_secure_cookie_password
    BASE_URL=http://localhost:8000
-   WORKOS_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback
-   WORKOS_COOKIE_PASSWORD=your_secure_cookie_password
    ```
 
 Then run `docker-run.sh build-and-run`

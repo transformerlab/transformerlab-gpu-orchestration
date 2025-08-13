@@ -158,7 +158,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const logout = () => {
-    // Redirect to backend logout endpoint which will handle WorkOS logout
+    // Redirect to backend logout endpoint which will handle logout
     window.location.href = `${API_BASE_URL}/auth/logout`;
   };
 

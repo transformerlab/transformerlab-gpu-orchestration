@@ -19,14 +19,14 @@ if [ ! -f ".env" ]; then
     echo "⚠️  No .env file found. Creating from template..."
     if [ -f ".env.example" ]; then
         cp .env.example .env
-        echo "📝 Please edit .env file and add your WorkOS credentials:"
-        echo "   - WORKOS_API_KEY"
-        echo "   - WORKOS_CLIENT_ID"
+    echo "📝 Please edit .env file and add your auth credentials:"
+    echo "   - AUTH_API_KEY"
+    echo "   - AUTH_CLIENT_ID"
         echo ""
         echo "Then run this script again."
         exit 1
     else
-        echo "❌ No .env template found. Please create a .env file with your WorkOS credentials."
+    echo "❌ No .env template found. Please create a .env file with your auth credentials."
         exit 1
     fi
 fi
@@ -35,12 +35,12 @@ fi
 source .env
 
 # Check if required environment variables are set
-if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
+if [ -z "$AUTH_API_KEY" ] || [ -z "$AUTH_CLIENT_ID" ]; then
     echo "❌ Required environment variables not set in .env file:"
-    echo "   - WORKOS_API_KEY"
-    echo "   - WORKOS_CLIENT_ID"
+    echo "   - AUTH_API_KEY"
+    echo "   - AUTH_CLIENT_ID"
     echo ""
-    echo "Please update your .env file with valid WorkOS credentials."
+    echo "Please update your .env file with valid auth credentials."
     exit 1
 fi
 

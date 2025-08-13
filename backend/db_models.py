@@ -16,8 +16,8 @@ class APIKey(Base):
         String, nullable=False, unique=True
     )  # Hashed version of the API key
     key_prefix = Column(String, nullable=False)  # First 8 characters for identification
-    user_id = Column(String, nullable=False)  # WorkOS user ID
-    organization_id = Column(String, nullable=True)  # WorkOS organization ID
+    user_id = Column(String, nullable=False)
+    organization_id = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     last_used_at = Column(DateTime, nullable=True)

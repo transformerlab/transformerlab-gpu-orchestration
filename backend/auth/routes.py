@@ -2,9 +2,9 @@ from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from models import UserResponse
 from auth.utils import get_current_user
-from config import WORKOS_COOKIE_PASSWORD
+from config import AUTH_COOKIE_PASSWORD
 import os
-from . import workos_client
+from .provider.work_os import provider as auth_provider
 
 router = APIRouter(prefix="/auth")
 
@@ -13,10 +13,11 @@ router = APIRouter(prefix="/auth")
 async def get_login_url(request: Request):
     try:
         base_url = f"{request.url.scheme}://{request.url.netloc}"
-        authorization_url = workos_client.user_management.get_authorization_url(
+        authorization_url = auth_provider.get_authorization_url(
             provider="authkit",
-            redirect_uri=os.getenv(
-                "WORKOS_REDIRECT_URI", f"{base_url}/api/v1/auth/callback"
+            redirect_uri=(
+                os.getenv("AUTH_REDIRECT_URI")
+                or f"{base_url}/api/v1/auth/callback"
             ),
         )
         return {"login_url": authorization_url}
@@ -29,9 +30,10 @@ async def get_login_url(request: Request):
 @router.get("/callback")
 async def auth_callback(request: Request, code: str):
     try:
-        auth_response = workos_client.user_management.authenticate_with_code(
+        auth_response = auth_provider.authenticate_with_code(
             code=code,
-            session={"seal_session": True, "cookie_password": WORKOS_COOKIE_PASSWORD},
+            seal_session=True,
+            cookie_password=AUTH_COOKIE_PASSWORD,
         )
 
         # If the user doesn't have an organization, create one
@@ -51,12 +53,10 @@ async def auth_callback(request: Request, code: str):
                         else "Default Organization"
                     )
 
-                organization = workos_client.organizations.create_organization(
-                    name=org_name
-                )
+                organization = auth_provider.create_organization(name=org_name)
 
                 try:
-                    workos_client.user_management.create_organization_membership(
+                    auth_provider.create_organization_membership(
                         organization_id=organization.id,
                         user_id=user.id,
                         role_slug="admin",
@@ -65,15 +65,11 @@ async def auth_callback(request: Request, code: str):
                     pass
 
                 try:
-                    refreshed_auth = (
-                        workos_client.user_management.authenticate_with_refresh_token(
-                            refresh_token=auth_response.refresh_token,
-                            organization_id=organization.id,
-                            session={
-                                "seal_session": True,
-                                "cookie_password": WORKOS_COOKIE_PASSWORD,
-                            },
-                        )
+                    refreshed_auth = auth_provider.authenticate_with_refresh_token(
+                        refresh_token=auth_response._session.refresh_token,  # type: ignore[attr-defined]
+                        organization_id=organization.id,
+                        seal_session=True,
+                        cookie_password=AUTH_COOKIE_PASSWORD,
                     )
                 except Exception:
                     pass
@@ -131,9 +127,9 @@ async def logout(request: Request):
     try:
         session_cookie = request.cookies.get("wos_session")
         if session_cookie:
-            session = workos_client.user_management.load_sealed_session(
+            session = auth_provider.load_sealed_session(
                 sealed_session=session_cookie,
-                cookie_password=WORKOS_COOKIE_PASSWORD,
+                cookie_password=AUTH_COOKIE_PASSWORD,
             )
             logout_url = session.get_logout_url()
             response = RedirectResponse(url=logout_url)
@@ -185,15 +181,15 @@ async def check_auth(
 
 @router.post("/refresh")
 async def refresh_session(request: Request, response: Response):
-    """Force refresh the WorkOS session to get updated user info"""
+    """Force refresh the session to get updated user info"""
     try:
         session_cookie = request.cookies.get("wos_session")
         if not session_cookie:
             raise HTTPException(status_code=401, detail="No session found")
 
-        session = workos_client.user_management.load_sealed_session(
+        session = auth_provider.load_sealed_session(
             sealed_session=session_cookie,
-            cookie_password=WORKOS_COOKIE_PASSWORD,
+            cookie_password=AUTH_COOKIE_PASSWORD,
         )
 
         refreshed_session = session.refresh()
