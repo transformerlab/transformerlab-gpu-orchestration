@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { useNavigate } from "react-router-dom";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon, Cloud } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
 import useSWR from "swr";
 import NodeSquare from "./widgets/NodeSquare";
 import { getStatusOrder } from "./utils/clusterUtils";
 import ReserveNodeModal from "./modals/ReserveNodeModal";
+import CloudServiceIcon from "./widgets/CloudServiceIcon";
 
 export interface Node {
   id: string;
@@ -42,6 +43,7 @@ export interface ClusterCardProps {
   nodeGpuInfo?: Record<string, any>;
   onClusterLaunched?: (clusterName: string) => void;
   onJobSubmitted?: () => void;
+  provider?: string;
 }
 
 const ClusterCard: React.FC<ClusterCardProps> = ({
@@ -56,6 +58,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
   nodeGpuInfo,
   onClusterLaunched,
   onJobSubmitted,
+  provider = "direct",
 }) => {
   const navigate = useNavigate();
   const [showReserveModal, setShowReserveModal] = useState(false);
@@ -194,7 +197,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
               }}
             >
               <Typography level="h4" mb={0.5}>
-                {displayName}
+                <CloudServiceIcon platform={provider} /> {displayName}
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
                 <Chip size="sm" color="primary" variant="soft">

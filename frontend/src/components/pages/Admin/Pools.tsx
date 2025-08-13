@@ -24,24 +24,7 @@ import { useNotification } from "../../../components/NotificationSystem";
 import RunPodIcon from "./icons/runpod.svg";
 import AzureIcon from "./icons/azure.svg";
 import { useNavigate } from "react-router-dom";
-
-// This function returns an icon based on the platform provided:
-function CloudServiceIcon({ platform }: { platform: string }) {
-  switch (platform) {
-    case "azure":
-      return (
-        <img src={AzureIcon} alt="Azure" style={{ width: 16, height: 16 }} />
-      );
-    case "runpod":
-      return (
-        <img src={RunPodIcon} alt="RunPod" style={{ width: 16, height: 16 }} />
-      );
-    case "direct":
-      return <Server size={16} />;
-    default:
-      return <Server size={16} />;
-  }
-}
+import CloudServiceIcon from "../../widgets/CloudServiceIcon";
 
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
