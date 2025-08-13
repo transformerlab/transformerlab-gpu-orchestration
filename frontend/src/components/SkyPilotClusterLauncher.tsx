@@ -85,7 +85,9 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   // RunPod specific state
   const [runpodGpuTypes, setRunpodGpuTypes] = useState<string[]>([]);
-  const [runpodDisplayOptions, setRunpodDisplayOptions] = useState<string[]>([]);
+  const [runpodDisplayOptions, setRunpodDisplayOptions] = useState<string[]>(
+    []
+  );
   const [runpodSetupStatus, setRunpodSetupStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -205,7 +207,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
             setRunpodSetupStatus("success");
             // Use configured GPU types for backward compatibility
             setRunpodGpuTypes(config.allowed_gpu_types);
-            
+
             // Fetch display options for the UI
             try {
               const displayResponse = await apiFetch(
@@ -336,7 +338,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
     // Show immediate notification that request is being processed
     addNotification({
-      type: "warning",
+      type: "success",
       message: `Launching cluster "${clusterName}"...`,
     });
 
@@ -560,8 +562,11 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                         )}
                         {runpodSetupStatus === "success" && (
                           <Typography level="body-sm" color="success">
-                            ✅ RunPod ready ({runpodDisplayOptions.length > 0 ? runpodDisplayOptions.length : runpodGpuTypes.length} options
-                            available)
+                            ✅ RunPod ready (
+                            {runpodDisplayOptions.length > 0
+                              ? runpodDisplayOptions.length
+                              : runpodGpuTypes.length}{" "}
+                            options available)
                           </Typography>
                         )}
                         {runpodSetupStatus === "error" && (

@@ -791,6 +791,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               </ListItemDecorator>
                               Submit a Job
                             </MenuItem>
+                            <Divider />
                             <MenuItem
                               onClick={() => {
                                 setSshClusterName(cluster.cluster_name);
@@ -802,7 +803,6 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               </ListItemDecorator>
                               Connect via SSH
                             </MenuItem>
-                            <Divider />
                             <MenuItem
                               onClick={() =>
                                 openInteractiveTaskModal(
