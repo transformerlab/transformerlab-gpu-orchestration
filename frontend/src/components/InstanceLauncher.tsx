@@ -118,15 +118,39 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
 
   return (
     <Modal open={open} onClose={onClose}>
-      <ModalDialog sx={{ maxWidth: 600 }}>
+      <ModalDialog
+        sx={{
+          maxWidth: 800,
+          maxHeight: "90vh",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <ModalClose />
-        <Typography level="h4" sx={{ mb: 2 }}>
+        <Typography level="h4" sx={{ mb: 2, flexShrink: 0 }}>
           Launch an Instance
         </Typography>
-
-        <form onSubmit={handleLaunch}>
-          <Card variant="outlined">
-            <CardContent>
+        <form
+          onSubmit={handleLaunch}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          <Card
+            variant="outlined"
+            sx={{
+              flex: 1,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
+          >
+            <CardContent sx={{ overflow: "auto", flex: 1, minHeight: 0 }}>
               {error && (
                 <Alert color="danger" sx={{ mb: 2 }}>
                   ❌ {error}
@@ -208,22 +232,31 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
                   />
                 </FormControl>
               </Card>
-
-              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Button variant="plain" onClick={onClose} disabled={loading}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={loading}
-                  disabled={loading}
-                  color="success"
-                  startDecorator={<Rocket size={16} />}
-                >
-                  Launch Instance
-                </Button>
-              </Box>
             </CardContent>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                justifyContent: "flex-end",
+                p: 2,
+                flexShrink: 0,
+                borderTop: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Button variant="plain" onClick={onClose} disabled={loading}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={loading}
+                color="success"
+                startDecorator={<Rocket size={16} />}
+              >
+                Launch Instance
+              </Button>
+            </Box>
           </Card>
         </form>
       </ModalDialog>
