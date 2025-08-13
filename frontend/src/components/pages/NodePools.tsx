@@ -191,9 +191,11 @@ const Nodes: React.FC = () => {
       subtitle="View all the nodes, across all clouds, available in your organization. From here you can see each node's status and what is available to you."
       button={
         <Button
-          startDecorator={<Rocket size={16} />}
           onClick={() => setShowInstanceLauncher(true)}
-          color="primary"
+          color="success"
+          variant="soft"
+          sx={{ minWidth: 180 }}
+          size="lg"
         >
           Request Instance
         </Button>
