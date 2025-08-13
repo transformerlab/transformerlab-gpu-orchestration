@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from models import OrganizationsResponse, Organization
 from auth.utils import get_current_user
-from auth import workos_client
+from auth.provider.work_os import provider as auth_provider
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -67,13 +67,13 @@ async def list_all_organizations(
 ):
     """Get organizations that the current user is a member of (admin endpoint)"""
     try:
-        user_memberships = workos_client.user_management.list_organization_memberships(
+        user_memberships = auth_provider.list_organization_memberships(
             user_id=user.get("id")
         )
         org_list = []
         for membership in user_memberships:
             try:
-                organization = workos_client.organizations.get_organization(
+                organization = auth_provider.get_organization(
                     organization_id=membership.organization_id
                 )
                 org_list.append(
@@ -102,25 +102,15 @@ async def create_organization(
 ):
     """Create a new organization (admin endpoint)"""
     try:
-        org_params = {"name": request.name}
-
-        if request.domains:
-            domain_data = []
-            for domain in request.domains:
-                domain_data.append(
-                    {
-                        "domain": domain,
-                        "state": "pending",
-                    }
-                )
-            org_params["domain_data"] = domain_data
-
-        organization = workos_client.organizations.create_organization(**org_params)
+        organization = auth_provider.create_organization(
+            name=request.name,
+            domains=request.domains,
+        )
         try:
             if not user.get("id"):
                 raise Exception("User ID is missing")
 
-            membership = workos_client.user_management.create_organization_membership(
+            membership = auth_provider.create_organization_membership(
                 organization_id=organization.id,
                 user_id=user.get("id"),
                 role_slug="admin",
@@ -142,7 +132,7 @@ async def create_organization(
 async def get_organization(organization_id: str, user=Depends(get_current_user)):
     """Get a specific organization by ID (admin endpoint)"""
     try:
-        organization = workos_client.organizations.get_organization(
+        organization = auth_provider.get_organization(
             organization_id=organization_id
         )
         return OrganizationResponse(
@@ -158,7 +148,7 @@ async def get_organization(organization_id: str, user=Depends(get_current_user))
 async def delete_organization(organization_id: str, user=Depends(get_current_user)):
     """Delete an organization (admin endpoint)"""
     try:
-        workos_client.organizations.delete_organization(organization_id=organization_id)
+        auth_provider.delete_organization(organization_id=organization_id)
         return {"message": "Organization deleted successfully"}
     except Exception as e:
         raise HTTPException(
@@ -174,8 +164,8 @@ async def add_organization_member(
 ):
     """Add a member to an organization with specified role (admin endpoint)"""
     try:
-        workos_client.user_management.create_organization_membership(
-            organization_id=organization_id, user_id=request.user_id, role=request.role
+        auth_provider.create_organization_membership(
+            organization_id=organization_id, user_id=request.user_id, role_slug=request.role
         )
         return {
             "message": f"Member added to organization successfully with role: {request.role}"
@@ -193,7 +183,7 @@ async def remove_organization_member(
     """Remove a member from an organization (admin endpoint)"""
     try:
         # First, get the organization membership to find the membership ID
-        memberships = workos_client.user_management.list_organization_memberships(
+        memberships = auth_provider.list_organization_memberships(
             organization_id=organization_id
         )
 
@@ -224,7 +214,7 @@ async def remove_organization_member(
                     detail="Cannot remove the last admin from the organization",
                 )
 
-        workos_client.user_management.delete_organization_membership(
+        auth_provider.delete_organization_membership(
             organization_membership_id=membership_id
         )
         return {"message": "Member removed from organization successfully"}
@@ -246,7 +236,7 @@ async def update_member_role(
     """Update a member's role in an organization (admin endpoint)"""
     try:
         # First, get the organization membership to find the membership ID
-        memberships = workos_client.user_management.list_organization_memberships(
+        memberships = auth_provider.list_organization_memberships(
             organization_id=organization_id
         )
 
@@ -277,7 +267,7 @@ async def update_member_role(
                 )
 
         # Update the membership role
-        workos_client.user_management.update_organization_membership(
+        auth_provider.update_organization_membership(
             organization_membership_id=membership_id,
             role_slug=request.role
         )
@@ -306,7 +296,7 @@ async def list_organization_members(
 ):
     """List all members of an organization (admin endpoint)"""
     try:
-        memberships = workos_client.user_management.list_organization_memberships(
+        memberships = auth_provider.list_organization_memberships(
             organization_id=organization_id
         )
         
@@ -317,7 +307,7 @@ async def list_organization_members(
         # Build member list with permissions
         members = []
         for membership in memberships:
-            user_info = workos_client.user_management.get_user(
+            user_info = auth_provider.get_user(
                 user_id=membership.user_id
             )
             
@@ -375,7 +365,7 @@ async def send_organization_invitation(
         if request.role_slug is not None:
             invitation_params["role_slug"] = request.role_slug
 
-        invitation = workos_client.user_management.send_invitation(**invitation_params)
+        invitation = auth_provider.send_invitation(**invitation_params)
         print(invitation)
         return {
             "message": f"Invitation sent successfully to {request.email}",

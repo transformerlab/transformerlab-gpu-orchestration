@@ -26,7 +26,7 @@ echo "📦 Installing backend dependencies with uv..."
 uv venv --seed --python 3.10
 source .venv/bin/activate
 uv pip install .
-echo "✅ Backend dependencies installed (including WorkOS 5.24.0 and SkyPilot with kubernetes/runpod extras)"
+echo "✅ Backend dependencies installed"
 
 # Run database migrations
 echo "🗄️  Running database migrations..."
@@ -72,19 +72,12 @@ else
     echo "⚠️  Please install kubectl manually for your OS"
 fi
 
-echo "✅ Backend dependencies installed (including WorkOS 5.24.0)"
+echo "✅ Backend dependencies installed"
 
 # Check if required environment variables are set
 if [ -f .env ]; then
     source .env
 fi
-
-# if [ -z "$WORKOS_API_KEY" ] || [ -z "$WORKOS_CLIENT_ID" ]; then
-#     echo "❌ Error: WORKOS_API_KEY and WORKOS_CLIENT_ID environment variables must be set"
-#     echo "Please set these variables when running the container:"
-#     echo "docker run -e WORKOS_API_KEY=your_key -e WORKOS_CLIENT_ID=your_client_id -p 8000:8000 lattice"
-#     exit 1
-# fi
 
 # Now that we know the .env file exists, copy it exactly as is
 # to backend/.env and frontend/.env

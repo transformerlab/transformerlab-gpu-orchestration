@@ -1,19 +1,19 @@
 import datetime
 from fastapi import HTTPException, Request, Response, Depends, status
-from config import WORKOS_COOKIE_PASSWORD
-from . import workos_client
+from config import AUTH_COOKIE_PASSWORD
+from .provider.work_os import provider as auth_provider
 import logging
 
 
 def get_auth_info(request: Request, response: Response = None):
-    """Get auth info from WorkOS session, refresh session if needed"""
+    """Get auth info from session, refresh session if needed"""
     try:
         session_cookie = request.cookies.get("wos_session")
         if not session_cookie:
             return None
-        session = workos_client.user_management.load_sealed_session(
+        session = auth_provider.load_sealed_session(
             sealed_session=session_cookie,
-            cookie_password=WORKOS_COOKIE_PASSWORD,
+            cookie_password=AUTH_COOKIE_PASSWORD,
         )
         auth_response = session.authenticate()
         if not auth_response.authenticated:
@@ -45,9 +45,9 @@ def auth_from_cookie(wos_cookie: str):
     if not session_cookie:
         return False
 
-    session = workos_client.user_management.load_sealed_session(
+    session = auth_provider.load_sealed_session(
         sealed_session=session_cookie,
-        cookie_password=WORKOS_COOKIE_PASSWORD,
+        cookie_password=AUTH_COOKIE_PASSWORD,
     )
 
     auth_response = session.authenticate()

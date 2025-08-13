@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
-from config import WORKOS_REDIRECT_URI
+from config import AUTH_REDIRECT_URI
 
 # Create main app
 app = FastAPI(title="Lattice", version="1.0.0")
@@ -60,7 +60,7 @@ if os.path.exists(frontend_build_path):
             raise HTTPException(status_code=404, detail="Frontend not found")
 
 
-print(f"🔗 Backend using WORKOS_REDIRECT_URI: {WORKOS_REDIRECT_URI}")
+print(f"🔗 Backend using AUTH_REDIRECT_URI: {AUTH_REDIRECT_URI}")
 
 if __name__ == "__main__":
     import uvicorn

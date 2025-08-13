@@ -64,7 +64,6 @@ async def get_api_key_user(
         if api_key_record.scopes:
             scopes = json.loads(api_key_record.scopes)
         
-        # Return user information in the same format as WorkOS user
         return {
             "id": api_key_record.user_id,
             "organization_id": api_key_record.organization_id,
