@@ -18,7 +18,6 @@ from werkzeug.utils import secure_filename
 from auth.api_key_auth import get_user_or_api_key
 from auth.utils import (
     auth_from_cookie,
-    get_auth_info_from_cookie,
 )  # Import get_auth_info
 
 
@@ -189,15 +188,18 @@ async def terminal_websocket(
         else None
     )
 
-    get_auth_info_from_cookie(session_cookie)
-
     # Validate the session using get_auth_info
     if not session_cookie:
         await websocket.close(code=1008, reason="Authentication required")
         print("WebSocket closed: Missing wos_session cookie")
         return
 
-    auth_from_cookie(session_cookie)
+    auth_success = auth_from_cookie(session_cookie)
+
+    if not auth_success:
+        await websocket.close(code=1008, reason="Authentication failed")
+        print("WebSocket closed: Authentication failed")
+        return
 
     # Accept the WebSocket connection
     await websocket.accept()
