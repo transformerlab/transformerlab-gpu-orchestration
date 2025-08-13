@@ -13,6 +13,7 @@ import PageWithTitle from "./templates/PageWithTitle";
 import { buildApiUrl } from "../../utils/api";
 import { useFakeData } from "../../context/FakeDataContext";
 import { CircularProgress } from "@mui/joy";
+import ResourceDisplay from "../widgets/ResourceDisplay";
 import {
   ResponsiveContainer,
   BarChart,
@@ -166,7 +167,13 @@ const Reports: React.FC = () => {
                     {job.launched_at ? formatLaunchedAt(job.launched_at) : "-"}
                   </td>
                   <td>{job.duration ? formatDuration(job.duration) : "-"}</td>
-                  <td>{job.resources_str_full || "-"}</td>
+                  <td>
+                    <ResourceDisplay
+                      resourcesStr={job.resources_str_full || ""}
+                      variant="compact"
+                      size="sm"
+                    />
+                  </td>
                   <td>
                     <Chip
                       variant="soft"
