@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Card,
@@ -13,6 +13,15 @@ import PageWithTitle from "./templates/PageWithTitle";
 import { buildApiUrl } from "../../utils/api";
 import { useFakeData } from "../../context/FakeDataContext";
 import { CircularProgress } from "@mui/joy";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 
 const Reports: React.FC = () => {
   const [realData, setRealData] = useState<RealReportsResponse | null>(null);
@@ -68,6 +77,36 @@ const Reports: React.FC = () => {
     0
   );
 
+  // Helper to compute week start (Monday) from a unix seconds timestamp
+  const getWeekStartMs = (timestampSec: number) => {
+    const d = new Date(timestampSec * 1000);
+    const day = d.getDay(); // 0=Sun..6=Sat
+    const diff = (day + 6) % 7; // Monday=0
+    d.setDate(d.getDate() - diff);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+
+  // Prepare weekly aggregated data for the chart
+  const weeklyCostData = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const job of dataToRender as any[]) {
+      if (!job?.launched_at || !job?.total_cost) continue;
+      const wk = getWeekStartMs(job.launched_at);
+      map.set(wk, (map.get(wk) || 0) + Number(job.total_cost || 0));
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([ms, total]) => ({
+        week: new Date(ms).toLocaleDateString(undefined, {
+          year: "2-digit",
+          month: "short",
+          day: "numeric",
+        }),
+        total: Number(total.toFixed(2)),
+      }));
+  }, [dataToRender]);
+
   return (
     <PageWithTitle title="Costs Incurred by Instances">
       {loading ? (
@@ -76,7 +115,35 @@ const Reports: React.FC = () => {
         </Box>
       ) : (
         <Box sx={{ overflowX: "auto" }}>
-          <Card variant="soft" sx={{ mb: 2 }}>
+          <Card variant="plain" sx={{ mb: 2, height: 320 }}>
+            <Typography level="title-md" sx={{ mb: 1 }}>
+              Weekly Costs
+            </Typography>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={weeklyCostData}
+                margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="week" />
+                <YAxis tickFormatter={(v) => `$${v}`} />
+                <Tooltip
+                  formatter={(value: number) => [
+                    `$${(value as number).toFixed(2)}`,
+                    "Cost",
+                  ]}
+                  labelFormatter={(label) => `Week of ${label}`}
+                />
+                <Bar
+                  dataKey="total"
+                  name="Cost"
+                  fill="var(--joy-palette-success-300)"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card variant="soft" sx={{ mb: 2, alignItems: "center" }}>
             <Typography>Total Cost: ${totalCost.toFixed(2)}</Typography>
           </Card>
           <Table>
