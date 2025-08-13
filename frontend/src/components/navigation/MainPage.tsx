@@ -37,6 +37,7 @@ import SSHConfigPage from "../pages/Admin/SSHConfigPage";
 import { Volume } from "lucide-react";
 import Volumes from "../pages/Admin/Volumes";
 import Quota from "../pages/Admin/Quota";
+import Costs from "../pages/Costs";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -80,6 +81,8 @@ const Dashboard: React.FC = () => {
             element={<MyClusterDetails />}
           />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/costs" element={<Costs />} />
+
           <Route path="/reports" element={<Reports />} />
           <Route
             path="/skypilot-tester"
