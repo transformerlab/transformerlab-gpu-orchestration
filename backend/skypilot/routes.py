@@ -772,8 +772,6 @@ async def submit_job_to_cluster(
 
         command = command.replace("\r", "")
 
-        print("COMMAND", command)
-
         request_id = submit_job_to_existing_cluster(
             cluster_name=cluster_name,
             command=command,
@@ -934,7 +932,6 @@ async def save_azure_config_route(
 ):
     """Save Azure configuration"""
     try:
-        print("CONFIG REQUEST", config_request)
         # Save the configuration using utility function
         config = save_azure_config(
             config_request.name,
