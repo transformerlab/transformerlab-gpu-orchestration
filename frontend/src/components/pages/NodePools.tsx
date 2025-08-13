@@ -259,13 +259,14 @@ const Nodes: React.FC = () => {
               <ClusterCard
                 cluster={{
                   id: "runpod-cluster",
-                  name: "RunPod Cluster",
+                  name: runpodPool?.name,
                   nodes: generateDedicatedNodes(
                     runpodPool.max_instances,
                     runpodPool.current_instances,
                     currentUserEmail
                   ),
                 }}
+                provider={runpodPool?.provider}
                 clusterType="regular"
                 onLaunchCluster={() => {
                   if (runpodConfig.is_configured) {
@@ -301,6 +302,7 @@ const Nodes: React.FC = () => {
                     currentUserEmail
                   ),
                 }}
+                provider={azurePool?.provider}
                 clusterType="regular"
                 onLaunchCluster={() => setShowAzureLauncher(true)}
                 launchDisabled={!azurePool.can_launch}

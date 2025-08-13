@@ -17,6 +17,9 @@ import {
   GripHorizontalIcon,
   CircleDotIcon,
   CirclePoundSterlingIcon,
+  ChartNoAxesColumnIncreasingIcon,
+  CircleIcon,
+  BoltIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -70,11 +73,15 @@ const sidebarItems = [
     path: "/dashboard/jobs",
   },
   {
-    icon: <CirclePoundSterlingIcon />,
+    icon: <CircleIcon />,
     content: "Cost Report",
     path: "/dashboard/costs",
   },
-  { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
+  {
+    icon: <ChartNoAxesColumnIncreasingIcon />,
+    content: "Reports",
+    path: "/dashboard/reports",
+  },
 ];
 
 const adminSubItems = [
@@ -155,7 +162,7 @@ export default function Sidebar() {
               <ListItemDecorator
                 sx={isAdminPath ? {} : { color: "neutral.500" }}
               >
-                <CogIcon />
+                <BoltIcon />
               </ListItemDecorator>
               <ListItemContent>Admin</ListItemContent>
               <ListItemDecorator sx={{ ml: "auto" }}>
