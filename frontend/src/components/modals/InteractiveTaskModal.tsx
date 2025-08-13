@@ -38,13 +38,11 @@ const InteractiveTaskModal: React.FC<InteractiveTaskModalProps> = ({
   onTaskSubmitted,
   isClusterLaunching = false,
 }) => {
-  const [vscodePort, setVscodePort] = useState("8888");
   const [jupyterPort, setJupyterPort] = useState("8888");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
 
   const resetForm = () => {
-    setVscodePort("8888");
     setJupyterPort("8888");
   };
 
@@ -68,7 +66,10 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
       };
     } else {
       return {
-        command: `sudo apt update && sudo apt install software-properties-common apt-transport-https wget -y && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list && sudo apt update && sudo apt install code -y && code tunnel --disable-telemetry`,
+        command: `# Download and install VSCode CLI
+curl -fsSL https://code.visualstudio.com/sha/download?build=stable&os=cli-linux-x64 | tar -xzf -
+# Start VSCode tunnel
+./code tunnel --disable-telemetry`,
         title: "Launch VSCode Tunnel",
         icon: <Code size={16} />,
         description: "Start a VSCode tunnel for secure remote access",
@@ -86,11 +87,13 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
         const formData = new FormData();
         formData.append(
           "command",
-          `sudo apt update && sudo apt install software-properties-common apt-transport-https wget -y && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list && sudo apt update && sudo apt install code -y && code tunnel --disable-telemetry`
+          `# Download and install VSCode CLI
+curl -fsSL https://code.visualstudio.com/sha/download?build=stable&os=cli-linux-x64 | tar -xzf -
+# Start VSCode tunnel
+./code tunnel --disable-telemetry`
         );
         formData.append("job_name", `vscode-${clusterName}`);
         formData.append("job_type", "vscode");
-        formData.append("vscode_port", vscodePort);
 
         const response = await apiFetch(
           buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
@@ -230,19 +233,10 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
           <Typography level="body-sm">
             <strong>Job Submission:</strong>
             <br />
-            ✅ VSCode will be submitted as a job to the cluster
+            🔗 VSCode tunnel provides secure access without port forwarding
             <br />
-            🔗 Once the job starts running, port forwarding will be set up
-            automatically
-            <br />
-            📝 Check the Jobs tab to monitor the VSCode job status
-            <br />
-            ✅ You'll see a "Setup Port Forward" button when the job is running
-            <br />
-            🔗 Manual access:{" "}
-            <code>
-              ssh -L {vscodePort}:localhost:{vscodePort} {clusterName}
-            </code>
+            📝 Connection info (auth code & URL) will be available under the
+            View VSCode Info button.
           </Typography>
         </Alert>
       );
@@ -273,18 +267,6 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
               )}
 
               <Stack spacing={2}>
-                {taskType === "vscode" && (
-                  <FormControl>
-                    <FormLabel>VSCode Server Port</FormLabel>
-                    <Input
-                      value={vscodePort}
-                      onChange={(e) => setVscodePort(e.target.value)}
-                      placeholder="8888"
-                      disabled={isClusterLaunching}
-                    />
-                  </FormControl>
-                )}
-
                 {taskType === "jupyter" && (
                   <FormControl>
                     <FormLabel>Jupyter Notebook Port</FormLabel>

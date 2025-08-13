@@ -81,7 +81,6 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   // Interactive development specific states
   const [jupyterPort, setJupyterPort] = useState("8888");
   const [jupyterPassword, setJupyterPassword] = useState("");
-  const [vscodePort, setVscodePort] = useState("8888");
 
   // RunPod specific state
   const [runpodGpuTypes, setRunpodGpuTypes] = useState<string[]>([]);
@@ -115,7 +114,6 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     setPythonFile(null);
     setJupyterPort("8888");
     setJupyterPassword("");
-    setVscodePort("8888");
   };
 
   const fetchSSHClusters = async () => {
@@ -168,7 +166,10 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         break;
       case "vscode":
         setCommand(
-          `sudo apt update && sudo apt install software-properties-common apt-transport-https wget -y && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list && sudo apt update && sudo apt install code -y && code tunnel --disable-telemetry`
+          `# Download and install VSCode CLI
+curl -fsSL https://code.visualstudio.com/sha/download?build=stable&os=cli-linux-x64 | tar -xzf -
+# Start VSCode tunnel
+./code tunnel --disable-telemetry`
         );
         setSetup(`# VSCode CLI will be downloaded automatically`);
         break;
@@ -177,7 +178,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         setSetup("");
         break;
     }
-  }, [launchMode, jupyterPort, vscodePort, clusterName]);
+  }, [launchMode, jupyterPort, clusterName]);
 
   const setupRunPod = async () => {
     try {
@@ -372,9 +373,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
       if (launchMode === "jupyter" && jupyterPort) {
         formData.append("jupyter_port", jupyterPort);
       }
-      if (launchMode === "vscode" && vscodePort) {
-        formData.append("vscode_port", vscodePort);
-      }
+
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
         credentials: "include",
@@ -779,17 +778,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                       />
                     </FormControl>
                   </Box>
-                )}
-
-                {launchMode === "vscode" && (
-                  <FormControl>
-                    <FormLabel>VSCode Server Port</FormLabel>
-                    <Input
-                      value={vscodePort}
-                      onChange={(e) => setVscodePort(e.target.value)}
-                      placeholder="8888"
-                    />
-                  </FormControl>
                 )}
 
                 {/* Custom Command Section - only show for custom mode */}
