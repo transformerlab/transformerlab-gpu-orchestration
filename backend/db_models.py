@@ -1,4 +1,15 @@
-from sqlalchemy import Column, String, DateTime, Boolean, Text, ForeignKey, JSON
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    Boolean,
+    Text,
+    ForeignKey,
+    JSON,
+    Integer,
+    Float,
+    Date,
+)
 from sqlalchemy.sql import func
 from config import Base
 import secrets
@@ -80,4 +91,47 @@ class SSHNodeEntry(Base):
     password = Column(Text, nullable=True)
     # Resource specifications for this specific node (JSON format)
     resources = Column(JSON, nullable=True)  # e.g., {"vcpus": "4", "memory_gb": "16"}
+    created_at = Column(DateTime, default=func.now())
+
+
+class OrganizationQuota(Base):
+    __tablename__ = "organization_quotas"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False, unique=True)
+    monthly_gpu_hours = Column(
+        Float, nullable=False, default=100.0
+    )  # Default 100 GPU hours per month
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class QuotaPeriod(Base):
+    __tablename__ = "quota_periods"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    period_start = Column(Date, nullable=False)  # First day of the billing period
+    period_end = Column(Date, nullable=False)  # Last day of the billing period
+    gpu_hours_used = Column(Float, default=0.0)  # Total GPU hours used in this period
+    gpu_hours_limit = Column(Float, nullable=False)  # Quota limit for this period
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class GPUUsageLog(Base):
+    __tablename__ = "gpu_usage_logs"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    user_id = Column(String, nullable=False)
+    cluster_name = Column(String, nullable=False)
+    job_id = Column(Integer, nullable=True)  # Optional job ID if this was a job
+    gpu_count = Column(Integer, nullable=False, default=1)  # Number of GPUs used
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=True)  # NULL if still running
+    duration_hours = Column(Float, nullable=True)  # Calculated duration in hours
+    instance_type = Column(String, nullable=True)  # e.g., "g4dn.xlarge", "V100"
+    cloud_provider = Column(String, nullable=True)  # e.g., "aws", "azure", "gcp"
+    cost_estimate = Column(Float, nullable=True)  # Estimated cost in USD
     created_at = Column(DateTime, default=func.now())
