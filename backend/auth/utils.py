@@ -1,3 +1,4 @@
+import datetime
 from fastapi import HTTPException, Request, Response, Depends, status
 from config import WORKOS_COOKIE_PASSWORD
 from . import workos_client
@@ -36,6 +37,27 @@ def get_auth_info(request: Request, response: Response = None):
     except Exception as e:
         print(f"Error getting auth info: {e}")
         return None
+
+
+def auth_from_cookie(wos_cookie: str):
+    """Get auth info from cookies string"""
+    session_cookie = wos_cookie
+    if not session_cookie:
+        return False
+
+    session = workos_client.user_management.load_sealed_session(
+        sealed_session=session_cookie,
+        cookie_password=WORKOS_COOKIE_PASSWORD,
+    )
+
+    auth_response = session.authenticate()
+
+    if auth_response.authenticated:
+        logging.info("Session authenticated successfully")
+        return True
+
+    logging.info("Session auth failed")
+    return False
 
 
 def verify_auth(request: Request, response: Response = None):
