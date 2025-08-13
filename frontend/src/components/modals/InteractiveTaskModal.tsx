@@ -68,13 +68,10 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
       };
     } else {
       return {
-        command: `# Install code-server if not already installed
-curl -fsSL https://code-server.dev/install.sh | bash
-# Start code-server
-code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
-        title: "Launch VSCode Server",
+        command: `sudo apt update && sudo apt install software-properties-common apt-transport-https wget -y && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list && sudo apt update && sudo apt install code -y && code tunnel --disable-telemetry`,
+        title: "Launch VSCode Tunnel",
         icon: <Code size={16} />,
-        description: "Start a VSCode server with automatic port forwarding",
+        description: "Start a VSCode tunnel for secure remote access",
       };
     }
   };
@@ -89,10 +86,7 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`,
         const formData = new FormData();
         formData.append(
           "command",
-          `# Install code-server if not already installed
-curl -fsSL https://code-server.dev/install.sh | bash
-# Start code-server
-code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`
+          `sudo apt update && sudo apt install software-properties-common apt-transport-https wget -y && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list && sudo apt update && sudo apt install code -y && code tunnel --disable-telemetry`
         );
         formData.append("job_name", `vscode-${clusterName}`);
         formData.append("job_type", "vscode");
@@ -110,13 +104,13 @@ code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`
         if (response.ok) {
           const data = await response.json();
           let successMessage =
-            data.message || "VSCode job submitted successfully";
+            data.message || "VSCode tunnel job submitted successfully";
 
           if (data.request_id) {
             successMessage += `\n\n📋 Job ID: ${data.request_id}`;
-            successMessage += `\n🔗 VSCode will be available at http://localhost:${vscodePort}`;
-            successMessage += `\n📝 Check the Jobs tab to monitor the VSCode job status`;
-            successMessage += `\n✅ Port forwarding will be set up automatically when the job starts running`;
+            successMessage += `\n🔗 VSCode tunnel will be set up automatically`;
+            successMessage += `\n📝 Check the Jobs tab to monitor the VSCode tunnel status`;
+            successMessage += `\n✅ Connection info will be available when the tunnel is ready`;
           }
 
           addNotification({

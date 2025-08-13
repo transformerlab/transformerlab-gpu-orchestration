@@ -769,8 +769,10 @@ async def submit_job_to_cluster(
         from .utils import submit_job_to_existing_cluster
 
         # For VSCode, we need to remove the carriage return
-        if vscode_port is not None:
-            command = command.replace("\r", "")
+
+        command = command.replace("\r", "")
+
+        print("COMMAND", command)
 
         request_id = submit_job_to_existing_cluster(
             cluster_name=cluster_name,
@@ -1454,4 +1456,32 @@ async def get_cluster_template_info(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster template info: {str(e)}"
+        )
+
+
+# VSCode Tunnel Info Endpoint
+from skypilot.vscode_parser import get_vscode_tunnel_info
+
+
+@router.get("/jobs/{cluster_name}/{job_id}/vscode-info")
+async def get_vscode_tunnel_info_endpoint(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """Get VSCode tunnel information from job logs."""
+    try:
+        # Get job logs
+        logs = get_job_logs(cluster_name, job_id)
+
+        # Parse VSCode tunnel info from logs
+        tunnel_info = get_vscode_tunnel_info(logs)
+
+        return tunnel_info
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get VSCode tunnel info: {str(e)}"
         )

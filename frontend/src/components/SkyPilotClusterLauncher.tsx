@@ -168,9 +168,9 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         break;
       case "vscode":
         setCommand(
-          `code-server . --port ${vscodePort} --host 0.0.0.0 --auth none`
+          `sudo apt update && sudo apt install software-properties-common apt-transport-https wget -y && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list && sudo apt update && sudo apt install code -y && code tunnel --disable-telemetry`
         );
-        setSetup(`curl -fsSL https://code-server.dev/install.sh | bash`);
+        setSetup(`# VSCode CLI will be downloaded automatically`);
         break;
       case "custom":
         setCommand("echo 'Hello SkyPilot'");
