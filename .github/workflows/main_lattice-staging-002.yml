@@ -26,88 +26,98 @@ env:
 
 jobs:
   build:
-    runs-on: 'ubuntu-latest'
+    runs-on: "ubuntu-latest"
     outputs:
       image_tag: ${{ steps.build-and-push.outputs.tags }} # Capture the full image tag for later jobs
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Log in to registry
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ env.AZURE_CONTAINER_REGISTRY }}
-        # Your existing secrets for ACR username/password
-        username: ${{ secrets.AzureAppService_ContainerUsername_370f749654814d988edd250c13114975 }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_ee70eb5d80d641fc8da6b06767afc8dd }}
+      - name: Log in to registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.AZURE_CONTAINER_REGISTRY }}
+          # Your existing secrets for ACR username/password
+          username: ${{ secrets.AzureAppService_ContainerUsername_370f749654814d988edd250c13114975 }}
+          password: ${{ secrets.AzureAppService_ContainerPassword_ee70eb5d80d641fc8da6b06767afc8dd }}
 
-    - name: Build and push container image to registry
-      id: build-and-push # Assign an ID to this step
-      uses: docker/build-push-action@v3
-      with:
-        push: true
-        # The tag is constructed using your ACR, the image name, and github.sha
-        tags: |
-          ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        file: ./Dockerfile
-        # Add output to capture the tags used for the image
-        # outputs: type=raw,lasttag=true
+      - name: Build and push container image to registry
+        id: build-and-push # Assign an ID to this step
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          # The tag is constructed using your ACR, the image name, and github.sha
+          tags: |
+            ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          file: ./Dockerfile
+          # Add output to capture the tags used for the image
+          # outputs: type=raw,lasttag=true
 
   deploy-to-aci: # New job for ACI deployment
     runs-on: ubuntu-latest
     needs: build # This job depends on the 'build' job completing successfully
     environment:
-      name: 'production' # You can change this environment name if it's different for ACI
-    
+      name: "production" # You can change this environment name if it's different for ACI
+
     steps:
-    - name: Log in to Azure for ACI deployment
-      uses: azure/login@v2
-      with:
-        # IMPORTANT: Use the AZURE_CREDENTIALS secret for ACI deployment
-        # This secret needs permissions to your Resource Group where ACI will live
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Log in to Azure for ACI deployment
+        uses: azure/login@v2
+        with:
+          # IMPORTANT: Use the AZURE_CREDENTIALS secret for ACI deployment
+          # This secret needs permissions to your Resource Group where ACI will live
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy to Azure Container Instances (using Azure CLI)
-      run: |
-        # Define common variables for readability
-        IMAGE_FULL_TAG="${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-        RESOURCE_GROUP="${{ env.RESOURCE_GROUP_ACI }}"
-        ACI_NAME="${{ env.ACI_NAME }}"
-        DNS_LABEL="${{ env.DNS_LABEL }}"
-        LOCATION="westus2" # <--- IMPORTANT: Ensure your desired Azure region here (e.g., westus2, canadacentral, westeurope)
-        LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}"
-        LOG_ANALYTICS_WORKSPACE_KEY="${{ secrets.LOG_ANALYTICS_WORKSPACE_KEY }}"
-      
-        # Construct the environment variables string for Azure CLI
-        # Each var should be name=value, separated by a space.
-        # Secrets are interpolated by GitHub Actions before being passed to the shell.
-        ENV_VARS_STRING="WORKOS_API_KEY=${{ secrets.WORKOS_API_KEY }} WORKOS_CLIENT_ID=${{ secrets.WORKOS_CLIENT_ID }} BASE_URL=${{ secrets.BASE_URL }} WORKOS_REDIRECT_URI=${{ secrets.WORKOS_REDIRECT_URI }} VITE_API_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000/api/v1 FRONTEND_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000"
-        # Add any other secure or non-secure environment variables here, separated by a space
-        # Example: ENV_VARS_STRING="${ENV_VARS_STRING} ANOTHER_VAR=${{ secrets.ANOTHER_SECRET }}"
-        # Example: ENV_VARS_STRING="${ENV_VARS_STRING} MY_NON_SECRET_VAR=myvalue"
+      - name: Deploy to Azure Container Instances (using Azure CLI)
+        run: |
+          # Define common variables for readability
+          IMAGE_FULL_TAG="${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          RESOURCE_GROUP="${{ env.RESOURCE_GROUP_ACI }}"
+          ACI_NAME="${{ env.ACI_NAME }}"
+          DNS_LABEL="${{ env.DNS_LABEL }}"
+          LOCATION="westus2" # <--- IMPORTANT: Ensure your desired Azure region here (e.g., westus2, canadacentral, westeurope)
+          LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}"
+          LOG_ANALYTICS_WORKSPACE_KEY="${{ secrets.LOG_ANALYTICS_WORKSPACE_KEY }}"
 
-        # Construct the registry credentials string for Azure CLI
-        # These are needed for ACI to pull from your private ACR
-        REGISTRY_CREDS="--registry-username ${{ secrets.AzureAppService_ContainerUsername_370f749654814d988edd250c13114975 }} --registry-password ${{ secrets.AzureAppService_ContainerPassword_ee70eb5d80d641fc8da6b06767afc8dd }}"
+          # Construct the environment variables string for Azure CLI
+          # Each var should be name=value, separated by a space.
+          # Secrets are interpolated by GitHub Actions before being passed to the shell.
+          ENV_VARS_STRING="WORKOS_API_KEY=${{ secrets.WORKOS_API_KEY }} WORKOS_CLIENT_ID=${{ secrets.WORKOS_CLIENT_ID }} BASE_URL=${{ secrets.BASE_URL }} WORKOS_REDIRECT_URI=${{ secrets.WORKOS_REDIRECT_URI }} VITE_API_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000/api/v1 FRONTEND_URL=http://lattice-staging-app.westus2.azurecontainer.io:8000"
+          # Add any other secure or non-secure environment variables here, separated by a space
+          # Example: ENV_VARS_STRING="${ENV_VARS_STRING} ANOTHER_VAR=${{ secrets.ANOTHER_SECRET }}"
+          # Example: ENV_VARS_STRING="${ENV_VARS_STRING} MY_NON_SECRET_VAR=myvalue"
 
-        # Run the Azure CLI command to create/update the ACI
-        # Note: If you change CPU, memory, or OS type on an existing ACI,
-        # you might need to delete it first for the changes to take effect.
-        az container create \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$ACI_NAME" \
-          --image "$IMAGE_FULL_TAG" \
-          --dns-name-label "$DNS_LABEL" \
-          --ports ${{ env.CONTAINER_PORT_MAIN }} ${{ env.CONTAINER_PORT_JUPYTER }} \
-          --cpu 2 \
-          --memory 4 \
-          --os-type Linux \
-          --location "$LOCATION" \
-          --environment-variables $ENV_VARS_STRING \
-          $REGISTRY_CREDS \
-          --restart-policy Always \
-          --log-analytics-workspace "$LOG_ANALYTICS_WORKSPACE_ID" \
-          --log-analytics-workspace-key "$LOG_ANALYTICS_WORKSPACE_KEY"
+          # Construct the registry credentials string for Azure CLI
+          # These are needed for ACI to pull from your private ACR
+          REGISTRY_CREDS="--registry-username ${{ secrets.AzureAppService_ContainerUsername_370f749654814d988edd250c13114975 }} --registry-password ${{ secrets.AzureAppService_ContainerPassword_ee70eb5d80d641fc8da6b06767afc8dd }}"
+
+          # Delete existing container if it exists to avoid "still transitioning" errors
+          echo "Checking if container $ACI_NAME exists and deleting if found..."
+          if az container show --resource-group "$RESOURCE_GROUP" --name "$ACI_NAME" --query "name" --output tsv 2>/dev/null; then
+            echo "Container $ACI_NAME exists. Deleting it..."
+            az container delete --resource-group "$RESOURCE_GROUP" --name "$ACI_NAME" --yes
+            echo "Waiting for container deletion to complete..."
+            sleep 30
+          else
+            echo "Container $ACI_NAME does not exist. Proceeding with creation..."
+          fi
+
+          # Run the Azure CLI command to create the ACI
+          echo "Creating new container $ACI_NAME..."
+          az container create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$ACI_NAME" \
+            --image "$IMAGE_FULL_TAG" \
+            --dns-name-label "$DNS_LABEL" \
+            --ports ${{ env.CONTAINER_PORT_MAIN }} ${{ env.CONTAINER_PORT_JUPYTER }} \
+            --cpu 2 \
+            --memory 4 \
+            --os-type Linux \
+            --location "$LOCATION" \
+            --environment-variables $ENV_VARS_STRING \
+            $REGISTRY_CREDS \
+            --restart-policy Always \
+            --log-analytics-workspace "$LOG_ANALYTICS_WORKSPACE_ID" \
+            --log-analytics-workspace-key "$LOG_ANALYTICS_WORKSPACE_KEY"
