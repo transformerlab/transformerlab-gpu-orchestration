@@ -191,7 +191,9 @@ const Circley: React.FC<CircleyProps> = ({ state = "on", dot = "off" }) => {
         strokeWidth="3"
         filter="url(#dropshadow)"
       />
-      {dot === "on" && <circle cx="16" cy="14" r="4" fill="#fd7d50" />}
+      {dot === "on" && (
+        <circle cx="16" cy="14" r="4" fill="var(--joy-palette-primary-100)" />
+      )}
     </svg>
   );
 };
