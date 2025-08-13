@@ -16,6 +16,7 @@ import {
   StretchHorizontalIcon,
   GripHorizontalIcon,
   CircleDotIcon,
+  CirclePoundSterlingIcon,
 } from "lucide-react";
 
 interface ItemProps {
@@ -67,6 +68,11 @@ const sidebarItems = [
     icon: <StretchHorizontalIcon />,
     content: "My Jobs",
     path: "/dashboard/jobs",
+  },
+  {
+    icon: <CirclePoundSterlingIcon />,
+    content: "Cost Report",
+    path: "/dashboard/costs",
   },
   { icon: <ChartAreaIcon />, content: "Reports", path: "/dashboard/reports" },
 ];

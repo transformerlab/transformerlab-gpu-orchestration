@@ -136,14 +136,39 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`;
 
   return (
     <Modal open={open} onClose={onClose}>
-      <ModalDialog sx={{ maxWidth: 500 }}>
+      <ModalDialog
+        sx={{
+          maxWidth: 800,
+          maxHeight: "90vh",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <ModalClose />
-        <Typography level="h4" sx={{ mb: 2 }}>
+        <Typography level="h4" sx={{ mb: 2, flexShrink: 0 }}>
           Submit Job to {clusterName}
         </Typography>
-        <form onSubmit={handleSubmit}>
-          <Card variant="outlined">
-            <CardContent>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          <Card
+            variant="outlined"
+            sx={{
+              flex: 1,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
+          >
+            <CardContent sx={{ overflow: "auto", flex: 1, minHeight: 0 }}>
               {isClusterLaunching && (
                 <Alert color="warning" sx={{ mb: 2 }}>
                   Cluster is launching. Please wait until it is ready to submit
@@ -309,24 +334,34 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`;
                   </>
                 )}
               </Card>
-              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Button
-                  variant="plain"
-                  onClick={onClose}
-                  disabled={loading || isClusterLaunching}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={loading}
-                  disabled={!command || loading || isClusterLaunching}
-                  color="success"
-                >
-                  Submit Job
-                </Button>
-              </Box>
             </CardContent>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                justifyContent: "flex-end",
+                p: 2,
+                flexShrink: 0,
+                borderTop: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Button
+                variant="plain"
+                onClick={onClose}
+                disabled={loading || isClusterLaunching}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={!command || loading || isClusterLaunching}
+                color="success"
+              >
+                Submit Job
+              </Button>
+            </Box>
           </Card>
         </form>
       </ModalDialog>

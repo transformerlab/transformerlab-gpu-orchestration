@@ -556,3 +556,10 @@ def get_past_jobs():
     except Exception as e:
         print(f"Failed to get past jobs: {str(e)}")
         return []
+
+
+def generate_cost_report():
+    request_id = sky.client.sdk.cost_report()
+    cost_report = sky.get(request_id)
+    print(f"[SkyPilot] Cost report: {cost_report}")
+    return cost_report

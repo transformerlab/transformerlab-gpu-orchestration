@@ -23,15 +23,16 @@ import {
   CardContent,
   Stack,
 } from "@mui/joy";
-import { 
-  Plus, 
-  Trash2, 
-  Edit, 
-  Copy, 
-  RefreshCw, 
+import {
+  Plus,
+  Trash2,
+  Edit,
+  Copy,
+  RefreshCw,
   Key,
   Calendar,
-  Clock
+  Clock,
+  CheckCircle,
 } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useAuth } from "../../../context/AuthContext";
@@ -100,6 +101,9 @@ const APIKeys: React.FC = () => {
   const [regenerating, setRegenerating] = useState(false);
   const [keyToRegenerate, setKeyToRegenerate] = useState<APIKey | null>(null);
 
+  // Copy state for visual feedback
+  const [copied, setCopied] = useState<"create" | "regenerate" | null>(null);
+
   useEffect(() => {
     const fetchApiKeys = async () => {
       if (!user) {
@@ -110,12 +114,9 @@ const APIKeys: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const response = await apiFetch(
-          buildApiUrl("api-keys"),
-          {
-            credentials: "include",
-          }
-        );
+        const response = await apiFetch(buildApiUrl("api-keys"), {
+          credentials: "include",
+        });
 
         if (!response.ok) {
           throw new Error("Failed to fetch API keys");
@@ -161,17 +162,14 @@ const APIKeys: React.FC = () => {
       setCreating(true);
       setCreateError(null);
 
-      const response = await apiFetch(
-        buildApiUrl("api-keys"),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(createForm),
-        }
-      );
+      const response = await apiFetch(buildApiUrl("api-keys"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(createForm),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -181,7 +179,7 @@ const APIKeys: React.FC = () => {
       const data: CreateAPIKeyResponse = await response.json();
       setNewApiKey(data.api_key);
       setApiKeys([data.key_info, ...apiKeys]);
-      
+
       // Reset form
       setCreateForm({
         name: "",
@@ -222,10 +220,10 @@ const APIKeys: React.FC = () => {
       }
 
       const updatedKey: APIKey = await response.json();
-      setApiKeys(apiKeys.map(key => 
-        key.id === updatedKey.id ? updatedKey : key
-      ));
-      
+      setApiKeys(
+        apiKeys.map((key) => (key.id === updatedKey.id ? updatedKey : key))
+      );
+
       setUpdateDialogOpen(false);
       setKeyToUpdate(null);
       setUpdateForm({});
@@ -257,14 +255,12 @@ const APIKeys: React.FC = () => {
         throw new Error("Failed to delete API key");
       }
 
-      setApiKeys(apiKeys.filter(key => key.id !== keyToDelete.id));
+      setApiKeys(apiKeys.filter((key) => key.id !== keyToDelete.id));
       setDeleteDialogOpen(false);
       setKeyToDelete(null);
     } catch (err) {
       console.error("Error deleting API key:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to delete API key"
-      );
+      setError(err instanceof Error ? err.message : "Failed to delete API key");
     } finally {
       setDeleting(false);
     }
@@ -290,10 +286,11 @@ const APIKeys: React.FC = () => {
 
       const data: CreateAPIKeyResponse = await response.json();
       setNewApiKey(data.api_key);
-      setApiKeys(apiKeys.map(key => 
-        key.id === data.key_info.id ? data.key_info : key
-      ));
-      
+      setApiKeys(
+        apiKeys.map((key) =>
+          key.id === data.key_info.id ? data.key_info : key
+        )
+      );
     } catch (err) {
       console.error("Error regenerating API key:", err);
       setError(
@@ -335,8 +332,17 @@ const APIKeys: React.FC = () => {
     setNewApiKey(null); // Reset the new API key state
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (
+    text: string,
+    type: "create" | "regenerate"
+  ) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+    }
   };
 
   if (authLoading || loading) {
@@ -443,19 +449,18 @@ const APIKeys: React.FC = () => {
                     <Chip
                       size="sm"
                       color={
-                        !key.is_active 
+                        !key.is_active
                           ? "neutral"
                           : isExpired(key.expires_at)
                           ? "danger"
                           : "success"
                       }
                     >
-                      {!key.is_active 
+                      {!key.is_active
                         ? "Inactive"
                         : isExpired(key.expires_at)
                         ? "Expired"
-                        : "Active"
-                      }
+                        : "Active"}
                     </Chip>
                   </td>
                   <td>
@@ -469,7 +474,7 @@ const APIKeys: React.FC = () => {
                     </Typography>
                   </td>
                   <td>
-                    <Typography 
+                    <Typography
                       level="body-sm"
                       color={isExpired(key.expires_at) ? "danger" : "neutral"}
                     >
@@ -522,7 +527,8 @@ const APIKeys: React.FC = () => {
             {newApiKey ? (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <Alert color="success">
-                  API key created successfully! Make sure to copy it now as you won't be able to see it again.
+                  API key created successfully! Make sure to copy it now as you
+                  won't be able to see it again.
                 </Alert>
                 <Card>
                   <CardContent>
@@ -533,29 +539,41 @@ const APIKeys: React.FC = () => {
                       <Typography
                         level="body-sm"
                         fontFamily="monospace"
-                        sx={{ 
+                        sx={{
                           wordBreak: "break-all",
                           backgroundColor: "background.level1",
                           p: 1,
                           borderRadius: "sm",
-                          flex: 1
+                          flex: 1,
                         }}
                       >
                         {newApiKey}
                       </Typography>
-                      <IconButton
+                      <Button
+                        variant="outlined"
                         size="sm"
-                        onClick={() => copyToClipboard(newApiKey)}
-                        title="Copy to clipboard"
+                        onClick={() => copyToClipboard(newApiKey, "create")}
                       >
-                        <Copy size={16} />
-                      </IconButton>
+                        {copied === "create" ? (
+                          <>
+                            <CheckCircle size={16} />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={16} />
+                            Copy
+                          </>
+                        )}
+                      </Button>
                     </Box>
                   </CardContent>
                 </Card>
               </Box>
             ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+              <Box
+                sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
+              >
                 {createError && (
                   <Alert color="danger" size="sm">
                     {createError}
@@ -626,7 +644,9 @@ const APIKeys: React.FC = () => {
         <ModalDialog>
           <DialogTitle>Update API Key</DialogTitle>
           <DialogContent>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
+            >
               {updateError && (
                 <Alert color="danger" size="sm">
                   {updateError}
@@ -691,7 +711,8 @@ const APIKeys: React.FC = () => {
             <Typography>
               Are you sure you want to delete the API key{" "}
               <strong>{keyToDelete?.name}</strong>? This action cannot be undone
-              and will immediately revoke access for any applications using this key.
+              and will immediately revoke access for any applications using this
+              key.
             </Typography>
           </DialogContent>
           <DialogActions>
@@ -716,14 +737,18 @@ const APIKeys: React.FC = () => {
       </Modal>
 
       {/* Regenerate Confirmation Dialog */}
-      <Modal open={regenerateDialogOpen} onClose={() => setRegenerateDialogOpen(false)}>
+      <Modal
+        open={regenerateDialogOpen}
+        onClose={() => setRegenerateDialogOpen(false)}
+      >
         <ModalDialog size="lg">
           <DialogTitle>Regenerate API Key</DialogTitle>
           <DialogContent>
             {newApiKey ? (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <Alert color="success">
-                  API key regenerated successfully! Make sure to copy it now as you won't be able to see it again.
+                  API key regenerated successfully! Make sure to copy it now as
+                  you won't be able to see it again.
                 </Alert>
                 <Card>
                   <CardContent>
@@ -734,23 +759,33 @@ const APIKeys: React.FC = () => {
                       <Typography
                         level="body-sm"
                         fontFamily="monospace"
-                        sx={{ 
+                        sx={{
                           wordBreak: "break-all",
                           backgroundColor: "background.level1",
                           p: 1,
                           borderRadius: "sm",
-                          flex: 1
+                          flex: 1,
                         }}
                       >
                         {newApiKey}
                       </Typography>
-                      <IconButton
+                      <Button
+                        variant="outlined"
                         size="sm"
-                        onClick={() => copyToClipboard(newApiKey)}
-                        title="Copy to clipboard"
+                        onClick={() => copyToClipboard(newApiKey, "regenerate")}
                       >
-                        <Copy size={16} />
-                      </IconButton>
+                        {copied === "regenerate" ? (
+                          <>
+                            <CheckCircle size={16} />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={16} />
+                            Copy
+                          </>
+                        )}
+                      </Button>
                     </Box>
                   </CardContent>
                 </Card>
@@ -758,9 +793,9 @@ const APIKeys: React.FC = () => {
             ) : (
               <Typography>
                 Are you sure you want to regenerate the API key{" "}
-                <strong>{keyToRegenerate?.name}</strong>? The current key will be
-                immediately invalidated and you'll need to update any applications
-                using it with the new key value.
+                <strong>{keyToRegenerate?.name}</strong>? The current key will
+                be immediately invalidated and you'll need to update any
+                applications using it with the new key value.
               </Typography>
             )}
           </DialogContent>

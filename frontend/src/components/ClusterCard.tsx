@@ -269,7 +269,6 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                     sx={{
                       flex: "1 1 0",
                       minWidth: 0,
-                      maxWidth: "50%",
                       mb: 3,
                     }}
                   >
