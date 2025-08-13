@@ -69,10 +69,7 @@ const Reports: React.FC = () => {
   );
 
   return (
-    <PageWithTitle title="Reports">
-      <Typography level="h4" sx={{ mb: 2 }}>
-        Costs Incurred by Instances
-      </Typography>
+    <PageWithTitle title="Costs Incurred by Instances">
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
           <CircularProgress />
