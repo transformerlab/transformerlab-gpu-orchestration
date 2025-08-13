@@ -29,6 +29,7 @@ from models import (
     JobRecord,
 )
 from skypilot.utils import (
+    generate_cost_report,
     launch_cluster_with_skypilot,
     get_skypilot_status,
     get_cluster_job_queue,
@@ -1481,4 +1482,16 @@ async def get_vscode_tunnel_info_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get VSCode tunnel info: {str(e)}"
+        )
+
+
+@router.get("/cost-report")
+async def get_cost_report(request: Request, response: Response):
+    """Get cost report for all clusters."""
+    try:
+        report = generate_cost_report()
+        return report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cost report: {str(e)}"
         )
