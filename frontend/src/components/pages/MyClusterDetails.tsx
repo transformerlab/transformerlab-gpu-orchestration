@@ -65,6 +65,7 @@ import InstanceStatusChip from "../widgets/InstanceStatusChip";
 import InteractiveTaskModal from "../modals/InteractiveTaskModal";
 import SubmitJobModal from "../modals/SubmitJobModal";
 import SSHModal from "../modals/SSHModal";
+import VSCodeInfoModal from "../modals/VSCodeInfoModal";
 import { parseResourcesString } from "../../utils/resourceParser";
 import ResourceDisplay from "../widgets/ResourceDisplay";
 
@@ -152,6 +153,17 @@ const MyClusterDetails: React.FC = () => {
   }>({});
 
   const [sshClusterName, setSshClusterName] = useState<string | null>(null);
+
+  // VSCode modal state
+  const [vscodeModal, setVscodeModal] = useState<{
+    open: boolean;
+    clusterName: string | null;
+    jobId: number | null;
+  }>({
+    open: false,
+    clusterName: null,
+    jobId: null,
+  });
 
   // Fetch cluster status data
   const { data: statusData, isLoading: statusLoading } = useSWR(
@@ -847,6 +859,27 @@ const MyClusterDetails: React.FC = () => {
                         >
                           <FileText size={16} />
                         </IconButton>
+                        {/* Show VSCode Info button for VSCode jobs */}
+                        {job.status === "JobStatus.RUNNING" &&
+                          job.job_name &&
+                          (job.job_name.includes("-vscode-") ||
+                            job.job_name.toLowerCase().includes("vscode") ||
+                            job.job_name.startsWith("vscode")) && (
+                            <IconButton
+                              size="sm"
+                              variant="plain"
+                              color="primary"
+                              onClick={() => {
+                                setVscodeModal({
+                                  open: true,
+                                  clusterName: clusterName,
+                                  jobId: job.job_id,
+                                });
+                              }}
+                            >
+                              <CodeIcon size={16} />
+                            </IconButton>
+                          )}
                         {/* Show cancel button only for running jobs */}
                         {(job.status === "JobStatus.RUNNING" ||
                           job.status === "JobStatus.PENDING" ||
@@ -932,6 +965,16 @@ const MyClusterDetails: React.FC = () => {
         open={!!sshClusterName}
         onClose={() => setSshClusterName(null)}
         clusterName={sshClusterName}
+      />
+
+      {/* VSCode Info Modal */}
+      <VSCodeInfoModal
+        open={vscodeModal.open}
+        onClose={() =>
+          setVscodeModal({ open: false, clusterName: null, jobId: null })
+        }
+        clusterName={vscodeModal.clusterName || ""}
+        jobId={vscodeModal.jobId || 0}
       />
     </PageWithTitle>
   );

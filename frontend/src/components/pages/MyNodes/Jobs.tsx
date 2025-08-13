@@ -11,6 +11,7 @@ import {
 import { X } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useFakeData } from "../../../context/FakeDataContext";
+import VSCodeInfoModal from "../../modals/VSCodeInfoModal";
 
 interface Job {
   job_id: number;
@@ -125,6 +126,17 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const [portForwardLoading, setPortForwardLoading] = useState<{
     [key: string]: boolean;
   }>({});
+
+  // VSCode modal state
+  const [vscodeModal, setVscodeModal] = useState<{
+    open: boolean;
+    clusterName: string | null;
+    jobId: number | null;
+  }>({
+    open: false,
+    clusterName: null,
+    jobId: null,
+  });
 
   // Fetch jobs for each cluster
   useEffect(() => {
@@ -269,19 +281,11 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                     job.job_name.toLowerCase().includes("vscode") ||
                     job.job_name.startsWith("vscode")
                   ) {
-                    const portMatch = job.job_name.match(/port(\d+)/);
-                    const port = portMatch ? parseInt(portMatch[1]) : 8888;
                     console.log(
-                      `Setting up port forwarding for VSCode job ${job.job_id} on port ${port}`
+                      `VSCode tunnel job ${job.job_id} is running - will show connection info`
                     );
-                    setupJobPortForward(
-                      cluster.cluster_name,
-                      job.job_id,
-                      "vscode",
-                      undefined,
-                      port
-                    );
-                    setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
+                    // Don't set up port forwarding for VSCode tunnels
+                    // Instead, we'll show connection info from job logs
                   }
                 }
               });
@@ -711,71 +715,95 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                             Cancel
                           </Button>
                         )}
-                        {/* Show port forward button for Jupyter and VSCode jobs */}
+                        {/* Show buttons for Jupyter and VSCode jobs */}
                         {job.status === "JobStatus.RUNNING" &&
                           job.job_name &&
-                          (job.job_name.includes("-jupyter-") ||
-                            job.job_name.toLowerCase().includes("jupyter") ||
-                            job.job_name.startsWith("jupyter") ||
-                            job.job_name.includes("-vscode-") ||
-                            job.job_name.toLowerCase().includes("vscode") ||
-                            job.job_name.startsWith("vscode")) &&
                           (() => {
-                            const jobKey = `${cluster.cluster_name}_${job.job_id}`;
-                            const hasPortForward =
-                              jobsWithPortForward.has(jobKey);
-                            const isLoading = portForwardLoading[jobKey];
+                            // Check for Jupyter jobs
+                            if (
+                              job.job_name.includes("-jupyter-") ||
+                              job.job_name.toLowerCase().includes("jupyter") ||
+                              job.job_name.startsWith("jupyter")
+                            ) {
+                              const jobKey = `${cluster.cluster_name}_${job.job_id}`;
+                              const hasPortForward =
+                                jobsWithPortForward.has(jobKey);
+                              const isLoading = portForwardLoading[jobKey];
 
-                            if (hasPortForward) {
-                              const portMatch = job.job_name.match(/port(\d+)/);
-                              const port = portMatch
-                                ? parseInt(portMatch[1])
-                                : 8888;
-                              const localhostUrl = `http://localhost:${port}`;
-                              const isVscode = job.job_name.includes("vscode") || job.job_name.includes("-vscode-");
-                              const buttonText = isVscode ? "✅ VSCode Access Active" : "✅ Jupyter Access Active";
+                              if (hasPortForward) {
+                                const portMatch =
+                                  job.job_name.match(/port(\d+)/);
+                                const port = portMatch
+                                  ? parseInt(portMatch[1])
+                                  : 8888;
+                                const localhostUrl = `http://localhost:${port}`;
 
-                              return (
-                                <Button
-                                  size="sm"
-                                  variant="soft"
-                                  color="success"
-                                  onClick={() => {
-                                    window.open(localhostUrl, "_blank");
-                                  }}
-                                >
-                                  {buttonText}
-                                </Button>
-                              );
-                            } else {
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="soft"
+                                    color="success"
+                                    onClick={() => {
+                                      window.open(localhostUrl, "_blank");
+                                    }}
+                                  >
+                                    ✅ Jupyter Access Active
+                                  </Button>
+                                );
+                              } else {
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="outlined"
+                                    color="primary"
+                                    loading={isLoading}
+                                    disabled={isLoading}
+                                    onClick={() => {
+                                      const portMatch =
+                                        job.job_name.match(/port(\d+)/);
+                                      const port = portMatch
+                                        ? parseInt(portMatch[1])
+                                        : 8888;
+                                      setupJobPortForward(
+                                        cluster.cluster_name,
+                                        job.job_id,
+                                        "jupyter",
+                                        port,
+                                        undefined
+                                      );
+                                    }}
+                                  >
+                                    Access on Localhost
+                                  </Button>
+                                );
+                              }
+                            }
+
+                            // Check for VSCode jobs
+                            if (
+                              job.job_name.includes("-vscode-") ||
+                              job.job_name.toLowerCase().includes("vscode") ||
+                              job.job_name.startsWith("vscode")
+                            ) {
                               return (
                                 <Button
                                   size="sm"
                                   variant="outlined"
                                   color="primary"
-                                  loading={isLoading}
-                                  disabled={isLoading}
                                   onClick={() => {
-                                    const portMatch =
-                                      job.job_name.match(/port(\d+)/);
-                                    const port = portMatch
-                                      ? parseInt(portMatch[1])
-                                      : 8888;
-                                    const isVscode = job.job_name.includes("vscode") || job.job_name.includes("-vscode-");
-                                    const jobType = isVscode ? "vscode" : "jupyter";
-                                    setupJobPortForward(
-                                      cluster.cluster_name,
-                                      job.job_id,
-                                      jobType,
-                                      jobType === "jupyter" ? port : undefined,
-                                      jobType === "vscode" ? port : undefined
-                                    );
+                                    setVscodeModal({
+                                      open: true,
+                                      clusterName: cluster.cluster_name,
+                                      jobId: job.job_id,
+                                    });
                                   }}
                                 >
-                                  Access on Localhost
+                                  View VSCode Info
                                 </Button>
                               );
                             }
+
+                            return null;
                           })()}
                       </Box>
                     </td>
@@ -1049,6 +1077,16 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           </>
         )}
       </Box>
+
+      {/* VSCode Info Modal */}
+      <VSCodeInfoModal
+        open={vscodeModal.open}
+        onClose={() =>
+          setVscodeModal({ open: false, clusterName: null, jobId: null })
+        }
+        clusterName={vscodeModal.clusterName || ""}
+        jobId={vscodeModal.jobId || 0}
+      />
     </Box>
   );
 };
