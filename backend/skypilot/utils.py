@@ -561,5 +561,5 @@ def get_past_jobs():
 def generate_cost_report():
     request_id = sky.client.sdk.cost_report()
     cost_report = sky.get(request_id)
-    print(f"[SkyPilot] Cost report: {cost_report}")
+    # print(f"[SkyPilot] Cost report: {cost_report}")
     return cost_report
