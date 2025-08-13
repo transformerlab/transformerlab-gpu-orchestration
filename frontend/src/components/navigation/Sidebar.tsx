@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import useSWR from "swr";
 import Chip from "@mui/joy/Chip";
 import List from "@mui/joy/List";
 import ListSubheader from "@mui/joy/ListSubheader";
@@ -21,6 +22,7 @@ import {
   CircleIcon,
   BoltIcon,
 } from "lucide-react";
+import { buildApiUrl, apiFetch } from "../../utils/api";
 
 interface ItemProps {
   icon: React.ReactNode;
@@ -64,7 +66,6 @@ const sidebarItems = [
   {
     icon: <CircleDotIcon size={22} style={{ paddingLeft: "2px" }} />,
     content: "My Instances",
-    chipCount: 15,
     path: "/dashboard/my-instances",
   },
   {
@@ -131,6 +132,20 @@ export default function Sidebar() {
     }
   }, [isAdminPath]);
 
+  // Fetch instance count using SWR
+  const instanceFetcher = (url: string) =>
+    apiFetch(url, { credentials: "include" }).then((res) => res.json());
+
+  const { data: instanceData } = useSWR(
+    buildApiUrl("skypilot/status"),
+    instanceFetcher,
+    { refreshInterval: 5000 } // Refresh every 5 seconds
+  );
+
+  const instanceCount = instanceData?.clusters
+    ? instanceData.clusters.length
+    : 0;
+
   return (
     <List
       size="sm"
@@ -151,7 +166,11 @@ export default function Sidebar() {
               icon={item.icon}
               content={item.content}
               selected={item.path ? location.pathname === item.path : false}
-              chipCount={item.chipCount}
+              chipCount={
+                item.content === "My Instances" && instanceCount > 0
+                  ? instanceCount
+                  : undefined
+              }
               onClick={
                 item.path ? () => handleNavigation(item.path) : undefined
               }
