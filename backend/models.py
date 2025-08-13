@@ -210,3 +210,41 @@ class ReportsResponse(BaseModel):
     successful_jobs: int
     total_usage_hours: float
     average_availability_percent: float
+
+
+# Quota Management Models
+class OrganizationQuotaResponse(BaseModel):
+    organization_id: str
+    monthly_gpu_hours: float
+    current_period_start: str
+    current_period_end: str
+    gpu_hours_used: float
+    gpu_hours_remaining: float
+    usage_percentage: float
+
+
+class UpdateQuotaRequest(BaseModel):
+    monthly_gpu_hours: float
+
+
+class GPUUsageLogResponse(BaseModel):
+    id: str
+    organization_id: str
+    user_id: str
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    cluster_name: str
+    job_id: Optional[int] = None
+    gpu_count: int
+    start_time: str
+    end_time: Optional[str] = None
+    duration_hours: Optional[float] = None
+    instance_type: Optional[str] = None
+    cloud_provider: Optional[str] = None
+    cost_estimate: Optional[float] = None
+
+
+class QuotaUsageResponse(BaseModel):
+    organization_quota: OrganizationQuotaResponse
+    recent_usage: List[GPUUsageLogResponse]
+    total_usage_this_period: float

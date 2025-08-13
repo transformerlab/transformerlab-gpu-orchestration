@@ -19,13 +19,21 @@ if engine.dialect.name == "sqlite":
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 from db_models import *
 
 AUTH_API_KEY = os.getenv("AUTH_API_KEY")
 AUTH_CLIENT_ID = os.getenv("AUTH_CLIENT_ID")
 AUTH_COOKIE_PASSWORD = (
-    os.getenv("AUTH_COOKIE_PASSWORD")
-    or "y0jN-wF1bIUoSwdKT6yWIHS5qLI4Kfq5TnqIANOxEXM="
+    os.getenv("AUTH_COOKIE_PASSWORD") or "y0jN-wF1bIUoSwdKT6yWIHS5qLI4Kfq5TnqIANOxEXM="
 )
 AUTH_REDIRECT_URI = os.getenv("AUTH_REDIRECT_URI")
 
