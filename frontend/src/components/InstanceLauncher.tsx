@@ -122,6 +122,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
         sx={{
           maxWidth: 800,
           maxHeight: "90vh",
+          minWidth: "50vw",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -140,124 +141,111 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
             minHeight: 0,
           }}
         >
-          <Card
-            variant="outlined"
+          {error && (
+            <Alert color="danger" sx={{ mb: 2 }}>
+              ❌ {error}
+            </Alert>
+          )}
+
+          <FormControl sx={{ mb: 2 }}>
+            <FormLabel>Instance Name</FormLabel>
+            <Input
+              value={instanceName}
+              onChange={(e) => setInstanceName(e.target.value)}
+              placeholder="e.g., my-instance, training-cluster"
+              required
+            />
+          </FormControl>
+
+          <FormControl sx={{ mb: 2 }}>
+            <FormLabel>Setup Command (optional)</FormLabel>
+            <Textarea
+              value={setupCommand}
+              onChange={(e) => setSetupCommand(e.target.value)}
+              placeholder="pip install -r requirements.txt"
+              minRows={2}
+            />
+          </FormControl>
+
+          {/* Resource Configuration */}
+          <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
+            <Typography level="title-sm" sx={{ mb: 1 }}>
+              Resource Configuration
+            </Typography>
+            <FormControl sx={{ mb: 1 }}>
+              <FormLabel>vCPUs</FormLabel>
+              <Input
+                value={vcpus}
+                onChange={(e) => setVcpus(e.target.value)}
+                placeholder="e.g., 4, 8, 16"
+                type="number"
+              />
+            </FormControl>
+            <FormControl sx={{ mb: 1 }}>
+              <FormLabel>Memory (GB)</FormLabel>
+              <Input
+                value={memory}
+                onChange={(e) => setMemory(e.target.value)}
+                placeholder="e.g., 16, 32, 64"
+                type="number"
+              />
+            </FormControl>
+            <FormControl sx={{ mb: 1 }}>
+              <FormLabel>GPUs</FormLabel>
+              <Input
+                value={gpus}
+                onChange={(e) => setGpus(e.target.value)}
+                placeholder="RTX3090:1, H100:4"
+              />
+            </FormControl>
+          </Card>
+
+          {/* Zone and Region Preferences */}
+          <Card variant="soft" sx={{ mb: 2 }}>
+            <Typography level="title-sm" sx={{ mb: 1 }}>
+              Zone and Region Preferences
+            </Typography>
+            <FormControl sx={{ mb: 1 }}>
+              <FormLabel>Region</FormLabel>
+              <Input
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                placeholder="e.g., us-west-2, us-central1"
+              />
+            </FormControl>
+            <FormControl sx={{ mb: 1 }}>
+              <FormLabel>Zone</FormLabel>
+              <Input
+                value={zone}
+                onChange={(e) => setZone(e.target.value)}
+                placeholder="e.g., us-west-2a, us-central1-a"
+              />
+            </FormControl>
+          </Card>
+          <Box
             sx={{
-              flex: 1,
-              overflow: "hidden",
               display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
+              gap: 1,
+              justifyContent: "flex-end",
+              p: 2,
+              flexShrink: 0,
+              borderTop: "1px solid",
+              borderColor: "divider",
             }}
           >
-            <CardContent sx={{ overflow: "auto", flex: 1, minHeight: 0 }}>
-              {error && (
-                <Alert color="danger" sx={{ mb: 2 }}>
-                  ❌ {error}
-                </Alert>
-              )}
-
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Instance Name</FormLabel>
-                <Input
-                  value={instanceName}
-                  onChange={(e) => setInstanceName(e.target.value)}
-                  placeholder="e.g., my-instance, training-cluster"
-                  required
-                />
-              </FormControl>
-
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Setup Command (optional)</FormLabel>
-                <Textarea
-                  value={setupCommand}
-                  onChange={(e) => setSetupCommand(e.target.value)}
-                  placeholder="pip install -r requirements.txt"
-                  minRows={2}
-                />
-              </FormControl>
-
-              {/* Resource Configuration */}
-              <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Resource Configuration
-                </Typography>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>vCPUs</FormLabel>
-                  <Input
-                    value={vcpus}
-                    onChange={(e) => setVcpus(e.target.value)}
-                    placeholder="e.g., 4, 8, 16"
-                    type="number"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Memory (GB)</FormLabel>
-                  <Input
-                    value={memory}
-                    onChange={(e) => setMemory(e.target.value)}
-                    placeholder="e.g., 16, 32, 64"
-                    type="number"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>GPUs</FormLabel>
-                  <Input
-                    value={gpus}
-                    onChange={(e) => setGpus(e.target.value)}
-                    placeholder="RTX3090:1, H100:4"
-                  />
-                </FormControl>
-              </Card>
-
-              {/* Zone and Region Preferences */}
-              <Card variant="soft" sx={{ mb: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Zone and Region Preferences
-                </Typography>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Region</FormLabel>
-                  <Input
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    placeholder="e.g., us-west-2, us-central1"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Zone</FormLabel>
-                  <Input
-                    value={zone}
-                    onChange={(e) => setZone(e.target.value)}
-                    placeholder="e.g., us-west-2a, us-central1-a"
-                  />
-                </FormControl>
-              </Card>
-            </CardContent>
-            <Box
-              sx={{
-                display: "flex",
-                gap: 1,
-                justifyContent: "flex-end",
-                p: 2,
-                flexShrink: 0,
-                borderTop: "1px solid",
-                borderColor: "divider",
-              }}
+            <Button variant="plain" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={loading}
+              disabled={loading}
+              color="success"
+              startDecorator={<Rocket size={16} />}
             >
-              <Button variant="plain" onClick={onClose} disabled={loading}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                loading={loading}
-                disabled={loading}
-                color="success"
-                startDecorator={<Rocket size={16} />}
-              >
-                Launch Instance
-              </Button>
-            </Box>
-          </Card>
+              Launch Instance
+            </Button>
+          </Box>
         </form>
       </ModalDialog>
     </Modal>
