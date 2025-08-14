@@ -254,16 +254,22 @@ def test_azure_connection(
                 text=True,
                 timeout=30,
             )
-            if result.returncode == 0:
-                # Now test if we can access the subscription
-                result2 = subprocess.run(
-                    ["az", "account", "show"],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                return result2.returncode == 0
-            return False
+            if result.returncode != 0:
+                print(result.stderr)
+                return False
+
+            # Now test if we can access the subscription
+            result2 = subprocess.run(
+                ["az", "account", "show"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result2.returncode != 0:
+                print(result2.stderr)
+                return False
+
+            return True
         finally:
             # Restore original credentials
             if original_subscription:
