@@ -43,19 +43,30 @@ def upgrade() -> None:
         "organization_quotas",
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("organization_id", sa.String(), nullable=False),
-        sa.Column("monthly_gpu_hours", sa.Float(), nullable=False),
+        sa.Column(
+            "user_id", sa.String(), nullable=True
+        ),  # NULL for org-wide default, user_id for per-user quota
+        sa.Column(
+            "monthly_gpu_hours_per_user", sa.Float(), nullable=False, default=100.0
+        ),
+        sa.Column("custom_quota", sa.Boolean(), nullable=True, default=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("organization_id"),
+        sa.UniqueConstraint(
+            "organization_id", "user_id", name="uq_org_quotas_org_user"
+        ),
     )
     op.create_table(
         "quota_periods",
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("organization_id", sa.String(), nullable=False),
+        sa.Column(
+            "user_id", sa.String(), nullable=True
+        ),  # NULL for org-wide periods, user_id for per-user periods
         sa.Column("period_start", sa.Date(), nullable=False),
         sa.Column("period_end", sa.Date(), nullable=False),
-        sa.Column("gpu_hours_used", sa.Float(), nullable=True),
+        sa.Column("gpu_hours_used", sa.Float(), nullable=True, default=0.0),
         sa.Column("gpu_hours_limit", sa.Float(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
