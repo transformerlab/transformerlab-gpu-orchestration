@@ -198,7 +198,10 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                 )  # Convert seconds to hours
 
                 # If the cluster is still running, update duration
-                if existing_log.duration_hours != duration_hours:
+                if (
+                    existing_log.duration_hours is None
+                    or existing_log.duration_hours != duration_hours
+                ):
                     existing_log.duration_hours = duration_hours
 
                 db.commit()
