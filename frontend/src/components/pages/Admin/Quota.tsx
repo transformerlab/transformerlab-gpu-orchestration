@@ -15,20 +15,44 @@ import {
   Divider,
   CircularProgress,
   LinearProgress,
+  Switch,
+  FormControl,
+  FormLabel,
 } from "@mui/joy";
-import { Edit2, RefreshCw, RotateCcw } from "lucide-react";
+import { Edit2, RefreshCw, RotateCcw, Users, PieChart } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
+import UserUsagePieChart from "../../widgets/UserUsagePieChart";
 
 interface OrganizationQuota {
   organization_id: string;
-  monthly_gpu_hours: number;
+  monthly_gpu_hours_per_user: number;
   current_period_start: string;
   current_period_end: string;
   gpu_hours_used: number;
   gpu_hours_remaining: number;
   usage_percentage: number;
+}
+
+interface UserUsageBreakdown {
+  user_id: string;
+  user_email?: string;
+  user_name?: string;
+  gpu_hours_used: number;
+  gpu_hours_limit: number;
+  gpu_hours_remaining: number;
+  usage_percentage: number;
+}
+
+interface OrganizationUserUsage {
+  organization_id: string;
+  period_start: string;
+  period_end: string;
+  quota_per_user: number;
+  total_users: number;
+  total_organization_usage: number;
+  user_breakdown: UserUsageBreakdown[];
 }
 
 interface GPUUsageLog {
@@ -60,12 +84,16 @@ const Quota: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quotaData, setQuotaData] = useState<QuotaUsageResponse | null>(null);
+  const [orgUserData, setOrgUserData] = useState<OrganizationUserUsage | null>(
+    null
+  );
   const [newQuotaHours, setNewQuotaHours] = useState<string>("");
   const [updating, setUpdating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [autoSyncInterval, setAutoSyncInterval] =
     useState<NodeJS.Timeout | null>(null);
+  const [showOrgView, setShowOrgView] = useState(false);
 
   const organizationId = user?.organization_id;
 
@@ -82,10 +110,14 @@ const Quota: React.FC = () => {
       }
       setError(null);
 
-      const response = await apiFetch(
-        buildApiUrl(`quota/organization/${organizationId}/usage`),
-        { credentials: "include" }
-      );
+      // Use different endpoints based on view mode
+      const endpoint = showOrgView
+        ? `quota/organization/${organizationId}/usage/all`
+        : `quota/organization/${organizationId}/usage`;
+
+      const response = await apiFetch(buildApiUrl(endpoint), {
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to fetch quota data: ${response.statusText}`);
@@ -93,7 +125,9 @@ const Quota: React.FC = () => {
 
       const data: QuotaUsageResponse = await response.json();
       setQuotaData(data);
-      setNewQuotaHours(data.organization_quota.monthly_gpu_hours.toString());
+      setNewQuotaHours(
+        data.organization_quota.monthly_gpu_hours_per_user.toString()
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch quota data"
@@ -102,6 +136,28 @@ const Quota: React.FC = () => {
       if (showLoading) {
         setLoading(false);
       }
+    }
+  };
+
+  const fetchOrgUserData = async () => {
+    if (!organizationId) return;
+
+    try {
+      const response = await apiFetch(
+        buildApiUrl(`quota/organization/${organizationId}/users`),
+        { credentials: "include" }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch organization user data: ${response.statusText}`
+        );
+      }
+
+      const data: OrganizationUserUsage = await response.json();
+      setOrgUserData(data);
+    } catch (err) {
+      console.error("Failed to fetch organization user data:", err);
     }
   };
 
@@ -143,10 +199,14 @@ const Quota: React.FC = () => {
     if (organizationId) {
       // Initial data fetch
       fetchQuotaData();
+      fetchOrgUserData();
 
       // Set up automatic sync every 45 seconds
       const interval = setInterval(() => {
         syncFromCostReport(false);
+        if (showOrgView) {
+          fetchOrgUserData();
+        }
       }, 45000); // 45 seconds
 
       setAutoSyncInterval(interval);
@@ -158,7 +218,7 @@ const Quota: React.FC = () => {
         }
       };
     }
-  }, [organizationId]);
+  }, [organizationId, showOrgView]);
 
   const handleEditOrg = () => {
     setOpenOrgModal(true);
@@ -178,7 +238,7 @@ const Quota: React.FC = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            monthly_gpu_hours: parseFloat(newQuotaHours),
+            monthly_gpu_hours_per_user: parseFloat(newQuotaHours),
           }),
           credentials: "include",
         }
@@ -274,12 +334,27 @@ const Quota: React.FC = () => {
   return (
     <PageWithTitle
       title="Quota Management"
-      subtitle="Set and manage compute quota for your organization."
+      subtitle="Set and manage per-user compute quota for your organization."
     >
+      {/* View Toggle */}
+      <Box sx={{ mb: 3 }}>
+        <FormControl orientation="horizontal">
+          <FormLabel>View Mode:</FormLabel>
+          <Switch
+            checked={showOrgView}
+            onChange={(e) => setShowOrgView(e.target.checked)}
+            startDecorator={
+              showOrgView ? <Users size={16} /> : <PieChart size={16} />
+            }
+            endDecorator={showOrgView ? "Organization View" : "User View"}
+          />
+        </FormControl>
+      </Box>
+
       {/* Organization Section */}
       <Box sx={{ mb: 4 }}>
         <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-          Organization Quota
+          {showOrgView ? "Organization Overview" : "Your Quota"}
         </Typography>
         <Card variant="outlined" sx={{ mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
@@ -288,7 +363,7 @@ const Quota: React.FC = () => {
                 {user?.organization_name || "Organization"} GPU Quota
               </Typography>
               <Typography level="body-md" color="neutral">
-                Monthly GPU hour allocation
+                Monthly GPU hour allocation per user
               </Typography>
             </Grid>
             <Grid
@@ -321,63 +396,169 @@ const Quota: React.FC = () => {
           </Grid>
         </Card>
 
-        {/* Quota Usage Card */}
-        <Card variant="outlined" sx={{ mb: 3 }}>
+        {/* Quota Usage Card - Only show in User View */}
+        {!showOrgView && (
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <Grid container spacing={3}>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Monthly Limit
+                </Typography>
+                <Typography level="h3">
+                  {formatHours(organization_quota.monthly_gpu_hours_per_user)}{" "}
+                  hours per user
+                </Typography>
+              </Grid>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Used This Month
+                </Typography>
+                <Typography level="h3" color="primary">
+                  {formatHours(organization_quota.gpu_hours_used)} hours
+                </Typography>
+              </Grid>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Remaining
+                </Typography>
+                <Typography level="h3" color="success">
+                  {formatHours(organization_quota.gpu_hours_remaining)} hours
+                </Typography>
+              </Grid>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Usage
+                </Typography>
+                <Typography level="h3">
+                  {organization_quota.usage_percentage.toFixed(1)}%
+                </Typography>
+              </Grid>
+            </Grid>
+
+            <Box sx={{ mt: 2 }}>
+              <LinearProgress
+                determinate
+                value={organization_quota.usage_percentage}
+                color={getQuotaUsageColor(organization_quota.usage_percentage)}
+                sx={{ height: 8, borderRadius: 4 }}
+              />
+            </Box>
+
+            <Typography level="body-sm" color="neutral" sx={{ mt: 1 }}>
+              Period: {formatDate(organization_quota.current_period_start)} -{" "}
+              {formatDate(organization_quota.current_period_end)}
+            </Typography>
+          </Card>
+        )}
+      </Box>
+
+      {/* Organization User Breakdown */}
+      {showOrgView && orgUserData && (
+        <Box sx={{ mb: 4 }}>
+          <Typography level="h4" component="h2" sx={{ mb: 2 }}>
+            User Usage Breakdown
+          </Typography>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <Grid container spacing={3}>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Quota Per User
+                </Typography>
+                <Typography level="h3">
+                  {formatHours(orgUserData.quota_per_user)} hours
+                </Typography>
+              </Grid>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Total Users
+                </Typography>
+                <Typography level="h3" color="primary">
+                  {orgUserData.total_users}
+                </Typography>
+              </Grid>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Total Organization Usage
+                </Typography>
+                <Typography level="h3" color="success">
+                  {formatHours(orgUserData.total_organization_usage)} hours
+                </Typography>
+              </Grid>
+              <Grid xs={12} md={3}>
+                <Typography level="body-sm" color="neutral">
+                  Period
+                </Typography>
+                <Typography level="h3">
+                  {formatDate(orgUserData.period_start)} -{" "}
+                  {formatDate(orgUserData.period_end)}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Card>
+
+          {/* User Usage Visualization */}
           <Grid container spacing={3}>
-            <Grid xs={12} md={3}>
-              <Typography level="body-sm" color="neutral">
-                Monthly Limit
-              </Typography>
-              <Typography level="h3">
-                {formatHours(organization_quota.monthly_gpu_hours)} hours
-              </Typography>
+            <Grid xs={12} md={6}>
+              <UserUsagePieChart data={orgUserData.user_breakdown} />
             </Grid>
-            <Grid xs={12} md={3}>
-              <Typography level="body-sm" color="neutral">
-                Used This Month
-              </Typography>
-              <Typography level="h3" color="primary">
-                {formatHours(organization_quota.gpu_hours_used)} hours
-              </Typography>
-            </Grid>
-            <Grid xs={12} md={3}>
-              <Typography level="body-sm" color="neutral">
-                Remaining
-              </Typography>
-              <Typography level="h3" color="success">
-                {formatHours(organization_quota.gpu_hours_remaining)} hours
-              </Typography>
-            </Grid>
-            <Grid xs={12} md={3}>
-              <Typography level="body-sm" color="neutral">
-                Usage
-              </Typography>
-              <Typography level="h3">
-                {organization_quota.usage_percentage.toFixed(1)}%
-              </Typography>
+            <Grid xs={12} md={6}>
+              <Card variant="outlined">
+                <Typography level="h4" sx={{ mb: 2 }}>
+                  Individual User Usage
+                </Typography>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Email</th>
+                      <th>Used</th>
+                      <th>Limit</th>
+                      <th>Remaining</th>
+                      <th>Usage %</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgUserData.user_breakdown.map((user) => (
+                      <tr key={user.user_id}>
+                        <td>{user.user_name || "Unknown"}</td>
+                        <td>{user.user_email || user.user_id}</td>
+                        <td>{formatHours(user.gpu_hours_used)}</td>
+                        <td>{formatHours(user.gpu_hours_limit)}</td>
+                        <td>{formatHours(user.gpu_hours_remaining)}</td>
+                        <td>{user.usage_percentage.toFixed(1)}%</td>
+                        <td>
+                          <Chip
+                            color={
+                              user.usage_percentage < 50
+                                ? "success"
+                                : user.usage_percentage < 80
+                                ? "warning"
+                                : "danger"
+                            }
+                            size="sm"
+                          >
+                            {user.usage_percentage < 50
+                              ? "Good"
+                              : user.usage_percentage < 80
+                              ? "Warning"
+                              : "Critical"}
+                          </Chip>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card>
             </Grid>
           </Grid>
-
-          <Box sx={{ mt: 2 }}>
-            <LinearProgress
-              determinate
-              value={organization_quota.usage_percentage}
-              color={getQuotaUsageColor(organization_quota.usage_percentage)}
-              sx={{ height: 8, borderRadius: 4 }}
-            />
-          </Box>
-
-          <Typography level="body-sm" color="neutral" sx={{ mt: 1 }}>
-            Period: {formatDate(organization_quota.current_period_start)} -{" "}
-            {formatDate(organization_quota.current_period_end)}
-          </Typography>
-        </Card>
-      </Box>
+        </Box>
+      )}
 
       {/* Recent Usage Section */}
       <Box>
         <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-          Recent GPU Usage
+          {showOrgView ? "All Users Recent Usage" : "Recent GPU Usage"}
         </Typography>
 
         {recent_usage.length === 0 ? (
@@ -426,11 +607,11 @@ const Quota: React.FC = () => {
         <ModalDialog>
           <Typography level="h4">Edit Organization Quota</Typography>
           <Typography level="body-sm" mb={2}>
-            Set the monthly GPU hour quota for your organization
+            Set the monthly GPU hour quota per user for your organization
           </Typography>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Input
-              placeholder="Monthly GPU Hours"
+              placeholder="Monthly GPU Hours Per User"
               value={newQuotaHours}
               onChange={(e) => setNewQuotaHours(e.target.value)}
               slotProps={{

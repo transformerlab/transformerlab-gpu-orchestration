@@ -93,7 +93,7 @@ def get_or_create_organization_quota(
     if not quota:
         quota = OrganizationQuota(
             organization_id=organization_id,
-            monthly_gpu_hours=100.0,  # Default quota
+            monthly_gpu_hours_per_user=100.0,  # Default quota per user
         )
         db.add(quota)
         db.commit()
@@ -102,7 +102,9 @@ def get_or_create_organization_quota(
     return quota
 
 
-def get_or_create_quota_period(db: Session, organization_id: str) -> QuotaPeriod:
+def get_or_create_quota_period(
+    db: Session, organization_id: str, user_id: str = None
+) -> QuotaPeriod:
     """Get or create a quota period record for the current month"""
     period_start, period_end = get_current_period_dates()
 
@@ -110,6 +112,7 @@ def get_or_create_quota_period(db: Session, organization_id: str) -> QuotaPeriod
         db.query(QuotaPeriod)
         .filter(
             QuotaPeriod.organization_id == organization_id,
+            QuotaPeriod.user_id == user_id,
             QuotaPeriod.period_start == period_start,
             QuotaPeriod.period_end == period_end,
         )
@@ -122,10 +125,11 @@ def get_or_create_quota_period(db: Session, organization_id: str) -> QuotaPeriod
 
         period = QuotaPeriod(
             organization_id=organization_id,
+            user_id=user_id,
             period_start=period_start,
             period_end=period_end,
             gpu_hours_used=0.0,
-            gpu_hours_limit=org_quota.monthly_gpu_hours,
+            gpu_hours_limit=org_quota.monthly_gpu_hours_per_user,
         )
         db.add(period)
         db.commit()
@@ -249,32 +253,44 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
 
             for (org_id,) in orgs_with_updates:
                 try:
-                    # Recalculate quota period usage
-                    current_period = get_or_create_quota_period(db, org_id)
-                    total_usage = (
-                        db.query(GPUUsageLog)
-                        .filter(
-                            GPUUsageLog.organization_id == org_id,
-                            GPUUsageLog.start_time
-                            >= datetime.combine(
-                                current_period.period_start, datetime.min.time()
-                            ),
-                            GPUUsageLog.start_time
-                            <= datetime.combine(
-                                current_period.period_end, datetime.max.time()
-                            ),
-                            GPUUsageLog.duration_hours.isnot(None),
-                        )
-                        .with_entities(
-                            func.sum(GPUUsageLog.duration_hours * GPUUsageLog.gpu_count)
-                        )
-                        .scalar()
-                        or 0.0
+                    # Get all users in this organization
+                    users_in_org = (
+                        db.query(GPUUsageLog.user_id)
+                        .filter(GPUUsageLog.organization_id == org_id)
+                        .distinct()
+                        .all()
                     )
 
-                    current_period.gpu_hours_used = total_usage
-                    current_period.updated_at = datetime.utcnow()
-                    db.commit()
+                    for (user_id,) in users_in_org:
+                        # Recalculate quota period usage for each user
+                        current_period = get_or_create_quota_period(db, org_id, user_id)
+                        total_usage = (
+                            db.query(GPUUsageLog)
+                            .filter(
+                                GPUUsageLog.organization_id == org_id,
+                                GPUUsageLog.user_id == user_id,
+                                GPUUsageLog.start_time
+                                >= datetime.combine(
+                                    current_period.period_start, datetime.min.time()
+                                ),
+                                GPUUsageLog.start_time
+                                <= datetime.combine(
+                                    current_period.period_end, datetime.max.time()
+                                ),
+                                GPUUsageLog.duration_hours.isnot(None),
+                            )
+                            .with_entities(
+                                func.sum(
+                                    GPUUsageLog.duration_hours * GPUUsageLog.gpu_count
+                                )
+                            )
+                            .scalar()
+                            or 0.0
+                        )
+
+                        current_period.gpu_hours_used = total_usage
+                        current_period.updated_at = datetime.utcnow()
+                        db.commit()
                 except Exception as e:
                     print(f"Failed to update quota period for org {org_id}: {e}")
 
@@ -293,26 +309,29 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
         }
 
 
-def get_gpu_usage_summary(db: Session, organization_id: str) -> Dict[str, Any]:
+def get_gpu_usage_summary(
+    db: Session, organization_id: str, user_id: str = None
+) -> Dict[str, Any]:
     """
-    Get a summary of GPU usage for an organization
+    Get a summary of GPU usage for an organization or specific user
     """
     try:
         # Get current period
-        current_period = get_or_create_quota_period(db, organization_id)
+        current_period = get_or_create_quota_period(db, organization_id, user_id)
 
         # Get all usage logs for this organization in current period
-        usage_logs = (
-            db.query(GPUUsageLog)
-            .filter(
-                GPUUsageLog.organization_id == organization_id,
-                GPUUsageLog.start_time
-                >= datetime.combine(current_period.period_start, datetime.min.time()),
-                GPUUsageLog.start_time
-                <= datetime.combine(current_period.period_end, datetime.max.time()),
-            )
-            .all()
+        usage_query = db.query(GPUUsageLog).filter(
+            GPUUsageLog.organization_id == organization_id,
+            GPUUsageLog.start_time
+            >= datetime.combine(current_period.period_start, datetime.min.time()),
+            GPUUsageLog.start_time
+            <= datetime.combine(current_period.period_end, datetime.max.time()),
         )
+
+        if user_id:
+            usage_query = usage_query.filter(GPUUsageLog.user_id == user_id)
+
+        usage_logs = usage_query.all()
 
         # Calculate summary
         total_gpu_hours = sum(log.duration_hours or 0 for log in usage_logs)
@@ -332,6 +351,7 @@ def get_gpu_usage_summary(db: Session, organization_id: str) -> Dict[str, Any]:
 
         return {
             "organization_id": organization_id,
+            "user_id": user_id,
             "period_start": current_period.period_start.isoformat(),
             "period_end": current_period.period_end.isoformat(),
             "quota_limit": current_period.gpu_hours_limit,
@@ -353,5 +373,92 @@ def get_gpu_usage_summary(db: Session, organization_id: str) -> Dict[str, Any]:
     except Exception as e:
         print(
             f"Failed to get GPU usage summary for organization {organization_id}: {e}"
+        )
+        return {}
+
+
+def get_organization_user_usage_summary(
+    db: Session, organization_id: str
+) -> Dict[str, Any]:
+    """
+    Get a summary of GPU usage for all users in an organization
+    """
+    try:
+        # Get organization quota
+        org_quota = get_or_create_organization_quota(db, organization_id)
+        period_start, period_end = get_current_period_dates()
+
+        # Get all users in the organization with their usage
+        user_usage = (
+            db.query(
+                GPUUsageLog.user_id,
+                func.sum(GPUUsageLog.duration_hours * GPUUsageLog.gpu_count).label(
+                    "total_hours"
+                ),
+            )
+            .filter(
+                GPUUsageLog.organization_id == organization_id,
+                GPUUsageLog.start_time
+                >= datetime.combine(period_start, datetime.min.time()),
+                GPUUsageLog.start_time
+                <= datetime.combine(period_end, datetime.max.time()),
+                GPUUsageLog.duration_hours.isnot(None),
+            )
+            .group_by(GPUUsageLog.user_id)
+            .all()
+        )
+
+        # Get user info for display
+        from utils.file_utils import get_cluster_user_info
+
+        user_breakdown = []
+        total_org_usage = 0
+
+        for user_id, total_hours in user_usage:
+            total_hours = total_hours or 0
+            total_org_usage += total_hours
+
+            # Try to get user info from any cluster
+            user_cluster = (
+                db.query(GPUUsageLog.cluster_name)
+                .filter(GPUUsageLog.user_id == user_id)
+                .first()
+            )
+
+            user_info = {}
+            if user_cluster:
+                user_info = get_cluster_user_info(user_cluster[0]) or {}
+
+            user_breakdown.append(
+                {
+                    "user_id": user_id,
+                    "user_email": user_info.get("email"),
+                    "user_name": user_info.get("name"),
+                    "gpu_hours_used": total_hours,
+                    "gpu_hours_limit": org_quota.monthly_gpu_hours_per_user,
+                    "gpu_hours_remaining": max(
+                        0, org_quota.monthly_gpu_hours_per_user - total_hours
+                    ),
+                    "usage_percentage": (
+                        total_hours / org_quota.monthly_gpu_hours_per_user * 100
+                    )
+                    if org_quota.monthly_gpu_hours_per_user > 0
+                    else 0,
+                }
+            )
+
+        return {
+            "organization_id": organization_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_per_user": org_quota.monthly_gpu_hours_per_user,
+            "total_users": len(user_breakdown),
+            "total_organization_usage": total_org_usage,
+            "user_breakdown": user_breakdown,
+        }
+
+    except Exception as e:
+        print(
+            f"Failed to get organization user usage summary for {organization_id}: {e}"
         )
         return {}

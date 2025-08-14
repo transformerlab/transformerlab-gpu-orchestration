@@ -99,9 +99,9 @@ class OrganizationQuota(Base):
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     organization_id = Column(String, nullable=False, unique=True)
-    monthly_gpu_hours = Column(
+    monthly_gpu_hours_per_user = Column(
         Float, nullable=False, default=100.0
-    )  # Default 100 GPU hours per month
+    )  # Default 100 GPU hours per month per user
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -111,6 +111,9 @@ class QuotaPeriod(Base):
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     organization_id = Column(String, nullable=False)
+    user_id = Column(
+        String, nullable=True
+    )  # NULL for org-wide periods, user_id for per-user periods
     period_start = Column(Date, nullable=False)  # First day of the billing period
     period_end = Column(Date, nullable=False)  # Last day of the billing period
     gpu_hours_used = Column(Float, default=0.0)  # Total GPU hours used in this period
