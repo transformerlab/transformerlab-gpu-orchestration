@@ -55,6 +55,24 @@ interface OrganizationUserUsage {
   user_breakdown: UserUsageBreakdown[];
 }
 
+// Individual User Quota Management Interfaces
+interface UserQuota {
+  user_id: string;
+  user_email?: string;
+  user_name?: string;
+  organization_id: string;
+  monthly_gpu_hours_per_user: number;
+  custom_quota: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface UserQuotaList {
+  organization_id: string;
+  users: UserQuota[];
+  default_quota_per_user: number;
+}
+
 interface GPUUsageLog {
   id: string;
   organization_id: string;
@@ -96,6 +114,15 @@ const Quota: React.FC = () => {
   const [showOrgView, setShowOrgView] = useState(false);
 
   const organizationId = user?.organization_id;
+
+  // Individual User Quota Management State
+  const [userQuotas, setUserQuotas] = useState<UserQuotaList | null>(null);
+  const [openUserQuotaModal, setOpenUserQuotaModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserQuota | null>(null);
+  const [newUserQuotaHours, setNewUserQuotaHours] = useState<string>("");
+  const [updatingUserQuota, setUpdatingUserQuota] = useState(false);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [resetIndividualQuotas, setResetIndividualQuotas] = useState(false);
 
   const fetchQuotaData = async (showLoading = true) => {
     if (!organizationId) {
@@ -161,6 +188,55 @@ const Quota: React.FC = () => {
     }
   };
 
+  const fetchUserQuotas = async () => {
+    if (!organizationId) return;
+
+    try {
+      const response = await apiFetch(
+        buildApiUrl(`quota/organization/${organizationId}/users/quotas`),
+        { credentials: "include" }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user quotas: ${response.statusText}`);
+      }
+
+      const data: UserQuotaList = await response.json();
+      setUserQuotas(data);
+
+      // If no users found, automatically populate user quotas
+      if (data.users.length === 0) {
+        try {
+          await apiFetch(
+            buildApiUrl(
+              `quota/organization/${organizationId}/populate-user-quotas`
+            ),
+            {
+              method: "POST",
+              credentials: "include",
+            }
+          );
+          // Fetch again after populating
+          const populatedResponse = await apiFetch(
+            buildApiUrl(`quota/organization/${organizationId}/users/quotas`),
+            { credentials: "include" }
+          );
+          if (populatedResponse.ok) {
+            const populatedData: UserQuotaList = await populatedResponse.json();
+            setUserQuotas(populatedData);
+          }
+        } catch (populateErr) {
+          console.error(
+            "Failed to automatically populate user quotas:",
+            populateErr
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch user quotas:", err);
+    }
+  };
+
   const syncFromCostReport = async (showLoading = false) => {
     try {
       if (showLoading) {
@@ -200,6 +276,7 @@ const Quota: React.FC = () => {
       // Initial data fetch
       fetchQuotaData();
       fetchOrgUserData();
+      fetchUserQuotas(); // Fetch user quotas on mount
 
       // Set up automatic sync every 45 seconds
       const interval = setInterval(() => {
@@ -207,6 +284,7 @@ const Quota: React.FC = () => {
         if (showOrgView) {
           fetchOrgUserData();
         }
+        fetchUserQuotas(); // Sync user quotas periodically
       }, 45000); // 45 seconds
 
       setAutoSyncInterval(interval);
@@ -255,6 +333,171 @@ const Quota: React.FC = () => {
       setError(err instanceof Error ? err.message : "Failed to update quota");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleUpdateQuotaWithReset = async () => {
+    if (!organizationId || !newQuotaHours) return;
+
+    try {
+      setUpdating(true);
+
+      const response = await apiFetch(
+        buildApiUrl(`quota/organization/${organizationId}`),
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            monthly_gpu_hours_per_user: parseFloat(newQuotaHours),
+          }),
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update quota: ${response.statusText}`);
+      }
+
+      // If user chose to reset individual quotas, delete all custom user quotas
+      if (resetIndividualQuotas && userQuotas) {
+        for (const userQuota of userQuotas.users) {
+          try {
+            await apiFetch(
+              buildApiUrl(
+                `quota/organization/${organizationId}/users/${userQuota.user_id}/quota`
+              ),
+              {
+                method: "DELETE",
+                credentials: "include",
+              }
+            );
+          } catch (err) {
+            console.error(
+              `Failed to reset quota for user ${userQuota.user_id}:`,
+              err
+            );
+          }
+        }
+      } else {
+        // Update all non-custom user quotas to the new organization default
+        if (userQuotas) {
+          for (const userQuota of userQuotas.users) {
+            if (!userQuota.custom_quota) {
+              try {
+                await apiFetch(
+                  buildApiUrl(
+                    `quota/organization/${organizationId}/users/${userQuota.user_id}/quota`
+                  ),
+                  {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      monthly_gpu_hours_per_user: parseFloat(newQuotaHours),
+                    }),
+                    credentials: "include",
+                  }
+                );
+              } catch (err) {
+                console.error(
+                  `Failed to update quota for user ${userQuota.user_id}:`,
+                  err
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // Refresh all data
+      await Promise.all([
+        fetchQuotaData(),
+        fetchUserQuotas(),
+        fetchOrgUserData(),
+      ]);
+
+      setOpenOrgModal(false);
+      setShowResetConfirmation(false);
+      setResetIndividualQuotas(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update quota");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleEditUserQuota = (user: UserQuota) => {
+    setSelectedUser(user);
+    setNewUserQuotaHours(user.monthly_gpu_hours_per_user.toString());
+    setOpenUserQuotaModal(true);
+  };
+
+  const handleUpdateUserQuota = async () => {
+    if (!organizationId || !selectedUser || !newUserQuotaHours) return;
+
+    try {
+      setUpdatingUserQuota(true);
+
+      const response = await apiFetch(
+        buildApiUrl(
+          `quota/organization/${organizationId}/users/${selectedUser.user_id}/quota`
+        ),
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            monthly_gpu_hours_per_user: parseFloat(newUserQuotaHours),
+          }),
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update user quota: ${response.statusText}`);
+      }
+
+      // Refresh the data
+      await fetchUserQuotas();
+      setOpenUserQuotaModal(false);
+      setSelectedUser(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update user quota"
+      );
+    } finally {
+      setUpdatingUserQuota(false);
+    }
+  };
+
+  const handleDeleteUserQuota = async (user: UserQuota) => {
+    if (!organizationId) return;
+
+    try {
+      const response = await apiFetch(
+        buildApiUrl(
+          `quota/organization/${organizationId}/users/${user.user_id}/quota`
+        ),
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete user quota: ${response.statusText}`);
+      }
+
+      // Refresh the data - this will now show the user with the organization default
+      await fetchUserQuotas();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete user quota"
+      );
     }
   };
 
@@ -555,6 +798,78 @@ const Quota: React.FC = () => {
         </Box>
       )}
 
+      {/* Individual User Quota Management */}
+      {userQuotas && (
+        <Box sx={{ mb: 4 }}>
+          <Typography level="h4" component="h2" sx={{ mb: 2 }}>
+            Individual User Quotas
+          </Typography>
+          <Card variant="outlined">
+            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+              Default quota per user:{" "}
+              {formatHours(userQuotas.default_quota_per_user)} hours
+            </Typography>
+            {userQuotas.users.length === 0 ? (
+              <Alert color="neutral">Loading user quotas...</Alert>
+            ) : (
+              <Table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Custom Quota</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userQuotas.users.map((userQuota) => (
+                    <tr key={userQuota.user_id}>
+                      <td>{userQuota.user_name || "Unknown"}</td>
+                      <td>{userQuota.user_email || userQuota.user_id}</td>
+                      <td>
+                        {userQuota.custom_quota ? (
+                          <Chip color="primary" size="sm">
+                            {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
+                            hours
+                          </Chip>
+                        ) : (
+                          <Chip color="neutral" size="sm">
+                            Using Default (
+                            {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
+                            hours)
+                          </Chip>
+                        )}
+                      </td>
+                      <td>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            onClick={() => handleEditUserQuota(userQuota)}
+                          >
+                            Edit
+                          </Button>
+                          {userQuota.custom_quota && (
+                            <Button
+                              size="sm"
+                              variant="outlined"
+                              color="danger"
+                              onClick={() => handleDeleteUserQuota(userQuota)}
+                            >
+                              Reset
+                            </Button>
+                          )}
+                        </Stack>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </Card>
+        </Box>
+      )}
+
       {/* Recent Usage Section */}
       <Box>
         <Typography level="h4" component="h2" sx={{ mb: 2 }}>
@@ -628,7 +943,7 @@ const Quota: React.FC = () => {
             </Typography>
             <Stack direction="row" spacing={1}>
               <Button
-                onClick={handleUpdateQuota}
+                onClick={() => setShowResetConfirmation(true)}
                 loading={updating}
                 disabled={!newQuotaHours || parseFloat(newQuotaHours) < 0}
               >
@@ -640,6 +955,108 @@ const Quota: React.FC = () => {
                 disabled={updating}
               >
                 Cancel
+              </Button>
+            </Stack>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Reset Confirmation Modal */}
+      <Modal
+        open={showResetConfirmation}
+        onClose={() => setShowResetConfirmation(false)}
+      >
+        <ModalDialog>
+          <Typography level="h4">Reset Individual Quotas?</Typography>
+          <Typography level="body-sm" mb={2}>
+            Do you want to reset all individual user quotas to the new
+            organization default?
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <FormControl>
+              <FormLabel>Reset individual quotas?</FormLabel>
+              <Switch
+                checked={resetIndividualQuotas}
+                onChange={(e) => setResetIndividualQuotas(e.target.checked)}
+              />
+            </FormControl>
+            <Typography level="body-sm" color="neutral">
+              {resetIndividualQuotas
+                ? "All custom user quotas will be deleted and users will use the new organization default."
+                : "Individual user quotas will remain unchanged."}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button
+                onClick={handleUpdateQuotaWithReset}
+                loading={updating}
+                color="primary"
+              >
+                Confirm Update
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => setShowResetConfirmation(false)}
+                disabled={updating}
+              >
+                Cancel
+              </Button>
+            </Stack>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* User Quota Modal */}
+      <Modal
+        open={openUserQuotaModal}
+        onClose={() => setOpenUserQuotaModal(false)}
+      >
+        <ModalDialog>
+          <Typography level="h4">Edit User Quota</Typography>
+          <Typography level="body-sm" mb={2}>
+            Set the monthly GPU hour quota for{" "}
+            {selectedUser?.user_name || selectedUser?.user_id}
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Input
+              placeholder="Monthly GPU Hours Limit"
+              value={newUserQuotaHours}
+              onChange={(e) => setNewUserQuotaHours(e.target.value)}
+              slotProps={{
+                input: {
+                  type: "number",
+                  min: "0",
+                  step: "0.1",
+                },
+              }}
+            />
+            <Stack direction="row" spacing={1}>
+              <Button
+                onClick={handleUpdateUserQuota}
+                loading={updatingUserQuota}
+                disabled={
+                  !newUserQuotaHours || parseFloat(newUserQuotaHours) < 0
+                }
+              >
+                Save Changes
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => setOpenUserQuotaModal(false)}
+                disabled={updatingUserQuota}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outlined"
+                color="danger"
+                onClick={async () => {
+                  await handleDeleteUserQuota(selectedUser!);
+                  setOpenUserQuotaModal(false);
+                  setSelectedUser(null);
+                }}
+                loading={updatingUserQuota}
+              >
+                Delete Quota
               </Button>
             </Stack>
           </Stack>

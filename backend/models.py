@@ -268,3 +268,30 @@ class QuotaUsageResponse(BaseModel):
     organization_quota: OrganizationQuotaResponse
     recent_usage: List[GPUUsageLogResponse]
     total_usage_this_period: float
+
+
+# Individual User Quota Management Models
+class UserQuotaResponse(BaseModel):
+    user_id: str
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    organization_id: str
+    monthly_gpu_hours_per_user: float
+    custom_quota: bool
+    created_at: str
+    updated_at: str
+
+
+class UpdateUserQuotaRequest(BaseModel):
+    monthly_gpu_hours_per_user: float
+
+
+class UserQuotaListResponse(BaseModel):
+    organization_id: str
+    users: List[UserQuotaResponse]
+    default_quota_per_user: float  # Organization-wide default
+
+
+class CreateUserQuotaRequest(BaseModel):
+    user_id: str
+    monthly_gpu_hours_per_user: float

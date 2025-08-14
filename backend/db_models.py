@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     Float,
     Date,
+    UniqueConstraint,
 )
 from sqlalchemy.sql import func
 from config import Base
@@ -98,12 +99,21 @@ class OrganizationQuota(Base):
     __tablename__ = "organization_quotas"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
-    organization_id = Column(String, nullable=False, unique=True)
+    organization_id = Column(String, nullable=False)
+    user_id = Column(
+        String, nullable=True
+    )  # NULL for org-wide default, user_id for per-user quota
     monthly_gpu_hours_per_user = Column(
         Float, nullable=False, default=100.0
-    )  # Default 100 GPU hours per month per user
+    )  # GPU hours per month per user
+    custom_quota = Column(Boolean, default=False)  # True if this is a custom user quota
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Composite unique constraint to ensure one quota per user per organization
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", name="uq_org_quotas_org_user"),
+    )
 
 
 class QuotaPeriod(Base):

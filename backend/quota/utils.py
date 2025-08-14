@@ -83,23 +83,198 @@ def get_current_period_dates() -> tuple[datetime.date, datetime.date]:
 def get_or_create_organization_quota(
     db: Session, organization_id: str
 ) -> OrganizationQuota:
-    """Get or create an organization quota record"""
-    quota = (
+    """Get or create an organization quota record (organization-wide default)"""
+    org_quota = get_organization_default_quota(db, organization_id)
+
+    # Automatically populate user quotas if this is the first time accessing
+    # Check if there are any user quotas for this organization
+    existing_user_quotas = (
         db.query(OrganizationQuota)
-        .filter(OrganizationQuota.organization_id == organization_id)
+        .filter(
+            OrganizationQuota.organization_id == organization_id,
+            OrganizationQuota.user_id.isnot(None),
+        )
+        .count()
+    )
+
+    if existing_user_quotas == 0:
+        # No user quotas exist, populate them automatically
+        populate_user_quotas_for_organization(db, organization_id)
+
+    return org_quota
+
+
+def get_or_create_user_quota(
+    db: Session, organization_id: str, user_id: str
+) -> OrganizationQuota:
+    """Get or create a user quota record, falling back to organization default"""
+    user_quota = (
+        db.query(OrganizationQuota)
+        .filter(
+            OrganizationQuota.organization_id == organization_id,
+            OrganizationQuota.user_id == user_id,
+        )
         .first()
     )
 
-    if not quota:
-        quota = OrganizationQuota(
-            organization_id=organization_id,
-            monthly_gpu_hours_per_user=100.0,  # Default quota per user
-        )
-        db.add(quota)
-        db.commit()
-        db.refresh(quota)
+    if not user_quota:
+        # Get organization default quota
+        org_quota = get_or_create_organization_quota(db, organization_id)
 
-    return quota
+        user_quota = OrganizationQuota(
+            organization_id=organization_id,
+            user_id=user_id,
+            monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+            custom_quota=False,  # Initially not custom
+        )
+        db.add(user_quota)
+        db.commit()
+        db.refresh(user_quota)
+
+    return user_quota
+
+
+def get_user_quota_limit(db: Session, organization_id: str, user_id: str) -> float:
+    """Get the quota limit for a specific user, falling back to organization default"""
+    user_quota = (
+        db.query(OrganizationQuota)
+        .filter(
+            OrganizationQuota.organization_id == organization_id,
+            OrganizationQuota.user_id == user_id,
+        )
+        .first()
+    )
+
+    if user_quota:
+        return user_quota.monthly_gpu_hours_per_user
+
+    # Fall back to organization default
+    org_quota = get_or_create_organization_quota(db, organization_id)
+    return org_quota.monthly_gpu_hours_per_user
+
+
+def update_user_quota(
+    db: Session, organization_id: str, user_id: str, monthly_gpu_hours_limit: float
+) -> OrganizationQuota:
+    """Update or create a user quota record"""
+    user_quota = get_or_create_user_quota(db, organization_id, user_id)
+    user_quota.monthly_gpu_hours_per_user = monthly_gpu_hours_limit
+    user_quota.custom_quota = True  # Mark as custom when updated
+    user_quota.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user_quota)
+    return user_quota
+
+
+def delete_user_quota(db: Session, organization_id: str, user_id: str) -> bool:
+    """Delete a user quota record, reverting to organization default"""
+    user_quota = (
+        db.query(OrganizationQuota)
+        .filter(
+            OrganizationQuota.organization_id == organization_id,
+            OrganizationQuota.user_id == user_id,
+        )
+        .first()
+    )
+
+    if user_quota:
+        db.delete(user_quota)
+        db.commit()
+        return True
+
+    return False
+
+
+def get_all_user_quotas(db: Session, organization_id: str) -> List[OrganizationQuota]:
+    """Get all user quotas for an organization"""
+    # First, ensure all users have quota records by calling populate
+    populate_user_quotas_for_organization(db, organization_id)
+
+    # Then return all user quotas
+    return (
+        db.query(OrganizationQuota)
+        .filter(
+            OrganizationQuota.organization_id == organization_id,
+            OrganizationQuota.user_id.isnot(None),
+        )
+        .all()
+    )
+
+
+def get_organization_default_quota(
+    db: Session, organization_id: str
+) -> OrganizationQuota:
+    """Get the organization-wide default quota"""
+    org_quota = (
+        db.query(OrganizationQuota)
+        .filter(
+            OrganizationQuota.organization_id == organization_id,
+            OrganizationQuota.user_id.is_(None),  # Organization-wide default
+        )
+        .first()
+    )
+
+    if not org_quota:
+        org_quota = OrganizationQuota(
+            organization_id=organization_id,
+            user_id=None,  # Organization-wide default
+            monthly_gpu_hours_per_user=100.0,
+            custom_quota=False,
+        )
+        db.add(org_quota)
+        db.commit()
+        db.refresh(org_quota)
+
+    return org_quota
+
+
+def populate_user_quotas_for_organization(
+    db: Session, organization_id: str
+) -> List[OrganizationQuota]:
+    """Populate user quotas for all users in an organization"""
+    from auth.provider.work_os import provider as auth_provider
+
+    try:
+        # Get organization members
+        memberships = auth_provider.list_organization_memberships(
+            organization_id=organization_id
+        )
+
+        # Get organization default quota
+        org_quota = get_organization_default_quota(db, organization_id)
+
+        created_quotas = []
+        for membership in memberships:
+            # Check if user quota already exists
+            existing_quota = (
+                db.query(OrganizationQuota)
+                .filter(
+                    OrganizationQuota.organization_id == organization_id,
+                    OrganizationQuota.user_id == membership.user_id,
+                )
+                .first()
+            )
+
+            if not existing_quota:
+                # Create user quota with organization default
+                user_quota = OrganizationQuota(
+                    organization_id=organization_id,
+                    user_id=membership.user_id,
+                    monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+                    custom_quota=False,
+                )
+                db.add(user_quota)
+                created_quotas.append(user_quota)
+
+        if created_quotas:
+            db.commit()
+            for quota in created_quotas:
+                db.refresh(quota)
+
+        return created_quotas
+    except Exception as e:
+        print(f"Failed to populate user quotas: {e}")
+        return []
 
 
 def get_or_create_quota_period(
@@ -120,8 +295,12 @@ def get_or_create_quota_period(
     )
 
     if not period:
-        # Get the organization quota to set the limit
-        org_quota = get_or_create_organization_quota(db, organization_id)
+        # Get the user-specific quota limit, falling back to organization default
+        if user_id:
+            quota_limit = get_user_quota_limit(db, organization_id, user_id)
+        else:
+            org_quota = get_or_create_organization_quota(db, organization_id)
+            quota_limit = org_quota.monthly_gpu_hours_per_user
 
         period = QuotaPeriod(
             organization_id=organization_id,
@@ -129,7 +308,7 @@ def get_or_create_quota_period(
             period_start=period_start,
             period_end=period_end,
             gpu_hours_used=0.0,
-            gpu_hours_limit=org_quota.monthly_gpu_hours_per_user,
+            gpu_hours_limit=quota_limit,
         )
         db.add(period)
         db.commit()
@@ -429,20 +608,19 @@ def get_organization_user_usage_summary(
             if user_cluster:
                 user_info = get_cluster_user_info(user_cluster[0]) or {}
 
+            # Get user-specific quota limit
+            user_quota_limit = get_user_quota_limit(db, organization_id, user_id)
+
             user_breakdown.append(
                 {
                     "user_id": user_id,
                     "user_email": user_info.get("email"),
                     "user_name": user_info.get("name"),
                     "gpu_hours_used": total_hours,
-                    "gpu_hours_limit": org_quota.monthly_gpu_hours_per_user,
-                    "gpu_hours_remaining": max(
-                        0, org_quota.monthly_gpu_hours_per_user - total_hours
-                    ),
-                    "usage_percentage": (
-                        total_hours / org_quota.monthly_gpu_hours_per_user * 100
-                    )
-                    if org_quota.monthly_gpu_hours_per_user > 0
+                    "gpu_hours_limit": user_quota_limit,
+                    "gpu_hours_remaining": max(0, user_quota_limit - total_hours),
+                    "usage_percentage": (total_hours / user_quota_limit * 100)
+                    if user_quota_limit > 0
                     else 0,
                 }
             )
