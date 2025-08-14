@@ -380,36 +380,6 @@ const Quota: React.FC = () => {
             );
           }
         }
-      } else {
-        // Update all non-custom user quotas to the new organization default
-        if (userQuotas) {
-          for (const userQuota of userQuotas.users) {
-            if (!userQuota.custom_quota) {
-              try {
-                await apiFetch(
-                  buildApiUrl(
-                    `quota/organization/${organizationId}/users/${userQuota.user_id}/quota`
-                  ),
-                  {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      monthly_gpu_hours_per_user: parseFloat(newQuotaHours),
-                    }),
-                    credentials: "include",
-                  }
-                );
-              } catch (err) {
-                console.error(
-                  `Failed to update quota for user ${userQuota.user_id}:`,
-                  err
-                );
-              }
-            }
-          }
-        }
       }
 
       // Refresh all data

@@ -97,11 +97,13 @@ async def update_organization_quota(
         from quota.utils import get_all_user_quotas
 
         user_quotas = get_all_user_quotas(db, organization_id)
+
         for user_quota in user_quotas:
             if not user_quota.custom_quota:
                 user_quota.monthly_gpu_hours_per_user = (
                     request.monthly_gpu_hours_per_user
                 )
+                user_quota.custom_quota = False
                 user_quota.updated_at = datetime.utcnow()
         db.commit()
 
