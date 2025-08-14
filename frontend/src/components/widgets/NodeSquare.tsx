@@ -141,8 +141,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
           position: "relative",
           verticalAlign: "middle",
           "&:hover": {
-            transform: "scale(1.2)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            transform: "scale(1.25)",
           },
           overflow: "hidden",
           justifyContent: "center",
