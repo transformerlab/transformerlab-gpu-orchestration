@@ -21,6 +21,7 @@ import {
   ChartNoAxesColumnIncreasingIcon,
   CircleIcon,
   BoltIcon,
+  ClockIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 
@@ -79,6 +80,11 @@ const sidebarItems = [
     path: "/dashboard/costs",
   },
   {
+    icon: <ClockIcon />,
+    content: "Quota",
+    path: "/dashboard/quota",
+  },
+  {
     icon: <ChartNoAxesColumnIncreasingIcon />,
     content: "Reports",
     path: "/dashboard/reports",
@@ -93,8 +99,11 @@ const adminSubItems = [
     path: "/dashboard/admin/api-keys",
   },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
-  { content: "User Quotas", section: "user-quota", path: "/dashboard/admin/user-quota" },
-  { content: "Org Quotas", section: "org-quota", path: "/dashboard/admin/org-quota" },
+  {
+    content: "Org Quotas",
+    section: "org-quota",
+    path: "/dashboard/admin/org-quota",
+  },
   {
     content: "Node Pools",
     path: "/dashboard/admin/pools",

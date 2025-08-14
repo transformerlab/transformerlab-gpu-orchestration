@@ -84,6 +84,7 @@ const Dashboard: React.FC = () => {
           />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/costs" element={<Costs />} />
+          <Route path="/quota" element={<UserQuota />} />
 
           <Route path="/reports" element={<Reports />} />
           <Route
@@ -102,7 +103,6 @@ const Dashboard: React.FC = () => {
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route path="admin/volumes" element={<Volumes />} />
           <Route path="admin/quota" element={<Quota />} />
-          <Route path="admin/user-quota" element={<UserQuota />} />
           <Route path="admin/org-quota" element={<OrgQuota />} />
 
           <Route
