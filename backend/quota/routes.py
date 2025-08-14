@@ -10,8 +10,12 @@ from models import (
     GPUUsageLogResponse,
     QuotaUsageResponse,
     OrganizationUserUsageResponse,
+    UserQuotaResponse,
+    UpdateUserQuotaRequest,
+    UserQuotaListResponse,
+    CreateUserQuotaRequest,
 )
-from db_models import GPUUsageLog
+from db_models import GPUUsageLog, OrganizationQuota
 from quota.utils import (
     get_or_create_organization_quota,
     get_or_create_quota_period,
@@ -19,6 +23,12 @@ from quota.utils import (
     get_organization_user_usage_summary,
     sync_gpu_usage_from_cost_report,
     get_current_period_dates,
+    get_or_create_user_quota,
+    get_user_quota_limit,
+    update_user_quota,
+    delete_user_quota,
+    get_all_user_quotas,
+    populate_user_quotas_for_organization,
 )
 
 router = APIRouter(prefix="/quota")
@@ -45,7 +55,7 @@ async def get_organization_quota(
 
         return OrganizationQuotaResponse(
             organization_id=organization_id,
-            monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+            monthly_gpu_hours_per_user=current_period.gpu_hours_limit,  # Use user's actual limit
             current_period_start=current_period.period_start.isoformat(),
             current_period_end=current_period.period_end.isoformat(),
             gpu_hours_used=current_period.gpu_hours_used,
@@ -82,6 +92,20 @@ async def update_organization_quota(
         current_period.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(current_period)
+
+        # Update all non-custom user quotas to the new organization default
+        from quota.utils import get_all_user_quotas
+
+        user_quotas = get_all_user_quotas(db, organization_id)
+
+        for user_quota in user_quotas:
+            if not user_quota.custom_quota:
+                user_quota.monthly_gpu_hours_per_user = (
+                    request.monthly_gpu_hours_per_user
+                )
+                user_quota.custom_quota = False
+                user_quota.updated_at = datetime.utcnow()
+        db.commit()
 
         # Calculate usage percentage
         usage_percentage = (
@@ -323,4 +347,266 @@ async def get_all_organization_usage(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get organization usage: {str(e)}"
+        )
+
+
+# Individual User Quota Management Routes
+@router.get(
+    "/organization/{organization_id}/users/quotas",
+    response_model=UserQuotaListResponse,
+)
+async def get_organization_user_quotas(
+    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Get all user quotas for an organization"""
+    try:
+        # Get organization default quota
+        org_quota = get_or_create_organization_quota(db, organization_id)
+
+        # Get all user quotas
+        user_quotas = get_all_user_quotas(db, organization_id)
+
+        # Get user information from auth provider
+        from auth.provider.work_os import provider as auth_provider
+
+        users = []
+        for user_quota in user_quotas:
+            try:
+                user_info = auth_provider.get_user(user_id=user_quota.user_id)
+                users.append(
+                    UserQuotaResponse(
+                        user_id=user_quota.user_id,
+                        user_email=user_info.email,
+                        user_name=f"{user_info.first_name or ''} {user_info.last_name or ''}".strip(),
+                        organization_id=user_quota.organization_id,
+                        monthly_gpu_hours_per_user=user_quota.monthly_gpu_hours_per_user,
+                        custom_quota=user_quota.custom_quota,
+                        created_at=user_quota.created_at.isoformat(),
+                        updated_at=user_quota.updated_at.isoformat(),
+                    )
+                )
+            except Exception as e:
+                # If we can't get user info, still include the quota
+                users.append(
+                    UserQuotaResponse(
+                        user_id=user_quota.user_id,
+                        user_email=None,
+                        user_name=None,
+                        organization_id=user_quota.organization_id,
+                        monthly_gpu_hours_per_user=user_quota.monthly_gpu_hours_per_user,
+                        custom_quota=user_quota.custom_quota,
+                        created_at=user_quota.created_at.isoformat(),
+                        updated_at=user_quota.updated_at.isoformat(),
+                    )
+                )
+
+        return UserQuotaListResponse(
+            organization_id=organization_id,
+            users=users,
+            default_quota_per_user=org_quota.monthly_gpu_hours_per_user,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get user quotas: {str(e)}"
+        )
+
+
+@router.get(
+    "/organization/{organization_id}/users/{user_id}/quota",
+    response_model=UserQuotaResponse,
+)
+async def get_user_quota(
+    organization_id: str,
+    user_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get quota for a specific user"""
+    try:
+        user_quota = get_or_create_user_quota(db, organization_id, user_id)
+
+        # Get user information from auth provider
+        from auth.provider.work_os import provider as auth_provider
+
+        try:
+            user_info = auth_provider.get_user(user_id=user_quota.user_id)
+            user_name = (
+                f"{user_info.first_name or ''} {user_info.last_name or ''}".strip()
+            )
+            user_email = user_info.email
+        except Exception:
+            user_name = None
+            user_email = None
+
+        return UserQuotaResponse(
+            user_id=user_quota.user_id,
+            user_email=user_email,
+            user_name=user_name,
+            organization_id=user_quota.organization_id,
+            monthly_gpu_hours_per_user=user_quota.monthly_gpu_hours_per_user,
+            custom_quota=user_quota.custom_quota,
+            created_at=user_quota.created_at.isoformat(),
+            updated_at=user_quota.updated_at.isoformat(),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get user quota: {str(e)}"
+        )
+
+
+@router.put(
+    "/organization/{organization_id}/users/{user_id}/quota",
+    response_model=UserQuotaResponse,
+)
+async def update_user_quota_endpoint(
+    organization_id: str,
+    user_id: str,
+    request: UpdateUserQuotaRequest,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update quota for a specific user"""
+    try:
+        updated_quota = update_user_quota(
+            db, organization_id, user_id, request.monthly_gpu_hours_per_user
+        )
+
+        # Get user information from auth provider
+        from auth.provider.work_os import provider as auth_provider
+
+        try:
+            user_info = auth_provider.get_user(user_id=updated_quota.user_id)
+            user_name = (
+                f"{user_info.first_name or ''} {user_info.last_name or ''}".strip()
+            )
+            user_email = user_info.email
+        except Exception:
+            user_name = None
+            user_email = None
+
+        return UserQuotaResponse(
+            user_id=updated_quota.user_id,
+            user_email=user_email,
+            user_name=user_name,
+            organization_id=updated_quota.organization_id,
+            monthly_gpu_hours_per_user=updated_quota.monthly_gpu_hours_per_user,
+            custom_quota=updated_quota.custom_quota,
+            created_at=updated_quota.created_at.isoformat(),
+            updated_at=updated_quota.updated_at.isoformat(),
+        )
+    except Exception as e:
+        print(f"Failed to update user quota: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update user quota: {str(e)}"
+        )
+
+
+@router.delete("/organization/{organization_id}/users/{user_id}/quota")
+async def delete_user_quota_endpoint(
+    organization_id: str,
+    user_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete user quota, reverting to organization default"""
+    try:
+        success = delete_user_quota(db, organization_id, user_id)
+
+        if success:
+            return {
+                "message": "User quota deleted successfully, reverting to organization default"
+            }
+        else:
+            return {"message": "No custom user quota found, using organization default"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete user quota: {str(e)}"
+        )
+
+
+@router.post(
+    "/organization/{organization_id}/users/{user_id}/quota",
+    response_model=UserQuotaResponse,
+)
+async def create_user_quota_endpoint(
+    organization_id: str,
+    user_id: str,
+    request: CreateUserQuotaRequest,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new user quota"""
+    try:
+        # Check if user quota already exists
+        existing_quota = (
+            db.query(OrganizationQuota)
+            .filter(
+                OrganizationQuota.organization_id == organization_id,
+                OrganizationQuota.user_id == user_id,
+            )
+            .first()
+        )
+
+        if existing_quota:
+            raise HTTPException(
+                status_code=400, detail="User quota already exists. Use PUT to update."
+            )
+
+        new_quota = OrganizationQuota(
+            organization_id=organization_id,
+            user_id=user_id,
+            monthly_gpu_hours_per_user=request.monthly_gpu_hours_per_user,
+            custom_quota=True,
+        )
+        db.add(new_quota)
+        db.commit()
+        db.refresh(new_quota)
+
+        # Get user information from auth provider
+        from auth.provider.work_os import provider as auth_provider
+
+        try:
+            user_info = auth_provider.get_user(user_id=new_quota.user_id)
+            user_name = (
+                f"{user_info.first_name or ''} {user_info.last_name or ''}".strip()
+            )
+            user_email = user_info.email
+        except Exception:
+            user_name = None
+            user_email = None
+
+        return UserQuotaResponse(
+            user_id=new_quota.user_id,
+            user_email=user_email,
+            user_name=user_name,
+            organization_id=new_quota.organization_id,
+            monthly_gpu_hours_per_user=new_quota.monthly_gpu_hours_per_user,
+            custom_quota=new_quota.custom_quota,
+            created_at=new_quota.created_at.isoformat(),
+            updated_at=new_quota.updated_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create user quota: {str(e)}"
+        )
+
+
+@router.post("/organization/{organization_id}/populate-user-quotas")
+async def populate_user_quotas_endpoint(
+    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Populate user quotas for all users in an organization"""
+    try:
+        created_quotas = populate_user_quotas_for_organization(db, organization_id)
+
+        return {
+            "message": f"Successfully populated user quotas for {len(created_quotas)} users",
+            "created_count": len(created_quotas),
+            "organization_id": organization_id,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to populate user quotas: {str(e)}"
         )
