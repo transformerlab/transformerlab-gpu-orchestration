@@ -75,7 +75,6 @@ from skypilot.azure_utils import (
 )
 from clusters.utils import is_ssh_cluster, is_down_only_cluster
 from utils.file_utils import (
-    load_ssh_node_pools,
     load_ssh_node_info,
     save_ssh_node_info,
     get_cluster_platform,
