@@ -215,7 +215,7 @@ class ReportsResponse(BaseModel):
 # Quota Management Models
 class OrganizationQuotaResponse(BaseModel):
     organization_id: str
-    monthly_gpu_hours: float
+    monthly_gpu_hours_per_user: float
     current_period_start: str
     current_period_end: str
     gpu_hours_used: float
@@ -224,7 +224,27 @@ class OrganizationQuotaResponse(BaseModel):
 
 
 class UpdateQuotaRequest(BaseModel):
-    monthly_gpu_hours: float
+    monthly_gpu_hours_per_user: float
+
+
+class UserUsageBreakdown(BaseModel):
+    user_id: str
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    gpu_hours_used: float
+    gpu_hours_limit: float
+    gpu_hours_remaining: float
+    usage_percentage: float
+
+
+class OrganizationUserUsageResponse(BaseModel):
+    organization_id: str
+    period_start: str
+    period_end: str
+    quota_per_user: float
+    total_users: int
+    total_organization_usage: float
+    user_breakdown: List[UserUsageBreakdown]
 
 
 class GPUUsageLogResponse(BaseModel):
