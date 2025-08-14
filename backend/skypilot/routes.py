@@ -401,6 +401,7 @@ async def launch_skypilot_cluster(
                 "name": user_info.get("first_name", ""),
                 "email": user_info.get("email", ""),
                 "id": user_info.get("id", ""),
+                "organization_id": user_info.get("organization_id", ""),
             }
             set_cluster_platform(cluster_name, platform, cluster_user_info, template)
         except Exception as e:
