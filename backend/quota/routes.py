@@ -29,6 +29,8 @@ from quota.utils import (
     delete_user_quota,
     get_all_user_quotas,
     populate_user_quotas_for_organization,
+    get_current_user_quota_info,
+    refresh_quota_periods_for_organization,
 )
 
 router = APIRouter(prefix="/quota")
@@ -40,29 +42,22 @@ async def get_organization_quota(
 ):
     """Get organization quota and current user's usage"""
     try:
-        # Get or create organization quota
-        org_quota = get_or_create_organization_quota(db, organization_id)
+        # Get comprehensive quota information for the current user
+        quota_info = get_current_user_quota_info(db, organization_id, user["id"])
 
-        # Get or create current period for the current user
-        current_period = get_or_create_quota_period(db, organization_id, user["id"])
-
-        # Calculate usage percentage
-        usage_percentage = (
-            (current_period.gpu_hours_used / current_period.gpu_hours_limit) * 100
-            if current_period.gpu_hours_limit > 0
-            else 0
-        )
+        # Get current period dates
+        period_start, period_end = get_current_period_dates()
 
         return OrganizationQuotaResponse(
             organization_id=organization_id,
-            monthly_gpu_hours_per_user=current_period.gpu_hours_limit,  # Use user's actual limit
-            current_period_start=current_period.period_start.isoformat(),
-            current_period_end=current_period.period_end.isoformat(),
-            gpu_hours_used=current_period.gpu_hours_used,
-            gpu_hours_remaining=max(
-                0, current_period.gpu_hours_limit - current_period.gpu_hours_used
-            ),
-            usage_percentage=min(100, usage_percentage),
+            monthly_gpu_hours_per_user=quota_info[
+                "user_quota_limit"
+            ],  # Use user's actual quota limit
+            current_period_start=period_start.isoformat(),
+            current_period_end=period_end.isoformat(),
+            gpu_hours_used=quota_info["current_period_used"],
+            gpu_hours_remaining=quota_info["current_period_remaining"],
+            usage_percentage=min(100, quota_info["usage_percentage"]),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get quota: {str(e)}")
@@ -94,8 +89,6 @@ async def update_organization_quota(
         db.refresh(current_period)
 
         # Update all non-custom user quotas to the new organization default
-        from quota.utils import get_all_user_quotas
-
         user_quotas = get_all_user_quotas(db, organization_id)
 
         for user_quota in user_quotas:
@@ -106,6 +99,9 @@ async def update_organization_quota(
                 user_quota.custom_quota = False
                 user_quota.updated_at = datetime.utcnow()
         db.commit()
+
+        # Refresh quota periods for all users to reflect the new limits
+        refresh_quota_periods_for_organization(db, organization_id)
 
         # Calculate usage percentage
         usage_percentage = (
@@ -609,4 +605,22 @@ async def populate_user_quotas_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to populate user quotas: {str(e)}"
+        )
+
+
+@router.post("/organization/{organization_id}/refresh-quota-periods")
+async def refresh_quota_periods_endpoint(
+    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Refresh quota periods for all users in an organization"""
+    try:
+        refresh_quota_periods_for_organization(db, organization_id)
+
+        return {
+            "message": "Successfully refreshed quota periods for all users",
+            "organization_id": organization_id,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to refresh quota periods: {str(e)}"
         )

@@ -148,9 +148,39 @@ def get_user_quota_limit(db: Session, organization_id: str, user_id: str) -> flo
     if user_quota:
         return user_quota.monthly_gpu_hours_per_user
 
-    # Fall back to organization default
-    org_quota = get_or_create_organization_quota(db, organization_id)
-    return org_quota.monthly_gpu_hours_per_user
+    # If no user quota exists, create one with organization default
+    user_quota = get_or_create_user_quota(db, organization_id, user_id)
+    return user_quota.monthly_gpu_hours_per_user
+
+
+def get_current_user_quota_info(
+    db: Session, organization_id: str, user_id: str
+) -> Dict[str, Any]:
+    """Get comprehensive quota information for the current user"""
+    # Get user's quota record
+    user_quota = get_or_create_user_quota(db, organization_id, user_id)
+
+    # Get current period
+    current_period = get_or_create_quota_period(db, organization_id, user_id)
+
+    # Get organization default for comparison
+    org_quota = get_organization_default_quota(db, organization_id)
+
+    return {
+        "user_quota_limit": user_quota.monthly_gpu_hours_per_user,
+        "is_custom_quota": user_quota.custom_quota,
+        "organization_default": org_quota.monthly_gpu_hours_per_user,
+        "current_period_limit": current_period.gpu_hours_limit,
+        "current_period_used": current_period.gpu_hours_used,
+        "current_period_remaining": max(
+            0, current_period.gpu_hours_limit - current_period.gpu_hours_used
+        ),
+        "usage_percentage": (
+            current_period.gpu_hours_used / current_period.gpu_hours_limit * 100
+        )
+        if current_period.gpu_hours_limit > 0
+        else 0,
+    }
 
 
 def update_user_quota(
@@ -163,6 +193,15 @@ def update_user_quota(
     user_quota.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(user_quota)
+
+    # Update current quota period with new limit
+    current_period = get_or_create_quota_period(db, organization_id, user_id)
+    if current_period.gpu_hours_limit != monthly_gpu_hours_limit:
+        current_period.gpu_hours_limit = monthly_gpu_hours_limit
+        current_period.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(current_period)
+
     return user_quota
 
 
@@ -226,6 +265,26 @@ def get_organization_default_quota(
         db.refresh(org_quota)
 
     return org_quota
+
+
+def refresh_quota_periods_for_organization(db: Session, organization_id: str) -> None:
+    """Refresh quota periods for all users in an organization with their current quota limits"""
+    from auth.provider.work_os import provider as auth_provider
+
+    try:
+        # Get all users in the organization
+        memberships = auth_provider.list_organization_memberships(
+            organization_id=organization_id
+        )
+
+        for membership in memberships:
+            # Get or create quota period for each user (this will update with current limits)
+            get_or_create_quota_period(db, organization_id, membership.user_id)
+
+    except Exception as e:
+        print(
+            f"Failed to refresh quota periods for organization {organization_id}: {e}"
+        )
 
 
 def populate_user_quotas_for_organization(
@@ -313,6 +372,15 @@ def get_or_create_quota_period(
         db.add(period)
         db.commit()
         db.refresh(period)
+    else:
+        # Update existing period with current user quota limit if it's different
+        if user_id:
+            current_quota_limit = get_user_quota_limit(db, organization_id, user_id)
+            if period.gpu_hours_limit != current_quota_limit:
+                period.gpu_hours_limit = current_quota_limit
+                period.updated_at = datetime.utcnow()
+                db.commit()
+                db.refresh(period)
 
     return period
 
@@ -357,7 +425,6 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
 
             # Skip if no GPUs (CPU-only clusters)
             if gpu_count == 0:
-                print(f"No GPUs detected in cluster {cluster_name}, skipping")
                 continue
 
             # Check if we already have a usage log for this cluster
