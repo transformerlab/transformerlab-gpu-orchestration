@@ -235,42 +235,26 @@ const UserQuota: React.FC = () => {
     >
       {/* Organization Section */}
       <Box sx={{ mb: 4 }}>
-        <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-          Your Quota
-        </Typography>
-        <Card variant="outlined" sx={{ mb: 3 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid xs={12} md={6}>
-              <Typography level="h4">
-                {user?.organization_name || "Organization"} GPU Quota
-              </Typography>
-              <Typography level="body-md" color="neutral">
-                Monthly GPU hour allocation per user
-              </Typography>
-            </Grid>
-            <Grid
-              xs={12}
-              md={6}
-              display="flex"
-              justifyContent="flex-end"
-              gap={1}
-            >
-              <Button
-                startDecorator={<RotateCcw size={16} />}
-                onClick={handleSyncFromCostReport}
-                loading={syncing}
-                variant="outlined"
-              >
-                Sync from Cost Report
-              </Button>
-              {lastSyncTime && (
-                <Typography level="body-xs" color="neutral">
-                  Last sync: {lastSyncTime.toLocaleTimeString()}
-                </Typography>
-              )}
-            </Grid>
-          </Grid>
-        </Card>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Typography level="h4" component="h2">
+            Your Quota
+          </Typography>
+          <Button
+            onClick={handleSyncFromCostReport}
+            loading={syncing}
+            variant="outlined"
+            size="sm"
+          >
+            <RotateCcw size={16} />
+          </Button>
+        </Box>
 
         {/* Quota Usage Card */}
         <Card variant="outlined" sx={{ mb: 3 }}>
