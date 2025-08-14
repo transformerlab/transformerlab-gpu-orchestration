@@ -5,9 +5,6 @@ import {
   Table,
   Button,
   Chip,
-  Input,
-  Modal,
-  ModalDialog,
   Stack,
   Alert,
   Card,
@@ -15,7 +12,7 @@ import {
   CircularProgress,
   LinearProgress,
 } from "@mui/joy";
-import { Edit2, RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
@@ -55,12 +52,9 @@ interface QuotaUsageResponse {
 
 const UserQuota: React.FC = () => {
   const { user } = useAuth();
-  const [openOrgModal, setOpenOrgModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quotaData, setQuotaData] = useState<QuotaUsageResponse | null>(null);
-  const [newQuotaHours, setNewQuotaHours] = useState<string>("");
-  const [updating, setUpdating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [autoSyncInterval, setAutoSyncInterval] =
@@ -95,9 +89,6 @@ const UserQuota: React.FC = () => {
 
       const data: QuotaUsageResponse = await response.json();
       setQuotaData(data);
-      setNewQuotaHours(
-        data.organization_quota.monthly_gpu_hours_per_user.toString()
-      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch quota data"
@@ -163,44 +154,6 @@ const UserQuota: React.FC = () => {
       };
     }
   }, [organizationId]);
-
-  const handleEditOrg = () => {
-    setOpenOrgModal(true);
-  };
-
-  const handleUpdateQuota = async () => {
-    if (!organizationId || !newQuotaHours) return;
-
-    try {
-      setUpdating(true);
-
-      const response = await apiFetch(
-        buildApiUrl(`quota/organization/${organizationId}`),
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            monthly_gpu_hours_per_user: parseFloat(newQuotaHours),
-          }),
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update quota: ${response.statusText}`);
-      }
-
-      // Refresh the data
-      await fetchQuotaData();
-      setOpenOrgModal(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update quota");
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   const handleSyncFromCostReport = async () => {
     await syncFromCostReport(true);
@@ -315,12 +268,6 @@ const UserQuota: React.FC = () => {
                   Last sync: {lastSyncTime.toLocaleTimeString()}
                 </Typography>
               )}
-              <Button
-                startDecorator={<Edit2 size={16} />}
-                onClick={handleEditOrg}
-              >
-                Edit Quota
-              </Button>
             </Grid>
           </Grid>
         </Card>
@@ -425,50 +372,6 @@ const UserQuota: React.FC = () => {
           </Table>
         )}
       </Box>
-
-      {/* Organization Quota Modal */}
-      <Modal open={openOrgModal} onClose={() => setOpenOrgModal(false)}>
-        <ModalDialog>
-          <Typography level="h4">Edit Organization Quota</Typography>
-          <Typography level="body-sm" mb={2}>
-            Set the monthly GPU hour quota per user for your organization
-          </Typography>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Input
-              placeholder="Monthly GPU Hours Per User"
-              value={newQuotaHours}
-              onChange={(e) => setNewQuotaHours(e.target.value)}
-              slotProps={{
-                input: {
-                  type: "number",
-                  min: "0",
-                  step: "0.1",
-                },
-              }}
-            />
-            <Typography level="body-sm">
-              Current period ends:{" "}
-              {formatDate(organization_quota.current_period_end)}
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <Button
-                onClick={handleUpdateQuota}
-                loading={updating}
-                disabled={!newQuotaHours || parseFloat(newQuotaHours) < 0}
-              >
-                Save Changes
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => setOpenOrgModal(false)}
-                disabled={updating}
-              >
-                Cancel
-              </Button>
-            </Stack>
-          </Stack>
-        </ModalDialog>
-      </Modal>
     </PageWithTitle>
   );
 };
