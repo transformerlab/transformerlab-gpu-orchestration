@@ -121,15 +121,30 @@ def get_or_create_user_quota(
         # Get organization default quota
         org_quota = get_or_create_organization_quota(db, organization_id)
 
-        user_quota = OrganizationQuota(
-            organization_id=organization_id,
-            user_id=user_id,
-            monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
-            custom_quota=False,  # Initially not custom
-        )
-        db.add(user_quota)
-        db.commit()
-        db.refresh(user_quota)
+        try:
+            user_quota = OrganizationQuota(
+                organization_id=organization_id,
+                user_id=user_id,
+                monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+                custom_quota=False,  # Initially not custom
+            )
+            db.add(user_quota)
+            db.commit()
+            db.refresh(user_quota)
+        except Exception as e:
+            # If there's a unique constraint violation, try to get the existing record
+            db.rollback()
+            user_quota = (
+                db.query(OrganizationQuota)
+                .filter(
+                    OrganizationQuota.organization_id == organization_id,
+                    OrganizationQuota.user_id == user_id,
+                )
+                .first()
+            )
+            if not user_quota:
+                # If we still can't find it, re-raise the original exception
+                raise e
 
     return user_quota
 
@@ -254,15 +269,30 @@ def get_organization_default_quota(
     )
 
     if not org_quota:
-        org_quota = OrganizationQuota(
-            organization_id=organization_id,
-            user_id=None,  # Organization-wide default
-            monthly_gpu_hours_per_user=100.0,
-            custom_quota=False,
-        )
-        db.add(org_quota)
-        db.commit()
-        db.refresh(org_quota)
+        try:
+            org_quota = OrganizationQuota(
+                organization_id=organization_id,
+                user_id=None,  # Organization-wide default
+                monthly_gpu_hours_per_user=100.0,
+                custom_quota=False,
+            )
+            db.add(org_quota)
+            db.commit()
+            db.refresh(org_quota)
+        except Exception as e:
+            # If there's a unique constraint violation, try to get the existing record
+            db.rollback()
+            org_quota = (
+                db.query(OrganizationQuota)
+                .filter(
+                    OrganizationQuota.organization_id == organization_id,
+                    OrganizationQuota.user_id.is_(None),  # Organization-wide default
+                )
+                .first()
+            )
+            if not org_quota:
+                # If we still can't find it, re-raise the original exception
+                raise e
 
     return org_quota
 
