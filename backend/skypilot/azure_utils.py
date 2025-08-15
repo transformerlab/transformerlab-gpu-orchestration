@@ -330,6 +330,9 @@ def setup_azure_config():
 
         # Load existing config
         config = load_azure_config()
+        default_config = config.get("default_config")
+        config = config.get("configs", {}).get(default_config, {})
+        print(f"Config: {config}")
 
         # Check if service principal credentials are configured
         if not (

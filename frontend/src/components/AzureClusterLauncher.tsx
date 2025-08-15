@@ -35,6 +35,16 @@ interface LaunchClusterResponse {
   message: string;
 }
 
+interface StorageBucket {
+  id: string;
+  name: string;
+  remote_path: string;
+  source?: string;
+  store?: string;
+  persistent: boolean;
+  mode: string;
+}
+
 interface InstanceType {
   name: string;
   display_name: string;
@@ -66,13 +76,42 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
 
+  // Storage bucket state
+  const [storageBuckets, setStorageBuckets] = useState<StorageBucket[]>([]);
+  const [selectedStorageBuckets, setSelectedStorageBuckets] = useState<
+    string[]
+  >([]);
+  const [loadingStorageBuckets, setLoadingStorageBuckets] = useState(false);
+
   useEffect(() => {
     if (open) {
       fetchAzureConfig();
       fetchAvailableInstanceTypes();
       fetchAvailableRegions();
+      fetchStorageBuckets();
     }
   }, [open]);
+
+  const fetchStorageBuckets = async () => {
+    try {
+      setLoadingStorageBuckets(true);
+      const response = await apiFetch(
+        buildApiUrl("storage-buckets/available"),
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch storage buckets");
+      }
+      const data = await response.json();
+      setStorageBuckets(data);
+    } catch (err) {
+      console.error("Error fetching storage buckets:", err);
+    } finally {
+      setLoadingStorageBuckets(false);
+    }
+  };
 
   const fetchAzureConfig = async () => {
     try {
@@ -269,6 +308,11 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
       }
       if (selectedTemplate) formData.append("template", selectedTemplate);
+
+      // Add storage bucket IDs if selected
+      if (selectedStorageBuckets.length > 0) {
+        formData.append("storage_bucket_ids", selectedStorageBuckets.join(","));
+      }
 
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
@@ -492,6 +536,55 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   >
                     Cluster will automatically stop after being idle for this
                     many minutes
+                  </Typography>
+                </FormControl>
+              </Stack>
+            </Card>
+
+            {/* Storage Bucket Selection */}
+            <Card variant="outlined">
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Storage Buckets (Optional)
+              </Typography>
+              <Stack spacing={2}>
+                <FormControl>
+                  <FormLabel>Select Storage Buckets</FormLabel>
+                  {loadingStorageBuckets ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading storage buckets...
+                    </Typography>
+                  ) : storageBuckets.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No storage buckets available. Create storage buckets in
+                      the "Object Storage" tab first.
+                    </Typography>
+                  ) : (
+                    <Select
+                      multiple
+                      value={selectedStorageBuckets}
+                      onChange={(_, value) =>
+                        setSelectedStorageBuckets(value || [])
+                      }
+                      placeholder="Select storage buckets to mount"
+                    >
+                      {storageBuckets.map((bucket) => (
+                        <Option key={bucket.id} value={bucket.id}>
+                          {bucket.name} ({bucket.remote_path}) - {bucket.mode}
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  {selectedStorageBuckets.length > 0 && (
+                    <Typography level="body-xs" color="primary">
+                      Selected: {selectedStorageBuckets.length} bucket(s)
+                    </Typography>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ color: "text.secondary", mt: 0.5 }}
+                  >
+                    Selected storage buckets will be mounted to your cluster for
+                    data access
                   </Typography>
                 </FormControl>
               </Stack>

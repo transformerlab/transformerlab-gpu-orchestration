@@ -148,3 +148,30 @@ class GPUUsageLog(Base):
     cloud_provider = Column(String, nullable=True)  # e.g., "aws", "azure", "gcp"
     cost_estimate = Column(Float, nullable=True)  # Estimated cost in USD
     created_at = Column(DateTime, default=func.now())
+
+
+class StorageBucket(Base):
+    __tablename__ = "storage_buckets"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    name = Column(
+        String, nullable=False, unique=True
+    )  # Human-readable name for the bucket
+    remote_path = Column(
+        String, nullable=False
+    )  # Mount path on the VM (e.g., /mnt/data)
+    source = Column(String, nullable=True)  # Source path (local path or bucket URI)
+    store = Column(
+        String, nullable=True
+    )  # Storage provider (s3, gcs, azure, r2, ibm, oci)
+    persistent = Column(
+        Boolean, default=True
+    )  # Whether bucket persists after task completion
+    mode = Column(String, default="MOUNT")  # MOUNT, COPY, or MOUNT_CACHED
+    organization_id = Column(String, nullable=False)
+    created_by = Column(String, nullable=False)  # User ID who created the bucket
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(
+        Boolean, default=True
+    )  # Whether the bucket is active and available
