@@ -18,12 +18,14 @@ import {
   FormControl,
   FormLabel,
   Switch,
+  IconButton,
 } from "@mui/joy";
-import { Edit2, RefreshCw, RotateCcw, Users } from "lucide-react";
+import { Edit2, RefreshCw, RotateCcw, Type, Users } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 import UserUsagePieChart from "../../widgets/UserUsagePieChart";
+import { text } from "stream/consumers";
 
 interface OrganizationQuota {
   organization_id: string;
@@ -468,7 +470,7 @@ const OrgQuota: React.FC = () => {
   if (loading) {
     return (
       <PageWithTitle
-        title="Organization Quota Management"
+        title="Quota Management"
         subtitle="Set and manage compute quota for your organization."
       >
         <Box
@@ -486,7 +488,7 @@ const OrgQuota: React.FC = () => {
   if (error) {
     return (
       <PageWithTitle
-        title="Organization Quota Management"
+        title="Quota Management"
         subtitle="Set and manage compute quota for your organization."
       >
         <Alert color="danger" sx={{ mb: 2 }}>
@@ -505,7 +507,7 @@ const OrgQuota: React.FC = () => {
   if (!quotaData) {
     return (
       <PageWithTitle
-        title="Organization Quota Management"
+        title="Quota Management"
         subtitle="Set and manage compute quota for your organization."
       >
         <Alert color="neutral">No quota data available.</Alert>
@@ -517,168 +519,105 @@ const OrgQuota: React.FC = () => {
 
   return (
     <PageWithTitle
-      title="Organization Quota Management"
+      title="Quota Management"
       subtitle="Set and manage compute quota for your organization."
     >
       {/* Organization Section */}
       <Box sx={{ mb: 4 }}>
         <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-          Organization Overview
+          Organization
         </Typography>
         <Card variant="outlined" sx={{ mb: 3 }}>
-          <Grid container spacing={2} alignItems="center">
+          <Grid
+            container
+            gap={2}
+            alignItems="center"
+            justifyContent={"space-between"}
+          >
             <Grid xs={12} md={6}>
-              <Typography level="h4">
-                {user?.organization_name || "Organization"} GPU Quota
-              </Typography>
-              <Typography level="body-md" color="neutral">
+              <Typography level="title-md">
                 Monthly GPU hour allocation per user
               </Typography>
+              <Typography level="body-sm">
+                Everyone in your organization will start with this amount of
+                quota. Can be zero.
+              </Typography>
             </Grid>
-            <Grid
-              xs={12}
-              md={6}
-              display="flex"
-              justifyContent="flex-end"
-              gap={1}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems={"center"}
+              alignContent={"flex-end"}
+              gap={2}
             >
-              <Button
-                startDecorator={<RotateCcw size={16} />}
-                onClick={handleSyncFromCostReport}
-                loading={syncing}
-                variant="outlined"
-              >
-                Sync from Cost Report
-              </Button>
-              {lastSyncTime && (
+              {/* {lastSyncTime && (
                 <Typography level="body-xs" color="neutral">
                   Last sync: {lastSyncTime.toLocaleTimeString()}
                 </Typography>
               )}
-              <Button
-                startDecorator={<Edit2 size={16} />}
-                onClick={handleEditOrg}
+              <IconButton
+                onClick={handleSyncFromCostReport}
+                loading={syncing}
+                variant="plain"
               >
-                Edit Quota
-              </Button>
-            </Grid>
+                <RotateCcw size={16} />
+              </IconButton> */}
+              {organization_quota.monthly_gpu_hours_per_user} credits
+              <Button onClick={handleEditOrg}>Edit</Button>
+            </Stack>
           </Grid>
         </Card>
       </Box>
 
-      {/* Organization User Breakdown */}
-      {orgUserData && (
-        <Box sx={{ mb: 4 }}>
-          <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-            User Usage Breakdown
+      <Box sx={{ mb: 4 }}>
+        <Typography level="h4" component="h2" sx={{ mb: 2 }}>
+          Team
+        </Typography>
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <Typography level="body-sm">
+            Set quota overrides for members of specific teams here
           </Typography>
-          <Card variant="outlined" sx={{ mb: 3 }}>
-            <Grid container spacing={3}>
-              <Grid xs={12} md={3}>
-                <Typography level="body-sm" color="neutral">
-                  Quota Per User
-                </Typography>
-                <Typography level="h3">
-                  {formatHours(orgUserData.quota_per_user)} hours
-                </Typography>
-              </Grid>
-              <Grid xs={12} md={3}>
-                <Typography level="body-sm" color="neutral">
-                  Total Users
-                </Typography>
-                <Typography level="h3" color="primary">
-                  {orgUserData.total_users}
-                </Typography>
-              </Grid>
-              <Grid xs={12} md={3}>
-                <Typography level="body-sm" color="neutral">
-                  Total Organization Usage
-                </Typography>
-                <Typography level="h3" color="success">
-                  {formatHours(orgUserData.total_organization_usage)} hours
-                </Typography>
-              </Grid>
-              <Grid xs={12} md={3}>
-                <Typography level="body-sm" color="neutral">
-                  Period
-                </Typography>
-                <Typography level="h3">
-                  {formatDate(orgUserData.period_start)} -{" "}
-                  {formatDate(orgUserData.period_end)}
-                </Typography>
-              </Grid>
-            </Grid>
-          </Card>
-
-          {/* User Usage Visualization */}
-          <Grid container spacing={3}>
-            <Grid xs={12} md={6}>
-              <UserUsagePieChart data={orgUserData.user_breakdown} />
-            </Grid>
-            <Grid xs={12} md={6}>
-              <Card variant="outlined">
-                <Typography level="h4" sx={{ mb: 2 }}>
-                  Individual User Usage
-                </Typography>
-                <Table>
-                  <thead>
-                    <tr>
-                      <th>User</th>
-                      <th>Email</th>
-                      <th>Used</th>
-                      <th>Limit</th>
-                      <th>Remaining</th>
-                      <th>Usage %</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orgUserData.user_breakdown.map((user) => (
-                      <tr key={user.user_id}>
-                        <td>{user.user_name || "Unknown"}</td>
-                        <td>{user.user_email || user.user_id}</td>
-                        <td>{formatHours(user.gpu_hours_used)}</td>
-                        <td>{formatHours(user.gpu_hours_limit)}</td>
-                        <td>{formatHours(user.gpu_hours_remaining)}</td>
-                        <td>{user.usage_percentage.toFixed(1)}%</td>
-                        <td>
-                          <Chip
-                            color={
-                              user.usage_percentage < 50
-                                ? "success"
-                                : user.usage_percentage < 80
-                                ? "warning"
-                                : "danger"
-                            }
-                            size="sm"
-                          >
-                            {user.usage_percentage < 50
-                              ? "Good"
-                              : user.usage_percentage < 80
-                              ? "Warning"
-                              : "Critical"}
-                          </Chip>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card>
-            </Grid>
-          </Grid>
-        </Box>
-      )}
+          <Table>
+            <thead>
+              <tr>
+                <th>Team Name</th>
+                <th>Quota</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Team Alpha</td>
+                <td>1000 credits</td>
+                <td style={{ textAlign: "right" }}>
+                  <Button size="sm" variant="outlined">
+                    Edit
+                  </Button>
+                </td>
+              </tr>
+              <tr>
+                <td>Team Beta</td>
+                <td>500 credits</td>
+                <td style={{ textAlign: "right" }}>
+                  <Button size="sm" variant="outlined">
+                    Edit
+                  </Button>
+                </td>
+              </tr>
+            </tbody>
+          </Table>
+        </Card>
+      </Box>
 
       {/* Individual User Quota Management */}
       {userQuotas && (
         <Box sx={{ mb: 4 }}>
           <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-            Individual User Quotas
+            Individuals
           </Typography>
           <Card variant="outlined">
             <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              Default quota per user:{" "}
-              {formatHours(userQuotas.default_quota_per_user)} hours
+              Set user level quotas here. Will override team and org quotas.
             </Typography>
             {userQuotas.users.length === 0 ? (
               <Alert color="neutral">Loading user quotas...</Alert>
@@ -689,7 +628,7 @@ const OrgQuota: React.FC = () => {
                     <th>User</th>
                     <th>Email</th>
                     <th>Custom Quota</th>
-                    <th>Actions</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -701,18 +640,22 @@ const OrgQuota: React.FC = () => {
                         {userQuota.custom_quota ? (
                           <Chip color="primary" size="sm">
                             {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
-                            hours
+                            credits
                           </Chip>
                         ) : (
                           <Chip color="neutral" size="sm">
                             Using Default (
                             {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
-                            hours)
+                            credits)
                           </Chip>
                         )}
                       </td>
-                      <td>
-                        <Stack direction="row" spacing={1}>
+                      <td style={{ textAlign: "right" }}>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="flex-end"
+                        >
                           <Button
                             size="sm"
                             variant="outlined"

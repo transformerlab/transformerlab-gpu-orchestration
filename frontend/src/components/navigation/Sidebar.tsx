@@ -3,21 +3,16 @@ import { useNavigate, useLocation } from "react-router-dom";
 import useSWR from "swr";
 import Chip from "@mui/joy/Chip";
 import List from "@mui/joy/List";
-import ListSubheader from "@mui/joy/ListSubheader";
 import ListItem from "@mui/joy/ListItem";
 import ListItemButton from "@mui/joy/ListItemButton";
 import ListItemDecorator from "@mui/joy/ListItemDecorator";
 import ListItemContent from "@mui/joy/ListItemContent";
 import {
-  ChartAreaIcon,
-  CogIcon,
-  ComputerIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   StretchHorizontalIcon,
   GripHorizontalIcon,
   CircleDotIcon,
-  CirclePoundSterlingIcon,
   ChartNoAxesColumnIncreasingIcon,
   CircleIcon,
   BoltIcon,
@@ -100,7 +95,7 @@ const adminSubItems = [
   },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
-    content: "Org Quotas",
+    content: "Quotas",
     section: "org-quota",
     path: "/dashboard/admin/org-quota",
   },
