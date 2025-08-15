@@ -199,6 +199,7 @@ def launch_cluster_with_skypilot(
                         "COPY": sky.StorageMode.COPY,
                         "MOUNT_CACHED": sky.StorageMode.MOUNT_CACHED,
                     }
+
                     # Create sky.Storage object based on bucket configuration
                     if bucket.source:
                         # If bucket has a source (local path or bucket URI), use it
@@ -211,7 +212,7 @@ def launch_cluster_with_skypilot(
                     else:
                         # Create a new bucket with the bucket name
                         storage_obj = sky.Storage(
-                            name=bucket.name,
+                            name=secure_filename(str(bucket.name).lower()),
                             mode=mode[bucket.mode],
                             persistent=bucket.persistent,
                         )
@@ -266,6 +267,7 @@ def launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
+        print(f"REQUEST ID: {request_id}")
 
         # Store platform information for the cluster
         if cloud:
