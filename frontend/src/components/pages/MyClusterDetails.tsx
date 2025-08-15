@@ -445,7 +445,7 @@ const MyClusterDetails: React.FC = () => {
   };
 
   const formatAutostop = (autostop?: number, toDown?: boolean) => {
-    if (!autostop) return "No auto-stop";
+    if (!autostop || autostop === -1) return "No auto-stop";
     const action = toDown ? "down" : "stop";
     return `${autostop} minutes (${action})`;
   };
@@ -454,7 +454,6 @@ const MyClusterDetails: React.FC = () => {
     // Remove "JobStatus." prefix if present
     const cleanStatus = status.replace("JobStatus.", "");
     const statusLower = cleanStatus.toLowerCase();
-    console.log("Job status:", status, "Cleaned:", cleanStatus);
     if (statusLower.includes("running") || statusLower.includes("pending")) {
       return "success";
     } else if (

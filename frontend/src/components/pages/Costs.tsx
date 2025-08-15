@@ -24,6 +24,17 @@ import {
   CartesianGrid,
 } from "recharts";
 
+function formatStatusColor(status: string) {
+  switch (status) {
+    case "UP":
+      return "success";
+    case "PENDING":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
 const Reports: React.FC = () => {
   const [realData, setRealData] = useState<RealReportsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,10 +45,6 @@ const Reports: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      console.log(
-        "Fetching real data from: ",
-        buildApiUrl("skypilot/cost-report")
-      );
       const response = await fetch(buildApiUrl("skypilot/cost-report"), {
         credentials: "include",
       });
@@ -175,20 +182,15 @@ const Reports: React.FC = () => {
                     />
                   </td>
                   <td>
-                    <Chip
-                      variant="soft"
-                      color={
-                        job.status === "UP" || job.status === null
-                          ? "success"
-                          : "neutral"
-                      }
-                    >
-                      {job.status || "TERMINATED"}
+                    <Chip variant="soft" color={formatStatusColor(job?.status)}>
+                      {job.status || "Terminated"}
                     </Chip>
                   </td>
                   <td>
                     {job.duration
-                      ? `${(job.total_cost / (job.duration / 3600)).toFixed(2)}`
+                      ? `$${(job.total_cost / (job.duration / 3600)).toFixed(
+                          2
+                        )}`
                       : "-"}
                   </td>
                   <td>${job.total_cost.toFixed(2)}</td>
