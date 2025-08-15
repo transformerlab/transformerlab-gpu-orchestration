@@ -454,7 +454,6 @@ const MyClusterDetails: React.FC = () => {
     // Remove "JobStatus." prefix if present
     const cleanStatus = status.replace("JobStatus.", "");
     const statusLower = cleanStatus.toLowerCase();
-    console.log("Job status:", status, "Cleaned:", cleanStatus);
     if (statusLower.includes("running") || statusLower.includes("pending")) {
       return "success";
     } else if (

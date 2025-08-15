@@ -15,7 +15,6 @@ interface InstanceStatusChipProps {
 }
 
 function getCircleColor(status: InstanceStatus): string {
-  console.log(status);
   switch (status) {
     case "up":
     case "ClusterStatus.UP":
