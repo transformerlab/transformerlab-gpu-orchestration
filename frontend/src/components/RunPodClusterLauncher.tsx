@@ -134,7 +134,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 
     // Show immediate notification that request is being processed
     addNotification({
-      type: "warning",
+      type: "primary",
       message: `Launching RunPod cluster "${clusterName}"...`,
     });
 

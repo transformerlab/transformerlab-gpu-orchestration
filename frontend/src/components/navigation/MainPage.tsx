@@ -37,9 +37,10 @@ import SSHConfigPage from "../pages/Admin/SSHConfigPage";
 import { Volume } from "lucide-react";
 import Volumes from "../pages/Admin/Volumes";
 import Quota from "../pages/Admin/Quota";
-import UserQuota from "../pages/Admin/UserQuota";
+import UserQuota from "../pages/Admin/MyQuota";
 import OrgQuota from "../pages/Admin/OrgQuota";
 import Costs from "../pages/Costs";
+import MyQuota from "../pages/Admin/MyQuota";
 
 const Dashboard: React.FC = () => {
   const { showFakeData, setShowFakeData } = useFakeData();
@@ -84,7 +85,7 @@ const Dashboard: React.FC = () => {
           />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/costs" element={<Costs />} />
-          <Route path="/quota" element={<UserQuota />} />
+          <Route path="/quota" element={<MyQuota />} />
 
           <Route path="/reports" element={<Reports />} />
           <Route
@@ -102,8 +103,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route path="admin/volumes" element={<Volumes />} />
-          <Route path="admin/quota" element={<Quota />} />
-          <Route path="admin/org-quota" element={<OrgQuota />} />
+          <Route path="admin/quota" element={<OrgQuota />} />
 
           <Route
             path="admin/settings"

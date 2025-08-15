@@ -50,7 +50,7 @@ interface QuotaUsageResponse {
   total_usage_this_period: number;
 }
 
-const UserQuota: React.FC = () => {
+const MyQuota: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -360,4 +360,4 @@ const UserQuota: React.FC = () => {
   );
 };
 
-export default UserQuota;
+export default MyQuota;

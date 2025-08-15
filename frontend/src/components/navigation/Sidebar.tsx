@@ -17,6 +17,7 @@ import {
   CircleIcon,
   BoltIcon,
   ClockIcon,
+  LoaderCircleIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 
@@ -70,8 +71,8 @@ const sidebarItems = [
     path: "/dashboard/jobs",
   },
   {
-    icon: <CircleIcon />,
-    content: "Cost Report",
+    icon: <LoaderCircleIcon />,
+    content: "Quota Report",
     path: "/dashboard/costs",
   },
   {
@@ -97,7 +98,7 @@ const adminSubItems = [
   {
     content: "Quotas",
     section: "org-quota",
-    path: "/dashboard/admin/org-quota",
+    path: "/dashboard/admin/quota",
   },
   {
     content: "Node Pools",

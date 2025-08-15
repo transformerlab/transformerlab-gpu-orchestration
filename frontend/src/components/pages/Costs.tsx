@@ -22,6 +22,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 
 function formatStatusColor(status: string) {
@@ -39,7 +40,8 @@ const Reports: React.FC = () => {
   const [realData, setRealData] = useState<RealReportsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { showFakeData } = useFakeData();
+
+  const HARD_CODED_LIMIT = 100;
 
   const fetchRealData = async () => {
     setLoading(true);
@@ -95,28 +97,74 @@ const Reports: React.FC = () => {
     return d.getTime();
   };
 
+  // Generate all Monday dates for the current month
+  const getAllWeeksInCurrentMonth = () => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0
+    );
+
+    // Find first Monday on or before the 1st of the month
+    const firstMonday = new Date(firstDayOfMonth);
+    const dayOfWeek = firstMonday.getDay();
+    firstMonday.setDate(
+      firstMonday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)
+    );
+
+    const mondays = [];
+    let currentMonday = new Date(firstMonday);
+
+    // Add all Mondays until we're past the end of the month
+    while (currentMonday <= lastDayOfMonth) {
+      mondays.push(currentMonday.getTime());
+      currentMonday = new Date(currentMonday);
+      currentMonday.setDate(currentMonday.getDate() + 7);
+    }
+
+    return mondays;
+  };
+
   // Prepare weekly aggregated data for the chart
   const weeklyCostData = useMemo(() => {
     const map = new Map<number, number>();
+
+    // Add all jobs to the map
     for (const job of dataToRender as any[]) {
       if (!job?.launched_at || !job?.total_cost) continue;
       const wk = getWeekStartMs(job.launched_at);
       map.set(wk, (map.get(wk) || 0) + Number(job.total_cost || 0));
     }
-    return Array.from(map.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([ms, total]) => ({
-        week: new Date(ms).toLocaleDateString(undefined, {
-          year: "2-digit",
+
+    // Get all weeks in the current month
+    const allWeeks = getAllWeeksInCurrentMonth();
+
+    // Ensure all weeks in current month are included
+    const result = allWeeks.map((weekStart) => {
+      // Calculate week end date (Sunday)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      return {
+        weekStart,
+        // Format as "MMM DD-DD" (e.g., "Feb 01-07")
+        week: `${new Date(weekStart).toLocaleDateString(undefined, {
           month: "short",
-          day: "numeric",
-        }),
-        total: Number(total.toFixed(2)),
-      }));
+          day: "2-digit",
+        })}-${weekEnd.toLocaleDateString(undefined, {
+          day: "2-digit",
+        })}`,
+        total: Number((map.get(weekStart) || 0).toFixed(2)),
+      };
+    });
+
+    return result;
   }, [dataToRender]);
 
   return (
-    <PageWithTitle title="Costs Incurred by Instances">
+    <PageWithTitle title="Your Quota">
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
           <CircularProgress />
@@ -125,7 +173,7 @@ const Reports: React.FC = () => {
         <Box sx={{ overflowX: "auto" }}>
           <Card variant="plain" sx={{ mb: 2, height: 320 }}>
             <Typography level="title-md" sx={{ mb: 1 }}>
-              Weekly Costs
+              Monthly Usage (Weekly Breakdown)
             </Typography>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -133,26 +181,59 @@ const Reports: React.FC = () => {
                 margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis tickFormatter={(v) => `$${v}`} />
+                <XAxis
+                  dataKey="week"
+                  interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={50}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis
+                  tickFormatter={(v) => `${v}`}
+                  domain={[
+                    0,
+                    Math.max(
+                      HARD_CODED_LIMIT,
+                      ...weeklyCostData.map((d) => d.total)
+                    ),
+                  ]}
+                />
                 <Tooltip
                   formatter={(value: number) => [
-                    `$${(value as number).toFixed(2)}`,
+                    `${(value as number).toFixed(2)}`,
                     "Cost",
                   ]}
-                  labelFormatter={(label) => `Week of ${label}`}
+                  labelFormatter={(label) => {
+                    if (typeof label === "string") {
+                      return `Week of ${label}`;
+                    }
+                    return "";
+                  }}
                 />
                 <Bar
                   dataKey="total"
                   name="Cost"
                   fill="var(--joy-palette-success-300)"
                 />
+                <ReferenceLine
+                  y={HARD_CODED_LIMIT}
+                  stroke="var(--joy-palette-danger-500)"
+                  strokeDasharray="4 4"
+                  label={{
+                    value: `Quota: ${HARD_CODED_LIMIT}`,
+                    position: "top",
+                    fill: "var(--joy-palette-danger-500)",
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </Card>
 
           <Card variant="soft" sx={{ mb: 2, alignItems: "center" }}>
-            <Typography>Total Cost: ${totalCost.toFixed(2)}</Typography>
+            <Typography>
+              Total Usage this Month: {totalCost.toFixed(2)}
+            </Typography>
           </Card>
           <Table>
             <thead>
@@ -162,8 +243,8 @@ const Reports: React.FC = () => {
                 <th>Duration</th>
                 <th>Resources</th>
                 <th>Status</th>
-                <th>Cost/hr</th>
-                <th>Cost (est.)</th>
+                <th>per hr</th>
+                <th>Total (est.)</th>
               </tr>
             </thead>
             <tbody>
@@ -188,12 +269,10 @@ const Reports: React.FC = () => {
                   </td>
                   <td>
                     {job.duration
-                      ? `$${(job.total_cost / (job.duration / 3600)).toFixed(
-                          2
-                        )}`
+                      ? `${(job.total_cost / (job.duration / 3600)).toFixed(2)}`
                       : "-"}
                   </td>
-                  <td>${job.total_cost.toFixed(2)}</td>
+                  <td>{job.total_cost.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
