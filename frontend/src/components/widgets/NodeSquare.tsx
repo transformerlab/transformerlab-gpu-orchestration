@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { Box, Typography, Tooltip, Avatar } from "@mui/joy";
 
 interface NodeSquareProps {
@@ -74,16 +73,6 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
     ? getStatusBorderColor(node.status || "inactive", node.type || "")
     : undefined;
 
-  const navigate = useNavigate();
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Navigate to cluster page when node square is clicked
-    if (clusterName) {
-      navigate(`/dashboard/node-pools/${clusterName}`);
-    }
-  };
-
   return (
     <Tooltip
       title={
@@ -135,19 +124,22 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
           borderRadius: "2px",
           margin: "1px",
           transition: "all 0.2s ease",
-          cursor: "pointer",
+          // Remove cursor pointer and hover effects
+          // cursor: "pointer",
           // border: borderColor ? `2px solid ${borderColor}` : undefined,
           boxSizing: "border-box",
           position: "relative",
           verticalAlign: "middle",
-          "&:hover": {
-            transform: "scale(1.25)",
-          },
+          // Remove hover transform
+          // "&:hover": {
+          //   transform: "scale(1.25)",
+          // },
           overflow: "hidden",
           justifyContent: "center",
           alignItems: "center",
         }}
-        onClick={handleClick}
+        // Remove onClick handler
+        // onClick={handleClick}
       >
         <Circley
           state={node.status === "active" ? "on" : "off"}
