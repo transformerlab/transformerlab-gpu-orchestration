@@ -128,8 +128,6 @@ def launch_cluster_with_skypilot(
     storage_bucket_ids: Optional[list] = None,
 ):
     try:
-        print(f"Storage bucket ids: {storage_bucket_ids}")
-        print(f"CLOUD: {cloud}")
         # Handle RunPod setup
         if cloud and cloud.lower() == "runpod":
             from .runpod_utils import setup_runpod_config, verify_runpod_setup
@@ -196,22 +194,25 @@ def launch_cluster_with_skypilot(
                 # Convert buckets to sky.Storage objects
                 storage_mounts = {}
                 for bucket in buckets:
+                    mode = {
+                        "MOUNT": sky.StorageMode.MOUNT,
+                        "COPY": sky.StorageMode.COPY,
+                        "MOUNT_CACHED": sky.StorageMode.MOUNT_CACHED,
+                    }
                     # Create sky.Storage object based on bucket configuration
                     if bucket.source:
                         # If bucket has a source (local path or bucket URI), use it
                         storage_obj = sky.Storage(
                             name=bucket.name,
+                            mode=mode[bucket.mode],
                             source=bucket.source,
-                            store=bucket.store,
-                            mode=bucket.mode,
                             persistent=bucket.persistent,
                         )
                     else:
                         # Create a new bucket with the bucket name
                         storage_obj = sky.Storage(
                             name=bucket.name,
-                            store=bucket.store,
-                            mode=bucket.mode,
+                            mode=mode[bucket.mode],
                             persistent=bucket.persistent,
                         )
 
@@ -227,8 +228,6 @@ def launch_cluster_with_skypilot(
 
         if file_mounts:
             task.set_file_mounts(file_mounts)
-
-        print(f"SET FILE MOUNTS")
 
         resources_kwargs = {}
         if cloud:
@@ -257,19 +256,16 @@ def launch_cluster_with_skypilot(
             resources_kwargs["use_spot"] = use_spot
         if disk_size:
             resources_kwargs["disk_size"] = disk_size
-        print(f"RESOURCES KWARGS: {resources_kwargs}")
 
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
-        print(f"SET RESOURCES")
 
         request_id = sky.launch(
             task,
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
-        print(f"LAUNCHED")
 
         # Store platform information for the cluster
         if cloud:

@@ -231,11 +231,6 @@ def test_azure_connection(
         os.environ["AZURE_CLIENT_ID"] = client_id
         os.environ["AZURE_CLIENT_SECRET"] = client_secret
 
-        print(f"AZURE_SUBSCRIPTION_ID: {os.environ['AZURE_SUBSCRIPTION_ID']}")
-        print(f"AZURE_TENANT_ID: {os.environ['AZURE_TENANT_ID']}")
-        print(f"AZURE_CLIENT_ID: {os.environ['AZURE_CLIENT_ID']}")
-        print(f"AZURE_CLIENT_SECRET: {os.environ['AZURE_CLIENT_SECRET']}")
-
         try:
             # Test the connection using Azure CLI with service principal
             result = subprocess.run(
@@ -332,7 +327,6 @@ def setup_azure_config():
         config = load_azure_config()
         default_config = config.get("default_config")
         config = config.get("configs", {}).get(default_config, {})
-        print(f"Config: {config}")
 
         # Check if service principal credentials are configured
         if not (
