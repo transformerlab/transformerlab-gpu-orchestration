@@ -435,11 +435,12 @@ const ObjectStorage: React.FC = () => {
                 onChange={(_, value) => handleInputChange("store", value)}
                 placeholder="Auto-detect"
               >
-                <Option value="">Auto-detect</Option>
+                <Option value="auto">Auto-detect</Option>
                 <Option value="s3">AWS S3</Option>
                 <Option value="gcs">Google Cloud Storage</Option>
                 <Option value="r2">Cloudflare R2</Option>
                 <Option value="ibm">IBM Cloud Object Storage</Option>
+                <Option value="oci">Oracle Cloud Infrastructure</Option>
               </Select>
               <Typography level="body-xs" color="neutral">
                 Cloud provider for the bucket. If not specified, SkyPilot will
