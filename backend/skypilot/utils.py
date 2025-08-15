@@ -171,6 +171,12 @@ def launch_cluster_with_skypilot(
                     detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}",
                 )
 
+        task = sky.Task(
+            name=f"lattice-task-{secure_filename(cluster_name)}",
+            run=command,
+            setup=setup,
+        )
+
         # Process storage buckets if provided
         if storage_bucket_ids:
             from config import get_db
@@ -187,47 +193,38 @@ def launch_cluster_with_skypilot(
                     .all()
                 )
 
-                # Convert buckets to file_mounts format
-                bucket_file_mounts = {}
+                # Convert buckets to sky.Storage objects
+                storage_mounts = {}
                 for bucket in buckets:
-                    mount_config = {}
-
-                    # If bucket has a source (local path or bucket URI), use it
+                    # Create sky.Storage object based on bucket configuration
                     if bucket.source:
-                        mount_config["source"] = bucket.source
+                        # If bucket has a source (local path or bucket URI), use it
+                        storage_obj = sky.Storage(
+                            name=bucket.name,
+                            source=bucket.source,
+                            store=bucket.store,
+                            mode=bucket.mode,
+                            persistent=bucket.persistent,
+                        )
                     else:
                         # Create a new bucket with the bucket name
-                        mount_config["name"] = bucket.name
+                        storage_obj = sky.Storage(
+                            name=bucket.name,
+                            store=bucket.store,
+                            mode=bucket.mode,
+                            persistent=bucket.persistent,
+                        )
 
-                    # Add store if specified
-                    if bucket.store:
-                        mount_config["store"] = bucket.store
+                    storage_mounts[bucket.remote_path] = storage_obj
 
-                    # Add mode
-                    mount_config["mode"] = bucket.mode
-
-                    # Add persistent flag
-                    mount_config["persistent"] = bucket.persistent
-
-                    bucket_file_mounts[bucket.remote_path] = mount_config
-
-                # Merge with existing file_mounts
-                if file_mounts:
-                    file_mounts.update(bucket_file_mounts)
-                else:
-                    file_mounts = bucket_file_mounts
-                print(f"File mounts: {file_mounts}")
+                # Set storage mounts on the task
+                task.set_storage_mounts(storage_mounts)
 
             except Exception as e:
                 print(f"[SkyPilot] Warning: Failed to process storage buckets: {e}")
             finally:
                 db.close()
 
-        task = sky.Task(
-            name=f"lattice-task-{secure_filename(cluster_name)}",
-            run=command,
-            setup=setup,
-        )
         if file_mounts:
             task.set_file_mounts(file_mounts)
 
