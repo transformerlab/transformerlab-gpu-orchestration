@@ -318,12 +318,24 @@ async def launch_skypilot_cluster(
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
     template: Optional[str] = Form(None),
+    storage_bucket_ids: Optional[str] = Form(None),
 ):
     try:
         file_mounts = None
         workdir = None
         python_filename = None
         disk_size = None
+
+        # Parse storage bucket IDs
+        parsed_storage_bucket_ids = None
+        if storage_bucket_ids:
+            try:
+                parsed_storage_bucket_ids = [
+                    bid.strip() for bid in storage_bucket_ids.split(",") if bid.strip()
+                ]
+            except Exception as e:
+                print(f"Warning: Failed to parse storage bucket IDs: {e}")
+
         if python_file is not None and python_file.filename:
             # Save the uploaded file to a persistent uploads directory
             python_filename = python_file.filename
@@ -381,6 +393,7 @@ async def launch_skypilot_cluster(
             jupyter_port=jupyter_port,
             vscode_port=vscode_port,
             disk_size=disk_size,
+            storage_bucket_ids=parsed_storage_bucket_ids,
         )
         # Record usage event for cluster launch and store user info
         try:
@@ -411,6 +424,7 @@ async def launch_skypilot_cluster(
             message=f"Cluster '{cluster_name}' launch initiated successfully",
         )
     except Exception as e:
+        print(f"Error launching cluster: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to launch cluster: {str(e)}"
         )

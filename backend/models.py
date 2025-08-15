@@ -295,3 +295,43 @@ class UserQuotaListResponse(BaseModel):
 class CreateUserQuotaRequest(BaseModel):
     user_id: str
     monthly_gpu_hours_per_user: float
+
+
+# Storage Bucket Models
+class StorageBucketResponse(BaseModel):
+    id: str
+    name: str
+    remote_path: str
+    source: Optional[str] = None
+    store: Optional[str] = None
+    persistent: bool
+    mode: str
+    organization_id: str
+    created_by: str
+    created_at: str
+    updated_at: str
+    is_active: bool
+
+
+class CreateStorageBucketRequest(BaseModel):
+    name: str
+    remote_path: str
+    source: Optional[str] = None  # Local path or bucket URI
+    store: Optional[str] = None  # s3, gcs, azure, r2, ibm, oci
+    persistent: bool = True
+    mode: str = "MOUNT"  # MOUNT, COPY, or MOUNT_CACHED
+
+
+class UpdateStorageBucketRequest(BaseModel):
+    name: Optional[str] = None
+    remote_path: Optional[str] = None
+    source: Optional[str] = None
+    store: Optional[str] = None
+    persistent: Optional[bool] = None
+    mode: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class StorageBucketListResponse(BaseModel):
+    buckets: List[StorageBucketResponse]
+    total_count: int

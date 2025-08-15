@@ -26,6 +26,7 @@ from api_keys.routes import router as api_keys_router
 from node_pools.routes import router as node_pools_router
 from terminal.routes import router as terminal_router
 from quota.routes import router as quota_router
+from storage_buckets.routes import router as storage_buckets_router
 
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=api_v1_prefix)
@@ -37,6 +38,7 @@ app.include_router(api_keys_router, prefix=api_v1_prefix)
 app.include_router(node_pools_router, prefix=api_v1_prefix)
 app.include_router(terminal_router, prefix=api_v1_prefix)
 app.include_router(quota_router, prefix=api_v1_prefix)
+app.include_router(storage_buckets_router, prefix=api_v1_prefix)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(

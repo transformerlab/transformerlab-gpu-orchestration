@@ -125,6 +125,7 @@ def launch_cluster_with_skypilot(
     jupyter_port: Optional[int] = None,
     vscode_port: Optional[int] = None,
     disk_size: Optional[int] = None,
+    storage_bucket_ids: Optional[list] = None,
 ):
     try:
         # Handle RunPod setup
@@ -173,6 +174,58 @@ def launch_cluster_with_skypilot(
             run=command,
             setup=setup,
         )
+
+        # Process storage buckets if provided
+        if storage_bucket_ids:
+            from config import get_db
+            from db_models import StorageBucket
+            from sqlalchemy.orm import Session
+
+            # Get database session
+            db = next(get_db())
+            try:
+                # Fetch storage buckets
+                buckets = (
+                    db.query(StorageBucket)
+                    .filter(StorageBucket.id.in_(storage_bucket_ids))
+                    .all()
+                )
+
+                # Convert buckets to sky.Storage objects
+                storage_mounts = {}
+                for bucket in buckets:
+                    mode = {
+                        "MOUNT": sky.StorageMode.MOUNT,
+                        "COPY": sky.StorageMode.COPY,
+                        "MOUNT_CACHED": sky.StorageMode.MOUNT_CACHED,
+                    }
+                    # Create sky.Storage object based on bucket configuration
+                    if bucket.source:
+                        # If bucket has a source (local path or bucket URI), use it
+                        storage_obj = sky.Storage(
+                            name=bucket.name,
+                            mode=mode[bucket.mode],
+                            source=bucket.source,
+                            persistent=bucket.persistent,
+                        )
+                    else:
+                        # Create a new bucket with the bucket name
+                        storage_obj = sky.Storage(
+                            name=bucket.name,
+                            mode=mode[bucket.mode],
+                            persistent=bucket.persistent,
+                        )
+
+                    storage_mounts[bucket.remote_path] = storage_obj
+
+                # Set storage mounts on the task
+                task.set_storage_mounts(storage_mounts)
+
+            except Exception as e:
+                print(f"[SkyPilot] Warning: Failed to process storage buckets: {e}")
+            finally:
+                db.close()
+
         if file_mounts:
             task.set_file_mounts(file_mounts)
 
@@ -271,6 +324,7 @@ def launch_cluster_with_skypilot(
 
         return request_id
     except Exception as e:
+        print(f"Error launching cluster: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to launch cluster: {str(e)}"
         )
