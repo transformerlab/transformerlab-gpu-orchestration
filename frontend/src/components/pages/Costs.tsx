@@ -12,6 +12,7 @@ import {
 import PageWithTitle from "./templates/PageWithTitle";
 import { buildApiUrl } from "../../utils/api";
 import { useFakeData } from "../../context/FakeDataContext";
+import { useAuth } from "../../context/AuthContext";
 import { CircularProgress } from "@mui/joy";
 import ResourceDisplay from "../widgets/ResourceDisplay";
 import {
@@ -36,12 +37,46 @@ function formatStatusColor(status: string) {
   }
 }
 
+interface CostReportJob {
+  name: string;
+  launched_at?: number;
+  duration?: number;
+  resources_str_full?: string;
+  status?: string;
+  total_cost: number;
+}
+
 const Reports: React.FC = () => {
-  const [realData, setRealData] = useState<RealReportsResponse | null>(null);
+  const [realData, setRealData] = useState<CostReportJob[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quotaLimit, setQuotaLimit] = useState<number>(100); // Default fallback
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const { user } = useAuth();
 
-  const HARD_CODED_LIMIT = 100;
+  const fetchQuotaData = async () => {
+    if (!user?.organization_id) return;
+
+    setQuotaLoading(true);
+    try {
+      const response = await fetch(
+        buildApiUrl(`quota/organization/${user.organization_id}`),
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setQuotaLimit(data.monthly_gpu_hours_per_user || 100);
+    } catch (err) {
+      console.error("Failed to fetch quota data:", err);
+      // Keep the default 100 if quota fetch fails
+    } finally {
+      setQuotaLoading(false);
+    }
+  };
 
   const fetchRealData = async () => {
     setLoading(true);
@@ -66,8 +101,9 @@ const Reports: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchQuotaData();
     fetchRealData();
-  }, []);
+  }, [user?.organization_id]);
 
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -83,7 +119,7 @@ const Reports: React.FC = () => {
 
   const dataToRender = realData || [];
   const totalCost = dataToRender.reduce(
-    (sum, job) => sum + (job.total_cost || 0),
+    (sum: number, job: CostReportJob) => sum + (job.total_cost || 0),
     0
   );
 
@@ -165,7 +201,7 @@ const Reports: React.FC = () => {
 
   return (
     <PageWithTitle title="Your Quota">
-      {loading ? (
+      {loading || quotaLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
           <CircularProgress />
         </Box>
@@ -193,10 +229,7 @@ const Reports: React.FC = () => {
                   tickFormatter={(v) => `${v}`}
                   domain={[
                     0,
-                    Math.max(
-                      HARD_CODED_LIMIT,
-                      ...weeklyCostData.map((d) => d.total)
-                    ),
+                    Math.max(quotaLimit, ...weeklyCostData.map((d) => d.total)),
                   ]}
                 />
                 <Tooltip
@@ -217,11 +250,11 @@ const Reports: React.FC = () => {
                   fill="var(--joy-palette-success-300)"
                 />
                 <ReferenceLine
-                  y={HARD_CODED_LIMIT}
+                  y={quotaLimit}
                   stroke="var(--joy-palette-danger-500)"
                   strokeDasharray="4 4"
                   label={{
-                    value: `Quota: ${HARD_CODED_LIMIT}`,
+                    value: `Quota: ${quotaLimit}`,
                     position: "top",
                     fill: "var(--joy-palette-danger-500)",
                   }}
@@ -263,7 +296,10 @@ const Reports: React.FC = () => {
                     />
                   </td>
                   <td>
-                    <Chip variant="soft" color={formatStatusColor(job?.status)}>
+                    <Chip
+                      variant="soft"
+                      color={formatStatusColor(job?.status || "Terminated")}
+                    >
                       {job.status || "Terminated"}
                     </Chip>
                   </td>
