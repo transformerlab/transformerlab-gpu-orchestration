@@ -49,33 +49,39 @@ async def create_cluster(
     vcpus: Optional[str] = Form(None),
     memory_gb: Optional[str] = Form(None),
 ):
-    identity_file_path_final = None
-    if identity_file and identity_file.filename:
-        file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+    try:
+        identity_file_path_final = None
+        if identity_file and identity_file.filename:
+            file_content = await identity_file.read()
+            identity_file_path_final = save_identity_file(
+                file_content, identity_file.filename
+            )
+        elif identity_file_path:
+            # Use the selected identity file path
+            identity_file_path_final = identity_file_path
+
+        # Build resources dict if vcpus or memory_gb are provided
+        resources = None
+        if vcpus or memory_gb:
+            resources = {}
+            if vcpus:
+                resources["vcpus"] = vcpus
+            if memory_gb:
+                resources["memory_gb"] = memory_gb
+
+        create_cluster_in_pools(
+            cluster_name,
+            user,
+            identity_file_path_final,
+            password,
+            resources,
         )
-    elif identity_file_path:
-        # Use the selected identity file path
-        identity_file_path_final = identity_file_path
-
-    # Build resources dict if vcpus or memory_gb are provided
-    resources = None
-    if vcpus or memory_gb:
-        resources = {}
-        if vcpus:
-            resources["vcpus"] = vcpus
-        if memory_gb:
-            resources["memory_gb"] = memory_gb
-
-    create_cluster_in_pools(
-        cluster_name,
-        user,
-        identity_file_path_final,
-        password,
-        resources,
-    )
-    return ClusterResponse(cluster_name=cluster_name, nodes=[])
+        return ClusterResponse(cluster_name=cluster_name, nodes=[])
+    except Exception as e:
+        print(f"Error creating cluster: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create cluster: {str(e)}"
+        )
 
 
 @router.get("/identity-files")

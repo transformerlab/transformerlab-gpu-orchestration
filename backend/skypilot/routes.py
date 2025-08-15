@@ -88,6 +88,8 @@ from auth.utils import get_current_user
 from reports.utils import record_usage
 from typing import Optional
 import asyncio
+import sky
+import concurrent.futures
 
 
 # RunPod configuration models
@@ -549,6 +551,89 @@ async def get_cluster_job_logs(
     except Exception as e:
         print(f"Failed to get job logs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
+
+
+@router.get("/jobs/{cluster_name}/{job_id}/logs/stream")
+async def stream_cluster_job_logs(
+    cluster_name: str,
+    job_id: int,
+    request: Request,
+    response: Response,
+    tail: Optional[int] = None,
+    follow: bool = True,
+):
+    """
+    Stream job logs using sky.tail_logs with output_stream for real-time log streaming.
+    This endpoint provides continuous streaming of job logs similar to 'tail -f'.
+
+    Parameters:
+    - cluster_name: Name of the SkyPilot cluster
+    - job_id: ID of the job to stream logs for
+    - tail: Number of lines to show from the end (optional)
+    - follow: Whether to follow the logs continuously (default: True)
+
+    Returns:
+    - StreamingResponse with text/plain content type
+    """
+
+    async def job_log_streamer():
+        try:
+            # Create a StringIO buffer to capture the output
+            import io
+
+            output_buffer = io.StringIO()
+
+            # Use sky.tail_logs with output_stream parameter
+            # This avoids threading issues by using the built-in output_stream
+            def run_tail_logs():
+                try:
+                    sky.tail_logs(
+                        cluster_name=cluster_name,
+                        job_id=str(job_id),
+                        tail=tail,
+                        follow=follow,
+                        output_stream=output_buffer,
+                    )
+                except Exception as e:
+                    output_buffer.write(f"Error in sky.tail_logs: {str(e)}\n")
+
+            # Run in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_tail_logs)
+
+                # Stream the output as it becomes available
+                while not future.done():
+                    content = output_buffer.getvalue()
+                    if content:
+                        # Clear the buffer after reading
+                        output_buffer.truncate(0)
+                        output_buffer.seek(0)
+                        yield content.encode("utf-8")
+                    await asyncio.sleep(0.1)
+
+                # Get any final content
+                final_content = output_buffer.getvalue()
+                if final_content:
+                    yield final_content.encode("utf-8")
+
+        except asyncio.CancelledError:
+            # Handle client disconnection gracefully
+            pass
+        except Exception as e:
+            error_msg = f"Error streaming job logs: {str(e)}\n"
+            yield error_msg.encode("utf-8")
+
+    return StreamingResponse(
+        job_log_streamer(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "Content-Type": "text/plain; charset=utf-8",
+        },
+    )
 
 
 @router.post("/jobs/{cluster_name}/{job_id}/cancel")
