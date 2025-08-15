@@ -445,7 +445,7 @@ const MyClusterDetails: React.FC = () => {
   };
 
   const formatAutostop = (autostop?: number, toDown?: boolean) => {
-    if (!autostop) return "No auto-stop";
+    if (!autostop || autostop === -1) return "No auto-stop";
     const action = toDown ? "down" : "stop";
     return `${autostop} minutes (${action})`;
   };
