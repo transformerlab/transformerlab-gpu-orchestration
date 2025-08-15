@@ -193,28 +193,42 @@ def launch_cluster_with_skypilot(
 
                 # Convert buckets to sky.Storage objects
                 storage_mounts = {}
+                mode_map = {
+                    "MOUNT": sky.StorageMode.MOUNT,
+                    "COPY": sky.StorageMode.COPY,
+                    "MOUNT_CACHED": sky.StorageMode.MOUNT_CACHED,
+                }
+                store_map = {
+                    "s3": sky.StoreType.S3,
+                    "gcs": sky.StoreType.GCS,
+                    "azure": sky.StoreType.AZURE,
+                    "r2": sky.StoreType.R2,
+                    "ibm": sky.StoreType.IBM,
+                    "oci": sky.StoreType.OCI,
+                    "auto": None,
+                }
                 for bucket in buckets:
-                    mode = {
-                        "MOUNT": sky.StorageMode.MOUNT,
-                        "COPY": sky.StorageMode.COPY,
-                        "MOUNT_CACHED": sky.StorageMode.MOUNT_CACHED,
-                    }
                     # Create sky.Storage object based on bucket configuration
                     if bucket.source:
                         # If bucket has a source (local path or bucket URI), use it
                         storage_obj = sky.Storage(
                             name=bucket.name,
-                            mode=mode[bucket.mode],
+                            mode=mode_map[bucket.mode],
                             source=bucket.source,
                             persistent=bucket.persistent,
                         )
                     else:
                         # Create a new bucket with the bucket name
-                        storage_obj = sky.Storage(
-                            name=bucket.name,
-                            mode=mode[bucket.mode],
-                            persistent=bucket.persistent,
-                        )
+                        storage_kwargs = {
+                            "name": secure_filename(str(bucket.name).lower()),
+                            "mode": mode_map[bucket.mode],
+                            "persistent": bucket.persistent,
+                        }
+                        bucket.store = bucket.store.lower()
+                        if bucket.store and store_map[bucket.store] is not None:
+                            storage_kwargs["stores"] = [store_map[bucket.store]]
+
+                        storage_obj = sky.Storage(**storage_kwargs)
 
                     storage_mounts[bucket.remote_path] = storage_obj
 
@@ -266,6 +280,7 @@ def launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
         )
+        print(f"REQUEST ID: {request_id}")
 
         # Store platform information for the cluster
         if cloud:

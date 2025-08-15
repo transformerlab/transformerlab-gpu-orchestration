@@ -15,6 +15,9 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  FormControl,
+  FormLabel,
+  Switch,
 } from "@mui/joy";
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
@@ -363,68 +366,133 @@ const ObjectStorage: React.FC = () => {
         <ModalDialog size="lg">
           <Typography level="h4">Add Storage Bucket</Typography>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <Input
-              placeholder="Name (e.g., My Dataset Bucket)"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              error={!!formErrors.name}
-            />
-            {formErrors.name && (
-              <Typography level="body-sm" color="danger">
-                {formErrors.name}
+            <FormControl>
+              <FormLabel>Name *</FormLabel>
+              <Input
+                name="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="my-sky-bucket"
+                required
+              />
+              <Typography level="body-xs" color="neutral">
+                Unique identifier for the storage bucket. Used when creating a
+                new bucket or referencing an existing one.
               </Typography>
-            )}
-            <Input
-              placeholder="Remote Path (e.g., /mnt/data)"
-              value={formData.remote_path}
-              onChange={(e) => handleInputChange("remote_path", e.target.value)}
-              error={!!formErrors.remote_path}
-            />
-            {formErrors.remote_path && (
-              <Typography level="body-sm" color="danger">
-                {formErrors.remote_path}
+              {formErrors.name && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.name}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Remote Path *</FormLabel>
+              <Input
+                name="remote_path"
+                value={formData.remote_path}
+                onChange={(e) =>
+                  handleInputChange("remote_path", e.target.value)
+                }
+                placeholder="/my_data"
+                required
+              />
+              <Typography level="body-xs" color="neutral">
+                Local path on the remote VM where the bucket will be mounted
+                (e.g., /my_data, /datasets).
               </Typography>
-            )}
-            <Input
-              placeholder="Source (optional: local path or bucket URI like s3://bucket)"
-              value={formData.source}
-              onChange={(e) => handleInputChange("source", e.target.value)}
-            />
-            <Select
-              placeholder="Store (auto-detect if not specified)"
-              value={formData.store}
-              onChange={(_, value) => handleInputChange("store", value)}
-            >
-              <Option value="">Auto-detect</Option>
-              <Option value="s3">S3</Option>
-              <Option value="gcs">Google Cloud Storage</Option>
-              <Option value="azure">Azure Blob Storage</Option>
-              <Option value="r2">Cloudflare R2</Option>
-              <Option value="ibm">IBM Cloud Object Storage</Option>
-              <Option value="oci">Oracle Cloud Infrastructure</Option>
-            </Select>
-            <Select
-              placeholder="Mode"
-              value={formData.mode}
-              onChange={(_, value) => handleInputChange("mode", value)}
-            >
-              <Option value="MOUNT">
-                MOUNT (streamed access, writes replicated)
-              </Option>
-              <Option value="COPY">
-                COPY (pre-fetched, local writes only)
-              </Option>
-              <Option value="MOUNT_CACHED">
-                MOUNT_CACHED (cached with async sync)
-              </Option>
-            </Select>
-            <Checkbox
-              checked={formData.persistent}
-              onChange={(e) =>
-                handleInputChange("persistent", e.target.checked)
-              }
-              label="Persistent (keep bucket after task completion)"
-            />
+              {formErrors.remote_path && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.remote_path}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Source (Optional)</FormLabel>
+              <Input
+                name="source"
+                value={formData.source}
+                onChange={(e) => handleInputChange("source", e.target.value)}
+                placeholder="s3://my-bucket/ or ~/local_dataset"
+              />
+              <Typography level="body-xs" color="neutral">
+                Local path to upload or existing bucket URI (s3://, gs://,
+                r2://, cos://). Leave empty to create an empty bucket.
+              </Typography>
+              {formErrors.source && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.source}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Store (Optional)</FormLabel>
+              <Select
+                name="store"
+                value={formData.store}
+                onChange={(_, value) => handleInputChange("store", value)}
+                placeholder="Auto-detect"
+              >
+                <Option value="auto">Auto-detect</Option>
+                <Option value="s3">AWS S3</Option>
+                <Option value="gcs">Google Cloud Storage</Option>
+                <Option value="r2">Cloudflare R2</Option>
+                <Option value="ibm">IBM Cloud Object Storage</Option>
+                <Option value="oci">Oracle Cloud Infrastructure</Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                Cloud provider for the bucket. If not specified, SkyPilot will
+                choose based on the source path and task's cloud provider.
+              </Typography>
+              {formErrors.store && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.store}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Mode</FormLabel>
+              <Select
+                name="mode"
+                value={formData.mode}
+                onChange={(_, value) => handleInputChange("mode", value)}
+              >
+                <Option value="MOUNT">MOUNT (Default)</Option>
+                <Option value="COPY">COPY</Option>
+                <Option value="MOUNT_CACHED">MOUNT_CACHED</Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                MOUNT: Streamed access, writes replicated. COPY: Pre-fetched,
+                local writes only. MOUNT_CACHED: Cached with async sync.
+              </Typography>
+              {formErrors.mode && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.mode}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Persistent</FormLabel>
+              <Switch
+                checked={formData.persistent}
+                onChange={(e) =>
+                  handleInputChange("persistent", e.target.checked)
+                }
+              />
+              <Typography level="body-xs" color="neutral">
+                Keep the bucket after task completion. Set to true to avoid
+                re-uploading data in subsequent runs.
+              </Typography>
+              {formErrors.persistent && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.persistent}
+                </Typography>
+              )}
+            </FormControl>
             <Stack direction="row" spacing={1}>
               <Button onClick={() => setOpenAdd(false)} variant="outlined">
                 Cancel
@@ -442,68 +510,137 @@ const ObjectStorage: React.FC = () => {
         <ModalDialog size="lg">
           <Typography level="h4">Edit Storage Bucket</Typography>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <Input
-              placeholder="Name (e.g., My Dataset Bucket)"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              error={!!formErrors.name}
-            />
-            {formErrors.name && (
-              <Typography level="body-sm" color="danger">
-                {formErrors.name}
+            <FormControl>
+              <FormLabel>Name *</FormLabel>
+              <Input
+                name="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="my-sky-bucket"
+                required
+              />
+              <Typography level="body-xs" color="neutral">
+                Unique identifier for the storage bucket. Used when creating a
+                new bucket or referencing an existing one.
               </Typography>
-            )}
-            <Input
-              placeholder="Remote Path (e.g., /mnt/data)"
-              value={formData.remote_path}
-              onChange={(e) => handleInputChange("remote_path", e.target.value)}
-              error={!!formErrors.remote_path}
-            />
-            {formErrors.remote_path && (
-              <Typography level="body-sm" color="danger">
-                {formErrors.remote_path}
+              {formErrors.name && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.name}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Remote Path (e.g., /mnt/data)</FormLabel>
+              <Input
+                value={formData.remote_path}
+                onChange={(e) =>
+                  handleInputChange("remote_path", e.target.value)
+                }
+                error={!!formErrors.remote_path}
+              />
+              <Typography level="body-xs" color="neutral">
+                Local path on the remote VM where the bucket will be mounted
+                (e.g., /my_data, /datasets).
               </Typography>
-            )}
-            <Input
-              placeholder="Source (optional: local path or bucket URI like s3://bucket)"
-              value={formData.source}
-              onChange={(e) => handleInputChange("source", e.target.value)}
-            />
-            <Select
-              placeholder="Store (auto-detect if not specified)"
-              value={formData.store}
-              onChange={(_, value) => handleInputChange("store", value)}
-            >
-              <Option value="">Auto-detect</Option>
-              <Option value="s3">S3</Option>
-              <Option value="gcs">Google Cloud Storage</Option>
-              <Option value="azure">Azure Blob Storage</Option>
-              <Option value="r2">Cloudflare R2</Option>
-              <Option value="ibm">IBM Cloud Object Storage</Option>
-              <Option value="oci">Oracle Cloud Infrastructure</Option>
-            </Select>
-            <Select
-              placeholder="Mode"
-              value={formData.mode}
-              onChange={(_, value) => handleInputChange("mode", value)}
-            >
-              <Option value="MOUNT">
-                MOUNT (streamed access, writes replicated)
-              </Option>
-              <Option value="COPY">
-                COPY (pre-fetched, local writes only)
-              </Option>
-              <Option value="MOUNT_CACHED">
-                MOUNT_CACHED (cached with async sync)
-              </Option>
-            </Select>
-            <Checkbox
-              checked={formData.persistent}
-              onChange={(e) =>
-                handleInputChange("persistent", e.target.checked)
-              }
-              label="Persistent (keep bucket after task completion)"
-            />
+              {formErrors.remote_path && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.remote_path}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>
+                Source (optional: local path or bucket URI like s3://bucket)
+              </FormLabel>
+              <Input
+                value={formData.source}
+                onChange={(e) => handleInputChange("source", e.target.value)}
+              />
+              <Typography level="body-xs" color="neutral">
+                Local path to upload or existing bucket URI (s3://, gs://,
+                r2://, cos://). Leave empty to create an empty bucket.
+              </Typography>
+              {formErrors.source && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.source}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Store (auto-detect if not specified)</FormLabel>
+              <Select
+                value={formData.store}
+                onChange={(_, value) => handleInputChange("store", value)}
+              >
+                <Option value="">Auto-detect</Option>
+                <Option value="s3">S3</Option>
+                <Option value="gcs">Google Cloud Storage</Option>
+                <Option value="azure">Azure Blob Storage</Option>
+                <Option value="r2">Cloudflare R2</Option>
+                <Option value="ibm">IBM Cloud Object Storage</Option>
+                <Option value="oci">Oracle Cloud Infrastructure</Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                Cloud provider for the bucket. If not specified, SkyPilot will
+                choose based on the source path and task's cloud provider.
+              </Typography>
+              {formErrors.store && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.store}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Mode</FormLabel>
+              <Select
+                value={formData.mode}
+                onChange={(_, value) => handleInputChange("mode", value)}
+              >
+                <Option value="MOUNT">
+                  MOUNT (streamed access, writes replicated)
+                </Option>
+                <Option value="COPY">
+                  COPY (pre-fetched, local writes only)
+                </Option>
+                <Option value="MOUNT_CACHED">
+                  MOUNT_CACHED (cached with async sync)
+                </Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                MOUNT: Streamed access, writes replicated. COPY: Pre-fetched,
+                local writes only. MOUNT_CACHED: Cached with async sync.
+              </Typography>
+              {formErrors.mode && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.mode}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>
+                Persistent (keep bucket after task completion)
+              </FormLabel>
+              <Switch
+                checked={formData.persistent}
+                onChange={(e) =>
+                  handleInputChange("persistent", e.target.checked)
+                }
+              />
+              <Typography level="body-xs" color="neutral">
+                Keep the bucket after task completion. Set to true to avoid
+                re-uploading data in subsequent runs.
+              </Typography>
+              {formErrors.persistent && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.persistent}
+                </Typography>
+              )}
+            </FormControl>
             <Stack direction="row" spacing={1}>
               <Button onClick={() => setOpenEdit(false)} variant="outlined">
                 Cancel
