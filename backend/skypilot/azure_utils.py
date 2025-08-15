@@ -63,6 +63,7 @@ def load_azure_config():
 
 def save_azure_configs(configs: Dict[str, Dict], default_config: str = None):
     """Save Azure configurations to file"""
+    print("COMING INTO SAVE AZURE CONFIGS with configs: ", configs)
     config = {
         "configs": configs,
         "default_config": default_config,
@@ -87,6 +88,7 @@ def save_azure_config(
 ):
     """Save Azure configuration to file (legacy compatibility)"""
     config_data = load_azure_config()
+    print("CONFIG DATA: ", config_data)
 
     # Create new config entry
     new_config = {
@@ -354,6 +356,7 @@ def setup_azure_config():
         config["is_configured"] = True
         config["auth_method"] = "service_principal"
         save_azure_config(
+            config["name"],
             config["subscription_id"],
             config["tenant_id"],
             config["client_id"],
