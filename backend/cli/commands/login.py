@@ -193,3 +193,46 @@ def login_command(console: Console, username: Optional[str] = None):
         "\n[bold green]✓[/bold green] Successfully logged in to Transformer Lab"
     )
     console.print("[dim]Your API key has been saved.[/dim]")
+
+
+def logout_command(console: Console):
+    """Logout from your Transformer Lab account by deleting the saved API key."""
+    console.print("[bold blue]Logging out of your Transformer Lab account[/bold blue]")
+
+    # Check if we have an API key to delete
+    current_api_key = get_saved_api_key()
+
+    if not current_api_key:
+        console.print("[bold yellow]⚠[/bold yellow] You are not currently logged in.")
+        return
+
+    # Ask for confirmation before proceeding
+    confirm = Prompt.ask(
+        "[bold yellow]Are you sure you want to log out? This will delete your saved API key (yes/no)[/bold yellow]",
+        choices=["yes", "no"],
+        default="no",
+    )
+
+    if confirm.lower() != "yes":
+        console.print("[bold yellow]Logout cancelled.[/bold yellow]")
+        return
+
+    try:
+        # Delete the API key from storage
+        import os
+        from pathlib import Path
+
+        # Get the credentials file path (same as used in save_api_key)
+        credentials_dir = Path.home() / ".lab" / "cli"
+        credentials_file = credentials_dir / "credentials"
+
+        if credentials_file.exists():
+            credentials_file.unlink()  # Delete the file
+            console.print("[bold green]✓[/bold green] Successfully logged out.")
+            console.print("[dim]Your API key has been deleted.[/dim]")
+        else:
+            console.print("[bold yellow]⚠[/bold yellow] No credentials file found.")
+
+    except Exception as e:
+        console.print(f"[bold red]Error during logout: {str(e)}[/bold red]")
+        debug_print(console, f"Logout error details: {str(e)}")

@@ -9,7 +9,7 @@ from typing import Optional
 from util.auth import status
 from commands.ssh import ssh_command
 from commands.node_pools import list_node_pools_command
-from commands.login import login_command
+from commands.login import login_command, logout_command
 from commands.instances import list_instances_command, request_instance_command
 import typer
 from rich.console import Console
@@ -80,6 +80,13 @@ def login_status():
     else:
         console.print("[bold red]✗ You are not logged in[/bold red]")
         console.print("Run [bold]`lab login`[/bold] to authenticate.")
+
+
+@app.command("logout")
+def login_logout():
+    """Logout from your Transformer Lab account."""
+    show_header()
+    logout_command(console)
 
 
 @instances_app.command("list")
