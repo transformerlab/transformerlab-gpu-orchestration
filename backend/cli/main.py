@@ -6,9 +6,10 @@ Transformer Lab CLI - A beautiful command line interface for Transformer Lab
 import sys
 from typing import Optional
 
+from util.auth import status
 from commands.ssh import ssh_command
 from commands.node_pools import list_node_pools_command
-from commands.login import login_command, status
+from commands.login import login_command
 from commands.instances import list_instances_command, request_instance_command
 import typer
 from rich.console import Console
@@ -21,7 +22,8 @@ import os
 
 # Create Typer app
 app = typer.Typer(
-    help="Transformer Lab CLI",
+    name="lab",
+    help="Transformer Lab CLI - Manage and interact with your AI models",
     add_completion=False,
     no_args_is_help=True,  # Ensure help is shown when no command is provided
 )
@@ -112,6 +114,21 @@ def ssh_to_instance(instance_name: str):
     """SSH into a specific instance."""
     show_header()
     ssh_command(console, instance_name)
+
+
+@app.command()
+def hello(name: Optional[str] = None):
+    """Say hello to the user."""
+    if name:
+        typer.echo(f"Hello {name}!")
+    else:
+        typer.echo("Hello from Transformer Lab!")
+
+
+@app.command()
+def version():
+    """Show the version of the CLI."""
+    typer.echo("Transformer Lab CLI v0.1.0")
 
 
 if __name__ == "__main__":

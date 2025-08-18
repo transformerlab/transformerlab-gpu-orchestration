@@ -5,49 +5,23 @@ import json
 from typing import Optional, Dict, Union
 
 import requests
+
+
+from util.api import BACKEND_URL
+from util.auth import save_api_key, get_saved_api_key, api_request
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt
 
 
-# Backend configuration
-TLAB_API_BASE_URL = os.environ.get("TLAB_API_BASE_URL", "http://localhost:8000")
-BACKEND_URL = f"{TLAB_API_BASE_URL}/api/v1"
-
 # Enable debug mode
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
-
-# CLI credentials path
-CLI_CONFIG_DIR = os.path.expanduser("~/.lab/cli")
-CREDENTIALS_FILE = os.path.join(CLI_CONFIG_DIR, "credentials")
 
 
 def debug_print(console, message):
     """Print debug information if DEBUG is enabled."""
     if DEBUG:
         console.print(f"[dim][DEBUG] {message}[/dim]")
-
-
-def save_api_key(api_key_data):
-    """Securely save the API key to the credentials file."""
-    os.makedirs(CLI_CONFIG_DIR, exist_ok=True)
-
-    # Save the API key
-    with open(CREDENTIALS_FILE, "w") as f:
-        f.write(api_key_data["key"])
-
-    # Save full API key response as JSON for reference
-    with open(os.path.join(CLI_CONFIG_DIR, "api_key.json"), "w") as f:
-        json.dump(api_key_data, f)
-
-
-def get_saved_api_key():
-    """Get the saved API key if it exists."""
-    if not os.path.exists(CREDENTIALS_FILE):
-        return None
-
-    with open(CREDENTIALS_FILE, "r") as f:
-        return f.read().strip()
 
 
 def login_command(console: Console, username: Optional[str] = None):
@@ -88,7 +62,9 @@ def login_command(console: Console, username: Optional[str] = None):
                 auth_data["api_key"] = current_api_key
                 debug_print(console, "Sending existing API key for validation")
 
-            response = requests.post(auth_url, json=auth_data)
+            response = api_request(
+                "POST", "/auth/cli/start", json_data=auth_data, auth_needed=False
+            )
 
             # Debug response details
             debug_print(console, f"Response status: {response.status_code}")
@@ -152,8 +128,7 @@ def login_command(console: Console, username: Optional[str] = None):
         progress.add_task("", total=None)
 
         poll_count = 0
-        poll_url = f"{BACKEND_URL}/auth/cli/poll"
-        debug_print(console, f"Will poll URL: {poll_url}")
+        debug_print(console, f"Will poll URL: {BACKEND_URL}/auth/cli/poll")
 
         while True:
             try:
@@ -164,7 +139,9 @@ def login_command(console: Console, username: Optional[str] = None):
                 poll_data = {"session_id": session_id}
                 debug_print(console, f"Sending data: {json.dumps(poll_data)}")
 
-                poll_response = requests.post(poll_url, json=poll_data)
+                poll_response = api_request(
+                    "POST", "/auth/cli/poll", json_data=poll_data, auth_needed=False
+                )
 
                 debug_print(
                     console, f"Poll response status: {poll_response.status_code}"
@@ -216,33 +193,3 @@ def login_command(console: Console, username: Optional[str] = None):
         "\n[bold green]✓[/bold green] Successfully logged in to Transformer Lab"
     )
     console.print("[dim]Your API key has been saved.[/dim]")
-
-
-def status() -> Union[Dict, None]:
-    """
-    Check the current user's authentication status by calling the /me endpoint.
-    Returns user information if logged in, None otherwise.
-    """
-    api_key = get_saved_api_key()
-    if not api_key:
-        return None
-
-    try:
-        # Call the /auth/me endpoint to get user info
-        headers = {"Authorization": f"Bearer {api_key}"}
-        print(f"{BACKEND_URL}/auth/me")
-        response = requests.get(f"{BACKEND_URL}/auth/me", headers=headers)
-
-        if DEBUG:
-            print(f"[DEBUG] Status check response: {response.status_code}")
-            if response.text:
-                print(f"[DEBUG] Response content: {response.text[:1000]}")
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return None
-    except requests.RequestException as e:
-        if DEBUG:
-            print(f"[DEBUG] Error checking status: {str(e)}")
-        return None

@@ -5,8 +5,10 @@ from auth.utils import get_current_user
 from config import AUTH_COOKIE_PASSWORD
 import os
 from .provider.work_os import provider as auth_provider
+from auth.api_key_auth import get_user_or_api_key
 
-router = APIRouter(prefix="/auth")
+
+router = APIRouter(prefix="/auth", dependencies=[Depends(get_user_or_api_key)])
 
 
 @router.get("/login-url")
@@ -16,8 +18,7 @@ async def get_login_url(request: Request):
         authorization_url = auth_provider.get_authorization_url(
             provider="authkit",
             redirect_uri=(
-                os.getenv("AUTH_REDIRECT_URI")
-                or f"{base_url}/api/v1/auth/callback"
+                os.getenv("AUTH_REDIRECT_URI") or f"{base_url}/api/v1/auth/callback"
             ),
         )
         return {"login_url": authorization_url}
