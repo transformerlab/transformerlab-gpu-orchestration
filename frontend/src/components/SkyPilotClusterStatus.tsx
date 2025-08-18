@@ -1092,6 +1092,11 @@ const SkyPilotClusterStatus: React.FC = () => {
             ?.status.toLowerCase() === "init"
         }
         isSshCluster={!!clusterTypes[jobModalCluster]?.is_ssh}
+        availableResources={
+          clusters
+            .find((c: ClusterStatus) => c.cluster_name === jobModalCluster)
+            ?.resources_str || ""
+        }
       />
     </Box>
   );

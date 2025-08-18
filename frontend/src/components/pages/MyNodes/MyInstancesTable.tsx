@@ -119,6 +119,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
   const [submitJobModal, setSubmitJobModal] = React.useState<{
     open: boolean;
     clusterName: string;
+    clusterData?: Cluster;
   }>({
     open: false,
     clusterName: "",
@@ -214,9 +215,11 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
   };
 
   const openSubmitJobModal = (clusterName: string) => {
+    const clusterData = allClusters.find(c => c.cluster_name === clusterName);
     setSubmitJobModal({
       open: true,
       clusterName,
+      clusterData,
     });
   };
 
@@ -224,6 +227,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
     setSubmitJobModal({
       open: false,
       clusterName: "",
+      clusterData: undefined,
     });
   };
 
@@ -872,6 +876,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
         }}
         isClusterLaunching={false}
         isSshCluster={false}
+        availableResources={submitJobModal.clusterData?.resources_str || ""}
       />
 
       {/* SSH Modal */}

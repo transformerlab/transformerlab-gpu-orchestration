@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 from config import UPLOADS_DIR
 from fastapi.responses import StreamingResponse
+from werkzeug.utils import secure_filename
 from models import (
     LaunchClusterRequest,
     LaunchClusterResponse,
@@ -472,7 +473,8 @@ async def get_skypilot_cluster_status(
                     last_use=record.get("last_use"),
                     autostop=record.get("autostop"),
                     to_down=record.get("to_down"),
-                    resources_str=record.get("resources_str_full"),
+                    resources_str=record.get("resources_str_full")
+                    or record.get("resources_str"),
                     user_info=user_info,
                 )
             )
@@ -800,13 +802,17 @@ async def submit_job_to_cluster(
             file_path = UPLOADS_DIR / unique_filename
             with open(file_path, "wb") as f:
                 f.write(await python_file.read())
-            file_mounts = {f"workspace/{python_filename}": str(file_path)}
-            workdir = "workspace"
+            file_mounts = {f"/root/{python_filename}": str(file_path)}
+            workdir = "/root"
         from .utils import submit_job_to_existing_cluster
 
         # For VSCode, we need to remove the carriage return
-
         command = command.replace("\r", "")
+
+        # Apply secure_filename to job_name if provided
+        secure_job_name = None
+        if job_name:
+            secure_job_name = secure_filename(job_name)
 
         request_id = submit_job_to_existing_cluster(
             cluster_name=cluster_name,
@@ -819,7 +825,7 @@ async def submit_job_to_cluster(
             accelerators=accelerators,
             region=region,
             zone=zone,
-            job_name=job_name,
+            job_name=secure_job_name,
             job_type=job_type,
             jupyter_port=jupyter_port,
             vscode_port=vscode_port,
