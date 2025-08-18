@@ -129,7 +129,10 @@ router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key
 
 
 @router.get("/node-pools")
-async def list_node_pools(request: Request, response: Response):
+async def list_node_pools(
+    request: Request,
+    response: Response,
+):
     """Get all node pools (Azure, RunPod, and SSH clusters)"""
     try:
         node_pools = []
@@ -435,10 +438,11 @@ async def get_skypilot_cluster_status(
     request: Request,
     response: Response,
     cluster_names: Optional[str] = None,
+    user: dict = Depends(get_user_or_api_key),
 ):
     try:
         # Get current user
-        user = get_current_user(request, response)
+        # user = await get_user_or_api_key(request, response)
 
         cluster_list = None
         if cluster_names:
@@ -1099,11 +1103,15 @@ async def test_azure_connection_route(
 
 
 @router.get("/azure/instances")
-async def get_azure_instances(request: Request, response: Response):
+async def get_azure_instances(
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
     """Get current Azure instance count and limits"""
     try:
         # Get current user
-        user = get_current_user(request, response)
+        # user = await get_user_or_api_key(request, response)
 
         # Get current configuration
         config = get_current_azure_config()
@@ -1408,11 +1416,15 @@ async def run_sky_check_runpod_route(request: Request, response: Response):
 
 
 @router.get("/runpod/instances")
-async def get_runpod_instances(request: Request, response: Response):
+async def get_runpod_instances(
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
     """Get current RunPod instance count and limits"""
     try:
         # Get current user
-        user = get_current_user(request, response)
+        # user = await get_user_or_api_key(request, response)
 
         # Get current configuration
         config = get_current_runpod_config()

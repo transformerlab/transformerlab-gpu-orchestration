@@ -23,7 +23,11 @@ router = APIRouter(prefix="/node-pools", dependencies=[Depends(get_user_or_api_k
 
 
 @router.get("")
-async def get_node_pools(request: Request, response: Response):
+async def get_node_pools(
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
     """
     Get comprehensive node pools data combining:
     - Clusters from /clusters endpoint
@@ -33,11 +37,6 @@ async def get_node_pools(request: Request, response: Response):
     - SkyPilot status from /skypilot/status
     """
     try:
-        # Get current user
-        from auth.utils import get_current_user
-
-        user = get_current_user(request, response)
-
         # Initialize response structure
         response_data = {
             "node_pools": [],
