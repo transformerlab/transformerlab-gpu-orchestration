@@ -5,12 +5,11 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich import box
 
-import os
 import openapi_client
 from openapi_client.api import default_api
 
 from util.api import TLAB_API_BASE_URL
-from util.auth import save_api_key, get_saved_api_key, api_request
+from util.auth import get_saved_api_key
 
 
 def list_node_pools_command(console: Console):

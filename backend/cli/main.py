@@ -6,6 +6,7 @@ Transformer Lab CLI - A beautiful command line interface for Transformer Lab
 import sys
 from typing import Optional
 
+from util.common import show_header
 from util.auth import status
 from commands.ssh import ssh_command
 from commands.node_pools import list_node_pools_command
@@ -16,8 +17,12 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
+from rich.align import Align
 
 import os
+from rich.style import Style
+from rich.color import Color
+from rich.segment import Segment
 
 
 # Create Typer app
@@ -32,7 +37,7 @@ app = typer.Typer(
 console = Console()
 
 # Set a default API base URL if not already set
-os.environ.setdefault("TLAB_API_BASE_URL", "http://localhost:8000")
+os.environ.setdefault("TLAB_wAPI_BASE_URL", "http://localhost:8000")
 
 # Subcommands for different functionalities
 instances_app = typer.Typer(help="Manage your Transformer Lab instances")
@@ -43,17 +48,6 @@ app.add_typer(node_pools_app, name="node-pools")
 # Create login subcommand group
 login_app = typer.Typer(help="Login and authentication management")
 app.add_typer(login_app, name="login")
-
-
-def show_header():
-    """Display a beautiful header for the CLI."""
-    console.print()
-    header = Text("Transformer Lab CLI", style="bold cyan")
-    subheader = Text("Your AI infrastructure management tool", style="italic")
-    console.print(
-        Panel.fit(f"{header}\n{subheader}", border_style="bright_blue", box=box.ROUNDED)
-    )
-    console.print()
 
 
 @login_app.callback(invoke_without_command=True)
@@ -92,7 +86,6 @@ def login_logout():
 @instances_app.command("list")
 def list_instances():
     """List all your Transformer Lab instances."""
-    show_header()
     list_instances_command(console)
 
 
@@ -105,14 +98,12 @@ def request_instance(
     region: str = typer.Option("us-west-2", help="Region to deploy the instance"),
 ):
     """Request a new Transformer Lab instance."""
-    show_header()
     request_instance_command(console, name, instance_type, region)
 
 
 @node_pools_app.command("list")
 def list_node_pools():
     """List all your node pools."""
-    show_header()
     list_node_pools_command(console)
 
 
@@ -125,6 +116,7 @@ def ssh_to_instance(instance_name: str):
 
 @app.command()
 def hello(name: Optional[str] = None):
+    show_header()
     """Say hello to the user."""
     if name:
         typer.echo(f"Hello {name}!")

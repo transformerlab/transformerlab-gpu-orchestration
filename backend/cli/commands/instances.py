@@ -1,5 +1,7 @@
 import time
 import os
+from util.auth import get_saved_api_key
+from util.api import TLAB_API_BASE_URL
 import openapi_client
 from openapi_client.api import default_api
 
@@ -9,10 +11,6 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich import box
 from rich.prompt import Confirm
-
-ACCESS_TOKEN = os.getenv(
-    "TLAB_API_ACCESS_TOKEN", "lk_F74IGu0AJXd-F8EOI9-1eAma24RmmSiNWMNZyxMlwSU"
-)
 
 
 def list_instances_command(console: Console):
@@ -25,15 +23,17 @@ def list_instances_command(console: Console):
         transient=True,
     ) as progress:
         progress.add_task("", total=None)
+        current_api_key = get_saved_api_key()
+
         try:
-            base_url = os.getenv("TLAB_API_BASE_URL")
+            base_url = TLAB_API_BASE_URL
             config = (
                 openapi_client.Configuration(host=base_url)
                 if base_url
                 else openapi_client.Configuration()
             )
             # Add the hardcoded Bearer token
-            config.access_token = ACCESS_TOKEN
+            config.access_token = current_api_key
             with openapi_client.ApiClient(config) as api_client:
                 api = default_api.DefaultApi(api_client)
                 resp = api.get_skypilot_cluster_status_api_v1_skypilot_status_get()
