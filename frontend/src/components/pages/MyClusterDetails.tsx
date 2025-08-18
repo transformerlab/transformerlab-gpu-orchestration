@@ -957,6 +957,7 @@ const MyClusterDetails: React.FC = () => {
         }}
         isClusterLaunching={false}
         isSshCluster={false}
+        availableResources={clusterData?.resources_str || ""}
       />
 
       {/* SSH Modal */}
