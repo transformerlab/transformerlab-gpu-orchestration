@@ -415,10 +415,8 @@ const Pools: React.FC = () => {
                 onClick={() => {
                   if (hasAzureConfig) return;
                   setOpenAdd(false);
-                  const baseUrl = window.location.origin;
-                  window.open(
-                    `${baseUrl}/dashboard/admin/azure-config?mode=add&poolName=New Azure Pool`,
-                    "_blank"
+                  navigate(
+                    `/dashboard/admin/azure-config?mode=add&poolName=New Azure Pool`
                   );
                 }}
               >
@@ -435,10 +433,8 @@ const Pools: React.FC = () => {
                 onClick={() => {
                   if (hasRunPodConfig) return;
                   setOpenAdd(false);
-                  const baseUrl = window.location.origin;
-                  window.open(
-                    `${baseUrl}/dashboard/admin/runpod-config?mode=add&poolName=New RunPod Pool`,
-                    "_blank"
+                  navigate(
+                    `/dashboard/admin/runpod-config?mode=add&poolName=New RunPod Pool`
                   );
                 }}
               >
@@ -449,10 +445,8 @@ const Pools: React.FC = () => {
                 startDecorator={<Server size={16} />}
                 onClick={() => {
                   setOpenAdd(false);
-                  const baseUrl = window.location.origin;
-                  window.open(
-                    `${baseUrl}/dashboard/admin/ssh-config?mode=add&poolName=New Node Pool`,
-                    "_blank"
+                  navigate(
+                    `/dashboard/admin/ssh-config?mode=add&poolName=New Node Pool`
                   );
                 }}
               >
