@@ -8,7 +8,7 @@ from typing import Optional
 
 from commands.ssh import ssh_command
 from commands.node_pools import list_node_pools_command
-from commands.login import login_command
+from commands.login import login_command, status
 from commands.instances import list_instances_command, request_instance_command
 import typer
 from rich.console import Console
@@ -38,6 +38,10 @@ node_pools_app = typer.Typer(help="Manage your node pools")
 app.add_typer(instances_app, name="instances")
 app.add_typer(node_pools_app, name="node-pools")
 
+# Create login subcommand group
+login_app = typer.Typer(help="Login and authentication management")
+app.add_typer(login_app, name="login")
+
 
 def show_header():
     """Display a beautiful header for the CLI."""
@@ -50,11 +54,30 @@ def show_header():
     console.print()
 
 
-@app.command("login")
-def login(username: Optional[str] = None):
+@login_app.callback(invoke_without_command=True)
+def login_group(ctx: typer.Context, username: Optional[str] = None):
     """Login to your Transformer Lab account."""
+    if ctx.invoked_subcommand is None:
+        show_header()
+        login_command(console, username)
+
+
+@login_app.command("status")
+def login_status():
+    """Check your Transformer Lab login status."""
     show_header()
-    login_command(console, username)
+    user_info = status()
+
+    if user_info:
+        console.print("[bold green]✓ You are logged in[/bold green]")
+        console.print(
+            f"[bold]User:[/bold] {user_info['first_name']} {user_info['last_name']}"
+        )
+        console.print(f"[bold]Email:[/bold] {user_info['email']}")
+        console.print(f"[bold]ID:[/bold] {user_info['id']}")
+    else:
+        console.print("[bold red]✗ You are not logged in[/bold red]")
+        console.print("Run [bold]`lab login`[/bold] to authenticate.")
 
 
 @instances_app.command("list")

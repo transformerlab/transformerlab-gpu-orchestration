@@ -13,6 +13,7 @@ import { NotificationProvider } from "./components/NotificationSystem";
 import LoginPage from "./components/LoginPage";
 import Dashboard from "./components/navigation/MainPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import CLIAuthorizePage from "./components/CLIAuthorizePage";
 
 import customTheme from "./utils/theme";
 
@@ -30,6 +31,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cli-authorize/:sessionId"
+        element={
+          <ProtectedRoute>
+            <CLIAuthorizePage />
           </ProtectedRoute>
         }
       />
