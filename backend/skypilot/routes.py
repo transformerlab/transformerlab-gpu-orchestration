@@ -437,13 +437,29 @@ async def get_skypilot_cluster_status(
     cluster_names: Optional[str] = None,
 ):
     try:
+        # Get current user
+        user = get_current_user(request, response)
+
         cluster_list = None
         if cluster_names:
             cluster_list = [name.strip() for name in cluster_names.split(",")]
         cluster_records = get_skypilot_status(cluster_list)
         clusters = []
+
         for record in cluster_records:
             user_info = get_cluster_user_info(record["name"])
+
+            # Skip clusters without user info (they might be from before user tracking was added)
+            if not user_info or not user_info.get("id"):
+                continue
+
+            # Only include clusters that belong to the current user and organization
+            if not (
+                user_info.get("id") == user["id"]
+                and user_info.get("organization_id") == user["organization_id"]
+            ):
+                continue
+
             clusters.append(
                 ClusterStatusResponse(
                     cluster_name=record["name"],
@@ -458,6 +474,7 @@ async def get_skypilot_cluster_status(
             )
         return StatusResponse(clusters=clusters)
     except Exception as e:
+        print(f"Error getting cluster status: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster status: {str(e)}"
         )
