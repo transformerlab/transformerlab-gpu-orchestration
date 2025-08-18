@@ -8,7 +8,7 @@ from .provider.work_os import provider as auth_provider
 from auth.api_key_auth import get_user_or_api_key
 
 
-router = APIRouter(prefix="/auth", dependencies=[Depends(get_user_or_api_key)])
+router = APIRouter(prefix="/auth")
 
 
 @router.get("/login-url")
@@ -124,7 +124,7 @@ async def get_current_user_info(
 
 
 @router.get("/logout")
-async def logout(request: Request):
+async def logout(request: Request, user=Depends(get_user_or_api_key)):
     try:
         session_cookie = request.cookies.get("wos_session")
         if session_cookie:
@@ -162,17 +162,17 @@ async def logout(request: Request):
 
 @router.get("/check")
 async def check_auth(
-    request: Request, response: Response, user=Depends(get_current_user)
+    request: Request, response: Response, user=Depends(get_user_or_api_key)
 ):
     if user:
         return {
             "authenticated": True,
             "user": {
                 "id": user["id"],
-                "email": user["email"],
-                "profile_picture_url": user["profile_picture_url"],
-                "first_name": user["first_name"],
-                "last_name": user["last_name"],
+                "email": user.get("email", ""),
+                "profile_picture_url": user.get("profile_picture_url", ""),
+                "first_name": user.get("first_name", ""),
+                "last_name": user.get("last_name", ""),
                 "role": user.get("role"),
                 "organization_id": user.get("organization_id"),
             },
@@ -181,7 +181,7 @@ async def check_auth(
 
 
 @router.post("/refresh")
-async def refresh_session(request: Request, response: Response):
+async def refresh_session(request: Request, response: Response, user=Depends(get_user_or_api_key)):
     """Force refresh the session to get updated user info"""
     try:
         session_cookie = request.cookies.get("wos_session")
