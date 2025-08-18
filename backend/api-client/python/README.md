@@ -104,29 +104,38 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**add_node_api_v1_clusters_cluster_name_nodes_post**](docs/DefaultApi.md#add_node_api_v1_clusters_cluster_name_nodes_post) | **POST** /api/v1/clusters/{cluster_name}/nodes | Add Node
 *DefaultApi* | [**add_organization_member_api_v1_admin_orgs_organization_id_members_post**](docs/DefaultApi.md#add_organization_member_api_v1_admin_orgs_organization_id_members_post) | **POST** /api/v1/admin/orgs/{organization_id}/members | Add Organization Member
 *DefaultApi* | [**auth_callback_api_v1_auth_callback_get**](docs/DefaultApi.md#auth_callback_api_v1_auth_callback_get) | **GET** /api/v1/auth/callback | Auth Callback
+*DefaultApi* | [**authorize_cli_api_v1_auth_cli_authorize_post**](docs/DefaultApi.md#authorize_cli_api_v1_auth_cli_authorize_post) | **POST** /api/v1/auth/cli/authorize | Authorize Cli
 *DefaultApi* | [**cancel_cluster_job_api_v1_skypilot_jobs_cluster_name_job_id_cancel_post**](docs/DefaultApi.md#cancel_cluster_job_api_v1_skypilot_jobs_cluster_name_job_id_cancel_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/cancel | Cancel Cluster Job
 *DefaultApi* | [**check_auth_api_v1_auth_check_get**](docs/DefaultApi.md#check_auth_api_v1_auth_check_get) | **GET** /api/v1/auth/check | Check Auth
+*DefaultApi* | [**check_quota_availability_api_v1_quota_check_quota_organization_id_get**](docs/DefaultApi.md#check_quota_availability_api_v1_quota_check_quota_organization_id_get) | **GET** /api/v1/quota/check-quota/{organization_id} | Check Quota Availability
 *DefaultApi* | [**create_api_key_api_v1_api_keys_post**](docs/DefaultApi.md#create_api_key_api_v1_api_keys_post) | **POST** /api/v1/api-keys | Create Api Key
 *DefaultApi* | [**create_cluster_api_v1_clusters_post**](docs/DefaultApi.md#create_cluster_api_v1_clusters_post) | **POST** /api/v1/clusters | Create Cluster
 *DefaultApi* | [**create_organization_api_v1_admin_orgs_post**](docs/DefaultApi.md#create_organization_api_v1_admin_orgs_post) | **POST** /api/v1/admin/orgs | Create Organization
+*DefaultApi* | [**create_storage_bucket_api_v1_storage_buckets_post**](docs/DefaultApi.md#create_storage_bucket_api_v1_storage_buckets_post) | **POST** /api/v1/storage-buckets/ | Create Storage Bucket
+*DefaultApi* | [**create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post**](docs/DefaultApi.md#create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post) | **POST** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Create User Quota Endpoint
 *DefaultApi* | [**delete_api_key_api_v1_api_keys_key_id_delete**](docs/DefaultApi.md#delete_api_key_api_v1_api_keys_key_id_delete) | **DELETE** /api/v1/api-keys/{key_id} | Delete Api Key
 *DefaultApi* | [**delete_azure_config_route_api_v1_skypilot_azure_config_config_key_delete**](docs/DefaultApi.md#delete_azure_config_route_api_v1_skypilot_azure_config_config_key_delete) | **DELETE** /api/v1/skypilot/azure/config/{config_key} | Delete Azure Config Route
 *DefaultApi* | [**delete_cluster_api_v1_clusters_cluster_name_delete**](docs/DefaultApi.md#delete_cluster_api_v1_clusters_cluster_name_delete) | **DELETE** /api/v1/clusters/{cluster_name} | Delete Cluster
 *DefaultApi* | [**delete_identity_file_api_v1_clusters_identity_files_file_path_delete**](docs/DefaultApi.md#delete_identity_file_api_v1_clusters_identity_files_file_path_delete) | **DELETE** /api/v1/clusters/identity-files/{file_path} | Delete Identity File
 *DefaultApi* | [**delete_organization_api_v1_admin_orgs_organization_id_delete**](docs/DefaultApi.md#delete_organization_api_v1_admin_orgs_organization_id_delete) | **DELETE** /api/v1/admin/orgs/{organization_id} | Delete Organization
 *DefaultApi* | [**delete_runpod_config_route_api_v1_skypilot_runpod_config_config_key_delete**](docs/DefaultApi.md#delete_runpod_config_route_api_v1_skypilot_runpod_config_config_key_delete) | **DELETE** /api/v1/skypilot/runpod/config/{config_key} | Delete Runpod Config Route
+*DefaultApi* | [**delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete**](docs/DefaultApi.md#delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete) | **DELETE** /api/v1/storage-buckets/{bucket_id} | Delete Storage Bucket
+*DefaultApi* | [**delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete**](docs/DefaultApi.md#delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete) | **DELETE** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Delete User Quota Endpoint
 *DefaultApi* | [**down_skypilot_cluster_api_v1_skypilot_down_post**](docs/DefaultApi.md#down_skypilot_cluster_api_v1_skypilot_down_post) | **POST** /api/v1/skypilot/down | Down Skypilot Cluster
 *DefaultApi* | [**fetch_cluster_resources_api_v1_skypilot_fetch_resources_cluster_name_get**](docs/DefaultApi.md#fetch_cluster_resources_api_v1_skypilot_fetch_resources_cluster_name_get) | **GET** /api/v1/skypilot/fetch-resources/{cluster_name} | Fetch Cluster Resources
 *DefaultApi* | [**get_active_port_forwards_api_v1_skypilot_port_forwards_get**](docs/DefaultApi.md#get_active_port_forwards_api_v1_skypilot_port_forwards_get) | **GET** /api/v1/skypilot/port-forwards | Get Active Port Forwards
 *DefaultApi* | [**get_all_cluster_platforms_api_v1_skypilot_cluster_platforms_get**](docs/DefaultApi.md#get_all_cluster_platforms_api_v1_skypilot_cluster_platforms_get) | **GET** /api/v1/skypilot/cluster-platforms | Get All Cluster Platforms
+*DefaultApi* | [**get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get**](docs/DefaultApi.md#get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get) | **GET** /api/v1/quota/organization/{organization_id}/usage/all | Get All Organization Usage
 *DefaultApi* | [**get_api_key_api_v1_api_keys_key_id_get**](docs/DefaultApi.md#get_api_key_api_v1_api_keys_key_id_get) | **GET** /api/v1/api-keys/{key_id} | Get Api Key
 *DefaultApi* | [**get_availability_reports_api_v1_reports_availability_get**](docs/DefaultApi.md#get_availability_reports_api_v1_reports_availability_get) | **GET** /api/v1/reports/availability | Get Availability Reports
+*DefaultApi* | [**get_available_storage_buckets_api_v1_storage_buckets_available_get**](docs/DefaultApi.md#get_available_storage_buckets_api_v1_storage_buckets_available_get) | **GET** /api/v1/storage-buckets/available | Get Available Storage Buckets
 *DefaultApi* | [**get_azure_config_actual_api_v1_skypilot_azure_config_actual_get**](docs/DefaultApi.md#get_azure_config_actual_api_v1_skypilot_azure_config_actual_get) | **GET** /api/v1/skypilot/azure/config/actual | Get Azure Config Actual
 *DefaultApi* | [**get_azure_config_api_v1_skypilot_azure_config_get**](docs/DefaultApi.md#get_azure_config_api_v1_skypilot_azure_config_get) | **GET** /api/v1/skypilot/azure/config | Get Azure Config
 *DefaultApi* | [**get_azure_credentials_api_v1_skypilot_azure_credentials_get**](docs/DefaultApi.md#get_azure_credentials_api_v1_skypilot_azure_credentials_get) | **GET** /api/v1/skypilot/azure/credentials | Get Azure Credentials
 *DefaultApi* | [**get_azure_instance_types_route_api_v1_skypilot_azure_instance_types_get**](docs/DefaultApi.md#get_azure_instance_types_route_api_v1_skypilot_azure_instance_types_get) | **GET** /api/v1/skypilot/azure/instance-types | Get Azure Instance Types Route
 *DefaultApi* | [**get_azure_instances_api_v1_skypilot_azure_instances_get**](docs/DefaultApi.md#get_azure_instances_api_v1_skypilot_azure_instances_get) | **GET** /api/v1/skypilot/azure/instances | Get Azure Instances
 *DefaultApi* | [**get_azure_regions_route_api_v1_skypilot_azure_regions_get**](docs/DefaultApi.md#get_azure_regions_route_api_v1_skypilot_azure_regions_get) | **GET** /api/v1/skypilot/azure/regions | Get Azure Regions Route
+*DefaultApi* | [**get_cli_session_api_v1_auth_cli_session_session_id_get**](docs/DefaultApi.md#get_cli_session_api_v1_auth_cli_session_session_id_get) | **GET** /api/v1/auth/cli/session/{session_id} | Get Cli Session
 *DefaultApi* | [**get_cluster_api_v1_clusters_cluster_name_get**](docs/DefaultApi.md#get_cluster_api_v1_clusters_cluster_name_get) | **GET** /api/v1/clusters/{cluster_name} | Get Cluster
 *DefaultApi* | [**get_cluster_job_logs_api_v1_skypilot_jobs_cluster_name_job_id_logs_get**](docs/DefaultApi.md#get_cluster_job_logs_api_v1_skypilot_jobs_cluster_name_job_id_logs_get) | **GET** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/logs | Get Cluster Job Logs
 *DefaultApi* | [**get_cluster_jobs_api_v1_skypilot_jobs_cluster_name_get**](docs/DefaultApi.md#get_cluster_jobs_api_v1_skypilot_jobs_cluster_name_get) | **GET** /api/v1/skypilot/jobs/{cluster_name} | Get Cluster Jobs
@@ -139,6 +148,10 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**get_login_url_api_v1_auth_login_url_get**](docs/DefaultApi.md#get_login_url_api_v1_auth_login_url_get) | **GET** /api/v1/auth/login-url | Get Login Url
 *DefaultApi* | [**get_node_pools_api_v1_node_pools_get**](docs/DefaultApi.md#get_node_pools_api_v1_node_pools_get) | **GET** /api/v1/node-pools | Get Node Pools
 *DefaultApi* | [**get_organization_api_v1_admin_orgs_organization_id_get**](docs/DefaultApi.md#get_organization_api_v1_admin_orgs_organization_id_get) | **GET** /api/v1/admin/orgs/{organization_id} | Get Organization
+*DefaultApi* | [**get_organization_quota_api_v1_quota_organization_organization_id_get**](docs/DefaultApi.md#get_organization_quota_api_v1_quota_organization_organization_id_get) | **GET** /api/v1/quota/organization/{organization_id} | Get Organization Quota
+*DefaultApi* | [**get_organization_usage_api_v1_quota_organization_organization_id_usage_get**](docs/DefaultApi.md#get_organization_usage_api_v1_quota_organization_organization_id_usage_get) | **GET** /api/v1/quota/organization/{organization_id}/usage | Get Organization Usage
+*DefaultApi* | [**get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get**](docs/DefaultApi.md#get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get) | **GET** /api/v1/quota/organization/{organization_id}/users/quotas | Get Organization User Quotas
+*DefaultApi* | [**get_organization_user_usage_api_v1_quota_organization_organization_id_users_get**](docs/DefaultApi.md#get_organization_user_usage_api_v1_quota_organization_organization_id_users_get) | **GET** /api/v1/quota/organization/{organization_id}/users | Get Organization User Usage
 *DefaultApi* | [**get_past_job_logs_api_v1_skypilot_past_jobs_cluster_name_job_id_logs_get**](docs/DefaultApi.md#get_past_job_logs_api_v1_skypilot_past_jobs_cluster_name_job_id_logs_get) | **GET** /api/v1/skypilot/past-jobs/{cluster_name}/{job_id}/logs | Get Past Job Logs
 *DefaultApi* | [**get_past_jobs_endpoint_api_v1_skypilot_past_jobs_get**](docs/DefaultApi.md#get_past_jobs_endpoint_api_v1_skypilot_past_jobs_get) | **GET** /api/v1/skypilot/past-jobs | Get Past Jobs Endpoint
 *DefaultApi* | [**get_runpod_config_api_v1_skypilot_runpod_config_get**](docs/DefaultApi.md#get_runpod_config_api_v1_skypilot_runpod_config_get) | **GET** /api/v1/skypilot/runpod/config | Get Runpod Config
@@ -150,7 +163,10 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**get_skypilot_cluster_status_api_v1_skypilot_status_get**](docs/DefaultApi.md#get_skypilot_cluster_status_api_v1_skypilot_status_get) | **GET** /api/v1/skypilot/status | Get Skypilot Cluster Status
 *DefaultApi* | [**get_skypilot_request_status_api_v1_skypilot_request_request_id_get**](docs/DefaultApi.md#get_skypilot_request_status_api_v1_skypilot_request_request_id_get) | **GET** /api/v1/skypilot/request/{request_id} | Get Skypilot Request Status
 *DefaultApi* | [**get_ssh_node_info_api_v1_skypilot_ssh_node_info_get**](docs/DefaultApi.md#get_ssh_node_info_api_v1_skypilot_ssh_node_info_get) | **GET** /api/v1/skypilot/ssh-node-info | Get Ssh Node Info
+*DefaultApi* | [**get_storage_bucket_api_v1_storage_buckets_bucket_id_get**](docs/DefaultApi.md#get_storage_bucket_api_v1_storage_buckets_bucket_id_get) | **GET** /api/v1/storage-buckets/{bucket_id} | Get Storage Bucket
 *DefaultApi* | [**get_usage_reports_api_v1_reports_usage_get**](docs/DefaultApi.md#get_usage_reports_api_v1_reports_usage_get) | **GET** /api/v1/reports/usage | Get Usage Reports
+*DefaultApi* | [**get_usage_summary_api_v1_quota_summary_organization_id_get**](docs/DefaultApi.md#get_usage_summary_api_v1_quota_summary_organization_id_get) | **GET** /api/v1/quota/summary/{organization_id} | Get Usage Summary
+*DefaultApi* | [**get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get**](docs/DefaultApi.md#get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get) | **GET** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Get User Quota
 *DefaultApi* | [**get_user_reports_api_v1_reports_get**](docs/DefaultApi.md#get_user_reports_api_v1_reports_get) | **GET** /api/v1/reports | Get User Reports
 *DefaultApi* | [**get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get**](docs/DefaultApi.md#get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get) | **GET** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/vscode-info | Get Vscode Tunnel Info Endpoint
 *DefaultApi* | [**launch_skypilot_cluster_api_v1_skypilot_launch_post**](docs/DefaultApi.md#launch_skypilot_cluster_api_v1_skypilot_launch_post) | **POST** /api/v1/skypilot/launch | Launch Skypilot Cluster
@@ -161,7 +177,11 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**list_node_pools_api_v1_skypilot_node_pools_get**](docs/DefaultApi.md#list_node_pools_api_v1_skypilot_node_pools_get) | **GET** /api/v1/skypilot/node-pools | List Node Pools
 *DefaultApi* | [**list_organization_members_api_v1_admin_orgs_organization_id_members_get**](docs/DefaultApi.md#list_organization_members_api_v1_admin_orgs_organization_id_members_get) | **GET** /api/v1/admin/orgs/{organization_id}/members | List Organization Members
 *DefaultApi* | [**list_ssh_clusters_api_v1_skypilot_ssh_clusters_get**](docs/DefaultApi.md#list_ssh_clusters_api_v1_skypilot_ssh_clusters_get) | **GET** /api/v1/skypilot/ssh-clusters | List Ssh Clusters
+*DefaultApi* | [**list_storage_buckets_api_v1_storage_buckets_get**](docs/DefaultApi.md#list_storage_buckets_api_v1_storage_buckets_get) | **GET** /api/v1/storage-buckets/ | List Storage Buckets
 *DefaultApi* | [**logout_api_v1_auth_logout_get**](docs/DefaultApi.md#logout_api_v1_auth_logout_get) | **GET** /api/v1/auth/logout | Logout
+*DefaultApi* | [**poll_cli_authorization_api_v1_auth_cli_poll_post**](docs/DefaultApi.md#poll_cli_authorization_api_v1_auth_cli_poll_post) | **POST** /api/v1/auth/cli/poll | Poll Cli Authorization
+*DefaultApi* | [**populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post**](docs/DefaultApi.md#populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post) | **POST** /api/v1/quota/organization/{organization_id}/populate-user-quotas | Populate User Quotas Endpoint
+*DefaultApi* | [**refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post**](docs/DefaultApi.md#refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post) | **POST** /api/v1/quota/organization/{organization_id}/refresh-quota-periods | Refresh Quota Periods Endpoint
 *DefaultApi* | [**refresh_session_api_v1_auth_refresh_post**](docs/DefaultApi.md#refresh_session_api_v1_auth_refresh_post) | **POST** /api/v1/auth/refresh | Refresh Session
 *DefaultApi* | [**regenerate_api_key_api_v1_api_keys_key_id_regenerate_post**](docs/DefaultApi.md#regenerate_api_key_api_v1_api_keys_key_id_regenerate_post) | **POST** /api/v1/api-keys/{key_id}/regenerate | Regenerate Api Key
 *DefaultApi* | [**remove_node_api_v1_clusters_cluster_name_nodes_node_ip_delete**](docs/DefaultApi.md#remove_node_api_v1_clusters_cluster_name_nodes_node_ip_delete) | **DELETE** /api/v1/clusters/{cluster_name}/nodes/{node_ip} | Remove Node
@@ -178,16 +198,21 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**setup_azure_api_v1_skypilot_azure_setup_get**](docs/DefaultApi.md#setup_azure_api_v1_skypilot_azure_setup_get) | **GET** /api/v1/skypilot/azure/setup | Setup Azure
 *DefaultApi* | [**setup_job_port_forward_api_v1_skypilot_jobs_cluster_name_job_id_setup_port_forward_post**](docs/DefaultApi.md#setup_job_port_forward_api_v1_skypilot_jobs_cluster_name_job_id_setup_port_forward_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/setup-port-forward | Setup Job Port Forward
 *DefaultApi* | [**setup_runpod_api_v1_skypilot_runpod_setup_get**](docs/DefaultApi.md#setup_runpod_api_v1_skypilot_runpod_setup_get) | **GET** /api/v1/skypilot/runpod/setup | Setup Runpod
+*DefaultApi* | [**start_cli_authorization_api_v1_auth_cli_start_post**](docs/DefaultApi.md#start_cli_authorization_api_v1_auth_cli_start_post) | **POST** /api/v1/auth/cli/start | Start Cli Authorization
 *DefaultApi* | [**start_web_ssh_session_api_v1_skypilot_ssh_session_cluster_name_get**](docs/DefaultApi.md#start_web_ssh_session_api_v1_skypilot_ssh_session_cluster_name_get) | **GET** /api/v1/skypilot/ssh-session/{cluster_name} | Start Web Ssh Session
 *DefaultApi* | [**stop_port_forward_api_v1_skypilot_port_forwards_cluster_name_stop_post**](docs/DefaultApi.md#stop_port_forward_api_v1_skypilot_port_forwards_cluster_name_stop_post) | **POST** /api/v1/skypilot/port-forwards/{cluster_name}/stop | Stop Port Forward
 *DefaultApi* | [**stop_skypilot_cluster_api_v1_skypilot_stop_post**](docs/DefaultApi.md#stop_skypilot_cluster_api_v1_skypilot_stop_post) | **POST** /api/v1/skypilot/stop | Stop Skypilot Cluster
 *DefaultApi* | [**stream_skypilot_logs_api_v1_skypilot_stream_logs_logfile_get**](docs/DefaultApi.md#stream_skypilot_logs_api_v1_skypilot_stream_logs_logfile_get) | **GET** /api/v1/skypilot/stream-logs/{logfile} | Stream Skypilot Logs
 *DefaultApi* | [**submit_job_to_cluster_api_v1_skypilot_jobs_cluster_name_submit_post**](docs/DefaultApi.md#submit_job_to_cluster_api_v1_skypilot_jobs_cluster_name_submit_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/submit | Submit Job To Cluster
+*DefaultApi* | [**sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post**](docs/DefaultApi.md#sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post) | **POST** /api/v1/quota/sync-from-cost-report | Sync Usage From Cost Report
 *DefaultApi* | [**terminal_connect_api_v1_terminal_get**](docs/DefaultApi.md#terminal_connect_api_v1_terminal_get) | **GET** /api/v1/terminal | Terminal Connect
 *DefaultApi* | [**test_azure_connection_route_api_v1_skypilot_azure_test_post**](docs/DefaultApi.md#test_azure_connection_route_api_v1_skypilot_azure_test_post) | **POST** /api/v1/skypilot/azure/test | Test Azure Connection Route
 *DefaultApi* | [**test_runpod_connection_route_api_v1_skypilot_runpod_test_post**](docs/DefaultApi.md#test_runpod_connection_route_api_v1_skypilot_runpod_test_post) | **POST** /api/v1/skypilot/runpod/test | Test Runpod Connection Route
 *DefaultApi* | [**update_api_key_api_v1_api_keys_key_id_put**](docs/DefaultApi.md#update_api_key_api_v1_api_keys_key_id_put) | **PUT** /api/v1/api-keys/{key_id} | Update Api Key
 *DefaultApi* | [**update_member_role_api_v1_admin_orgs_organization_id_members_user_id_role_put**](docs/DefaultApi.md#update_member_role_api_v1_admin_orgs_organization_id_members_user_id_role_put) | **PUT** /api/v1/admin/orgs/{organization_id}/members/{user_id}/role | Update Member Role
+*DefaultApi* | [**update_organization_quota_api_v1_quota_organization_organization_id_put**](docs/DefaultApi.md#update_organization_quota_api_v1_quota_organization_organization_id_put) | **PUT** /api/v1/quota/organization/{organization_id} | Update Organization Quota
+*DefaultApi* | [**update_storage_bucket_api_v1_storage_buckets_bucket_id_put**](docs/DefaultApi.md#update_storage_bucket_api_v1_storage_buckets_bucket_id_put) | **PUT** /api/v1/storage-buckets/{bucket_id} | Update Storage Bucket
+*DefaultApi* | [**update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put**](docs/DefaultApi.md#update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put) | **PUT** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Update User Quota Endpoint
 *DefaultApi* | [**upload_identity_file_api_v1_clusters_identity_files_post**](docs/DefaultApi.md#upload_identity_file_api_v1_clusters_identity_files_post) | **POST** /api/v1/clusters/identity-files | Upload Identity File
 *DefaultApi* | [**verify_azure_api_v1_skypilot_azure_verify_get**](docs/DefaultApi.md#verify_azure_api_v1_skypilot_azure_verify_get) | **GET** /api/v1/skypilot/azure/verify | Verify Azure
 *DefaultApi* | [**verify_runpod_api_v1_skypilot_runpod_verify_get**](docs/DefaultApi.md#verify_runpod_api_v1_skypilot_runpod_verify_get) | **GET** /api/v1/skypilot/runpod/verify | Verify Runpod
@@ -199,22 +224,31 @@ Class | Method | HTTP request | Description
  - [AddMemberRequest](docs/AddMemberRequest.md)
  - [AzureConfigRequest](docs/AzureConfigRequest.md)
  - [AzureTestRequest](docs/AzureTestRequest.md)
+ - [BodyAuthorizeCliApiV1AuthCliAuthorizePost](docs/BodyAuthorizeCliApiV1AuthCliAuthorizePost.md)
+ - [BodyPollCliAuthorizationApiV1AuthCliPollPost](docs/BodyPollCliAuthorizationApiV1AuthCliPollPost.md)
+ - [BodyStartCliAuthorizationApiV1AuthCliStartPost](docs/BodyStartCliAuthorizationApiV1AuthCliStartPost.md)
  - [ClusterResponse](docs/ClusterResponse.md)
  - [ClusterStatusResponse](docs/ClusterStatusResponse.md)
  - [ClustersListResponse](docs/ClustersListResponse.md)
  - [CreateAPIKeyRequest](docs/CreateAPIKeyRequest.md)
  - [CreateAPIKeyResponse](docs/CreateAPIKeyResponse.md)
  - [CreateOrganizationRequest](docs/CreateOrganizationRequest.md)
+ - [CreateStorageBucketRequest](docs/CreateStorageBucketRequest.md)
+ - [CreateUserQuotaRequest](docs/CreateUserQuotaRequest.md)
  - [DownClusterRequest](docs/DownClusterRequest.md)
  - [DownClusterResponse](docs/DownClusterResponse.md)
+ - [GPUUsageLogResponse](docs/GPUUsageLogResponse.md)
  - [HTTPValidationError](docs/HTTPValidationError.md)
  - [JobLogsResponse](docs/JobLogsResponse.md)
  - [JobQueueResponse](docs/JobQueueResponse.md)
  - [JobRecord](docs/JobRecord.md)
  - [LaunchClusterResponse](docs/LaunchClusterResponse.md)
  - [Organization](docs/Organization.md)
+ - [OrganizationQuotaResponse](docs/OrganizationQuotaResponse.md)
  - [OrganizationResponse](docs/OrganizationResponse.md)
+ - [OrganizationUserUsageResponse](docs/OrganizationUserUsageResponse.md)
  - [OrganizationsResponse](docs/OrganizationsResponse.md)
+ - [QuotaUsageResponse](docs/QuotaUsageResponse.md)
  - [ReportData](docs/ReportData.md)
  - [ReportsResponse](docs/ReportsResponse.md)
  - [RunPodConfigRequest](docs/RunPodConfigRequest.md)
@@ -224,9 +258,17 @@ Class | Method | HTTP request | Description
  - [StatusResponse](docs/StatusResponse.md)
  - [StopClusterRequest](docs/StopClusterRequest.md)
  - [StopClusterResponse](docs/StopClusterResponse.md)
+ - [StorageBucketListResponse](docs/StorageBucketListResponse.md)
+ - [StorageBucketResponse](docs/StorageBucketResponse.md)
  - [UpdateAPIKeyRequest](docs/UpdateAPIKeyRequest.md)
  - [UpdateMemberRoleRequest](docs/UpdateMemberRoleRequest.md)
+ - [UpdateQuotaRequest](docs/UpdateQuotaRequest.md)
+ - [UpdateStorageBucketRequest](docs/UpdateStorageBucketRequest.md)
+ - [UpdateUserQuotaRequest](docs/UpdateUserQuotaRequest.md)
+ - [UserQuotaListResponse](docs/UserQuotaListResponse.md)
+ - [UserQuotaResponse](docs/UserQuotaResponse.md)
  - [UserResponse](docs/UserResponse.md)
+ - [UserUsageBreakdown](docs/UserUsageBreakdown.md)
  - [ValidationError](docs/ValidationError.md)
  - [ValidationErrorLocInner](docs/ValidationErrorLocInner.md)
 

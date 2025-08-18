@@ -5,6 +5,7 @@ description = "Lattice"
 authors = [
   {name = "OpenAPI Generator Community",email = "team@openapitools.org"},
 ]
+license = "NoLicense"
 readme = "README.md"
 keywords = ["OpenAPI", "OpenAPI-Generator", "Lattice"]
 requires-python = ">=3.9"

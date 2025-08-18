@@ -7,29 +7,38 @@ Method | HTTP request | Description
 [**add_node_api_v1_clusters_cluster_name_nodes_post**](DefaultApi.md#add_node_api_v1_clusters_cluster_name_nodes_post) | **POST** /api/v1/clusters/{cluster_name}/nodes | Add Node
 [**add_organization_member_api_v1_admin_orgs_organization_id_members_post**](DefaultApi.md#add_organization_member_api_v1_admin_orgs_organization_id_members_post) | **POST** /api/v1/admin/orgs/{organization_id}/members | Add Organization Member
 [**auth_callback_api_v1_auth_callback_get**](DefaultApi.md#auth_callback_api_v1_auth_callback_get) | **GET** /api/v1/auth/callback | Auth Callback
+[**authorize_cli_api_v1_auth_cli_authorize_post**](DefaultApi.md#authorize_cli_api_v1_auth_cli_authorize_post) | **POST** /api/v1/auth/cli/authorize | Authorize Cli
 [**cancel_cluster_job_api_v1_skypilot_jobs_cluster_name_job_id_cancel_post**](DefaultApi.md#cancel_cluster_job_api_v1_skypilot_jobs_cluster_name_job_id_cancel_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/cancel | Cancel Cluster Job
 [**check_auth_api_v1_auth_check_get**](DefaultApi.md#check_auth_api_v1_auth_check_get) | **GET** /api/v1/auth/check | Check Auth
+[**check_quota_availability_api_v1_quota_check_quota_organization_id_get**](DefaultApi.md#check_quota_availability_api_v1_quota_check_quota_organization_id_get) | **GET** /api/v1/quota/check-quota/{organization_id} | Check Quota Availability
 [**create_api_key_api_v1_api_keys_post**](DefaultApi.md#create_api_key_api_v1_api_keys_post) | **POST** /api/v1/api-keys | Create Api Key
 [**create_cluster_api_v1_clusters_post**](DefaultApi.md#create_cluster_api_v1_clusters_post) | **POST** /api/v1/clusters | Create Cluster
 [**create_organization_api_v1_admin_orgs_post**](DefaultApi.md#create_organization_api_v1_admin_orgs_post) | **POST** /api/v1/admin/orgs | Create Organization
+[**create_storage_bucket_api_v1_storage_buckets_post**](DefaultApi.md#create_storage_bucket_api_v1_storage_buckets_post) | **POST** /api/v1/storage-buckets/ | Create Storage Bucket
+[**create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post**](DefaultApi.md#create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post) | **POST** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Create User Quota Endpoint
 [**delete_api_key_api_v1_api_keys_key_id_delete**](DefaultApi.md#delete_api_key_api_v1_api_keys_key_id_delete) | **DELETE** /api/v1/api-keys/{key_id} | Delete Api Key
 [**delete_azure_config_route_api_v1_skypilot_azure_config_config_key_delete**](DefaultApi.md#delete_azure_config_route_api_v1_skypilot_azure_config_config_key_delete) | **DELETE** /api/v1/skypilot/azure/config/{config_key} | Delete Azure Config Route
 [**delete_cluster_api_v1_clusters_cluster_name_delete**](DefaultApi.md#delete_cluster_api_v1_clusters_cluster_name_delete) | **DELETE** /api/v1/clusters/{cluster_name} | Delete Cluster
 [**delete_identity_file_api_v1_clusters_identity_files_file_path_delete**](DefaultApi.md#delete_identity_file_api_v1_clusters_identity_files_file_path_delete) | **DELETE** /api/v1/clusters/identity-files/{file_path} | Delete Identity File
 [**delete_organization_api_v1_admin_orgs_organization_id_delete**](DefaultApi.md#delete_organization_api_v1_admin_orgs_organization_id_delete) | **DELETE** /api/v1/admin/orgs/{organization_id} | Delete Organization
 [**delete_runpod_config_route_api_v1_skypilot_runpod_config_config_key_delete**](DefaultApi.md#delete_runpod_config_route_api_v1_skypilot_runpod_config_config_key_delete) | **DELETE** /api/v1/skypilot/runpod/config/{config_key} | Delete Runpod Config Route
+[**delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete**](DefaultApi.md#delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete) | **DELETE** /api/v1/storage-buckets/{bucket_id} | Delete Storage Bucket
+[**delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete**](DefaultApi.md#delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete) | **DELETE** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Delete User Quota Endpoint
 [**down_skypilot_cluster_api_v1_skypilot_down_post**](DefaultApi.md#down_skypilot_cluster_api_v1_skypilot_down_post) | **POST** /api/v1/skypilot/down | Down Skypilot Cluster
 [**fetch_cluster_resources_api_v1_skypilot_fetch_resources_cluster_name_get**](DefaultApi.md#fetch_cluster_resources_api_v1_skypilot_fetch_resources_cluster_name_get) | **GET** /api/v1/skypilot/fetch-resources/{cluster_name} | Fetch Cluster Resources
 [**get_active_port_forwards_api_v1_skypilot_port_forwards_get**](DefaultApi.md#get_active_port_forwards_api_v1_skypilot_port_forwards_get) | **GET** /api/v1/skypilot/port-forwards | Get Active Port Forwards
 [**get_all_cluster_platforms_api_v1_skypilot_cluster_platforms_get**](DefaultApi.md#get_all_cluster_platforms_api_v1_skypilot_cluster_platforms_get) | **GET** /api/v1/skypilot/cluster-platforms | Get All Cluster Platforms
+[**get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get**](DefaultApi.md#get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get) | **GET** /api/v1/quota/organization/{organization_id}/usage/all | Get All Organization Usage
 [**get_api_key_api_v1_api_keys_key_id_get**](DefaultApi.md#get_api_key_api_v1_api_keys_key_id_get) | **GET** /api/v1/api-keys/{key_id} | Get Api Key
 [**get_availability_reports_api_v1_reports_availability_get**](DefaultApi.md#get_availability_reports_api_v1_reports_availability_get) | **GET** /api/v1/reports/availability | Get Availability Reports
+[**get_available_storage_buckets_api_v1_storage_buckets_available_get**](DefaultApi.md#get_available_storage_buckets_api_v1_storage_buckets_available_get) | **GET** /api/v1/storage-buckets/available | Get Available Storage Buckets
 [**get_azure_config_actual_api_v1_skypilot_azure_config_actual_get**](DefaultApi.md#get_azure_config_actual_api_v1_skypilot_azure_config_actual_get) | **GET** /api/v1/skypilot/azure/config/actual | Get Azure Config Actual
 [**get_azure_config_api_v1_skypilot_azure_config_get**](DefaultApi.md#get_azure_config_api_v1_skypilot_azure_config_get) | **GET** /api/v1/skypilot/azure/config | Get Azure Config
 [**get_azure_credentials_api_v1_skypilot_azure_credentials_get**](DefaultApi.md#get_azure_credentials_api_v1_skypilot_azure_credentials_get) | **GET** /api/v1/skypilot/azure/credentials | Get Azure Credentials
 [**get_azure_instance_types_route_api_v1_skypilot_azure_instance_types_get**](DefaultApi.md#get_azure_instance_types_route_api_v1_skypilot_azure_instance_types_get) | **GET** /api/v1/skypilot/azure/instance-types | Get Azure Instance Types Route
 [**get_azure_instances_api_v1_skypilot_azure_instances_get**](DefaultApi.md#get_azure_instances_api_v1_skypilot_azure_instances_get) | **GET** /api/v1/skypilot/azure/instances | Get Azure Instances
 [**get_azure_regions_route_api_v1_skypilot_azure_regions_get**](DefaultApi.md#get_azure_regions_route_api_v1_skypilot_azure_regions_get) | **GET** /api/v1/skypilot/azure/regions | Get Azure Regions Route
+[**get_cli_session_api_v1_auth_cli_session_session_id_get**](DefaultApi.md#get_cli_session_api_v1_auth_cli_session_session_id_get) | **GET** /api/v1/auth/cli/session/{session_id} | Get Cli Session
 [**get_cluster_api_v1_clusters_cluster_name_get**](DefaultApi.md#get_cluster_api_v1_clusters_cluster_name_get) | **GET** /api/v1/clusters/{cluster_name} | Get Cluster
 [**get_cluster_job_logs_api_v1_skypilot_jobs_cluster_name_job_id_logs_get**](DefaultApi.md#get_cluster_job_logs_api_v1_skypilot_jobs_cluster_name_job_id_logs_get) | **GET** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/logs | Get Cluster Job Logs
 [**get_cluster_jobs_api_v1_skypilot_jobs_cluster_name_get**](DefaultApi.md#get_cluster_jobs_api_v1_skypilot_jobs_cluster_name_get) | **GET** /api/v1/skypilot/jobs/{cluster_name} | Get Cluster Jobs
@@ -42,6 +51,10 @@ Method | HTTP request | Description
 [**get_login_url_api_v1_auth_login_url_get**](DefaultApi.md#get_login_url_api_v1_auth_login_url_get) | **GET** /api/v1/auth/login-url | Get Login Url
 [**get_node_pools_api_v1_node_pools_get**](DefaultApi.md#get_node_pools_api_v1_node_pools_get) | **GET** /api/v1/node-pools | Get Node Pools
 [**get_organization_api_v1_admin_orgs_organization_id_get**](DefaultApi.md#get_organization_api_v1_admin_orgs_organization_id_get) | **GET** /api/v1/admin/orgs/{organization_id} | Get Organization
+[**get_organization_quota_api_v1_quota_organization_organization_id_get**](DefaultApi.md#get_organization_quota_api_v1_quota_organization_organization_id_get) | **GET** /api/v1/quota/organization/{organization_id} | Get Organization Quota
+[**get_organization_usage_api_v1_quota_organization_organization_id_usage_get**](DefaultApi.md#get_organization_usage_api_v1_quota_organization_organization_id_usage_get) | **GET** /api/v1/quota/organization/{organization_id}/usage | Get Organization Usage
+[**get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get**](DefaultApi.md#get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get) | **GET** /api/v1/quota/organization/{organization_id}/users/quotas | Get Organization User Quotas
+[**get_organization_user_usage_api_v1_quota_organization_organization_id_users_get**](DefaultApi.md#get_organization_user_usage_api_v1_quota_organization_organization_id_users_get) | **GET** /api/v1/quota/organization/{organization_id}/users | Get Organization User Usage
 [**get_past_job_logs_api_v1_skypilot_past_jobs_cluster_name_job_id_logs_get**](DefaultApi.md#get_past_job_logs_api_v1_skypilot_past_jobs_cluster_name_job_id_logs_get) | **GET** /api/v1/skypilot/past-jobs/{cluster_name}/{job_id}/logs | Get Past Job Logs
 [**get_past_jobs_endpoint_api_v1_skypilot_past_jobs_get**](DefaultApi.md#get_past_jobs_endpoint_api_v1_skypilot_past_jobs_get) | **GET** /api/v1/skypilot/past-jobs | Get Past Jobs Endpoint
 [**get_runpod_config_api_v1_skypilot_runpod_config_get**](DefaultApi.md#get_runpod_config_api_v1_skypilot_runpod_config_get) | **GET** /api/v1/skypilot/runpod/config | Get Runpod Config
@@ -53,7 +66,10 @@ Method | HTTP request | Description
 [**get_skypilot_cluster_status_api_v1_skypilot_status_get**](DefaultApi.md#get_skypilot_cluster_status_api_v1_skypilot_status_get) | **GET** /api/v1/skypilot/status | Get Skypilot Cluster Status
 [**get_skypilot_request_status_api_v1_skypilot_request_request_id_get**](DefaultApi.md#get_skypilot_request_status_api_v1_skypilot_request_request_id_get) | **GET** /api/v1/skypilot/request/{request_id} | Get Skypilot Request Status
 [**get_ssh_node_info_api_v1_skypilot_ssh_node_info_get**](DefaultApi.md#get_ssh_node_info_api_v1_skypilot_ssh_node_info_get) | **GET** /api/v1/skypilot/ssh-node-info | Get Ssh Node Info
+[**get_storage_bucket_api_v1_storage_buckets_bucket_id_get**](DefaultApi.md#get_storage_bucket_api_v1_storage_buckets_bucket_id_get) | **GET** /api/v1/storage-buckets/{bucket_id} | Get Storage Bucket
 [**get_usage_reports_api_v1_reports_usage_get**](DefaultApi.md#get_usage_reports_api_v1_reports_usage_get) | **GET** /api/v1/reports/usage | Get Usage Reports
+[**get_usage_summary_api_v1_quota_summary_organization_id_get**](DefaultApi.md#get_usage_summary_api_v1_quota_summary_organization_id_get) | **GET** /api/v1/quota/summary/{organization_id} | Get Usage Summary
+[**get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get**](DefaultApi.md#get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get) | **GET** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Get User Quota
 [**get_user_reports_api_v1_reports_get**](DefaultApi.md#get_user_reports_api_v1_reports_get) | **GET** /api/v1/reports | Get User Reports
 [**get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get**](DefaultApi.md#get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get) | **GET** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/vscode-info | Get Vscode Tunnel Info Endpoint
 [**launch_skypilot_cluster_api_v1_skypilot_launch_post**](DefaultApi.md#launch_skypilot_cluster_api_v1_skypilot_launch_post) | **POST** /api/v1/skypilot/launch | Launch Skypilot Cluster
@@ -64,7 +80,11 @@ Method | HTTP request | Description
 [**list_node_pools_api_v1_skypilot_node_pools_get**](DefaultApi.md#list_node_pools_api_v1_skypilot_node_pools_get) | **GET** /api/v1/skypilot/node-pools | List Node Pools
 [**list_organization_members_api_v1_admin_orgs_organization_id_members_get**](DefaultApi.md#list_organization_members_api_v1_admin_orgs_organization_id_members_get) | **GET** /api/v1/admin/orgs/{organization_id}/members | List Organization Members
 [**list_ssh_clusters_api_v1_skypilot_ssh_clusters_get**](DefaultApi.md#list_ssh_clusters_api_v1_skypilot_ssh_clusters_get) | **GET** /api/v1/skypilot/ssh-clusters | List Ssh Clusters
+[**list_storage_buckets_api_v1_storage_buckets_get**](DefaultApi.md#list_storage_buckets_api_v1_storage_buckets_get) | **GET** /api/v1/storage-buckets/ | List Storage Buckets
 [**logout_api_v1_auth_logout_get**](DefaultApi.md#logout_api_v1_auth_logout_get) | **GET** /api/v1/auth/logout | Logout
+[**poll_cli_authorization_api_v1_auth_cli_poll_post**](DefaultApi.md#poll_cli_authorization_api_v1_auth_cli_poll_post) | **POST** /api/v1/auth/cli/poll | Poll Cli Authorization
+[**populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post**](DefaultApi.md#populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post) | **POST** /api/v1/quota/organization/{organization_id}/populate-user-quotas | Populate User Quotas Endpoint
+[**refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post**](DefaultApi.md#refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post) | **POST** /api/v1/quota/organization/{organization_id}/refresh-quota-periods | Refresh Quota Periods Endpoint
 [**refresh_session_api_v1_auth_refresh_post**](DefaultApi.md#refresh_session_api_v1_auth_refresh_post) | **POST** /api/v1/auth/refresh | Refresh Session
 [**regenerate_api_key_api_v1_api_keys_key_id_regenerate_post**](DefaultApi.md#regenerate_api_key_api_v1_api_keys_key_id_regenerate_post) | **POST** /api/v1/api-keys/{key_id}/regenerate | Regenerate Api Key
 [**remove_node_api_v1_clusters_cluster_name_nodes_node_ip_delete**](DefaultApi.md#remove_node_api_v1_clusters_cluster_name_nodes_node_ip_delete) | **DELETE** /api/v1/clusters/{cluster_name}/nodes/{node_ip} | Remove Node
@@ -81,16 +101,21 @@ Method | HTTP request | Description
 [**setup_azure_api_v1_skypilot_azure_setup_get**](DefaultApi.md#setup_azure_api_v1_skypilot_azure_setup_get) | **GET** /api/v1/skypilot/azure/setup | Setup Azure
 [**setup_job_port_forward_api_v1_skypilot_jobs_cluster_name_job_id_setup_port_forward_post**](DefaultApi.md#setup_job_port_forward_api_v1_skypilot_jobs_cluster_name_job_id_setup_port_forward_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/setup-port-forward | Setup Job Port Forward
 [**setup_runpod_api_v1_skypilot_runpod_setup_get**](DefaultApi.md#setup_runpod_api_v1_skypilot_runpod_setup_get) | **GET** /api/v1/skypilot/runpod/setup | Setup Runpod
+[**start_cli_authorization_api_v1_auth_cli_start_post**](DefaultApi.md#start_cli_authorization_api_v1_auth_cli_start_post) | **POST** /api/v1/auth/cli/start | Start Cli Authorization
 [**start_web_ssh_session_api_v1_skypilot_ssh_session_cluster_name_get**](DefaultApi.md#start_web_ssh_session_api_v1_skypilot_ssh_session_cluster_name_get) | **GET** /api/v1/skypilot/ssh-session/{cluster_name} | Start Web Ssh Session
 [**stop_port_forward_api_v1_skypilot_port_forwards_cluster_name_stop_post**](DefaultApi.md#stop_port_forward_api_v1_skypilot_port_forwards_cluster_name_stop_post) | **POST** /api/v1/skypilot/port-forwards/{cluster_name}/stop | Stop Port Forward
 [**stop_skypilot_cluster_api_v1_skypilot_stop_post**](DefaultApi.md#stop_skypilot_cluster_api_v1_skypilot_stop_post) | **POST** /api/v1/skypilot/stop | Stop Skypilot Cluster
 [**stream_skypilot_logs_api_v1_skypilot_stream_logs_logfile_get**](DefaultApi.md#stream_skypilot_logs_api_v1_skypilot_stream_logs_logfile_get) | **GET** /api/v1/skypilot/stream-logs/{logfile} | Stream Skypilot Logs
 [**submit_job_to_cluster_api_v1_skypilot_jobs_cluster_name_submit_post**](DefaultApi.md#submit_job_to_cluster_api_v1_skypilot_jobs_cluster_name_submit_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/submit | Submit Job To Cluster
+[**sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post**](DefaultApi.md#sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post) | **POST** /api/v1/quota/sync-from-cost-report | Sync Usage From Cost Report
 [**terminal_connect_api_v1_terminal_get**](DefaultApi.md#terminal_connect_api_v1_terminal_get) | **GET** /api/v1/terminal | Terminal Connect
 [**test_azure_connection_route_api_v1_skypilot_azure_test_post**](DefaultApi.md#test_azure_connection_route_api_v1_skypilot_azure_test_post) | **POST** /api/v1/skypilot/azure/test | Test Azure Connection Route
 [**test_runpod_connection_route_api_v1_skypilot_runpod_test_post**](DefaultApi.md#test_runpod_connection_route_api_v1_skypilot_runpod_test_post) | **POST** /api/v1/skypilot/runpod/test | Test Runpod Connection Route
 [**update_api_key_api_v1_api_keys_key_id_put**](DefaultApi.md#update_api_key_api_v1_api_keys_key_id_put) | **PUT** /api/v1/api-keys/{key_id} | Update Api Key
 [**update_member_role_api_v1_admin_orgs_organization_id_members_user_id_role_put**](DefaultApi.md#update_member_role_api_v1_admin_orgs_organization_id_members_user_id_role_put) | **PUT** /api/v1/admin/orgs/{organization_id}/members/{user_id}/role | Update Member Role
+[**update_organization_quota_api_v1_quota_organization_organization_id_put**](DefaultApi.md#update_organization_quota_api_v1_quota_organization_organization_id_put) | **PUT** /api/v1/quota/organization/{organization_id} | Update Organization Quota
+[**update_storage_bucket_api_v1_storage_buckets_bucket_id_put**](DefaultApi.md#update_storage_bucket_api_v1_storage_buckets_bucket_id_put) | **PUT** /api/v1/storage-buckets/{bucket_id} | Update Storage Bucket
+[**update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put**](DefaultApi.md#update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put) | **PUT** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Update User Quota Endpoint
 [**upload_identity_file_api_v1_clusters_identity_files_post**](DefaultApi.md#upload_identity_file_api_v1_clusters_identity_files_post) | **POST** /api/v1/clusters/identity-files | Upload Identity File
 [**verify_azure_api_v1_skypilot_azure_verify_get**](DefaultApi.md#verify_azure_api_v1_skypilot_azure_verify_get) | **GET** /api/v1/skypilot/azure/verify | Verify Azure
 [**verify_runpod_api_v1_skypilot_runpod_verify_get**](DefaultApi.md#verify_runpod_api_v1_skypilot_runpod_verify_get) | **GET** /api/v1/skypilot/runpod/verify | Verify Runpod
@@ -264,6 +289,7 @@ Auth Callback
 
 ### Example
 
+* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -276,6 +302,15 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -307,11 +342,81 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[HTTPBearer](../README.md#HTTPBearer)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **authorize_cli_api_v1_auth_cli_authorize_post**
+> object authorize_cli_api_v1_auth_cli_authorize_post(body_authorize_cli_api_v1_auth_cli_authorize_post)
+
+Authorize Cli
+
+Endpoint for the frontend to approve or reject CLI authorization.
+Requires a logged-in user.
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.body_authorize_cli_api_v1_auth_cli_authorize_post import BodyAuthorizeCliApiV1AuthCliAuthorizePost
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    body_authorize_cli_api_v1_auth_cli_authorize_post = openapi_client.BodyAuthorizeCliApiV1AuthCliAuthorizePost() # BodyAuthorizeCliApiV1AuthCliAuthorizePost | 
+
+    try:
+        # Authorize Cli
+        api_response = api_instance.authorize_cli_api_v1_auth_cli_authorize_post(body_authorize_cli_api_v1_auth_cli_authorize_post)
+        print("The response of DefaultApi->authorize_cli_api_v1_auth_cli_authorize_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->authorize_cli_api_v1_auth_cli_authorize_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **body_authorize_cli_api_v1_auth_cli_authorize_post** | [**BodyAuthorizeCliApiV1AuthCliAuthorizePost**](BodyAuthorizeCliApiV1AuthCliAuthorizePost.md)|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
@@ -410,6 +515,7 @@ Check Auth
 
 ### Example
 
+* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -422,6 +528,15 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -449,6 +564,77 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **check_quota_availability_api_v1_quota_check_quota_organization_id_get**
+> object check_quota_availability_api_v1_quota_check_quota_organization_id_get(organization_id, estimated_hours=estimated_hours, gpu_count=gpu_count)
+
+Check Quota Availability
+
+Check if user has enough quota for a new cluster
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    estimated_hours = 1.0 # float |  (optional) (default to 1.0)
+    gpu_count = 1 # int |  (optional) (default to 1)
+
+    try:
+        # Check Quota Availability
+        api_response = api_instance.check_quota_availability_api_v1_quota_check_quota_organization_id_get(organization_id, estimated_hours=estimated_hours, gpu_count=gpu_count)
+        print("The response of DefaultApi->check_quota_availability_api_v1_quota_check_quota_organization_id_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->check_quota_availability_api_v1_quota_check_quota_organization_id_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **estimated_hours** | **float**|  | [optional] [default to 1.0]
+ **gpu_count** | **int**|  | [optional] [default to 1]
+
+### Return type
+
+**object**
+
+### Authorization
+
 No authorization required
 
 ### HTTP request headers
@@ -461,6 +647,7 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -674,6 +861,160 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OrganizationResponse**](OrganizationResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **create_storage_bucket_api_v1_storage_buckets_post**
+> StorageBucketResponse create_storage_bucket_api_v1_storage_buckets_post(create_storage_bucket_request)
+
+Create Storage Bucket
+
+Create a new storage bucket
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.models.create_storage_bucket_request import CreateStorageBucketRequest
+from openapi_client.models.storage_bucket_response import StorageBucketResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    create_storage_bucket_request = openapi_client.CreateStorageBucketRequest() # CreateStorageBucketRequest | 
+
+    try:
+        # Create Storage Bucket
+        api_response = api_instance.create_storage_bucket_api_v1_storage_buckets_post(create_storage_bucket_request)
+        print("The response of DefaultApi->create_storage_bucket_api_v1_storage_buckets_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->create_storage_bucket_api_v1_storage_buckets_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **create_storage_bucket_request** | [**CreateStorageBucketRequest**](CreateStorageBucketRequest.md)|  | 
+
+### Return type
+
+[**StorageBucketResponse**](StorageBucketResponse.md)
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post**
+> UserQuotaResponse create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post(organization_id, user_id, create_user_quota_request)
+
+Create User Quota Endpoint
+
+Create a new user quota
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.create_user_quota_request import CreateUserQuotaRequest
+from openapi_client.models.user_quota_response import UserQuotaResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    user_id = 'user_id_example' # str | 
+    create_user_quota_request = openapi_client.CreateUserQuotaRequest() # CreateUserQuotaRequest | 
+
+    try:
+        # Create User Quota Endpoint
+        api_response = api_instance.create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post(organization_id, user_id, create_user_quota_request)
+        print("The response of DefaultApi->create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **user_id** | **str**|  | 
+ **create_user_quota_request** | [**CreateUserQuotaRequest**](CreateUserQuotaRequest.md)|  | 
+
+### Return type
+
+[**UserQuotaResponse**](UserQuotaResponse.md)
 
 ### Authorization
 
@@ -1137,6 +1478,154 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete**
+> object delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete(bucket_id)
+
+Delete Storage Bucket
+
+Delete a storage bucket (soft delete)
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    bucket_id = 'bucket_id_example' # str | 
+
+    try:
+        # Delete Storage Bucket
+        api_response = api_instance.delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete(bucket_id)
+        print("The response of DefaultApi->delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **bucket_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete**
+> object delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete(organization_id, user_id)
+
+Delete User Quota Endpoint
+
+Delete user quota, reverting to organization default
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    user_id = 'user_id_example' # str | 
+
+    try:
+        # Delete User Quota Endpoint
+        api_response = api_instance.delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete(organization_id, user_id)
+        print("The response of DefaultApi->delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **user_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **down_skypilot_cluster_api_v1_skypilot_down_post**
 > DownClusterResponse down_skypilot_cluster_api_v1_skypilot_down_post(down_cluster_request)
 
@@ -1441,6 +1930,77 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get**
+> QuotaUsageResponse get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get(organization_id, limit=limit)
+
+Get All Organization Usage
+
+Get organization-wide usage data for all users
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.quota_usage_response import QuotaUsageResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    limit = 50 # int |  (optional) (default to 50)
+
+    try:
+        # Get All Organization Usage
+        api_response = api_instance.get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get(organization_id, limit=limit)
+        print("The response of DefaultApi->get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_all_organization_usage_api_v1_quota_organization_organization_id_usage_all_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **limit** | **int**|  | [optional] [default to 50]
+
+### Return type
+
+[**QuotaUsageResponse**](QuotaUsageResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **get_api_key_api_v1_api_keys_key_id_get**
 > APIKeyResponse get_api_key_api_v1_api_keys_key_id_get(key_id)
 
@@ -1575,6 +2135,80 @@ No authorization required
 |-------------|-------------|------------------|
 **200** | Successful Response |  -  |
 **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_available_storage_buckets_api_v1_storage_buckets_available_get**
+> List[StorageBucketResponse] get_available_storage_buckets_api_v1_storage_buckets_available_get()
+
+Get Available Storage Buckets
+
+Get all available storage buckets for the current organization (for selection in cluster launching)
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.models.storage_bucket_response import StorageBucketResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+
+    try:
+        # Get Available Storage Buckets
+        api_response = api_instance.get_available_storage_buckets_api_v1_storage_buckets_available_get()
+        print("The response of DefaultApi->get_available_storage_buckets_api_v1_storage_buckets_available_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_available_storage_buckets_api_v1_storage_buckets_available_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List[StorageBucketResponse]**](StorageBucketResponse.md)
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2018,6 +2652,75 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_cli_session_api_v1_auth_cli_session_session_id_get**
+> object get_cli_session_api_v1_auth_cli_session_session_id_get(session_id)
+
+Get Cli Session
+
+Retrieve information about a CLI authorization session.
+Requires a logged-in user.
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    session_id = 'session_id_example' # str | 
+
+    try:
+        # Get Cli Session
+        api_response = api_instance.get_cli_session_api_v1_auth_cli_session_session_id_get(session_id)
+        print("The response of DefaultApi->get_cli_session_api_v1_auth_cli_session_session_id_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_cli_session_api_v1_auth_cli_session_session_id_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **session_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2568,6 +3271,7 @@ Get Current User Info
 
 ### Example
 
+* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -2581,6 +3285,15 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -2608,7 +3321,7 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
-No authorization required
+[HTTPBearer](../README.md#HTTPBearer)
 
 ### HTTP request headers
 
@@ -2698,6 +3411,7 @@ Get Login Url
 
 ### Example
 
+* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -2710,6 +3424,15 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -2737,7 +3460,7 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
-No authorization required
+[HTTPBearer](../README.md#HTTPBearer)
 
 ### HTTP request headers
 
@@ -2880,6 +3603,284 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OrganizationResponse**](OrganizationResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_organization_quota_api_v1_quota_organization_organization_id_get**
+> OrganizationQuotaResponse get_organization_quota_api_v1_quota_organization_organization_id_get(organization_id)
+
+Get Organization Quota
+
+Get organization quota and current user's usage
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.organization_quota_response import OrganizationQuotaResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+
+    try:
+        # Get Organization Quota
+        api_response = api_instance.get_organization_quota_api_v1_quota_organization_organization_id_get(organization_id)
+        print("The response of DefaultApi->get_organization_quota_api_v1_quota_organization_organization_id_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_organization_quota_api_v1_quota_organization_organization_id_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+
+### Return type
+
+[**OrganizationQuotaResponse**](OrganizationQuotaResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_organization_usage_api_v1_quota_organization_organization_id_usage_get**
+> QuotaUsageResponse get_organization_usage_api_v1_quota_organization_organization_id_usage_get(organization_id, limit=limit)
+
+Get Organization Usage
+
+Get current user's quota and recent usage logs
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.quota_usage_response import QuotaUsageResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    limit = 50 # int |  (optional) (default to 50)
+
+    try:
+        # Get Organization Usage
+        api_response = api_instance.get_organization_usage_api_v1_quota_organization_organization_id_usage_get(organization_id, limit=limit)
+        print("The response of DefaultApi->get_organization_usage_api_v1_quota_organization_organization_id_usage_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_organization_usage_api_v1_quota_organization_organization_id_usage_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **limit** | **int**|  | [optional] [default to 50]
+
+### Return type
+
+[**QuotaUsageResponse**](QuotaUsageResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get**
+> UserQuotaListResponse get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get(organization_id)
+
+Get Organization User Quotas
+
+Get all user quotas for an organization
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.user_quota_list_response import UserQuotaListResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+
+    try:
+        # Get Organization User Quotas
+        api_response = api_instance.get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get(organization_id)
+        print("The response of DefaultApi->get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_organization_user_quotas_api_v1_quota_organization_organization_id_users_quotas_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+
+### Return type
+
+[**UserQuotaListResponse**](UserQuotaListResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_organization_user_usage_api_v1_quota_organization_organization_id_users_get**
+> OrganizationUserUsageResponse get_organization_user_usage_api_v1_quota_organization_organization_id_users_get(organization_id)
+
+Get Organization User Usage
+
+Get GPU usage breakdown for all users in an organization
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.organization_user_usage_response import OrganizationUserUsageResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+
+    try:
+        # Get Organization User Usage
+        api_response = api_instance.get_organization_user_usage_api_v1_quota_organization_organization_id_users_get(organization_id)
+        print("The response of DefaultApi->get_organization_user_usage_api_v1_quota_organization_organization_id_users_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_organization_user_usage_api_v1_quota_organization_organization_id_users_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+
+### Return type
+
+[**OrganizationUserUsageResponse**](OrganizationUserUsageResponse.md)
 
 ### Authorization
 
@@ -3714,6 +4715,85 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **get_storage_bucket_api_v1_storage_buckets_bucket_id_get**
+> StorageBucketResponse get_storage_bucket_api_v1_storage_buckets_bucket_id_get(bucket_id)
+
+Get Storage Bucket
+
+Get a specific storage bucket by ID
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.models.storage_bucket_response import StorageBucketResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    bucket_id = 'bucket_id_example' # str | 
+
+    try:
+        # Get Storage Bucket
+        api_response = api_instance.get_storage_bucket_api_v1_storage_buckets_bucket_id_get(bucket_id)
+        print("The response of DefaultApi->get_storage_bucket_api_v1_storage_buckets_bucket_id_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_storage_bucket_api_v1_storage_buckets_bucket_id_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **bucket_id** | **str**|  | 
+
+### Return type
+
+[**StorageBucketResponse**](StorageBucketResponse.md)
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **get_usage_reports_api_v1_reports_usage_get**
 > object get_usage_reports_api_v1_reports_usage_get(days=days)
 
@@ -3763,6 +4843,145 @@ Name | Type | Description  | Notes
 ### Return type
 
 **object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_usage_summary_api_v1_quota_summary_organization_id_get**
+> object get_usage_summary_api_v1_quota_summary_organization_id_get(organization_id)
+
+Get Usage Summary
+
+Get detailed GPU usage summary for current user
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+
+    try:
+        # Get Usage Summary
+        api_response = api_instance.get_usage_summary_api_v1_quota_summary_organization_id_get(organization_id)
+        print("The response of DefaultApi->get_usage_summary_api_v1_quota_summary_organization_id_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_usage_summary_api_v1_quota_summary_organization_id_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get**
+> UserQuotaResponse get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get(organization_id, user_id)
+
+Get User Quota
+
+Get quota for a specific user
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.user_quota_response import UserQuotaResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    user_id = 'user_id_example' # str | 
+
+    try:
+        # Get User Quota
+        api_response = api_instance.get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get(organization_id, user_id)
+        print("The response of DefaultApi->get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **user_id** | **str**|  | 
+
+### Return type
+
+[**UserQuotaResponse**](UserQuotaResponse.md)
 
 ### Authorization
 
@@ -3932,7 +5151,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **launch_skypilot_cluster_api_v1_skypilot_launch_post**
-> LaunchClusterResponse launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template)
+> LaunchClusterResponse launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template, storage_bucket_ids=storage_bucket_ids)
 
 Launch Skypilot Cluster
 
@@ -3983,10 +5202,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     jupyter_port = 56 # int |  (optional)
     vscode_port = 56 # int |  (optional)
     template = 'template_example' # str |  (optional)
+    storage_bucket_ids = 'storage_bucket_ids_example' # str |  (optional)
 
     try:
         # Launch Skypilot Cluster
-        api_response = api_instance.launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template)
+        api_response = api_instance.launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template, storage_bucket_ids=storage_bucket_ids)
         print("The response of DefaultApi->launch_skypilot_cluster_api_v1_skypilot_launch_post:\n")
         pprint(api_response)
     except Exception as e:
@@ -4017,6 +5237,7 @@ Name | Type | Description  | Notes
  **jupyter_port** | **int**|  | [optional] 
  **vscode_port** | **int**|  | [optional] 
  **template** | **str**|  | [optional] 
+ **storage_bucket_ids** | **str**|  | [optional] 
 
 ### Return type
 
@@ -4523,6 +5744,87 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **list_storage_buckets_api_v1_storage_buckets_get**
+> StorageBucketListResponse list_storage_buckets_api_v1_storage_buckets_get(skip=skip, limit=limit)
+
+List Storage Buckets
+
+List all storage buckets for the current organization
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.models.storage_bucket_list_response import StorageBucketListResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    skip = 0 # int |  (optional) (default to 0)
+    limit = 100 # int |  (optional) (default to 100)
+
+    try:
+        # List Storage Buckets
+        api_response = api_instance.list_storage_buckets_api_v1_storage_buckets_get(skip=skip, limit=limit)
+        print("The response of DefaultApi->list_storage_buckets_api_v1_storage_buckets_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->list_storage_buckets_api_v1_storage_buckets_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **skip** | **int**|  | [optional] [default to 0]
+ **limit** | **int**|  | [optional] [default to 100]
+
+### Return type
+
+[**StorageBucketListResponse**](StorageBucketListResponse.md)
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **logout_api_v1_auth_logout_get**
 > object logout_api_v1_auth_logout_get()
 
@@ -4530,6 +5832,7 @@ Logout
 
 ### Example
 
+* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -4542,6 +5845,15 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -4569,7 +5881,7 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
-No authorization required
+[HTTPBearer](../README.md#HTTPBearer)
 
 ### HTTP request headers
 
@@ -4584,12 +5896,82 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **refresh_session_api_v1_auth_refresh_post**
-> object refresh_session_api_v1_auth_refresh_post()
+# **poll_cli_authorization_api_v1_auth_cli_poll_post**
+> object poll_cli_authorization_api_v1_auth_cli_poll_post(body_poll_cli_authorization_api_v1_auth_cli_poll_post)
 
-Refresh Session
+Poll Cli Authorization
 
-Force refresh the WorkOS session to get updated user info
+Poll for the completion of the CLI authorization flow.
+Returns the API key if authorization is complete.
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.body_poll_cli_authorization_api_v1_auth_cli_poll_post import BodyPollCliAuthorizationApiV1AuthCliPollPost
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    body_poll_cli_authorization_api_v1_auth_cli_poll_post = openapi_client.BodyPollCliAuthorizationApiV1AuthCliPollPost() # BodyPollCliAuthorizationApiV1AuthCliPollPost | 
+
+    try:
+        # Poll Cli Authorization
+        api_response = api_instance.poll_cli_authorization_api_v1_auth_cli_poll_post(body_poll_cli_authorization_api_v1_auth_cli_poll_post)
+        print("The response of DefaultApi->poll_cli_authorization_api_v1_auth_cli_poll_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->poll_cli_authorization_api_v1_auth_cli_poll_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **body_poll_cli_authorization_api_v1_auth_cli_poll_post** | [**BodyPollCliAuthorizationApiV1AuthCliPollPost**](BodyPollCliAuthorizationApiV1AuthCliPollPost.md)|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post**
+> object populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post(organization_id)
+
+Populate User Quotas Endpoint
+
+Populate user quotas for all users in an organization
 
 ### Example
 
@@ -4605,6 +5987,152 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+
+    try:
+        # Populate User Quotas Endpoint
+        api_response = api_instance.populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post(organization_id)
+        print("The response of DefaultApi->populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post**
+> object refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post(organization_id)
+
+Refresh Quota Periods Endpoint
+
+Refresh quota periods for all users in an organization
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+
+    try:
+        # Refresh Quota Periods Endpoint
+        api_response = api_instance.refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post(organization_id)
+        print("The response of DefaultApi->refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->refresh_quota_periods_endpoint_api_v1_quota_organization_organization_id_refresh_quota_periods_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **refresh_session_api_v1_auth_refresh_post**
+> object refresh_session_api_v1_auth_refresh_post()
+
+Refresh Session
+
+Force refresh the session to get updated user info
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -4632,7 +6160,7 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
-No authorization required
+[HTTPBearer](../README.md#HTTPBearer)
 
 ### HTTP request headers
 
@@ -5771,6 +7299,77 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **start_cli_authorization_api_v1_auth_cli_start_post**
+> object start_cli_authorization_api_v1_auth_cli_start_post(body_start_cli_authorization_api_v1_auth_cli_start_post=body_start_cli_authorization_api_v1_auth_cli_start_post)
+
+Start Cli Authorization
+
+Start the CLI authorization flow.
+If an API key is provided and valid, return success.
+Otherwise, create a session and provide a URL for web authorization.
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.body_start_cli_authorization_api_v1_auth_cli_start_post import BodyStartCliAuthorizationApiV1AuthCliStartPost
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    body_start_cli_authorization_api_v1_auth_cli_start_post = openapi_client.BodyStartCliAuthorizationApiV1AuthCliStartPost() # BodyStartCliAuthorizationApiV1AuthCliStartPost |  (optional)
+
+    try:
+        # Start Cli Authorization
+        api_response = api_instance.start_cli_authorization_api_v1_auth_cli_start_post(body_start_cli_authorization_api_v1_auth_cli_start_post=body_start_cli_authorization_api_v1_auth_cli_start_post)
+        print("The response of DefaultApi->start_cli_authorization_api_v1_auth_cli_start_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->start_cli_authorization_api_v1_auth_cli_start_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **body_start_cli_authorization_api_v1_auth_cli_start_post** | [**BodyStartCliAuthorizationApiV1AuthCliStartPost**](BodyStartCliAuthorizationApiV1AuthCliStartPost.md)|  | [optional] 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **start_web_ssh_session_api_v1_skypilot_ssh_session_cluster_name_get**
 > object start_web_ssh_session_api_v1_skypilot_ssh_session_cluster_name_get(cluster_name)
 
@@ -6183,6 +7782,69 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post**
+> object sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post()
+
+Sync Usage From Cost Report
+
+Sync GPU usage from SkyPilot cost report
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+
+    try:
+        # Sync Usage From Cost Report
+        api_response = api_instance.sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post()
+        print("The response of DefaultApi->sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->sync_usage_from_cost_report_api_v1_quota_sync_from_cost_report_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **terminal_connect_api_v1_terminal_get**
 > str terminal_connect_api_v1_terminal_get(cluster_name)
 
@@ -6543,6 +8205,234 @@ Name | Type | Description  | Notes
 ### Return type
 
 **object**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_organization_quota_api_v1_quota_organization_organization_id_put**
+> OrganizationQuotaResponse update_organization_quota_api_v1_quota_organization_organization_id_put(organization_id, update_quota_request)
+
+Update Organization Quota
+
+Update organization quota per user
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.organization_quota_response import OrganizationQuotaResponse
+from openapi_client.models.update_quota_request import UpdateQuotaRequest
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    update_quota_request = openapi_client.UpdateQuotaRequest() # UpdateQuotaRequest | 
+
+    try:
+        # Update Organization Quota
+        api_response = api_instance.update_organization_quota_api_v1_quota_organization_organization_id_put(organization_id, update_quota_request)
+        print("The response of DefaultApi->update_organization_quota_api_v1_quota_organization_organization_id_put:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->update_organization_quota_api_v1_quota_organization_organization_id_put: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **update_quota_request** | [**UpdateQuotaRequest**](UpdateQuotaRequest.md)|  | 
+
+### Return type
+
+[**OrganizationQuotaResponse**](OrganizationQuotaResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_storage_bucket_api_v1_storage_buckets_bucket_id_put**
+> StorageBucketResponse update_storage_bucket_api_v1_storage_buckets_bucket_id_put(bucket_id, update_storage_bucket_request)
+
+Update Storage Bucket
+
+Update a storage bucket
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.models.storage_bucket_response import StorageBucketResponse
+from openapi_client.models.update_storage_bucket_request import UpdateStorageBucketRequest
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    bucket_id = 'bucket_id_example' # str | 
+    update_storage_bucket_request = openapi_client.UpdateStorageBucketRequest() # UpdateStorageBucketRequest | 
+
+    try:
+        # Update Storage Bucket
+        api_response = api_instance.update_storage_bucket_api_v1_storage_buckets_bucket_id_put(bucket_id, update_storage_bucket_request)
+        print("The response of DefaultApi->update_storage_bucket_api_v1_storage_buckets_bucket_id_put:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->update_storage_bucket_api_v1_storage_buckets_bucket_id_put: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **bucket_id** | **str**|  | 
+ **update_storage_bucket_request** | [**UpdateStorageBucketRequest**](UpdateStorageBucketRequest.md)|  | 
+
+### Return type
+
+[**StorageBucketResponse**](StorageBucketResponse.md)
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put**
+> UserQuotaResponse update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put(organization_id, user_id, update_user_quota_request)
+
+Update User Quota Endpoint
+
+Update quota for a specific user
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.update_user_quota_request import UpdateUserQuotaRequest
+from openapi_client.models.user_quota_response import UserQuotaResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    organization_id = 'organization_id_example' # str | 
+    user_id = 'user_id_example' # str | 
+    update_user_quota_request = openapi_client.UpdateUserQuotaRequest() # UpdateUserQuotaRequest | 
+
+    try:
+        # Update User Quota Endpoint
+        api_response = api_instance.update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put(organization_id, user_id, update_user_quota_request)
+        print("The response of DefaultApi->update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **organization_id** | **str**|  | 
+ **user_id** | **str**|  | 
+ **update_user_quota_request** | [**UpdateUserQuotaRequest**](UpdateUserQuotaRequest.md)|  | 
+
+### Return type
+
+[**UserQuotaResponse**](UserQuotaResponse.md)
 
 ### Authorization
 
