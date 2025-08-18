@@ -113,13 +113,13 @@ async def auth_callback(request: Request, code: str):
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    request: Request, response: Response, user=Depends(get_current_user)
+    request: Request, response: Response, user=Depends(get_user_or_api_key)
 ):
     return UserResponse(
         id=user["id"],
-        email=user["email"],
-        first_name=user["first_name"],
-        last_name=user["last_name"],
+        email=user.get("email", ""),
+        first_name=user.get("first_name", ""),
+        last_name=user.get("last_name", ""),
     )
 
 
