@@ -18,6 +18,7 @@ app.add_middleware(
 
 # Import and include routers
 from auth.routes import router as auth_router
+from auth.cli import router as auth_cli_router
 from admin.routes import router as admin_router
 from clusters.routes import router as clusters_router
 from skypilot.routes import router as skypilot_router
@@ -30,6 +31,7 @@ from storage_buckets.routes import router as storage_buckets_router
 
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=api_v1_prefix)
+app.include_router(auth_cli_router, prefix=api_v1_prefix)
 app.include_router(admin_router, prefix=api_v1_prefix)
 app.include_router(clusters_router, prefix=api_v1_prefix)
 app.include_router(skypilot_router, prefix=api_v1_prefix)
