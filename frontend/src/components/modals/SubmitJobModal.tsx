@@ -154,7 +154,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     <Modal open={open} onClose={onClose}>
       <ModalDialog
         sx={{
-          maxWidth: 800,
+          maxWidth: 1000,
+          width: "90vw",
           maxHeight: "90vh",
           overflow: "hidden",
           display: "flex",
