@@ -12,6 +12,7 @@ from skypilot.azure_utils import (
 from utils.file_utils import (
     load_ssh_node_info,
     load_cluster_platforms,
+    get_cluster_user_info,
 )
 from clusters.utils import (
     list_cluster_names_from_db,
@@ -32,6 +33,11 @@ async def get_node_pools(request: Request, response: Response):
     - SkyPilot status from /skypilot/status
     """
     try:
+        # Get current user
+        from auth.utils import get_current_user
+
+        user = get_current_user(request, response)
+
         # Initialize response structure
         response_data = {
             "node_pools": [],
@@ -56,15 +62,31 @@ async def get_node_pools(request: Request, response: Response):
             skyPilotStatus = get_skypilot_status()
             platforms = load_cluster_platforms()
 
-            # Count all cloud clusters (non-SSH clusters)
+            # Count all cloud clusters (non-SSH clusters) that belong to the current user
             cloud_clusters = []
             for cluster in skyPilotStatus:
                 cluster_name = cluster.get("name", "")
                 platform_info = platforms.get(cluster_name, {})
+
+                # Check if this is a cloud cluster
                 if isinstance(platform_info, dict) and platform_info.get(
                     "platform"
                 ) in ["runpod", "azure"]:
-                    cloud_clusters.append(cluster)
+                    # Get user info for this cluster
+                    from utils.file_utils import get_cluster_user_info
+
+                    user_info = get_cluster_user_info(cluster_name)
+
+                    # Skip clusters without user info (they might be from before user tracking was added)
+                    if not user_info or not user_info.get("id"):
+                        continue
+
+                    # Only include clusters that belong to the current user and organization
+                    if (
+                        user_info.get("id") == user["id"]
+                        and user_info.get("organization_id") == user["organization_id"]
+                    ):
+                        cloud_clusters.append(cluster)
 
             # Get total max instances from all cloud providers
             total_max_instances = 0
@@ -119,7 +141,7 @@ async def get_node_pools(request: Request, response: Response):
                 azure_config_data = load_azure_config()
                 if azure_config_data.get("configs"):
                     for config_key, config in azure_config_data["configs"].items():
-                        # Get current Azure instances for this config
+                        # Get current Azure instances for this config (filtered by user)
                         azure_instances = 0
                         for cluster in skyPilotStatus:
                             cluster_name = cluster.get("name", "")
@@ -128,7 +150,20 @@ async def get_node_pools(request: Request, response: Response):
                                 isinstance(platform_info, dict)
                                 and platform_info.get("platform") == "azure"
                             ):
-                                azure_instances += 1
+                                # Get user info for this cluster
+                                user_info = get_cluster_user_info(cluster_name)
+
+                                # Skip clusters without user info (they might be from before user tracking was added)
+                                if not user_info or not user_info.get("id"):
+                                    continue
+
+                                # Only count clusters that belong to the current user and organization
+                                if (
+                                    user_info.get("id") == user["id"]
+                                    and user_info.get("organization_id")
+                                    == user["organization_id"]
+                                ):
+                                    azure_instances += 1
 
                         node_pools.append(
                             {
@@ -169,7 +204,7 @@ async def get_node_pools(request: Request, response: Response):
                 runpod_config_data = load_runpod_config()
                 if runpod_config_data.get("configs"):
                     for config_key, config in runpod_config_data["configs"].items():
-                        # Get current RunPod instances for this config
+                        # Get current RunPod instances for this config (filtered by user)
                         runpod_instances = 0
                         for cluster in skyPilotStatus:
                             cluster_name = cluster.get("name", "")
@@ -178,7 +213,20 @@ async def get_node_pools(request: Request, response: Response):
                                 isinstance(platform_info, dict)
                                 and platform_info.get("platform") == "runpod"
                             ):
-                                runpod_instances += 1
+                                # Get user info for this cluster
+                                user_info = get_cluster_user_info(cluster_name)
+
+                                # Skip clusters without user info (they might be from before user tracking was added)
+                                if not user_info or not user_info.get("id"):
+                                    continue
+
+                                # Only count clusters that belong to the current user and organization
+                                if (
+                                    user_info.get("id") == user["id"]
+                                    and user_info.get("organization_id")
+                                    == user["organization_id"]
+                                ):
+                                    runpod_instances += 1
 
                         node_pools.append(
                             {

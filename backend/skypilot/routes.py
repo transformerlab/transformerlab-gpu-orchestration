@@ -1102,6 +1102,9 @@ async def test_azure_connection_route(
 async def get_azure_instances(request: Request, response: Response):
     """Get current Azure instance count and limits"""
     try:
+        # Get current user
+        user = get_current_user(request, response)
+
         # Get current configuration
         config = get_current_azure_config()
 
@@ -1115,7 +1118,23 @@ async def get_azure_instances(request: Request, response: Response):
             if platforms.get(cluster.get("name", "")) == "azure"
         ]
 
-        current_count = len(azure_clusters)
+        # Filter clusters by current user and organization
+        user_azure_clusters = []
+        for cluster in azure_clusters:
+            user_info = get_cluster_user_info(cluster.get("name", ""))
+
+            # Skip clusters without user info (they might be from before user tracking was added)
+            if not user_info or not user_info.get("id"):
+                continue
+
+            # Only include clusters that belong to the current user and organization
+            if (
+                user_info.get("id") == user["id"]
+                and user_info.get("organization_id") == user["organization_id"]
+            ):
+                user_azure_clusters.append(cluster)
+
+        current_count = len(user_azure_clusters)
         max_instances = config.get("max_instances", 0) if config else 0
 
         return {
@@ -1392,6 +1411,9 @@ async def run_sky_check_runpod_route(request: Request, response: Response):
 async def get_runpod_instances(request: Request, response: Response):
     """Get current RunPod instance count and limits"""
     try:
+        # Get current user
+        user = get_current_user(request, response)
+
         # Get current configuration
         config = get_current_runpod_config()
 
@@ -1404,7 +1426,23 @@ async def get_runpod_instances(request: Request, response: Response):
             if platforms.get(cluster.get("name", ""))["platform"] == "runpod"
         ]
 
-        current_count = len(runpod_clusters)
+        # Filter clusters by current user and organization
+        user_runpod_clusters = []
+        for cluster in runpod_clusters:
+            user_info = get_cluster_user_info(cluster.get("name", ""))
+
+            # Skip clusters without user info (they might be from before user tracking was added)
+            if not user_info or not user_info.get("id"):
+                continue
+
+            # Only include clusters that belong to the current user and organization
+            if (
+                user_info.get("id") == user["id"]
+                and user_info.get("organization_id") == user["organization_id"]
+            ):
+                user_runpod_clusters.append(cluster)
+
+        current_count = len(user_runpod_clusters)
         max_instances = config.get("max_instances", 0) if config else 0
 
         return {
