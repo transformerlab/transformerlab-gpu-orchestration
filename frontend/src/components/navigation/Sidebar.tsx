@@ -7,6 +7,7 @@ import ListItem from "@mui/joy/ListItem";
 import ListItemButton from "@mui/joy/ListItemButton";
 import ListItemDecorator from "@mui/joy/ListItemDecorator";
 import ListItemContent from "@mui/joy/ListItemContent";
+import ListDivider from "@mui/joy/ListDivider";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -76,43 +77,47 @@ const sidebarItems = [
     path: "/dashboard/costs",
   },
   {
-    icon: <ClockIcon />,
-    content: "Quota",
-    path: "/dashboard/quota",
-  },
-  {
     icon: <ChartNoAxesColumnIncreasingIcon />,
     content: "Reports",
     path: "/dashboard/reports",
   },
 ];
 
-const adminSubItems = [
+const adminSubItemsGroup1 = [
   { content: "Users", section: "users", path: "/dashboard/admin/users" },
-  {
-    content: "API Keys",
-    section: "api-keys",
-    path: "/dashboard/admin/api-keys",
-  },
   { content: "Teams", section: "teams", path: "/dashboard/admin/teams" },
   {
     content: "Quotas",
     section: "org-quota",
     path: "/dashboard/admin/quota",
   },
+];
+
+const adminSubItemsGroup2 = [
   {
     content: "Node Pools",
     path: "/dashboard/admin/pools",
   },
   {
-    content: "SSH Identity Files",
-    path: "/dashboard/admin/identity",
-  },
-  {
     content: "Object Storage",
     path: "/dashboard/admin/object-storage",
   },
-  { content: "Volumes", path: "/dashboard/admin/volumes" },
+  {
+    content: "Shared Volumes",
+    path: "/dashboard/admin/volumes",
+  },
+  {
+    content: "SSH Identity Files",
+    path: "/dashboard/admin/identity",
+  },
+];
+
+const adminSubItemsRest = [
+  {
+    content: "API Keys",
+    section: "api-keys",
+    path: "/dashboard/admin/api-keys",
+  },
   {
     content: "Settings",
     path: "/dashboard/admin/settings",
@@ -200,8 +205,32 @@ export default function Sidebar() {
             </ListItemButton>
             {adminExpanded && (
               <List sx={{ "--List-gap": "2px" }}>
-                {adminSubItems.map((item, index) => (
-                  <ListItem key={`admin-${index}`}>
+                {adminSubItemsGroup1.map((item, index) => (
+                  <ListItem key={`admin-group1-${index}`}>
+                    <ListItemButton
+                      selected={location.pathname === item.path}
+                      onClick={() => handleNavigation(item.path)}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemContent>{item.content}</ListItemContent>
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+                <ListDivider sx={{ my: 0.5, mx: 3 }} />
+                {adminSubItemsGroup2.map((item, index) => (
+                  <ListItem key={`admin-group2-${index}`}>
+                    <ListItemButton
+                      selected={location.pathname === item.path}
+                      onClick={() => handleNavigation(item.path)}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemContent>{item.content}</ListItemContent>
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+                <ListDivider sx={{ my: 0.5, mx: 3 }} />
+                {adminSubItemsRest.map((item, index) => (
+                  <ListItem key={`admin-rest-${index}`}>
                     <ListItemButton
                       selected={location.pathname === item.path}
                       onClick={() => handleNavigation(item.path)}
