@@ -44,8 +44,9 @@ app.include_router(storage_buckets_router, prefix=api_v1_prefix)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "frontend", "build"
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "build"
 )
+print(f"🔗 Frontend build path: {frontend_build_path}")
 if os.path.exists(frontend_build_path):
     app.mount(
         "/assets",
