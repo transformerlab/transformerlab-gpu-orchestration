@@ -493,434 +493,275 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     );
   }
 
-  if (myClusters.length === 0) {
-    if (showFakeData) {
-      // Show fake jobs when no real clusters are available
-      const fakeJobs = generateFakeJobs();
-      const fakeCluster = {
-        cluster_name: "sample-cluster",
-        status: "UP",
-        resources_str: "2x NVIDIA A100, 32 vCPUs",
-        launched_at: Math.floor(Date.now() / 1000) - 3600,
-        last_use: "2 hours ago",
-        autostop: 60,
-        to_down: false,
-        jobs: fakeJobs,
-        jobsLoading: false,
-      };
-
+  // Render the main content
+  const renderMainContent = () => {
+    if (myClusters.length === 0) {
       return (
-        <Box>
-          <Box sx={{ mb: 4 }}>
-            <Typography level="h4" sx={{ mb: 2 }}>
-              {fakeCluster.cluster_name}
-            </Typography>
-
-            <Table sx={{ minWidth: 650, mb: 2 }}>
-              <thead>
-                <tr>
-                  <th>Job ID</th>
-                  <th>Job Name</th>
-                  <th>Status</th>
-                  <th>Resources</th>
-                  <th>Submitted At</th>
-                  <th>Started At</th>
-                  <th>Ended At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fakeCluster.jobs.map((job) => (
-                  <tr key={job.job_id}>
-                    <td>
-                      <Typography level="body-sm" fontWeight="bold">
-                        {job.job_id}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">{job.job_name}</Typography>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        color={getJobStatusColor(job.status)}
-                        variant="soft"
-                      >
-                        {formatJobStatus(job.status)}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">{job.resources}</Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.submitted_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.start_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.end_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                        <Button size="sm" variant="outlined" disabled>
-                          View Logs
-                        </Button>
-                      </Box>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Box>
+        <Box sx={{ textAlign: "center", mt: 4, mb: 6 }}>
+          <Typography level="h4" color="neutral">
+            No active instances found
+          </Typography>
+          <Typography level="body-md" color="neutral" sx={{ mt: 1 }}>
+            Launch an instance from the Node Pools page to see jobs here.
+          </Typography>
         </Box>
       );
     }
 
     return (
-      <Box sx={{ textAlign: "center", mt: 4 }}>
-        <Typography level="h4" color="neutral">
-          No active clusters found
+      <>
+        <Typography level="h3" sx={{ mb: 3 }}>
+          Dedicated Instances
         </Typography>
-        <Typography level="body-md" color="neutral" sx={{ mt: 1 }}>
-          Launch a cluster from the Interactive Development Environment to see
-          jobs here.
-        </Typography>
-      </Box>
-    );
-  }
 
-  return (
-    <Box>
-      <Typography level="h3" sx={{ mb: 3 }}>
-        Dedicated Instances
-      </Typography>
+        {error && (
+          <Box sx={{ mb: 2, p: 2, bgcolor: "danger.50", borderRadius: 1 }}>
+            <Typography color="danger">{error}</Typography>
+          </Box>
+        )}
 
-      {error && (
-        <Box sx={{ mb: 2, p: 2, bgcolor: "danger.50", borderRadius: 1 }}>
-          <Typography color="danger">{error}</Typography>
-        </Box>
-      )}
-
-      {clustersWithJobs.map((cluster) => (
-        <Box key={cluster.cluster_name} sx={{ mb: 4 }}>
-          <Typography level="h4" sx={{ mb: 2 }}>
-            {cluster.cluster_name}
-          </Typography>
-
-          {cluster.jobsLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-              <CircularProgress />
-            </Box>
-          ) : cluster.jobsError ? (
-            <Typography color="danger" sx={{ mb: 2 }}>
-              {cluster.jobsError}
+        {clustersWithJobs.map((cluster) => (
+          <Box key={cluster.cluster_name} sx={{ mb: 4 }}>
+            <Typography level="h4" sx={{ mb: 2 }}>
+              {cluster.cluster_name}
             </Typography>
-          ) : cluster.jobs.length === 0 ? (
-            <Typography color="neutral" sx={{ mb: 2 }}>
-              No jobs found for this cluster
-            </Typography>
-          ) : (
-            <Table sx={{ minWidth: 650, mb: 2 }}>
-              <thead>
-                <tr>
-                  <th>Job ID</th>
-                  <th>Job Name</th>
-                  <th>Status</th>
-                  <th>Resources</th>
-                  <th>Submitted At</th>
-                  <th>Started At</th>
-                  <th>Ended At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cluster.jobs.map((job) => (
-                  <tr key={job.job_id}>
-                    <td>
-                      <Typography level="body-sm" fontWeight="bold">
-                        {job.job_id}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">{job.job_name}</Typography>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        color={getJobStatusColor(job.status)}
-                        variant="soft"
-                      >
-                        {formatJobStatus(job.status)}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">{job.resources}</Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.submitted_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.start_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.end_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                        <Button
+
+            {cluster.jobsLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                <CircularProgress />
+              </Box>
+            ) : cluster.jobsError ? (
+              <Typography color="danger" sx={{ mb: 2 }}>
+                {cluster.jobsError}
+              </Typography>
+            ) : cluster.jobs.length === 0 ? (
+              <Typography color="neutral" sx={{ mb: 2 }}>
+                No jobs found for this cluster
+              </Typography>
+            ) : (
+              <Table sx={{ minWidth: 650, mb: 2 }}>
+                <thead>
+                  <tr>
+                    <th>Job ID</th>
+                    <th>Job Name</th>
+                    <th>Status</th>
+                    <th>Resources</th>
+                    <th>Submitted At</th>
+                    <th>Started At</th>
+                    <th>Ended At</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cluster.jobs.map((job) => (
+                    <tr key={job.job_id}>
+                      <td>
+                        <Typography level="body-sm" fontWeight="bold">
+                          {job.job_id}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">{job.job_name}</Typography>
+                      </td>
+                      <td>
+                        <Chip
                           size="sm"
-                          variant="outlined"
-                          onClick={() =>
-                            fetchJobLogs(cluster.cluster_name, job.job_id)
-                          }
+                          color={getJobStatusColor(job.status)}
+                          variant="soft"
                         >
-                          View Logs
-                        </Button>
-                        {/* Show cancel button only for running jobs */}
-                        {(job.status === "JobStatus.RUNNING" ||
-                          job.status === "JobStatus.PENDING" ||
-                          job.status === "JobStatus.SETTING_UP") && (
+                          {formatJobStatus(job.status)}
+                        </Chip>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">{job.resources}</Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {formatTimestamp(job.submitted_at)}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {formatTimestamp(job.start_at)}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography level="body-sm">
+                          {formatTimestamp(job.end_at)}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                           <Button
                             size="sm"
                             variant="outlined"
-                            color="danger"
-                            startDecorator={<X size={14} />}
                             onClick={() =>
-                              cancelJob(cluster.cluster_name, job.job_id)
-                            }
-                            loading={
-                              cancelLoading[
-                                `${cluster.cluster_name}_${job.job_id}`
-                              ]
-                            }
-                            disabled={
-                              cancelLoading[
-                                `${cluster.cluster_name}_${job.job_id}`
-                              ]
+                              fetchJobLogs(cluster.cluster_name, job.job_id)
                             }
                           >
-                            Cancel
+                            View Logs
                           </Button>
-                        )}
-                        {/* Show buttons for Jupyter and VSCode jobs */}
-                        {job.status === "JobStatus.RUNNING" &&
-                          job.job_name &&
-                          (() => {
-                            // Check for Jupyter jobs
-                            if (
-                              job.job_name.includes("-jupyter-") ||
-                              job.job_name.toLowerCase().includes("jupyter") ||
-                              job.job_name.startsWith("jupyter")
-                            ) {
-                              const jobKey = `${cluster.cluster_name}_${job.job_id}`;
-                              const hasPortForward =
-                                jobsWithPortForward.has(jobKey);
-                              const isLoading = portForwardLoading[jobKey];
+                          {/* Show cancel button only for running jobs */}
+                          {(job.status === "JobStatus.RUNNING" ||
+                            job.status === "JobStatus.PENDING" ||
+                            job.status === "JobStatus.SETTING_UP") && (
+                            <Button
+                              size="sm"
+                              variant="outlined"
+                              color="danger"
+                              startDecorator={<X size={14} />}
+                              onClick={() =>
+                                cancelJob(cluster.cluster_name, job.job_id)
+                              }
+                              loading={
+                                cancelLoading[
+                                  `${cluster.cluster_name}_${job.job_id}`
+                                ]
+                              }
+                              disabled={
+                                cancelLoading[
+                                  `${cluster.cluster_name}_${job.job_id}`
+                                ]
+                              }
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                          {/* Show buttons for Jupyter and VSCode jobs */}
+                          {job.status === "JobStatus.RUNNING" &&
+                            job.job_name &&
+                            (() => {
+                              // Check for Jupyter jobs
+                              if (
+                                job.job_name.includes("-jupyter-") ||
+                                job.job_name
+                                  .toLowerCase()
+                                  .includes("jupyter") ||
+                                job.job_name.startsWith("jupyter")
+                              ) {
+                                const jobKey = `${cluster.cluster_name}_${job.job_id}`;
+                                const hasPortForward =
+                                  jobsWithPortForward.has(jobKey);
+                                const isLoading = portForwardLoading[jobKey];
 
-                              if (hasPortForward) {
-                                const portMatch =
-                                  job.job_name.match(/port(\d+)/);
-                                const port = portMatch
-                                  ? parseInt(portMatch[1])
-                                  : 8888;
-                                const localhostUrl = `http://localhost:${port}`;
+                                if (hasPortForward) {
+                                  const portMatch =
+                                    job.job_name.match(/port(\d+)/);
+                                  const port = portMatch
+                                    ? parseInt(portMatch[1])
+                                    : 8888;
+                                  const localhostUrl = `http://localhost:${port}`;
 
-                                return (
-                                  <Button
-                                    size="sm"
-                                    variant="soft"
-                                    color="success"
-                                    onClick={() => {
-                                      window.open(localhostUrl, "_blank");
-                                    }}
-                                  >
-                                    ✅ Jupyter Access Active
-                                  </Button>
-                                );
-                              } else {
+                                  return (
+                                    <Button
+                                      size="sm"
+                                      variant="soft"
+                                      color="success"
+                                      onClick={() => {
+                                        window.open(localhostUrl, "_blank");
+                                      }}
+                                    >
+                                      ✅ Jupyter Access Active
+                                    </Button>
+                                  );
+                                } else {
+                                  return (
+                                    <Button
+                                      size="sm"
+                                      variant="outlined"
+                                      color="primary"
+                                      loading={isLoading}
+                                      disabled={isLoading}
+                                      onClick={() => {
+                                        const portMatch =
+                                          job.job_name.match(/port(\d+)/);
+                                        const port = portMatch
+                                          ? parseInt(portMatch[1])
+                                          : 8888;
+                                        setupJobPortForward(
+                                          cluster.cluster_name,
+                                          job.job_id,
+                                          "jupyter",
+                                          port,
+                                          undefined
+                                        );
+                                      }}
+                                    >
+                                      Access on Localhost
+                                    </Button>
+                                  );
+                                }
+                              }
+
+                              // Check for VSCode jobs
+                              if (
+                                job.job_name.includes("-vscode-") ||
+                                job.job_name.toLowerCase().includes("vscode") ||
+                                job.job_name.startsWith("vscode")
+                              ) {
                                 return (
                                   <Button
                                     size="sm"
                                     variant="outlined"
                                     color="primary"
-                                    loading={isLoading}
-                                    disabled={isLoading}
                                     onClick={() => {
-                                      const portMatch =
-                                        job.job_name.match(/port(\d+)/);
-                                      const port = portMatch
-                                        ? parseInt(portMatch[1])
-                                        : 8888;
-                                      setupJobPortForward(
-                                        cluster.cluster_name,
-                                        job.job_id,
-                                        "jupyter",
-                                        port,
-                                        undefined
-                                      );
+                                      setVscodeModal({
+                                        open: true,
+                                        clusterName: cluster.cluster_name,
+                                        jobId: job.job_id,
+                                      });
                                     }}
                                   >
-                                    Access on Localhost
+                                    View VSCode Info
                                   </Button>
                                 );
                               }
-                            }
 
-                            // Check for VSCode jobs
-                            if (
-                              job.job_name.includes("-vscode-") ||
-                              job.job_name.toLowerCase().includes("vscode") ||
-                              job.job_name.startsWith("vscode")
-                            ) {
-                              return (
-                                <Button
-                                  size="sm"
-                                  variant="outlined"
-                                  color="primary"
-                                  onClick={() => {
-                                    setVscodeModal({
-                                      open: true,
-                                      clusterName: cluster.cluster_name,
-                                      jobId: job.job_id,
-                                    });
-                                  }}
-                                >
-                                  View VSCode Info
-                                </Button>
-                              );
-                            }
+                              return null;
+                            })()}
+                        </Box>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
 
-                            return null;
-                          })()}
-                      </Box>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-
-          {/* Job Logs Modal */}
-          {selectedJobId && selectedClusterName === cluster.cluster_name && (
-            <Box sx={{ mt: 2 }}>
-              <Typography level="title-sm" sx={{ mb: 1 }}>
-                Job {selectedJobId} Logs
-              </Typography>
-              {logsLoading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                <Textarea
-                  value={selectedJobLogs}
-                  readOnly
-                  minRows={5}
-                  maxRows={10}
-                  sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}
-                />
-              )}
-            </Box>
-          )}
-        </Box>
-      ))}
-
-      {/* Show fake jobs alongside real jobs if enabled */}
-      {showFakeData && (
-        <>
-          <Box sx={{ mb: 3, mt: 4 }}>
-            <Typography level="h3" sx={{ mb: 2 }}>
-              Sample Jobs Data
-            </Typography>
-            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              Additional sample jobs for demonstration purposes.
-            </Typography>
+            {/* Job Logs Modal */}
+            {selectedJobId && selectedClusterName === cluster.cluster_name && (
+              <Box sx={{ mt: 2 }}>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Job {selectedJobId} Logs
+                </Typography>
+                {logsLoading ? (
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", py: 2 }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <Textarea
+                    value={selectedJobLogs}
+                    readOnly
+                    minRows={5}
+                    maxRows={10}
+                    sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}
+                  />
+                )}
+              </Box>
+            )}
           </Box>
+        ))}
+      </>
+    );
+  };
 
-          <Box sx={{ mb: 4 }}>
-            <Typography level="h4" sx={{ mb: 2 }}>
-              sample-cluster
-            </Typography>
+  return (
+    <Box>
+      {/* Render main content (Dedicated Instances or No clusters message) */}
+      {renderMainContent()}
 
-            <Table sx={{ minWidth: 650, mb: 2 }}>
-              <thead>
-                <tr>
-                  <th>Job ID</th>
-                  <th>Job Name</th>
-                  <th>Status</th>
-                  <th>Resources</th>
-                  <th>Submitted At</th>
-                  <th>Started At</th>
-                  <th>Ended At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {generateFakeJobs().map((job) => (
-                  <tr key={job.job_id}>
-                    <td>
-                      <Typography level="body-sm" fontWeight="bold">
-                        {job.job_id}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">{job.job_name}</Typography>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        color={getJobStatusColor(job.status)}
-                        variant="soft"
-                      >
-                        {formatJobStatus(job.status)}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">{job.resources}</Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.submitted_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.start_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography level="body-sm">
-                        {formatTimestamp(job.end_at)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                        <Button size="sm" variant="outlined" disabled>
-                          View Logs
-                        </Button>
-                      </Box>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Box>
-        </>
-      )}
-
-      {/* Past Jobs Section */}
+      {/* Past Jobs Section - Always visible */}
       <Box sx={{ mt: 6 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
           <Typography level="h3">Past Jobs</Typography>
@@ -946,8 +787,8 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
               </Box>
             ) : pastJobClusters.length === 0 ? (
               <Typography color="neutral" sx={{ mb: 2 }}>
-                No past jobs found. Jobs from torn terminate clusters will
-                appear here.
+                No past jobs found. Jobs from terminated clusters will appear
+                here.
               </Typography>
             ) : (
               pastJobClusters.map((pastCluster) => (
@@ -1077,6 +918,81 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           </>
         )}
       </Box>
+
+      {/* Show fake jobs at the bottom - always visible when enabled */}
+      {showFakeData && (
+        <Box sx={{ mb: 4 }}>
+          <Typography level="h4" sx={{ mb: 1 }}>
+            sample-cluster
+          </Typography>
+          <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+            Sample data for demonstration purposes.
+          </Typography>
+
+          <Table sx={{ minWidth: 650, mb: 2 }}>
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Job Name</th>
+                <th>Status</th>
+                <th>Resources</th>
+                <th>Submitted At</th>
+                <th>Started At</th>
+                <th>Ended At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {generateFakeJobs().map((job) => (
+                <tr key={job.job_id}>
+                  <td>
+                    <Typography level="body-sm" fontWeight="bold">
+                      {job.job_id}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">{job.job_name}</Typography>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      color={getJobStatusColor(job.status)}
+                      variant="soft"
+                    >
+                      {formatJobStatus(job.status)}
+                    </Chip>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">{job.resources}</Typography>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">
+                      {formatTimestamp(job.submitted_at)}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">
+                      {formatTimestamp(job.start_at)}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Typography level="body-sm">
+                      {formatTimestamp(job.end_at)}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      <Button size="sm" variant="outlined" disabled>
+                        View Logs
+                      </Button>
+                    </Box>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Box>
+      )}
 
       {/* VSCode Info Modal */}
       <VSCodeInfoModal
