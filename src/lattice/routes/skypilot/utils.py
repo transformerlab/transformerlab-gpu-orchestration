@@ -152,7 +152,7 @@ def launch_cluster_with_skypilot(
 
             # Use node_pool_name for validation if provided, otherwise use cluster_name
             validation_name = node_pool_name if node_pool_name else cluster_name
-            
+
             if not is_ssh_cluster(validation_name):
                 raise HTTPException(
                     status_code=400,
@@ -427,6 +427,18 @@ def down_cluster_with_skypilot(cluster_name: str):
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
         request_id = sky.down(cluster_name=cluster_name)
+
+        # Clean up cluster platform metadata after successful down operation
+        try:
+            from lattice.utils.file_utils import remove_cluster_platform
+
+            remove_cluster_platform(cluster_name)
+            print(f"Cleaned up platform metadata for cluster: {cluster_name}")
+        except Exception as e:
+            print(
+                f"Warning: Failed to clean up platform metadata for cluster {cluster_name}: {e}"
+            )
+
         return request_id
     except Exception as e:
         raise HTTPException(
