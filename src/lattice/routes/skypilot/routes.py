@@ -40,6 +40,7 @@ from .utils import (
     fetch_and_parse_gpu_resources,
     cancel_job_with_skypilot,
     get_past_jobs,
+    run_sky_check_ssh,
 )
 from .port_forwarding import port_forward_manager
 from .runpod_utils import (
@@ -1421,6 +1422,24 @@ async def run_sky_check_runpod_route(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to run sky check runpod: {str(e)}"
+        )
+
+
+@router.get("/ssh/sky-check")
+async def run_sky_check_ssh_route(request: Request, response: Response):
+    """Run 'sky check ssh' to validate the SSH setup"""
+    try:
+        is_valid, output = run_sky_check_ssh()
+        return {
+            "valid": is_valid,
+            "output": output,
+            "message": "Sky check ssh completed successfully"
+            if is_valid
+            else "Sky check ssh failed",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to run sky check ssh: {str(e)}"
         )
 
 
