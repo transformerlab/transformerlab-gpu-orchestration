@@ -28,7 +28,9 @@ echo "✅ Backend dependencies installed"
 
 # Run database migrations
 echo "🗄️  Running database migrations..."
+cd src/lattice || exit
 alembic upgrade head
+cd ../.. || exit
 echo "✅ Database migrations completed"
 
 # Install kubectl
