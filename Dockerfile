@@ -75,7 +75,7 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # Copy setup script and run it
 COPY setup.sh ./
-COPY backend/ ./backend/
+COPY src/lattice/ ./src/lattice/
 COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
 
