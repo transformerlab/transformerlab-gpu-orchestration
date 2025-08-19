@@ -8,6 +8,7 @@ from fastapi import (
     Response,
     BackgroundTasks,
 )
+from werkzeug.utils import secure_filename
 from lattice.models import ClusterResponse, ClustersListResponse, SSHNode
 from .utils import (
     create_cluster_in_pools,
@@ -68,6 +69,7 @@ async def create_cluster(
         if memory_gb:
             resources["memory_gb"] = memory_gb
 
+    cluster_name = secure_filename(cluster_name)
     create_cluster_in_pools(
         cluster_name,
         user,
