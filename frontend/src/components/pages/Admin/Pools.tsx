@@ -416,7 +416,7 @@ const Pools: React.FC = () => {
                   if (hasAzureConfig) return;
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/azure-config?mode=add&poolName=New Azure Pool`
+                    `/dashboard/admin/azure-config?mode=add&poolName=new-azure-pool`
                   );
                 }}
               >
@@ -434,7 +434,7 @@ const Pools: React.FC = () => {
                   if (hasRunPodConfig) return;
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/runpod-config?mode=add&poolName=New RunPod Pool`
+                    `/dashboard/admin/runpod-config?mode=add&poolName=new-runpod-pool`
                   );
                 }}
               >
@@ -446,7 +446,7 @@ const Pools: React.FC = () => {
                 onClick={() => {
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/ssh-config?mode=add&poolName=New Node Pool`
+                    `/dashboard/admin/ssh-config?mode=add&poolName=new-node-pool`
                   );
                 }}
               >
