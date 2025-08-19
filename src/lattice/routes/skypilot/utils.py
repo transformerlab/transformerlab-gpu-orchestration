@@ -536,7 +536,7 @@ def save_cluster_jobs(cluster_name: str, jobs: list):
     """Save jobs from a cluster to a local file before tearing down."""
     try:
         # Create the lattice directory in ~/.sky if it doesn't exist
-        lattice_dir = Path.home() / ".sky" / "lattice"
+        lattice_dir = Path.home() / ".sky" / "lattice_data"
         jobs_dir = lattice_dir / "jobs"
         logs_dir = lattice_dir / "logs"
         jobs_dir.mkdir(parents=True, exist_ok=True)
@@ -620,7 +620,7 @@ def save_cluster_jobs(cluster_name: str, jobs: list):
 def get_past_jobs():
     """Retrieve all past jobs from saved files."""
     try:
-        lattice_dir = Path.home() / ".sky" / "lattice"
+        lattice_dir = Path.home() / ".sky" / "lattice_data"
         jobs_dir = lattice_dir / "jobs"
 
         if not jobs_dir.exists():

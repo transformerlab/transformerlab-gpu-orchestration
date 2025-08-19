@@ -753,7 +753,7 @@ async def get_past_job_logs(
         import os
 
         # Look for the log file in the saved logs directory
-        lattice_dir = Path.home() / ".sky" / "lattice"
+        lattice_dir = Path.home() / ".sky" / "lattice_data"
         logs_dir = lattice_dir / "logs"
 
         if not logs_dir.exists():
