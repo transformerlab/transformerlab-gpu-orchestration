@@ -78,6 +78,8 @@ echo "🔄 Activating Python virtual environment..."
 
 # RUN sky stuff for proper setup
 export PATH=".venv/bin:$PATH"
+which sky
+echo $PATH
 sky check
 
 echo "✅ Virtual environment activated"

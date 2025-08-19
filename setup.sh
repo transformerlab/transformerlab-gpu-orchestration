@@ -78,8 +78,8 @@ if [ -f .env ]; then
 fi
 
 # Now that we know the .env file exists, copy it exactly as is
-# to backend/.env and frontend/.env
-echo "📄 Copying .env to backend/.env and frontend/.env..."
+# to frontend/.env
+echo "📄 Copying .env to frontend/.env..."
 cp .env frontend/.env
 
 # Install frontend dependencies
