@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 # Load environment variables from .env file
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../lattice.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./lattice.db")
 
 engine = create_engine(DATABASE_URL)
 
