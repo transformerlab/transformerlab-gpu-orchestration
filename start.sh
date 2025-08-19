@@ -85,7 +85,7 @@ sky check
 echo "✅ Virtual environment activated"
 # Start the application with uvicorn instead of running main.py directly
 if [[ "$DEBUG" == "True" ]]; then
-    uvicorn main:app --host 0.0.0.0 --port "$PORT" --reload
+    uv run ./src/lattice/main.py --host 0.0.0.0 --port "$PORT" --reload
 else
-    uvicorn main:app --host 0.0.0.0 --port "$PORT"
+    uv run ./src/lattice/main.py --host 0.0.0.0 --port "$PORT"
 fi
