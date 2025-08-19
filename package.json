@@ -6,7 +6,7 @@
   "scripts": {
     "dev:backend": "source .venv/bin/activate && cd backend && python main.py",
     "dev:frontend": "cd frontend && npm start",
-    "unified": "npm run build && source .venv/bin/activate && python ./src/lattice/main.py",
+    "unified": "npm run build && uv run ./src/lattice/main.py",
     "install:all": "npm run install:backend && npm run install:frontend",
     "install:backend": "cd backend && source .venv/bin/activate && uv pip install .",
     "install:frontend": "cd frontend && npm install",
