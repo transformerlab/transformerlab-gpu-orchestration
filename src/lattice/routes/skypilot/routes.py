@@ -327,6 +327,7 @@ async def launch_skypilot_cluster(
     vscode_port: Optional[int] = Form(None),
     template: Optional[str] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
+    node_pool_name: Optional[str] = Form(None),
 ):
     try:
         file_mounts = None
@@ -402,6 +403,7 @@ async def launch_skypilot_cluster(
             vscode_port=vscode_port,
             disk_size=disk_size,
             storage_bucket_ids=parsed_storage_bucket_ids,
+            node_pool_name=node_pool_name,
         )
         # Record usage event for cluster launch and store user info
         try:
@@ -415,7 +417,11 @@ async def launch_skypilot_cluster(
             )
 
             # Store user info with cluster platform
-            platform = cloud or "unknown"
+            # For SSH clusters, use the node pool name as platform for easier mapping
+            if cloud == "ssh" and node_pool_name is not None:
+                platform = node_pool_name
+            else:
+                platform = cloud or "unknown"
             # Store both name and email, use email as unique identifier
             cluster_user_info = {
                 "name": user_info.get("first_name", ""),

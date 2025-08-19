@@ -127,6 +127,7 @@ def launch_cluster_with_skypilot(
     vscode_port: Optional[int] = None,
     disk_size: Optional[int] = None,
     storage_bucket_ids: Optional[list] = None,
+    node_pool_name: Optional[str] = None,
 ):
     try:
         # Handle RunPod setup
@@ -149,25 +150,28 @@ def launch_cluster_with_skypilot(
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
             from lattice.routes.clusters.utils import is_ssh_cluster
 
-            if not is_ssh_cluster(cluster_name):
+            # Use node_pool_name for validation if provided, otherwise use cluster_name
+            validation_name = node_pool_name if node_pool_name else cluster_name
+            
+            if not is_ssh_cluster(validation_name):
                 raise HTTPException(
                     status_code=400,
                     detail=(
-                        f"SSH cluster '{cluster_name}' not found. Create it in SSH Clusters first."
+                        f"SSH cluster '{validation_name}' not found. Create it in SSH Clusters first."
                     ),
                 )
             try:
                 print(
-                    f"[SkyPilot] Running: sky.client.sdk.ssh_up(infra={cluster_name})"
+                    f"[SkyPilot] Running: sky.client.sdk.ssh_up(infra={validation_name})"
                 )
-                request_id = sky.client.sdk.ssh_up(infra=cluster_name)
+                request_id = sky.client.sdk.ssh_up(infra=validation_name)
                 result = sky.get(request_id)
                 print(f"[SkyPilot][ssh up result]:\n{result}")
             except Exception as e:
                 print(f"[SkyPilot][ssh up error]: {str(e)}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to run sky ssh up for cluster '{cluster_name}': {str(e)}",
+                    detail=f"Failed to run sky ssh up for cluster '{validation_name}': {str(e)}",
                 )
 
         task = sky.Task(
