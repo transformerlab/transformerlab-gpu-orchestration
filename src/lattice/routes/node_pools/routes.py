@@ -12,6 +12,7 @@ from lattice.routes.skypilot.azure_utils import (
 from lattice.utils.file_utils import (
     load_ssh_node_info,
     load_cluster_platforms,
+    get_cluster_user_info,
 )
 from lattice.routes.clusters.utils import (
     list_cluster_names_from_db,
@@ -71,7 +72,6 @@ async def get_node_pools(
                     "platform"
                 ) in ["runpod", "azure"]:
                     # Get user info for this cluster
-                    from lattice.utils.file_utils import get_cluster_user_info
 
                     user_info = get_cluster_user_info(cluster_name)
 
@@ -262,6 +262,41 @@ async def get_node_pools(
                 for cluster_name in list_cluster_names_from_db():
                     cfg = get_cluster_config_from_db(cluster_name)
                     hosts_count = len(cfg.get("hosts", []))
+
+                    # Find active clusters that use this node pool as platform
+                    active_clusters = []
+                    ssh_instances_for_user = 0
+                    for cluster in skyPilotStatus:
+                        sky_cluster_name = cluster.get("name", "")
+                        platform_info = platforms.get(sky_cluster_name, {})
+
+                        # Check if this cluster uses this node pool as platform
+                        if (
+                            isinstance(platform_info, dict)
+                            and platform_info.get("platform") == cluster_name
+                        ):
+                            # Get user info for this cluster
+                            user_info = get_cluster_user_info(sky_cluster_name)
+
+                            # Skip clusters without user info
+                            if not user_info or not user_info.get("id"):
+                                continue
+
+                            # Only include clusters that belong to the current user and organization
+                            if (
+                                user_info.get("id") == user["id"]
+                                and user_info.get("organization_id")
+                                == user["organization_id"]
+                            ):
+                                active_clusters.append(
+                                    {
+                                        "cluster_name": sky_cluster_name,
+                                        "status": cluster.get("status"),
+                                        "user_info": user_info,
+                                    }
+                                )
+                                ssh_instances_for_user += 1
+
                     node_pools.append(
                         {
                             "name": cluster_name,
@@ -276,6 +311,8 @@ async def get_node_pools(
                                 "is_configured": True,
                                 "hosts": cfg.get("hosts", []),
                             },
+                            "active_clusters": active_clusters,
+                            "user_instances": ssh_instances_for_user,
                         }
                     )
             except Exception as e:
