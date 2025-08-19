@@ -15,6 +15,7 @@ import {
   Autocomplete,
 } from "@mui/joy";
 import { Save, Key, Gpu, Settings, ArrowLeft } from "lucide-react";
+import LogViewer from "../../widgets/LogViewer";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useNotification } from "../../../components/NotificationSystem";
@@ -524,17 +525,12 @@ const RunPodConfigPage: React.FC = () => {
                 </Typography>
                 <Box
                   sx={{
-                    p: 2,
-                    bgcolor: "background.level1",
+                    height: 200,
                     borderRadius: 1,
-                    fontFamily: "monospace",
-                    fontSize: "0.875rem",
-                    whiteSpace: "pre-wrap",
-                    maxHeight: 200,
-                    overflowY: "auto",
+                    overflow: "hidden",
                   }}
                 >
-                  {skyCheckResult.output}
+                  <LogViewer log={skyCheckResult.output} />
                 </Box>
               </Box>
             </Stack>

@@ -20,6 +20,7 @@ import {
   CircularProgress,
 } from "@mui/joy";
 import { Plus, Trash2, Monitor, ArrowLeft, Save, Server } from "lucide-react";
+import LogViewer from "../../widgets/LogViewer";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useNotification } from "../../../components/NotificationSystem";
@@ -64,6 +65,12 @@ const SSHConfigPage: React.FC = () => {
   const [showAddNodeModal, setShowAddNodeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [skyChecking, setSkyChecking] = useState(false);
+  const [skyCheckResult, setSkyCheckResult] = useState<{
+    valid: boolean;
+    output: string;
+    message: string;
+  } | null>(null);
 
   // Form states
   const [newClusterName, setNewClusterName] = useState(initialPoolName);
@@ -322,6 +329,46 @@ const SSHConfigPage: React.FC = () => {
     }
   };
 
+  const runSkyCheckSsh = async () => {
+    try {
+      setSkyChecking(true);
+      setSkyCheckResult(null);
+
+      const response = await apiFetch(buildApiUrl("skypilot/ssh/sky-check"), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSkyCheckResult(data);
+        if (data.valid) {
+          addNotification({
+            type: "success",
+            message: "Sky check ssh completed successfully",
+          });
+        } else {
+          addNotification({
+            type: "danger",
+            message: "Sky check ssh failed",
+          });
+        }
+      } else {
+        const errorData = await response.json();
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Sky check ssh failed",
+        });
+      }
+    } catch (err) {
+      addNotification({
+        type: "danger",
+        message: "Error running sky check ssh",
+      });
+    } finally {
+      setSkyChecking(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageWithTitle
@@ -451,14 +498,25 @@ const SSHConfigPage: React.FC = () => {
                 Nodes
               </Typography>
               {selectedCluster && (
-                <Button
-                  startDecorator={<Plus size={16} />}
-                  size="sm"
-                  onClick={() => setShowAddNodeModal(true)}
-                  disabled={loading}
-                >
-                  Add Node
-                </Button>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={runSkyCheckSsh}
+                    disabled={skyChecking || !selectedCluster?.nodes.length}
+                    loading={skyChecking}
+                  >
+                    Sky Check SSH
+                  </Button>
+                  <Button
+                    startDecorator={<Plus size={16} />}
+                    size="sm"
+                    onClick={() => setShowAddNodeModal(true)}
+                    disabled={loading}
+                  >
+                    Add Node
+                  </Button>
+                </Box>
               )}
             </Box>
 
@@ -534,6 +592,47 @@ const SSHConfigPage: React.FC = () => {
             ) : (
               <Alert color="warning">Loading cluster details...</Alert>
             )}
+          </Card>
+        )}
+
+        {/* Sky Check Results */}
+        {skyCheckResult && (
+          <Card variant="outlined">
+            <Typography level="h4" sx={{ mb: 2 }}>
+              Sky Check SSH Results
+            </Typography>
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography>Validation Status</Typography>
+                <Chip
+                  variant="soft"
+                  color={skyCheckResult.valid ? "success" : "danger"}
+                  size="sm"
+                >
+                  {skyCheckResult.valid ? "Passed" : "Failed"}
+                </Chip>
+              </Box>
+              <Box>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Output:
+                </Typography>
+                <Box
+                  sx={{
+                    height: 200,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  <LogViewer log={skyCheckResult.output} />
+                </Box>
+              </Box>
+            </Stack>
           </Card>
         )}
 
