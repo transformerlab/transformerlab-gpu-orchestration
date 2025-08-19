@@ -142,15 +142,25 @@ const Nodes: React.FC = () => {
       const clusterName = pool.name;
       const config = pool.config;
       if (config && config.hosts) {
+        // Check if there are any active clusters for this node pool
+        const activeClusters = pool.active_clusters || [];
+        const hasActiveCluster = activeClusters.some(
+          (cluster: any) =>
+            cluster.status === "ClusterStatus.UP" ||
+            cluster.status === "ClusterStatus.INIT"
+        );
+
         // Convert the pool data to Cluster format
         clusterDetails[clusterName] = {
           id: clusterName,
           name: clusterName,
-          nodes: config.hosts.map((host: any) => ({
-            id: host.ip || host.hostname || "unknown",
+          nodes: config.hosts.map((host: any, index: number) => ({
+            id: host.ip || host.hostname || `node-${index}`,
+            type: "dedicated" as const,
             ip: host.ip || host.hostname || "unknown",
             user: host.user || "unknown",
-            status: "available",
+            // Mark nodes as active if there are active clusters using this node pool
+            status: hasActiveCluster ? "active" : "inactive",
             gpu_info: nodeGpuInfo[host.ip] || null,
             // Preserve the resources information for ReserveNodeModal
             resources: host.resources || {},
@@ -158,6 +168,9 @@ const Nodes: React.FC = () => {
             identity_file: host.identity_file,
             password: host.password,
           })),
+          // Pass active cluster information to the ClusterCard
+          activeClusters: activeClusters,
+          userInstances: pool.user_instances || 0,
         };
       } else {
         clusterDetails[clusterName] = null;
@@ -237,10 +250,9 @@ const Nodes: React.FC = () => {
                 cluster={cluster}
                 clusterName={name}
                 clusterType="cloud"
+                provider="direct"
                 nodeGpuInfo={nodeGpuInfo}
-                currentUser={
-                  user?.first_name || user?.email?.split("@")[0] || "ali"
-                }
+                currentUser={currentUserEmail}
                 onClusterLaunched={handleClusterLaunched}
               />
             );

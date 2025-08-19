@@ -29,6 +29,12 @@ export interface Cluster {
   id: string;
   name: string;
   nodes: Node[];
+  activeClusters?: Array<{
+    cluster_name: string;
+    status: string;
+    user_info: any;
+  }>;
+  userInstances?: number;
 }
 
 export interface ClusterCardProps {
@@ -83,35 +89,82 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
   ).length;
 
   if (clusterType === "cloud") {
-    const skyPilotClusters = skyPilotStatus?.clusters || [];
-    const skyPilotCluster = skyPilotClusters.find(
-      (c: any) => c.cluster_name === displayName
-    );
-    const isActiveCluster =
-      skyPilotCluster?.status === "ClusterStatus.UP" ||
-      skyPilotCluster?.status === "ClusterStatus.INIT";
+    // For SSH clusters, use the active cluster information from the cluster object
+    if (provider === "direct") {
+      const hasActiveCluster =
+        cluster.activeClusters?.some(
+          (ac: any) =>
+            ac.status === "ClusterStatus.UP" ||
+            ac.status === "ClusterStatus.INIT" ||
+            ac.status === "UP" ||
+            ac.status === "INIT"
+        ) || false;
 
-    // Process nodes for cloud clusters
-    processedNodes = cluster.nodes.map((node: any, idx: number) => ({
-      id: `node-${idx}`,
-      type: "dedicated" as const,
-      status: isActiveCluster ? ("active" as const) : ("inactive" as const),
-      user: undefined, // No user assignment - all nodes are available
-      gpuType: node.gpuType || undefined,
-      cpuType: node.cpuType || undefined,
-      vcpus: node.vcpus || undefined,
-      vgpus: node.vgpus || undefined,
-      ip: node.ip || "",
-      jobName: node.jobName || undefined,
-      experimentName: node.experimentName || undefined,
-      identity_file: node.identity_file || undefined,
-      password: node.password || undefined,
-    }));
+      // Update the node status based on active clusters
+      processedNodes = cluster.nodes.map((node: any) => {
+        if (hasActiveCluster && cluster.activeClusters) {
+          // Find the first active cluster to get user info
+          const activeCluster = cluster.activeClusters.find(
+            (ac: any) =>
+              ac.status === "ClusterStatus.UP" ||
+              ac.status === "ClusterStatus.INIT" ||
+              ac.status === "UP" ||
+              ac.status === "INIT"
+          );
 
-    activeCount = processedNodes.filter(
-      (n: Node) => n.status === "active"
-    ).length;
-    assignedToYouCount = 0; // All nodes are available, none assigned
+          return {
+            ...node,
+            status: "active",
+            user:
+              activeCluster?.user_info?.email ||
+              activeCluster?.user_info?.name ||
+              node.user,
+            jobName: activeCluster?.cluster_name || undefined,
+          };
+        }
+
+        return {
+          ...node,
+          status: "inactive",
+          user: undefined, // No user assigned when inactive
+          jobName: undefined,
+        };
+      });
+
+      activeCount = hasActiveCluster ? cluster.nodes.length : 0;
+      assignedToYouCount = cluster.userInstances || 0;
+    } else {
+      // For other cloud providers (RunPod, Azure), use the old SkyPilot status matching
+      const skyPilotClusters = skyPilotStatus?.clusters || [];
+      const skyPilotCluster = skyPilotClusters.find(
+        (c: any) => c.cluster_name === displayName
+      );
+      const isActiveCluster =
+        skyPilotCluster?.status === "ClusterStatus.UP" ||
+        skyPilotCluster?.status === "ClusterStatus.INIT";
+
+      // Process nodes for cloud clusters
+      processedNodes = cluster.nodes.map((node: any, idx: number) => ({
+        id: `node-${idx}`,
+        type: "dedicated" as const,
+        status: isActiveCluster ? ("active" as const) : ("inactive" as const),
+        user: undefined, // No user assignment - all nodes are available
+        gpuType: node.gpuType || undefined,
+        cpuType: node.cpuType || undefined,
+        vcpus: node.vcpus || undefined,
+        vgpus: node.vgpus || undefined,
+        ip: node.ip || "",
+        jobName: node.jobName || undefined,
+        experimentName: node.experimentName || undefined,
+        identity_file: node.identity_file || undefined,
+        password: node.password || undefined,
+      }));
+
+      activeCount = processedNodes.filter(
+        (n: Node) => n.status === "active"
+      ).length;
+      assignedToYouCount = 0; // All nodes are available, none assigned
+    }
   }
 
   const sortedNodes = [...processedNodes].sort(

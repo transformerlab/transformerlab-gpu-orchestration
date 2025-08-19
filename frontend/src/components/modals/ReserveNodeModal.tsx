@@ -34,6 +34,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   onClusterLaunched,
 }) => {
   const { addNotification } = useNotification();
+  const [customClusterName, setCustomClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [cpus, setCpus] = useState("");
@@ -100,7 +101,10 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
 
     try {
       const formData = new FormData();
-      formData.append("cluster_name", clusterName);
+      // Use custom cluster name if provided, otherwise use node pool name
+      const finalClusterName = customClusterName.trim() || clusterName;
+      formData.append("cluster_name", finalClusterName);
+      formData.append("node_pool_name", clusterName); // Pass the node pool name separately
       formData.append("command", command);
       if (setup) formData.append("setup", setup);
       formData.append("cloud", "ssh"); // Always use SSH mode
@@ -125,7 +129,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           message: data.message || "Node reserved successfully",
         });
         setTimeout(() => {
-          if (onClusterLaunched) onClusterLaunched(clusterName);
+          if (onClusterLaunched) onClusterLaunched(finalClusterName);
           onClose();
         }, 1200);
       } else {
@@ -158,10 +162,22 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
               <Alert color="primary" sx={{ mb: 2 }}>
                 <Typography level="body-sm">
                   <strong>Direct Connect Mode:</strong> This will reserve an
-                  instance from the {clusterName} cluster using direct SSH
+                  instance from the {clusterName} node pool using direct SSH
                   connection.
                 </Typography>
               </Alert>
+
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Cluster Name (optional)</FormLabel>
+                <Input
+                  value={customClusterName}
+                  onChange={(e) => setCustomClusterName(e.target.value)}
+                  placeholder={`Leave empty to use node pool name: ${clusterName}`}
+                />
+                <Typography level="body-xs" sx={{ mt: 0.5, color: "text.secondary" }}>
+                  Custom name for this cluster instance. If empty, will use the node pool name.
+                </Typography>
+              </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
                 <FormLabel>Setup Command (optional)</FormLabel>
