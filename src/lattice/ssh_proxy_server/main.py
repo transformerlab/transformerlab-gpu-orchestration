@@ -1,18 +1,33 @@
-# lighthouse_proxy.py
-# This script runs on your central server (lighthouse)
-
-# This file is an initial attempt to make it work using Paramiko. To use it, run python main.py on this file
-# But first copy in your SSH public key in the KEY_DATABASE
-# Then you can connect to the proxy server using SSH using this command:
-# ssh -p 2222 DirectAli/bob@localhost and see the output.
-
-# Problems:
-# 1 Must be run on the skypilot server
-# 2 Can't get Paramiko to honour all of the SSH config (a) It can't handle Includes, and even when I point it right at the
-# correct config in the ~/.sky/generated/ssh folder, the connection doesn't happen for Direct SSH -- there are too many
-# complicated things in the config
-
-# Suggestion: try using an openssh based library. Checking this in as v1 first
+# SSH Proxy Server (Lighthouse)
+#
+# Purpose: A secure SSH gateway that allows controlled access to remote machines through
+# a central server without exposing their direct SSH access to the internet.
+#
+# Description:
+# This server listens for SSH connections on port 2222 and acts as a proxy/gateway
+# that authenticates users via public keys and authorizes access to specific target
+# machines. It creates a secure bridge between incoming connections and outbound SSH
+# sessions to the requested destinations.
+#
+# Key features:
+# - Public key authentication (no passwords)
+# - Access control based on user identity and allowed destinations
+# - Transparent proxying using OpenSSH subprocesses with PTY support
+# - Username format: <target_node>/<username> (e.g., "Home/bob")
+#
+# Dependencies:
+# - Python 3.6+
+# - paramiko library
+# - OpenSSH client installed on the system
+#
+# How to test:
+# 1) Add your public key to the KEY_DATABASE dictionary in the code.
+#    Format: "ssh-rsa/ed25519 YOUR_KEY_DATA": "your_username"
+# 2) Define access permissions in the ACL dictionary.
+# 3) Create an instance in SkyPilot called "Home" (or change the hardcoded destination).
+# 4) Run the server using `python main.py` (add --log-level=DEBUG for verbose output).
+# 5) Connect using: ssh -p 2222 Home/bob@localhost
+#
 
 import socket
 import threading
@@ -38,7 +53,7 @@ KEY_DATABASE = {
 }
 
 # Access Control List (ACL): Maps users to the nodes they can access.
-ACL = {"alice": ["node1", "node2", "DirectAli"], "bob": ["node2", "DirectAli"]}
+ACL = {"alice": ["node1", "node2", "Home"], "bob": ["node2", "Home"]}
 
 
 # Generate or load server host key
