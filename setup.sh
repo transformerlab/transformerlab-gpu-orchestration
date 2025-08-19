@@ -21,8 +21,6 @@ echo "✅ Prerequisites check passed"
 
 # Create Python virtual environment and install backend dependencies
 echo "📦 Creating Python virtual environment with uv..."
-cd backend || exit
-echo "📦 Installing backend dependencies with uv..."
 uv venv --seed --python 3.10
 source .venv/bin/activate
 uv pip install .
@@ -32,8 +30,6 @@ echo "✅ Backend dependencies installed"
 echo "🗄️  Running database migrations..."
 alembic upgrade head
 echo "✅ Database migrations completed"
-
-cd ..
 
 # Install kubectl
 echo "📦 Installing kubectl..."
@@ -82,7 +78,6 @@ fi
 # Now that we know the .env file exists, copy it exactly as is
 # to backend/.env and frontend/.env
 echo "📄 Copying .env to backend/.env and frontend/.env..."
-cp .env backend/.env
 cp .env frontend/.env
 
 # Install frontend dependencies

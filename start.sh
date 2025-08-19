@@ -33,7 +33,6 @@ else
     echo "Now build the backend..."
     # I know it is weird to build the backend again but skypilot hardcodes the path to python
     # so if you are building locally, and then switch to docker, the sky command will not work
-    cd backend || exit
     # Create Python virtual environment and install backend dependencies
     echo "📦 Creating Python virtual environment with uv..."
     echo "📦 Installing backend dependencies with uv..."
@@ -44,11 +43,11 @@ else
     
     # Run database migrations
     echo "🗄️  Running database migrations..."
+    pushd src/lattice
     alembic upgrade head
+    popd
     echo "✅ Database migrations completed"
     
-    cd ..
-
     export AUTH_REDIRECT_URI=${AUTH_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
     export DEBUG=${DEBUG:-"False"}
     # In production (or non-dev), ensure AUTH_COOKIE_PASSWORD is set securely
@@ -76,7 +75,6 @@ echo "🔑 AUTH Client ID: ${AUTH_CLIENT_ID}"
 echo "🔗 Redirect URI: ${AUTH_REDIRECT_URI}"
 
 echo "🔄 Activating Python virtual environment..."
-cd ./backend
 
 # RUN sky stuff for proper setup
 export PATH=".venv/bin:$PATH"
