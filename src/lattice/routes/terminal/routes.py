@@ -15,8 +15,8 @@ import os
 import uuid
 import paramiko
 from werkzeug.utils import secure_filename
-from ..auth.api_key_auth import get_user_or_api_key
-from ..auth.utils import (
+from lattice.routes.auth.api_key_auth import get_user_or_api_key
+from lattice.routes.auth.utils import (
     auth_from_cookie,
 )  # Import get_auth_info
 

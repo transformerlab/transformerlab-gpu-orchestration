@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from models import OrganizationsResponse, Organization
-from ..auth.utils import get_current_user
-from ..auth.provider.work_os import provider as auth_provider
+from lattice.routes.auth.utils import get_current_user
+from lattice.routes.auth.provider.work_os import provider as auth_provider
 from typing import List, Optional
 from pydantic import BaseModel
 

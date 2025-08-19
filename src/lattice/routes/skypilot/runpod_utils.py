@@ -5,9 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict
 
-# Path to store RunPod configuration
 RUNPOD_CONFIG_FILE = Path.home() / ".runpod" / "lattice_config.json"
-# Path for SkyPilot's expected config.toml file
 RUNPOD_CONFIG_TOML = Path.home() / ".runpod" / "config.toml"
 
 

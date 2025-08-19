@@ -44,3 +44,11 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
+
+
+# Path to store RunPod configuration
+RUNPOD_CONFIG_FILE = Path.home() / ".runpod" / "lattice_config.json"
+# Path for SkyPilot's expected config.toml file
+RUNPOD_CONFIG_TOML = Path.home() / ".runpod" / "config.toml"
+
+AZURE_CONFIG_FILE = Path.home() / ".azure" / "lattice_config.json"

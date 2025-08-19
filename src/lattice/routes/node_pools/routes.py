@@ -1,20 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from ..auth.api_key_auth import get_user_or_api_key
-from ..skypilot.utils import get_skypilot_status
-from ..skypilot.runpod_utils import (
+from lattice.routes.auth.api_key_auth import get_user_or_api_key
+from lattice.routes.skypilot.utils import get_skypilot_status
+from lattice.routes.skypilot.runpod_utils import (
     load_runpod_config,
     get_current_runpod_config,
 )
-from ..skypilot.azure_utils import (
+from lattice.routes.skypilot.azure_utils import (
     load_azure_config,
     get_current_azure_config,
 )
 from lattice.utils.file_utils import (
     load_ssh_node_info,
     load_cluster_platforms,
-    get_cluster_user_info,
 )
-from ..clusters.utils import (
+from lattice.routes.clusters.utils import (
     list_cluster_names_from_db,
     get_cluster_config_from_db,
 )
@@ -72,7 +71,7 @@ async def get_node_pools(
                     "platform"
                 ) in ["runpod", "azure"]:
                     # Get user info for this cluster
-                    from utils.file_utils import get_cluster_user_info
+                    from lattice.utils.file_utils import get_cluster_user_info
 
                     user_info = get_cluster_user_info(cluster_name)
 

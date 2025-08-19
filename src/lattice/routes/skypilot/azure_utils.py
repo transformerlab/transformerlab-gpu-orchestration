@@ -1,10 +1,9 @@
 import os
 import json
 import subprocess
+from typing import List, Dict
 from pathlib import Path
-from typing import List, Dict, Any
 
-# Path to store Azure configuration
 AZURE_CONFIG_FILE = Path.home() / ".azure" / "lattice_config.json"
 
 

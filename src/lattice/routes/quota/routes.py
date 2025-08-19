@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
 from config import get_db
-from ..auth.utils import get_current_user
-from models import (
+from lattice.routes.auth.utils import get_current_user
+from lattice.models import (
     OrganizationQuotaResponse,
     UpdateQuotaRequest,
     GPUUsageLogResponse,
@@ -16,7 +16,7 @@ from models import (
     CreateUserQuotaRequest,
 )
 from db_models import GPUUsageLog, OrganizationQuota
-from .utils import (
+from lattice.routes.quota.utils import (
     get_or_create_organization_quota,
     get_or_create_quota_period,
     get_gpu_usage_summary,
@@ -153,7 +153,7 @@ async def get_organization_usage(
         recent_usage = []
         for log in usage_logs:
             # Get user info from cluster platforms
-            from utils.file_utils import get_cluster_user_info
+            from lattice.utils.file_utils import get_cluster_user_info
 
             user_info = get_cluster_user_info(log.cluster_name)
 
@@ -312,7 +312,7 @@ async def get_all_organization_usage(
         recent_usage = []
         for log in usage_logs:
             # Get user info from cluster platforms
-            from utils.file_utils import get_cluster_user_info
+            from lattice.utils.file_utils import get_cluster_user_info
 
             user_info = get_cluster_user_info(log.cluster_name)
 
@@ -363,7 +363,7 @@ async def get_organization_user_quotas(
         user_quotas = get_all_user_quotas(db, organization_id)
 
         # Get user information from auth provider
-        from auth.provider.work_os import provider as auth_provider
+        from lattice.routes.auth.provider.work_os import provider as auth_provider
 
         users = []
         for user_quota in user_quotas:
@@ -422,7 +422,7 @@ async def get_user_quota(
         user_quota = get_or_create_user_quota(db, organization_id, user_id)
 
         # Get user information from auth provider
-        from auth.provider.work_os import provider as auth_provider
+        from lattice.routes.auth.provider.work_os import provider as auth_provider
 
         try:
             user_info = auth_provider.get_user(user_id=user_quota.user_id)
@@ -468,7 +468,7 @@ async def update_user_quota_endpoint(
         )
 
         # Get user information from auth provider
-        from auth.provider.work_os import provider as auth_provider
+        from lattice.routes.auth.provider.work_os import provider as auth_provider
 
         try:
             user_info = auth_provider.get_user(user_id=updated_quota.user_id)
@@ -559,7 +559,7 @@ async def create_user_quota_endpoint(
         db.refresh(new_quota)
 
         # Get user information from auth provider
-        from auth.provider.work_os import provider as auth_provider
+        from lattice.routes.auth.provider.work_os import provider as auth_provider
 
         try:
             user_info = auth_provider.get_user(user_id=new_quota.user_id)

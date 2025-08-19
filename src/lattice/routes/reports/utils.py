@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from models import ReportData
+from lattice.models import ReportData
 
 
 def get_reports_dir() -> Path:

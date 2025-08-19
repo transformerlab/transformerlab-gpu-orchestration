@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from config import get_db
 from db_models import GPUUsageLog, OrganizationQuota, QuotaPeriod
-from utils.file_utils import get_cluster_user_info, get_cluster_platform
-from ..skypilot.utils import generate_cost_report
+from lattice.utils.file_utils import get_cluster_user_info, get_cluster_platform
+from lattice.routes.skypilot.utils import generate_cost_report
 import sky
 
 
@@ -299,7 +300,7 @@ def get_organization_default_quota(
 
 def refresh_quota_periods_for_organization(db: Session, organization_id: str) -> None:
     """Refresh quota periods for all users in an organization with their current quota limits"""
-    from auth.provider.work_os import provider as auth_provider
+    from lattice.routes.auth.provider.work_os import provider as auth_provider
 
     try:
         # Get all users in the organization
@@ -321,7 +322,7 @@ def populate_user_quotas_for_organization(
     db: Session, organization_id: str
 ) -> List[OrganizationQuota]:
     """Populate user quotas for all users in an organization"""
-    from auth.provider.work_os import provider as auth_provider
+    from lattice.routes.auth.provider.work_os import provider as auth_provider
 
     try:
         # Get organization members
@@ -685,7 +686,7 @@ def get_organization_user_usage_summary(
         )
 
         # Get user info for display
-        from utils.file_utils import get_cluster_user_info
+        from lattice.utils.file_utils import get_cluster_user_info
 
         user_breakdown = []
         total_org_usage = 0

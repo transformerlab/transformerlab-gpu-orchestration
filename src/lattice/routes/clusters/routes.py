@@ -8,23 +8,23 @@ from fastapi import (
     Response,
     BackgroundTasks,
 )
-from models import ClusterResponse, ClustersListResponse, SSHNode
+from lattice.models import ClusterResponse, ClustersListResponse, SSHNode
 from .utils import (
     create_cluster_in_pools,
     add_node_to_cluster,
     delete_cluster_in_pools,
     remove_node_from_cluster,
 )
-from utils.file_utils import (
+from lattice.utils.file_utils import (
     save_identity_file,
     save_named_identity_file,
     get_available_identity_files,
     delete_named_identity_file,
     rename_identity_file,
 )
-from ..auth.api_key_auth import get_user_or_api_key
-from ..auth.utils import get_current_user
-from ..reports.utils import record_availability
+from lattice.routes.auth.api_key_auth import get_user_or_api_key
+from lattice.routes.auth.utils import get_current_user
+from lattice.routes.reports.utils import record_availability
 from typing import Optional
 
 router = APIRouter(prefix="/clusters", dependencies=[Depends(get_user_or_api_key)])

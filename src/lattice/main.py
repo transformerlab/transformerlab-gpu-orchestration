@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 from config import AUTH_REDIRECT_URI
 
+
 # Create main app
 app = FastAPI(title="Lattice", version="1.0.0")
 
@@ -28,6 +29,7 @@ from routes.node_pools.routes import router as node_pools_router
 from routes.terminal.routes import router as terminal_router
 from routes.quota.routes import router as quota_router
 from routes.storage_buckets.routes import router as storage_buckets_router
+
 
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=api_v1_prefix)

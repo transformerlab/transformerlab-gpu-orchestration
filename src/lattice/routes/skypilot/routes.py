@@ -13,7 +13,7 @@ import uuid
 import os
 import json
 from pathlib import Path
-from lattice.config import UPLOADS_DIR
+from config import UPLOADS_DIR
 from fastapi.responses import StreamingResponse
 from werkzeug.utils import secure_filename
 from lattice.models import (
@@ -798,7 +798,7 @@ async def submit_job_to_cluster(
         workdir = None
         if python_file is not None and python_file.filename:
             import uuid
-            from lattice.config import UPLOADS_DIR
+            from config import UPLOADS_DIR
 
             python_filename = python_file.filename
             unique_filename = f"{uuid.uuid4()}_{python_filename}"
