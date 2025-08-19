@@ -13,10 +13,10 @@ import uuid
 import os
 import json
 from pathlib import Path
-from config import UPLOADS_DIR
+from lattice.config import UPLOADS_DIR
 from fastapi.responses import StreamingResponse
 from werkzeug.utils import secure_filename
-from models import (
+from lattice.models import (
     LaunchClusterRequest,
     LaunchClusterResponse,
     StatusResponse,
@@ -195,7 +195,7 @@ async def list_node_pools(
 
         # Get SSH clusters (DB-backed)
         try:
-            from clusters.utils import (
+            from lattice.routes.clusters.utils import (
                 list_cluster_names_from_db,
                 get_cluster_config_from_db,
             )
@@ -226,7 +226,7 @@ async def list_node_pools(
 @router.get("/ssh-clusters")
 async def list_ssh_clusters(request: Request, response: Response):
     try:
-        from clusters.utils import (
+        from lattice.routes.clusters.utils import (
             list_cluster_names_from_db,
             get_cluster_config_from_db,
         )
@@ -798,7 +798,7 @@ async def submit_job_to_cluster(
         workdir = None
         if python_file is not None and python_file.filename:
             import uuid
-            from config import UPLOADS_DIR
+            from lattice.config import UPLOADS_DIR
 
             python_filename = python_file.filename
             unique_filename = f"{uuid.uuid4()}_{python_filename}"

@@ -32,7 +32,7 @@ router = APIRouter(prefix="/clusters", dependencies=[Depends(get_user_or_api_key
 
 @router.get("", response_model=ClustersListResponse)
 async def list_clusters(request: Request, response: Response):
-    from clusters.utils import list_cluster_names_from_db
+    from lattice.routes.clusters.utils import list_cluster_names_from_db
 
     return ClustersListResponse(clusters=list_cluster_names_from_db())
 
@@ -159,7 +159,7 @@ async def rename_identity_file_route(
 
 @router.get("/{cluster_name}", response_model=ClusterResponse)
 async def get_cluster(cluster_name: str, request: Request, response: Response):
-    from clusters.utils import get_cluster_config_from_db
+    from lattice.routes.clusters.utils import get_cluster_config_from_db
 
     cfg = get_cluster_config_from_db(cluster_name)
     nodes = [

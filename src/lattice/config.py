@@ -14,8 +14,6 @@ DEFAULT_SQLITE_DB_PATH = os.path.join(
 )
 DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{DEFAULT_SQLITE_DB_PATH}"
 
-print(f"🔗 DATABASE_URL: {DATABASE_URL}")
-
 engine = create_engine(DATABASE_URL)
 
 if engine.dialect.name == "sqlite":
