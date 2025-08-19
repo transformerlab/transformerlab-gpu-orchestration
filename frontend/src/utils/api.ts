@@ -118,3 +118,104 @@ export const jobApi = {
     return response.json();
   },
 };
+
+// SSH Key management API functions
+export const sshKeyApi = {
+  list: async (): Promise<{
+    ssh_keys: Array<{
+      id: string;
+      name: string;
+      public_key: string;
+      fingerprint: string;
+      key_type: string;
+      created_at: string;
+      updated_at: string;
+      last_used_at?: string;
+      is_active: boolean;
+    }>;
+    total_count: number;
+  }> => {
+    const response = await apiFetch(buildApiUrl("ssh-keys/"), {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch SSH keys");
+    }
+    return response.json();
+  },
+
+  create: async (
+    name: string,
+    publicKey: string
+  ): Promise<{
+    id: string;
+    name: string;
+    public_key: string;
+    fingerprint: string;
+    key_type: string;
+    created_at: string;
+    updated_at: string;
+    last_used_at?: string;
+    is_active: boolean;
+  }> => {
+    const response = await apiFetch(buildApiUrl("ssh-keys/"), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        public_key: publicKey,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to create SSH key");
+    }
+    return response.json();
+  },
+
+  update: async (
+    keyId: string,
+    updates: {
+      name?: string;
+      is_active?: boolean;
+    }
+  ): Promise<{
+    id: string;
+    name: string;
+    public_key: string;
+    fingerprint: string;
+    key_type: string;
+    created_at: string;
+    updated_at: string;
+    last_used_at?: string;
+    is_active: boolean;
+  }> => {
+    const response = await apiFetch(buildApiUrl(`ssh-keys/${keyId}`), {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to update SSH key");
+    }
+    return response.json();
+  },
+
+  delete: async (keyId: string): Promise<void> => {
+    const response = await apiFetch(buildApiUrl(`ssh-keys/${keyId}`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to delete SSH key");
+    }
+  },
+};

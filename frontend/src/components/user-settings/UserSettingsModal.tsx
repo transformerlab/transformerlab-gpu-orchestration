@@ -17,13 +17,36 @@ import {
   Divider,
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
-import { Settings, User, Building2, Plus, UserCog2Icon } from "lucide-react";
-import { authApi } from "../../utils/api";
+import {
+  Settings,
+  User,
+  Building2,
+  Plus,
+  UserCog2Icon,
+  Key,
+  Trash2,
+  Edit3,
+  Copy,
+  Clock,
+} from "lucide-react";
+import { authApi, sshKeyApi } from "../../utils/api";
 import CreateOrganizationModal from "./CreateOrganizationModal";
 
 interface UserSettingsModalProps {
   open: boolean;
   onClose: () => void;
+}
+
+interface SSHKey {
+  id: string;
+  name: string;
+  public_key: string;
+  fingerprint: string;
+  key_type: string;
+  created_at: string;
+  updated_at: string;
+  last_used_at?: string;
+  is_active: boolean;
 }
 
 const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
@@ -38,6 +61,15 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [orgError, setOrgError] = React.useState<string | null>(null);
 
   const [showCreateModal, setShowCreateModal] = React.useState(false);
+
+  // SSH Key state
+  const [sshKeys, setSshKeys] = React.useState<SSHKey[]>([]);
+  const [loadingSshKeys, setLoadingSshKeys] = React.useState(false);
+  const [sshKeyError, setSshKeyError] = React.useState<string | null>(null);
+  const [showAddSshKey, setShowAddSshKey] = React.useState(false);
+  const [newSshKeyName, setNewSshKeyName] = React.useState("");
+  const [newSshKeyContent, setNewSshKeyContent] = React.useState("");
+  const [addingSshKey, setAddingSshKey] = React.useState(false);
 
   const fetchOrganizations = async () => {
     setLoadingOrgs(true);
@@ -58,9 +90,74 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     await fetchOrganizations();
   };
 
+  const fetchSshKeys = async () => {
+    setLoadingSshKeys(true);
+    setSshKeyError(null);
+    try {
+      const response = await sshKeyApi.list();
+      setSshKeys(response.ssh_keys);
+    } catch (err) {
+      setSshKeyError(
+        err instanceof Error ? err.message : "Failed to fetch SSH keys"
+      );
+    } finally {
+      setLoadingSshKeys(false);
+    }
+  };
+
+  const handleAddSshKey = async () => {
+    if (!newSshKeyName.trim() || !newSshKeyContent.trim()) {
+      setSshKeyError("Please provide both a name and public key");
+      return;
+    }
+
+    setAddingSshKey(true);
+    setSshKeyError(null);
+    try {
+      await sshKeyApi.create(newSshKeyName.trim(), newSshKeyContent.trim());
+      setNewSshKeyName("");
+      setNewSshKeyContent("");
+      setShowAddSshKey(false);
+      await fetchSshKeys(); // Refresh the list
+    } catch (err) {
+      setSshKeyError(
+        err instanceof Error ? err.message : "Failed to add SSH key"
+      );
+    } finally {
+      setAddingSshKey(false);
+    }
+  };
+
+  const handleDeleteSshKey = async (keyId: string) => {
+    if (!confirm("Are you sure you want to delete this SSH key?")) {
+      return;
+    }
+
+    try {
+      await sshKeyApi.delete(keyId);
+      await fetchSshKeys(); // Refresh the list
+    } catch (err) {
+      setSshKeyError(
+        err instanceof Error ? err.message : "Failed to delete SSH key"
+      );
+    }
+  };
+
+  const formatKeyFingerprint = (fingerprint: string) => {
+    if (fingerprint.startsWith("SHA256:")) {
+      return fingerprint.substring(7, 20) + "...";
+    }
+    return fingerprint.substring(0, 13) + "...";
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
   React.useEffect(() => {
     if (open) {
       fetchOrganizations();
+      fetchSshKeys();
     }
   }, [open]);
 
@@ -183,6 +280,156 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 Create New Organization
               </Button>
             </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* SSH Keys Section */}
+            <Typography
+              level="title-md"
+              sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <Key size="18px" />
+              SSH Keys
+            </Typography>
+            <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
+              Add your SSH public keys to connect to your clusters via SSH
+              proxy.
+            </Typography>
+
+            {loadingSshKeys && (
+              <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
+            {sshKeyError && (
+              <Alert color="danger" sx={{ mb: 2 }}>
+                {sshKeyError}
+              </Alert>
+            )}
+
+            {/* SSH Keys List */}
+            {sshKeys.length > 0 ? (
+              <Box sx={{ mb: 3 }}>
+                <List>
+                  {sshKeys.map((key) => (
+                    <ListItem
+                      key={key.id}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        py: 2,
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          level="title-sm"
+                          sx={{ fontWeight: "bold" }}
+                        >
+                          {key.name}
+                        </Typography>
+                        <Typography level="body-xs" color="neutral">
+                          {key.key_type} •{" "}
+                          {formatKeyFingerprint(key.fingerprint)}
+                        </Typography>
+                        <Typography level="body-xs" color="neutral">
+                          Added {formatDate(key.created_at)}
+                          {key.last_used_at && (
+                            <> • Last used {formatDate(key.last_used_at)}</>
+                          )}
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="plain"
+                        color="danger"
+                        size="sm"
+                        onClick={() => handleDeleteSshKey(key.id)}
+                        startDecorator={<Trash2 size="14px" />}
+                      >
+                        Delete
+                      </Button>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            ) : (
+              !loadingSshKeys &&
+              !sshKeyError && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography level="body-sm" color="neutral">
+                    No SSH keys found. Add one to get started.
+                  </Typography>
+                </Box>
+              )
+            )}
+
+            {/* Add SSH Key Form */}
+            {showAddSshKey ? (
+              <Box
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  border: "1px solid",
+                  borderColor: "neutral.300",
+                  borderRadius: "sm",
+                }}
+              >
+                <Typography level="title-sm" sx={{ mb: 2 }}>
+                  Add New SSH Key
+                </Typography>
+                <Stack spacing={2}>
+                  <FormControl>
+                    <FormLabel>Key Name</FormLabel>
+                    <Input
+                      placeholder="e.g., My Laptop"
+                      value={newSshKeyName}
+                      onChange={(e) => setNewSshKeyName(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Public Key</FormLabel>
+                    <Input
+                      placeholder="ssh-rsa AAAAB3... or ssh-ed25519 AAAAC3..."
+                      value={newSshKeyContent}
+                      onChange={(e) => setNewSshKeyContent(e.target.value)}
+                      sx={{ fontFamily: "monospace", fontSize: "sm" }}
+                    />
+                  </FormControl>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button
+                      onClick={handleAddSshKey}
+                      loading={addingSshKey}
+                      startDecorator={<Plus size="16px" />}
+                    >
+                      Add Key
+                    </Button>
+                    <Button
+                      variant="plain"
+                      onClick={() => {
+                        setShowAddSshKey(false);
+                        setNewSshKeyName("");
+                        setNewSshKeyContent("");
+                        setSshKeyError(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </Box>
+                </Stack>
+              </Box>
+            ) : (
+              <Box sx={{ mb: 3 }}>
+                <Button
+                  variant="outlined"
+                  startDecorator={<Plus size="16px" />}
+                  onClick={() => setShowAddSshKey(true)}
+                  fullWidth
+                >
+                  Add SSH Key
+                </Button>
+              </Box>
+            )}
           </Box>
         </ModalDialog>
       </Modal>
