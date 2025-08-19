@@ -718,9 +718,8 @@ const AzureConfigPage: React.FC = () => {
                 </Typography>
                 <Box
                   sx={{
-                    height: 200,
+                    height: 400,
                     borderRadius: 1,
-                    overflow: "hidden",
                   }}
                 >
                   <LogViewer log={skyCheckResult.output} />

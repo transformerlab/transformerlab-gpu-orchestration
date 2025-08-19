@@ -151,126 +151,174 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
 
   return (
     <Modal open={open} onClose={onClose}>
-      <ModalDialog sx={{ maxWidth: 600 }}>
+      <ModalDialog
+        sx={{
+          maxWidth: 600,
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <ModalClose />
         <Typography level="h4" sx={{ mb: 2 }}>
           Reserve an Instance - {clusterName}
         </Typography>
-        <form onSubmit={handleSubmit}>
-          <Card variant="outlined">
-            <CardContent>
-              <Alert color="primary" sx={{ mb: 2 }}>
-                <Typography level="body-sm">
-                  <strong>Direct Connect Mode:</strong> This will reserve an
-                  instance from the {clusterName} node pool using direct SSH
-                  connection.
-                </Typography>
-              </Alert>
 
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: "auto",
+            pr: 1,
+            "&::-webkit-scrollbar": {
+              width: "8px",
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "transparent",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: "var(--joy-palette-neutral-300)",
+              borderRadius: "4px",
+            },
+            "&::-webkit-scrollbar-thumb:hover": {
+              background: "var(--joy-palette-neutral-400)",
+            },
+          }}
+        >
+          <form onSubmit={handleSubmit}>
+            <Alert color="primary" sx={{ mb: 2 }}>
+              <Typography level="body-sm">
+                <strong>Direct Connect Mode:</strong> This will reserve an
+                instance from the {clusterName} node pool using direct SSH
+                connection.
+              </Typography>
+            </Alert>
+
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Cluster Name (optional)</FormLabel>
+              <Input
+                value={customClusterName}
+                onChange={(e) => setCustomClusterName(e.target.value)}
+                placeholder={`Leave empty to use node pool name: ${clusterName}`}
+              />
+              <Typography
+                level="body-xs"
+                sx={{ mt: 0.5, color: "text.secondary" }}
+              >
+                Custom name for this cluster instance. If empty, will use the
+                node pool name.
+              </Typography>
+            </FormControl>
+
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Setup Command (optional)</FormLabel>
+              <Textarea
+                value={setup}
+                onChange={(e) => setSetup(e.target.value)}
+                placeholder="pip install -r requirements.txt"
+                minRows={2}
+              />
+            </FormControl>
+
+            {/* Resource Configuration */}
+            <Box
+              sx={{
+                mb: 2,
+                mt: 2,
+                p: 2,
+                border: "1px solid var(--joy-palette-neutral-300)",
+                borderRadius: "var(--joy-radius-md)",
+                backgroundColor: "var(--joy-palette-neutral-50)",
+              }}
+            >
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Resource Configuration
+              </Typography>
+              {maxResources.maxVcpus || maxResources.maxMemory ? (
+                <Alert color="primary" sx={{ mb: 2 }}>
+                  <Typography level="body-sm">
+                    <strong>Available Resources:</strong> Max vCPUs:{" "}
+                    {maxResources.maxVcpus || "Not specified"}, Max Memory:{" "}
+                    {maxResources.maxMemory || "Not specified"} GB
+                  </Typography>
+                </Alert>
+              ) : null}
               <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Cluster Name (optional)</FormLabel>
+                <FormLabel>CPUs</FormLabel>
                 <Input
-                  value={customClusterName}
-                  onChange={(e) => setCustomClusterName(e.target.value)}
-                  placeholder={`Leave empty to use node pool name: ${clusterName}`}
+                  value={cpus}
+                  onChange={(e) => setCpus(e.target.value)}
+                  placeholder={
+                    maxResources.maxVcpus
+                      ? `Max: ${maxResources.maxVcpus}`
+                      : "e.g., 4, 8+"
+                  }
                 />
-                <Typography level="body-xs" sx={{ mt: 0.5, color: "text.secondary" }}>
-                  Custom name for this cluster instance. If empty, will use the node pool name.
-                </Typography>
               </FormControl>
-
               <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Setup Command (optional)</FormLabel>
-                <Textarea
-                  value={setup}
-                  onChange={(e) => setSetup(e.target.value)}
-                  placeholder="pip install -r requirements.txt"
-                  minRows={2}
+                <FormLabel>Memory (GB)</FormLabel>
+                <Input
+                  value={memory}
+                  onChange={(e) => setMemory(e.target.value)}
+                  placeholder={
+                    maxResources.maxMemory
+                      ? `Max: ${maxResources.maxMemory} GB`
+                      : "e.g., 16, 32+"
+                  }
                 />
               </FormControl>
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Accelerators</FormLabel>
+                <Input
+                  value={accelerators}
+                  onChange={(e) => setAccelerators(e.target.value)}
+                  placeholder="e.g., V100, V100:2, A100:4"
+                />
+              </FormControl>
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Region</FormLabel>
+                <Input
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  placeholder="Not applicable for SSH"
+                  disabled
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Zone</FormLabel>
+                <Input
+                  value={zone}
+                  onChange={(e) => setZone(e.target.value)}
+                  placeholder="Not applicable for SSH"
+                  disabled
+                />
+              </FormControl>
+            </Box>
+          </form>
+        </Box>
 
-              {/* Resource Configuration */}
-              <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Resource Configuration
-                </Typography>
-                {maxResources.maxVcpus || maxResources.maxMemory ? (
-                  <Alert color="primary" sx={{ mb: 2 }}>
-                    <Typography level="body-sm">
-                      <strong>Available Resources:</strong> Max vCPUs:{" "}
-                      {maxResources.maxVcpus || "Not specified"}, Max Memory:{" "}
-                      {maxResources.maxMemory || "Not specified"} GB
-                    </Typography>
-                  </Alert>
-                ) : null}
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>CPUs</FormLabel>
-                  <Input
-                    value={cpus}
-                    onChange={(e) => setCpus(e.target.value)}
-                    placeholder={
-                      maxResources.maxVcpus
-                        ? `Max: ${maxResources.maxVcpus}`
-                        : "e.g., 4, 8+"
-                    }
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Memory (GB)</FormLabel>
-                  <Input
-                    value={memory}
-                    onChange={(e) => setMemory(e.target.value)}
-                    placeholder={
-                      maxResources.maxMemory
-                        ? `Max: ${maxResources.maxMemory} GB`
-                        : "e.g., 16, 32+"
-                    }
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Accelerators</FormLabel>
-                  <Input
-                    value={accelerators}
-                    onChange={(e) => setAccelerators(e.target.value)}
-                    placeholder="e.g., V100, V100:2, A100:4"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Region</FormLabel>
-                  <Input
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    placeholder="Not applicable for SSH"
-                    disabled
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Zone</FormLabel>
-                  <Input
-                    value={zone}
-                    onChange={(e) => setZone(e.target.value)}
-                    placeholder="Not applicable for SSH"
-                    disabled
-                  />
-                </FormControl>
-              </Card>
-
-              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Button variant="plain" onClick={onClose} disabled={loading}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={loading}
-                  disabled={!command || loading}
-                  color="success"
-                >
-                  Reserve Node
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </form>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            justifyContent: "flex-end",
+            pt: 2,
+            borderTop: "1px solid var(--joy-palette-neutral-200)",
+            mt: 1,
+          }}
+        >
+          <Button variant="plain" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            loading={loading}
+            disabled={!command || loading}
+            color="success"
+            onClick={handleSubmit}
+          >
+            Reserve Node
+          </Button>
+        </Box>
       </ModalDialog>
     </Modal>
   );
