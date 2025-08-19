@@ -335,3 +335,31 @@ class UpdateStorageBucketRequest(BaseModel):
 class StorageBucketListResponse(BaseModel):
     buckets: List[StorageBucketResponse]
     total_count: int
+
+
+# SSH Key Models
+class SSHKeyResponse(BaseModel):
+    id: str
+    name: str
+    public_key: str
+    fingerprint: str
+    key_type: str
+    created_at: str
+    updated_at: str
+    last_used_at: Optional[str] = None
+    is_active: bool
+
+
+class CreateSSHKeyRequest(BaseModel):
+    name: str
+    public_key: str
+
+
+class UpdateSSHKeyRequest(BaseModel):
+    name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class SSHKeyListResponse(BaseModel):
+    ssh_keys: List[SSHKeyResponse]
+    total_count: int

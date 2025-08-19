@@ -1,0 +1,322 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+
+from config import get_db
+from db_models import SSHKey
+from models import (
+    SSHKeyResponse,
+    CreateSSHKeyRequest,
+    UpdateSSHKeyRequest,
+    SSHKeyListResponse,
+)
+from routes.auth.utils import get_current_user
+
+router = APIRouter(prefix="/ssh-keys", tags=["SSH Keys"])
+
+
+def validate_ssh_public_key(public_key: str) -> tuple[str, str]:
+    """
+    Validate SSH public key format and extract key type.
+    Returns (key_type, cleaned_key)
+    """
+    # Remove extra whitespace and newlines
+    key = public_key.strip()
+
+    # Check basic format: key_type key_data [comment]
+    parts = key.split()
+    if len(parts) < 2:
+        raise ValueError(
+            "Invalid SSH public key format. Expected: key_type key_data [comment]"
+        )
+
+    key_type = parts[0]
+    key_data = parts[1]
+
+    # Validate key type
+    valid_key_types = [
+        "ssh-rsa",
+        "ssh-dss",
+        "ssh-ed25519",
+        "ecdsa-sha2-nistp256",
+        "ecdsa-sha2-nistp384",
+        "ecdsa-sha2-nistp521",
+        "sk-ssh-ed25519@openssh.com",
+        "sk-ecdsa-sha2-nistp256@openssh.com",
+    ]
+
+    if key_type not in valid_key_types:
+        raise ValueError(f"Unsupported key type: {key_type}")
+
+    # Validate base64 key data
+    try:
+        import base64
+
+        base64.b64decode(key_data)
+    except Exception:
+        raise ValueError("Invalid base64 encoded key data")
+
+    return key_type, key
+
+
+@router.post("/", response_model=SSHKeyResponse, status_code=status.HTTP_201_CREATED)
+async def create_ssh_key(
+    request: CreateSSHKeyRequest,
+    user=Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Create a new SSH public key for the current user."""
+    try:
+        # Validate the SSH public key
+        key_type, cleaned_key = validate_ssh_public_key(request.public_key)
+
+        # Generate fingerprint
+        fingerprint = SSHKey.generate_fingerprint(cleaned_key)
+
+        # Check if fingerprint already exists (prevent duplicate keys)
+        existing_key = (
+            session.query(SSHKey).filter(SSHKey.fingerprint == fingerprint).first()
+        )
+
+        if existing_key:
+            if existing_key.user_id == user["id"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="You already have this SSH key registered",
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This SSH key is already registered by another user",
+                )
+
+        # Create new SSH key
+        ssh_key = SSHKey(
+            user_id=user["id"],
+            name=request.name,
+            public_key=cleaned_key,
+            fingerprint=fingerprint,
+            key_type=key_type,
+        )
+
+        session.add(ssh_key)
+        session.commit()
+        session.refresh(ssh_key)
+
+        return SSHKeyResponse(
+            id=ssh_key.id,
+            name=ssh_key.name,
+            public_key=ssh_key.public_key,
+            fingerprint=ssh_key.fingerprint,
+            key_type=ssh_key.key_type,
+            created_at=ssh_key.created_at.isoformat(),
+            updated_at=ssh_key.updated_at.isoformat(),
+            last_used_at=ssh_key.last_used_at.isoformat()
+            if ssh_key.last_used_at
+            else None,
+            is_active=ssh_key.is_active,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except IntegrityError as e:
+        session.rollback()
+        if "uq_ssh_keys_user_name" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You already have an SSH key with this name",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create SSH key due to database constraint",
+        )
+
+
+@router.get("/", response_model=SSHKeyListResponse)
+async def list_ssh_keys(
+    user=Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """List all SSH keys for the current user."""
+    ssh_keys = (
+        session.query(SSHKey)
+        .filter(SSHKey.user_id == user["id"])
+        .order_by(SSHKey.created_at.desc())
+        .all()
+    )
+
+    ssh_key_responses = [
+        SSHKeyResponse(
+            id=key.id,
+            name=key.name,
+            public_key=key.public_key,
+            fingerprint=key.fingerprint,
+            key_type=key.key_type,
+            created_at=key.created_at.isoformat(),
+            updated_at=key.updated_at.isoformat(),
+            last_used_at=key.last_used_at.isoformat() if key.last_used_at else None,
+            is_active=key.is_active,
+        )
+        for key in ssh_keys
+    ]
+
+    return SSHKeyListResponse(
+        ssh_keys=ssh_key_responses, total_count=len(ssh_key_responses)
+    )
+
+
+@router.get("/{key_id}", response_model=SSHKeyResponse)
+async def get_ssh_key(
+    key_id: str,
+    user=Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get a specific SSH key by ID."""
+    ssh_key = (
+        session.query(SSHKey)
+        .filter(SSHKey.id == key_id, SSHKey.user_id == user["id"])
+        .first()
+    )
+
+    if not ssh_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="SSH key not found"
+        )
+
+    return SSHKeyResponse(
+        id=ssh_key.id,
+        name=ssh_key.name,
+        public_key=ssh_key.public_key,
+        fingerprint=ssh_key.fingerprint,
+        key_type=ssh_key.key_type,
+        created_at=ssh_key.created_at.isoformat(),
+        updated_at=ssh_key.updated_at.isoformat(),
+        last_used_at=ssh_key.last_used_at.isoformat() if ssh_key.last_used_at else None,
+        is_active=ssh_key.is_active,
+    )
+
+
+@router.put("/{key_id}", response_model=SSHKeyResponse)
+async def update_ssh_key(
+    key_id: str,
+    request: UpdateSSHKeyRequest,
+    user=Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Update an SSH key."""
+    ssh_key = (
+        session.query(SSHKey)
+        .filter(SSHKey.id == key_id, SSHKey.user_id == user["id"])
+        .first()
+    )
+
+    if not ssh_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="SSH key not found"
+        )
+
+    try:
+        # Update fields if provided
+        if request.name is not None:
+            ssh_key.name = request.name
+        if request.is_active is not None:
+            ssh_key.is_active = request.is_active
+
+        ssh_key.updated_at = datetime.utcnow()
+
+        session.commit()
+        session.refresh(ssh_key)
+
+        return SSHKeyResponse(
+            id=ssh_key.id,
+            name=ssh_key.name,
+            public_key=ssh_key.public_key,
+            fingerprint=ssh_key.fingerprint,
+            key_type=ssh_key.key_type,
+            created_at=ssh_key.created_at.isoformat(),
+            updated_at=ssh_key.updated_at.isoformat(),
+            last_used_at=ssh_key.last_used_at.isoformat()
+            if ssh_key.last_used_at
+            else None,
+            is_active=ssh_key.is_active,
+        )
+
+    except IntegrityError as e:
+        session.rollback()
+        if "uq_ssh_keys_user_name" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You already have an SSH key with this name",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to update SSH key due to database constraint",
+        )
+
+
+@router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ssh_key(
+    key_id: str,
+    user=Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Delete an SSH key."""
+    ssh_key = (
+        session.query(SSHKey)
+        .filter(SSHKey.id == key_id, SSHKey.user_id == user["id"])
+        .first()
+    )
+
+    if not ssh_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="SSH key not found"
+        )
+
+    session.delete(ssh_key)
+    session.commit()
+
+
+# Utility endpoint for SSH proxy server to lookup keys
+@router.get("/lookup/by-key", response_model=dict)
+async def lookup_user_by_ssh_key(
+    public_key: str,
+    session: Session = Depends(get_db),
+):
+    """
+    Internal endpoint for SSH proxy server to lookup user by SSH public key.
+    This endpoint is intended for use by the SSH proxy server only.
+    """
+    try:
+        # Generate fingerprint for the provided key
+        fingerprint = SSHKey.generate_fingerprint(public_key)
+
+        # Look up the key in the database
+        ssh_key = (
+            session.query(SSHKey)
+            .filter(SSHKey.fingerprint == fingerprint, SSHKey.is_active)
+            .first()
+        )
+
+        if not ssh_key:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="SSH key not found or inactive",
+            )
+
+        # Update last_used_at
+        ssh_key.update_last_used()
+        session.commit()
+
+        return {
+            "user_id": ssh_key.user_id,
+            "key_name": ssh_key.name,
+            "key_type": ssh_key.key_type,
+            "last_used_at": ssh_key.last_used_at.isoformat(),
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid SSH key format: {str(e)}",
+        )

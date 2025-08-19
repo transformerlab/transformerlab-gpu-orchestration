@@ -175,3 +175,47 @@ class StorageBucket(Base):
     is_active = Column(
         Boolean, default=True
     )  # Whether the bucket is active and available
+
+
+class SSHKey(Base):
+    __tablename__ = "ssh_keys"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    user_id = Column(String, nullable=False)  # WorkOS user ID
+    name = Column(String, nullable=False)  # Human-readable name for the key
+    public_key = Column(Text, nullable=False)  # The SSH public key content
+    fingerprint = Column(
+        String, nullable=False, unique=True
+    )  # SHA256 fingerprint for deduplication
+    key_type = Column(String, nullable=False)  # ssh-rsa, ssh-ed25519, etc.
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    last_used_at = Column(
+        DateTime, nullable=True
+    )  # Track when key was last used for SSH
+    is_active = Column(Boolean, default=True)  # Whether the key is active
+
+    # Composite unique constraint to prevent duplicate key names per user
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_ssh_keys_user_name"),
+    )
+
+    @staticmethod
+    def generate_fingerprint(public_key: str) -> str:
+        """Generate SHA256 fingerprint for SSH public key"""
+        import hashlib
+        import base64
+
+        # Remove key type and comment, keep only the key data
+        parts = public_key.strip().split()
+        if len(parts) < 2:
+            raise ValueError("Invalid SSH public key format")
+
+        key_data = parts[1]
+        key_bytes = base64.b64decode(key_data)
+        fingerprint = hashlib.sha256(key_bytes).hexdigest()
+        return f"SHA256:{fingerprint}"
+
+    def update_last_used(self):
+        """Update the last_used_at timestamp"""
+        self.last_used_at = datetime.utcnow()
