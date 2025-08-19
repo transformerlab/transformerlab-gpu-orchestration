@@ -287,6 +287,17 @@ const MyClusterDetails: React.FC = () => {
     }
   };
 
+  const handleDownClusterWithConfirmation = () => {
+    if (!clusterName) return;
+
+    const confirmed = confirm(
+      `Are you sure you want to terminate the cluster "${clusterName}"? This action cannot be undone and will permanently delete all data on the cluster.`
+    );
+    if (confirmed) {
+      handleDownCluster();
+    }
+  };
+
   const handleStopCluster = async () => {
     if (!clusterName) return;
 
@@ -561,7 +572,7 @@ const MyClusterDetails: React.FC = () => {
             color="danger"
             startDecorator={<Trash2 />}
             loading={operationLoading.down}
-            onClick={handleDownCluster}
+            onClick={handleDownClusterWithConfirmation}
           >
             Terminate Cluster
           </Button>

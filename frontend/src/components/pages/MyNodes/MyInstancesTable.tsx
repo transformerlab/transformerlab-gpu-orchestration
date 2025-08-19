@@ -195,6 +195,15 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
     }
   };
 
+  const handleDownClusterWithConfirmation = (clusterName: string) => {
+    const confirmed = confirm(
+      `Are you sure you want to terminate the cluster "${clusterName}"? This action cannot be undone and will permanently delete all data on the cluster.`
+    );
+    if (confirmed) {
+      handleDownCluster(clusterName);
+    }
+  };
+
   const openInteractiveTaskModal = (
     clusterName: string,
     taskType: "vscode" | "jupyter"
@@ -215,7 +224,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
   };
 
   const openSubmitJobModal = (clusterName: string) => {
-    const clusterData = allClusters.find(c => c.cluster_name === clusterName);
+    const clusterData = allClusters.find((c) => c.cluster_name === clusterName);
     setSubmitJobModal({
       open: true,
       clusterName,
@@ -739,7 +748,11 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                         size="sm"
                         variant="soft"
                         color="danger"
-                        onClick={() => handleDownCluster(cluster.cluster_name)}
+                        onClick={() =>
+                          handleDownClusterWithConfirmation(
+                            cluster.cluster_name
+                          )
+                        }
                         disabled={
                           operationLoading[`down_${cluster.cluster_name}`] ||
                           isFakeData
