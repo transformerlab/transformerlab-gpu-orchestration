@@ -80,7 +80,7 @@ COPY frontend/ ./frontend/
 RUN chmod +x setup.sh && ./setup.sh
 
 # Add sky command to PATH
-ENV PATH="/app/backend/.venv/bin:$PATH"
+ENV PATH="/app/src/lattice/.venv/bin:$PATH"
 
 
 # Copy and setup startup script
