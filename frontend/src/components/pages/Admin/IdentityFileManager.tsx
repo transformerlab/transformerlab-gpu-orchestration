@@ -14,6 +14,7 @@ import {
   Table,
   IconButton,
   Chip,
+  Alert,
 } from "@mui/joy";
 import { Plus, Trash2, Edit, Key } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -287,6 +288,16 @@ const IdentityFileManager: React.FC = () => {
           <Typography level="h4" sx={{ mb: 2 }}>
             Upload Identity File
           </Typography>
+          <Alert color="warning" variant="soft">
+            <div>
+              Upload a <b>private</b> key that will be deployed to all nodes
+              associated with this identity file. Avoid uploading an
+              individual's personal key, as this key will be accessible to all
+              users with access to the instances. Instead, use a private key
+              from a dedicated key pair specifically created for organizational
+              access.
+            </div>
+          </Alert>
           <Stack spacing={2}>
             <FormControl required>
               <FormLabel>Display Name</FormLabel>

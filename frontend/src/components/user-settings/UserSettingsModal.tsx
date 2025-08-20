@@ -305,6 +305,13 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               proxy.
             </Typography>
 
+            <Alert color="warning" variant="soft" sx={{ mb: 2 }}>
+              <div>
+                Do not upload your <b>private</b> key. Upload your <b>public</b>{" "}
+                key only. e.g. id_rsa.pub or id_ed25519.pub.
+              </div>
+            </Alert>
+
             {loadingSshKeys && (
               <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
                 <CircularProgress />
