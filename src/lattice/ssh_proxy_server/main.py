@@ -14,46 +14,105 @@
 # - Access control based on user identity and allowed destinations
 # - Transparent proxying using OpenSSH subprocesses with PTY support
 # - Username format: <target_node>/<username> (e.g., "Home/bob")
+# - Database integration for SSH key lookup
 #
 # Dependencies:
 # - Python 3.6+
 # - paramiko library
 # - OpenSSH client installed on the system
+# - SQLAlchemy and database connection
 #
 # How to test:
-# 1) Add your public key to the KEY_DATABASE dictionary in the code.
-#    Format: "ssh-rsa/ed25519 YOUR_KEY_DATA": "your_username"
-# 2) Define access permissions in the ACL dictionary.
-# 3) Create an instance in SkyPilot called "Home" (or change the hardcoded destination).
-# 4) Run the server using `python main.py` (add --log-level=DEBUG for verbose output).
-# 5) Connect using: ssh -p 2222 Home/bob@localhost
+# 1) Add your SSH public key via the web UI (User Profile -> SSH Keys)
+# 2) Create an instance in SkyPilot called "Home" (or change the hardcoded destination).
+# 3) Run the server using `python main.py` (add --log-level=DEBUG for verbose output).
+# 4) Connect using: ssh -p 2222 Home/bob@localhost
 #
 
 import socket
 import threading
 import paramiko
 import os
-import io
 import select
 import logging
 import argparse
 import subprocess
 import pty
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+
+# Import SSHKey model from models.py
+from lattice.db_models import SSHKey
 
 # --- Configuration ---
 HOST = "0.0.0.0"  # Listen on all interfaces
 PORT = 2222  # Port for the proxy service to listen on
 
-# --- Mock Database and ACL ---
-# In a real application, this would be a database query.
-# The format is 'ssh-rsa AAAA...' (the content of a .pub file)
-KEY_DATABASE = {
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAA7428uJAvZ ali@Alis-M1-MacBook-Pro.local": "alice",
-    "ssh-rsa AAAAB3NzOZN93AVKl8ELyUdCbsThJYI5PSWb51oSUHw==": "bob",
-}
+# --- Independent Database Setup ---
+# Database URL - by default, use the same SQLite database as the main application
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///lattice.db")
 
-# Access Control List (ACL): Maps users to the nodes they can access.
-ACL = {"alice": ["node1", "node2", "Home"], "bob": ["node2", "Home"]}
+# Create database engine and session
+engine = create_engine(DATABASE_URL, echo=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_database_session() -> Session:
+    """Get a database session"""
+    return SessionLocal()
+
+
+# --- Database SSH Key Lookup ---
+def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
+    """
+    Look up user by SSH public key in the database.
+    Returns (user_id, real_user_name) if found, raises ValueError if not found.
+    """
+    session = None
+    try:
+        # Get database session
+        session = get_database_session()
+
+        # Generate fingerprint for the provided key
+        fingerprint = SSHKey.generate_fingerprint(public_key)
+
+        # Look up the key in the database
+        ssh_key = (
+            session.query(SSHKey)
+            .filter(SSHKey.fingerprint == fingerprint, SSHKey.is_active)
+            .first()
+        )
+
+        if not ssh_key:
+            raise ValueError("SSH key not found or inactive")
+
+        # Update last_used_at
+        ssh_key.update_last_used()
+        session.commit()
+
+        return ssh_key.user_id, ssh_key.name
+
+    except Exception as e:
+        if session:
+            session.rollback()
+        logging.error(f"Database lookup error: {e}")
+        raise ValueError(f"Failed to lookup SSH key: {str(e)}")
+    finally:
+        if session:
+            session.close()
+
+
+# --- Mock ACL for now ---
+# TODO: This should also be moved to database eventually
+# For now, we'll use a simple mapping based on user IDs
+def get_user_permissions(user_id: str) -> list[str]:
+    """
+    Get list of nodes/clusters the user can access.
+    This is a simplified ACL - in production this should be database-driven.
+    """
+    # For now, all authenticated users can access "Home" cluster
+    # This can be expanded to include role-based access control
+    return ["Home", "node1", "node2"]
 
 
 # Generate or load server host key
@@ -115,34 +174,35 @@ class ProxySSHServer(paramiko.ServerInterface):
             )
             return paramiko.AUTH_FAILED
 
-        # 2. Look up public key to identify the real user
+        # 2. Look up public key to identify the real user in database
         key_str = f"{key.get_name()} {key.get_base64()}"
         logging.debug(f"Looking up key in database: {key_str[:50]}...")
-        real_user = KEY_DATABASE.get(key_str)
 
-        if not real_user:
-            logging.warning("Key rejected. User not found in database.")
-            logging.debug(f"Available keys in database: {list(KEY_DATABASE.keys())}")
+        try:
+            user_id, key_name = lookup_user_by_ssh_key(key_str)
+            logging.info(
+                f"Key accepted. Real user ID: '{user_id}', Key name: '{key_name}'."
+            )
+        except ValueError as e:
+            logging.warning(f"Key rejected: {e}")
             return paramiko.AUTH_FAILED
 
-        logging.info(f"Key accepted. Real user identified as '{real_user}'.")
-
         # 3. Authorize against the ACL
-        user_permissions = ACL.get(real_user, [])
-        logging.debug(f"User '{real_user}' has permissions for: {user_permissions}")
+        user_permissions = get_user_permissions(user_id)
+        logging.debug(f"User '{user_id}' has permissions for: {user_permissions}")
 
         if target_node in user_permissions:
             logging.info(
-                f"Authorization successful for '{real_user}' to '{target_node}'."
+                f"Authorization successful for user '{user_id}' to '{target_node}'."
             )
-            self.authenticated_user = real_user
+            self.authenticated_user = user_id
             self.target_node = target_node
             return paramiko.AUTH_SUCCESSFUL
         else:
             logging.warning(
-                f"Authorization FAILED for '{real_user}' to '{target_node}'."
+                f"Authorization FAILED for user '{user_id}' to '{target_node}'."
             )
-            logging.debug(f"User '{real_user}' ACL: {user_permissions}")
+            logging.debug(f"User '{user_id}' ACL: {user_permissions}")
             return paramiko.AUTH_FAILED
 
     def check_channel_request(self, kind, chanid):
@@ -330,6 +390,7 @@ def handle_client_connection(client_socket):
     client_addr = client_socket.getpeername()
     logging.info(f"Handling connection from {client_addr}")
 
+    transport = None
     try:
         transport = paramiko.Transport(client_socket)
         transport.add_server_key(get_host_key())
@@ -341,8 +402,8 @@ def handle_client_connection(client_socket):
         logging.debug("Waiting for channel establishment")
         channel = transport.accept(20)
         if not channel or not server.target_node:
-            logging.error("Auth/authz failed or no channel established.")
-            transport.close()
+            if transport:
+                transport.close()
             return
 
         logging.info(
@@ -400,7 +461,8 @@ def handle_client_connection(client_socket):
         )
     finally:
         try:
-            transport.close()
+            if transport:
+                transport.close()
             client_socket.close()
             logging.debug(f"Cleaned up connection from {client_addr}")
         except Exception as e:
@@ -443,6 +505,21 @@ def main():
 
     logging.info("Starting SSH Proxy Server")
     logging.info(f"Log level set to: {args.log_level}")
+    logging.info(f"Database URL: {DATABASE_URL}")
+
+    # Test database connection
+    try:
+        session = get_database_session()
+        # Simple query to test connection
+        key_count = session.query(SSHKey).count()
+        logging.info(f"Database connection successful. Found {key_count} SSH keys.")
+        session.close()
+    except Exception as e:
+        logging.error(f"Database connection failed: {e}")
+        logging.error(
+            "Make sure the database exists and the SSH keys table has been created via migration."
+        )
+        return
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
