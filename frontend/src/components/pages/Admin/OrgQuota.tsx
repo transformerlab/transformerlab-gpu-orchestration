@@ -12,20 +12,15 @@ import {
   Alert,
   Card,
   Grid,
-  Divider,
   CircularProgress,
-  LinearProgress,
   FormControl,
   FormLabel,
   Switch,
-  IconButton,
 } from "@mui/joy";
-import { Edit2, RefreshCw, RotateCcw, Type, Users } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
-import UserUsagePieChart from "../../widgets/UserUsagePieChart";
-import { text } from "stream/consumers";
 
 interface OrganizationQuota {
   organization_id: string;
@@ -534,23 +529,24 @@ const OrgQuota: React.FC = () => {
             alignItems="center"
             justifyContent={"space-between"}
           >
-            <Grid xs={12} md={6}>
+            <Grid xs={12} md={8}>
               <Typography level="title-md">
-                Monthly GPU hour allocation per user
+                Monthly GPU credits per user
               </Typography>
               <Typography level="body-sm">
                 Everyone in your organization will start with this amount of
-                quota. Can be zero.
+                quota per month. Can be zero.
               </Typography>
             </Grid>
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems={"center"}
-              alignContent={"flex-end"}
-              gap={2}
-            >
-              {/* {lastSyncTime && (
+            <Grid>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems={"center"}
+                alignContent={"flex-end"}
+                gap={2}
+              >
+                {/* {lastSyncTime && (
                 <Typography level="body-xs" color="neutral">
                   Last sync: {lastSyncTime.toLocaleTimeString()}
                 </Typography>
@@ -562,9 +558,10 @@ const OrgQuota: React.FC = () => {
               >
                 <RotateCcw size={16} />
               </IconButton> */}
-              {organization_quota.monthly_gpu_hours_per_user} credits
-              <Button onClick={handleEditOrg}>Edit</Button>
-            </Stack>
+                {organization_quota.monthly_gpu_hours_per_user} credits
+                <Button onClick={handleEditOrg}>Edit</Button>
+              </Stack>
+            </Grid>
           </Grid>
         </Card>
       </Box>
@@ -735,10 +732,10 @@ const OrgQuota: React.FC = () => {
       <Modal open={openOrgModal} onClose={() => setOpenOrgModal(false)}>
         <ModalDialog>
           <Typography level="h4">Edit Organization Quota</Typography>
-          <Typography level="body-sm" mb={2}>
-            Set the monthly GPU hour quota per user for your organization
+          <Typography level="body-sm" mb={1}>
+            Set the monthly GPU credit quota per user for your organization
           </Typography>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+          <Stack gap={2}>
             <Input
               placeholder="Monthly GPU Hours Per User"
               value={newQuotaHours}
@@ -827,12 +824,12 @@ const OrgQuota: React.FC = () => {
         <ModalDialog>
           <Typography level="h4">Edit User Quota</Typography>
           <Typography level="body-sm" mb={2}>
-            Set the monthly GPU hour quota for{" "}
+            Set the monthly GPU credit quota for{" "}
             {selectedUser?.user_name || selectedUser?.user_id}
           </Typography>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Input
-              placeholder="Monthly GPU Hours Limit"
+              placeholder="Monthly GPU Credit Limit"
               value={newUserQuotaHours}
               onChange={(e) => setNewUserQuotaHours(e.target.value)}
               slotProps={{
