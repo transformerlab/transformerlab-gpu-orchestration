@@ -6,23 +6,20 @@ Transformer Lab CLI - A beautiful command line interface for Transformer Lab
 import sys
 from typing import Optional
 
-from util.common import show_header
-from util.auth import status
-from commands.ssh import ssh_command
-from commands.node_pools import list_node_pools_command
-from commands.login import login_command, logout_command
-from commands.instances import list_instances_command, request_instance_command
+from lattice.cli.commands.ssh import ssh_command_listing
+from lattice.cli.util.common import show_header
+from lattice.cli.util.auth import status
+from lattice.cli.commands.ssh import ssh_command
+from lattice.cli.commands.node_pools import list_node_pools_command
+from lattice.cli.commands.login import login_command, logout_command
+from lattice.cli.commands.instances import (
+    list_instances_command,
+    request_instance_command,
+)
 import typer
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich import box
-from rich.align import Align
 
 import os
-from rich.style import Style
-from rich.color import Color
-from rich.segment import Segment
 
 
 # Create Typer app
@@ -108,10 +105,13 @@ def list_node_pools():
 
 
 @app.command("ssh")
-def ssh_to_instance(instance_name: str):
-    """SSH into a specific instance."""
+def ssh_to_instance(instance_name: Optional[str] = typer.Argument(None)):
+    """SSH into a specific instance, or say hello world if no instance is provided."""
     show_header()
-    ssh_command(console, instance_name)
+    if instance_name is None:
+        ssh_command_listing(console)
+    else:
+        ssh_command(console, instance_name)
 
 
 @app.command()

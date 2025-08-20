@@ -8,8 +8,8 @@ from rich import box
 import openapi_client
 from openapi_client.api import default_api
 
-from util.api import TLAB_API_BASE_URL
-from util.auth import get_saved_api_key
+from lattice.cli.util.api import TLAB_API_BASE_URL
+from lattice.cli.util.auth import get_saved_api_key
 
 
 def list_node_pools_command(console: Console):

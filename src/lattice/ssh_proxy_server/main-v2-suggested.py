@@ -43,8 +43,10 @@ import hashlib
 import base64
 from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Text, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
+
+# Import SSHKey model from models.py
+from lattice.db_models import SSHKey
 
 # --- Configuration ---
 HOST = "0.0.0.0"  # Listen on all interfaces
@@ -57,40 +59,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///lattice.db")
 # Create database engine and session
 engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
-# SSH Key model (standalone, matching the main application's schema)
-class SSHKey(Base):
-    __tablename__ = "ssh_keys"
-
-    id = Column(String, primary_key=True)
-    user_id = Column(String, nullable=False)
-    name = Column(String, nullable=False)
-    public_key = Column(Text, nullable=False)
-    fingerprint = Column(String, nullable=False, unique=True)
-    key_type = Column(String, nullable=False)
-    created_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, nullable=True)
-    last_used_at = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=True)
-
-    @staticmethod
-    def generate_fingerprint(public_key: str) -> str:
-        """Generate SHA256 fingerprint for SSH public key"""
-        # Remove key type and comment, keep only the key data
-        parts = public_key.strip().split()
-        if len(parts) < 2:
-            raise ValueError("Invalid SSH public key format")
-
-        key_data = parts[1]
-        key_bytes = base64.b64decode(key_data)
-        fingerprint = hashlib.sha256(key_bytes).hexdigest()
-        return f"SHA256:{fingerprint}"
-
-    def update_last_used(self):
-        """Update the last_used_at timestamp"""
-        self.last_used_at = datetime.utcnow()
 
 
 def get_database_session() -> Session:
@@ -426,6 +394,7 @@ def handle_client_connection(client_socket):
     client_addr = client_socket.getpeername()
     logging.info(f"Handling connection from {client_addr}")
 
+    transport = None
     try:
         transport = paramiko.Transport(client_socket)
         transport.add_server_key(get_host_key())
@@ -437,8 +406,8 @@ def handle_client_connection(client_socket):
         logging.debug("Waiting for channel establishment")
         channel = transport.accept(20)
         if not channel or not server.target_node:
-            logging.error("Auth/authz failed or no channel established.")
-            transport.close()
+            if transport:
+                transport.close()
             return
 
         logging.info(
@@ -496,7 +465,8 @@ def handle_client_connection(client_socket):
         )
     finally:
         try:
-            transport.close()
+            if transport:
+                transport.close()
             client_socket.close()
             logging.debug(f"Cleaned up connection from {client_addr}")
         except Exception as e:

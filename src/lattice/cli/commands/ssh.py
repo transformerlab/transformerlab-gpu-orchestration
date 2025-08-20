@@ -41,3 +41,31 @@ def ssh_command(console: Console, instance_name: str):
             box=box.SIMPLE,
         )
     )
+
+
+def ssh_command_listing(console: Console):
+    """If no instance is provided, this command interactively
+    lists all the options you have and then once you select one
+    it runs the command above. in v1 have a fake list of
+    "server1, server2, server3"""
+    console.print("[bold blue]Available Transformer Lab Instances[/bold blue]")
+    instances = ["server1", "server2", "server3"]
+    for idx, instance in enumerate(instances, start=1):
+        console.print(f"{idx}. [cyan]{instance}[/cyan]")
+
+    choice = console.input(
+        "[bold yellow]Select an instance by number (or type 'exit' to cancel): [/bold yellow]"
+    )
+
+    if choice.lower() == "exit":
+        console.print("[bold red]Operation cancelled.[/bold red]")
+        return
+
+    try:
+        instance_index = int(choice) - 1
+        if 0 <= instance_index < len(instances):
+            ssh_command(console, instances[instance_index])
+        else:
+            console.print("[bold red]Invalid selection.[/bold red]")
+    except ValueError:
+        console.print("[bold red]Please enter a valid number.[/bold red]")

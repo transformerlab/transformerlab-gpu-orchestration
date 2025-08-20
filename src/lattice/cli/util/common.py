@@ -1,7 +1,4 @@
-import time
 import math
-import os
-import argparse
 from rich.console import Console
 from rich.text import Text
 

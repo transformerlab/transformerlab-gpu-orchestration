@@ -7,8 +7,8 @@ from typing import Optional, Dict, Union
 import requests
 
 
-from util.api import BACKEND_URL
-from util.auth import save_api_key, get_saved_api_key, api_request
+from lattice.cli.util.api import BACKEND_URL
+from lattice.cli.util.auth import save_api_key, get_saved_api_key, api_request
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt

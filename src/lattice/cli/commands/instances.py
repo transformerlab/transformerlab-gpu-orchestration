@@ -1,7 +1,7 @@
 import time
 import os
-from util.auth import get_saved_api_key
-from util.api import TLAB_API_BASE_URL
+from lattice.cli.util.auth import get_saved_api_key
+from lattice.cli.util.api import TLAB_API_BASE_URL
 import openapi_client
 from openapi_client.api import default_api
 
