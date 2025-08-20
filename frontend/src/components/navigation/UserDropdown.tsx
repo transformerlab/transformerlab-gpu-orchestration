@@ -20,7 +20,7 @@ const UserDropdown: React.FC = () => {
 
   return (
     <>
-  <Dropdown>
+      <Dropdown>
         <MenuButton
           variant="plain"
           sx={{

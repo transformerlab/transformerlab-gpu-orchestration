@@ -15,6 +15,7 @@ import {
   ListItem,
   CircularProgress,
   Divider,
+  Chip,
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -172,6 +173,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           sx={{
             maxWidth: 600,
             width: "100%",
+            overflow: "auto",
           }}
         >
           <ModalClose />
@@ -227,8 +229,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               Organizations
             </Typography>
             <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
-              To switch organizations, log out and log back in to select a
-              different organization.
+              To switch organizations, log out and log back in.
             </Typography>
 
             {loadingOrgs && (
@@ -249,7 +250,15 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   {organizations.map((org) => (
                     <ListItem key={org.id}>
                       <Box>
-                        <Typography level="title-md">{org.name}</Typography>
+                        <Typography
+                          level="title-md"
+                          sx={{ display: "flex", gap: 1 }}
+                        >
+                          {org.name}
+                          {user?.organization_id === org.id && (
+                            <Chip color="primary">current</Chip>
+                          )}
+                        </Typography>
                         <Typography level="body-sm" color="neutral">
                           ID: {org.id}
                         </Typography>

@@ -47,7 +47,7 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
           ...(sticky && {
             position: "sticky",
             top: 0,
-            zIndex: 1100,
+            zIndex: 900,
             bgcolor: "background.body",
             // optional: add a subtle divider when stuck
             // borderBottom: "1px solid",
