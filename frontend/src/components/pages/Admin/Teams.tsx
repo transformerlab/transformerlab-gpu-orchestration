@@ -16,36 +16,16 @@ import {
   DialogContent,
   DialogActions,
   Divider,
-  Sheet,
   Card,
-  CardContent,
   FormControl,
   FormLabel,
   CircularProgress,
 } from "@mui/joy";
-import { Plus, UserPlus, Trash2, Users, Search, X } from "lucide-react";
+import { Plus, UserPlus, Trash2, Users, Search, X, Pencil } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
-import { useFakeData } from "../../../context/FakeDataContext";
 import { useAuth } from "../../../context/AuthContext";
 import { teamsApi } from "../../../utils/api";
-
-// Fake placeholder data
-const fakeTeams = [
-  {
-    name: "Admin",
-    users: ["Alice Johnson", "Bob Smith"],
-  },
-  {
-    name: "Research",
-    users: ["Carol Lee", "Alice Johnson"],
-  },
-  {
-    name: "Applied Research",
-    users: ["Carol Lee", "David Kim", "Bob Smith"],
-  },
-];
-
-const fakeAllUsers = ["Alice Johnson", "Bob Smith", "Carol Lee", "David Kim"];
+// Fake data removed; always use real API
 
 const Teams: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -71,10 +51,12 @@ const Teams: React.FC = () => {
     }>
   >([]);
   const [newTeamName, setNewTeamName] = React.useState("");
+  const [editTeamName, setEditTeamName] = React.useState("");
+  const [renaming, setRenaming] = React.useState(false);
+  const [editingTitle, setEditingTitle] = React.useState(false);
   const [userSearch, setUserSearch] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
-  const { showFakeData } = useFakeData();
   const isAdmin = user?.role === "admin";
 
   // Helpers similar to Users page for consistent display
@@ -187,10 +169,8 @@ const Teams: React.FC = () => {
   };
 
   React.useEffect(() => {
-    if (!showFakeData) {
-      refresh();
-    }
-  }, [showFakeData, refresh]);
+    refresh();
+  }, [refresh]);
 
   return (
     <PageWithTitle
@@ -209,63 +189,6 @@ const Teams: React.FC = () => {
         ) : undefined
       }
     >
-  {showFakeData ? (
-        <>
-          <Table>
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Users</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fakeTeams.map((team) => (
-                <tr key={team.name}>
-                  <td>{team.name}</td>
-                  <td>
-                    <Stack direction="row" spacing={1}>
-                      {team.users.map((user) => (
-                        <Chip key={user} size="sm">
-                          {user}
-                        </Chip>
-                      ))}
-                    </Stack>
-                  </td>
-                  <td>
-                    {isAdmin ? (
-                      <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                        <Button
-                          size="sm"
-                          variant="outlined"
-                          startDecorator={<Users size={14} />}
-                          onClick={() => {
-                            setSelectedTeamName(team.name);
-                            setSelectedTeamId(team.name);
-                            setOpenManageTeam(true);
-                          }}
-                        >
-                          Manage
-                        </Button>
-                        <IconButton
-                          size="sm"
-                          variant="outlined"
-                          color="danger"
-                          disabled
-                          title="Delete team (fake data)"
-                        >
-                          <Trash2 size={14} />
-                        </IconButton>
-                      </Box>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </>
-      ) : (
-        <>
           {error && (
             <Alert color="danger" sx={{ mb: 2 }}>
               {error}
@@ -307,6 +230,7 @@ const Teams: React.FC = () => {
                             onClick={() => {
                               setSelectedTeamName(team.name);
                               setSelectedTeamId(team.id);
+                              setEditTeamName(team.name);
                               setOpenManageTeam(true);
                             }}
                           >
@@ -329,10 +253,8 @@ const Teams: React.FC = () => {
               </tbody>
             </Table>
           )}
-        </>
-      )}
 
-      {/* Create Team Modal (Fake) */}
+  {/* Create Team Modal */}
       <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
         <ModalDialog>
           <Typography level="h4">Create Team</Typography>
@@ -366,7 +288,15 @@ const Teams: React.FC = () => {
       </Modal>
 
       {/* Manage Team Modal */}
-      <Modal open={openManageTeam} onClose={() => setOpenManageTeam(false)}>
+      <Modal
+        open={openManageTeam}
+        onClose={() => {
+          setOpenManageTeam(false);
+          setEditTeamName("");
+          setRenaming(false);
+          setEditingTitle(false);
+        }}
+      >
         <ModalDialog
           sx={{
             width: { xs: "90vw", sm: "80vw", md: "700px" },
@@ -376,10 +306,74 @@ const Teams: React.FC = () => {
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography level="h3" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}>
               <Users size={24} />
-              Manage Team: {selectedTeamName}
-            </Typography>
+              {editingTitle ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1, minWidth: 0 }}>
+                  <Input
+                    value={editTeamName}
+                    onChange={(e) => setEditTeamName(e.target.value)}
+                    size="md"
+                    autoFocus
+                    sx={{ flex: 1, minWidth: 160 }}
+                    placeholder="Team name"
+                  />
+                  <Button
+                    variant="solid"
+                    size="sm"
+                    disabled={
+                      !selectedTeamId ||
+                      !editTeamName.trim() ||
+                      editTeamName.trim() === selectedTeamName ||
+                      renaming
+                    }
+                    loading={renaming}
+                    onClick={async () => {
+                      if (!selectedTeamId) return;
+                      const teamId = selectedTeamId;
+                      const newName = editTeamName.trim();
+                      if (!newName || newName === selectedTeamName) return;
+
+                      const prevTeams = [...teams];
+                      const prevName = selectedTeamName;
+                      setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, name: newName } : t)));
+                      setSelectedTeamName(newName);
+                      setRenaming(true);
+                      try {
+                        await teamsApi.updateTeam(teamId, newName);
+                        setEditingTitle(false);
+                        setEditTeamName("");
+                      } catch (e: any) {
+                        setTeams(prevTeams);
+                        if (prevName) setSelectedTeamName(prevName);
+                        setError(e.message || "Failed to rename team");
+                      } finally {
+                        setRenaming(false);
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              ) : (
+                <Typography level="h3" sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                  Manage Team: <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedTeamName}</span>
+                  {isAdmin && (
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      onClick={() => {
+                        setEditTeamName(selectedTeamName || "");
+                        setEditingTitle(true);
+                      }}
+                      title="Rename team"
+                    >
+                      <Pencil size={18} />
+                    </IconButton>
+                  )}
+                </Typography>
+              )}
+            </Box>
             <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
               <Button
                 size="sm"
@@ -398,7 +392,12 @@ const Teams: React.FC = () => {
               <IconButton
                 variant="plain"
                 color="neutral"
-                onClick={() => setOpenManageTeam(false)}
+                onClick={() => {
+                  setOpenManageTeam(false);
+                  setEditTeamName("");
+                  setRenaming(false);
+                  setEditingTitle(false);
+                }}
                 sx={{ borderRadius: "50%" }}
               >
                 <X size={20} />
@@ -408,48 +407,19 @@ const Teams: React.FC = () => {
 
           <Divider sx={{ mb: 3 }} />
 
+
           {/* Current Members Section */}
           <Box sx={{ mb: 4 }}>
             <Typography level="h4" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
               <Users size={18} />
               Current Members
               <Chip size="sm" variant="soft" color="primary">
-                {showFakeData
-                  ? (fakeTeams.find((t) => t.name === selectedTeamName)?.users || []).length
-                  : (teams.find((t) => t.id === selectedTeamId)?.members || []).length}
+                {(teams.find((t) => t.id === selectedTeamId)?.members || []).length}
               </Chip>
             </Typography>
 
             <Stack spacing={1}>
-              {showFakeData ? (
-                (fakeTeams.find((t) => t.name === selectedTeamName)?.users || []).map((name) => (
-                  <Card key={name} variant="outlined" sx={{ p: 2 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        <Avatar size="md">
-                          {name.charAt(0)}
-                        </Avatar>
-                        <Box>
-                          <Typography level="body-md" fontWeight="md">
-                            {name}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      {isAdmin && (
-                        <IconButton
-                          size="sm"
-                          variant="outlined"
-                          color="danger"
-                          disabled
-                          title="Remove from team"
-                        >
-                          <Trash2 size={16} />
-                        </IconButton>
-                      )}
-                    </Box>
-                  </Card>
-                ))
-              ) : authLoading || loading ? (
+              {authLoading || loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
                   <CircularProgress size="sm" />
                 </Box>
@@ -513,34 +483,6 @@ const Teams: React.FC = () => {
 
               <Stack spacing={1} sx={{ maxHeight: "300px", overflow: "auto" }}>
                 {(() => {
-                  if (showFakeData) {
-                    const current = new Set(
-                      (fakeTeams.find((t) => t.name === selectedTeamName)?.users || [])
-                    );
-                    return fakeAllUsers
-                      .filter((name) => !current.has(name))
-                      .filter((name) => name.toLowerCase().includes(userSearch.toLowerCase()))
-                      .map((name) => (
-                        <Card key={name} variant="outlined" sx={{ p: 2 }}>
-                          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                              <Avatar size="md">{name.charAt(0)}</Avatar>
-                              <Typography level="body-md">{name}</Typography>
-                            </Box>
-                            <Button
-                              size="sm"
-                              variant="solid"
-                              color="primary"
-                              startDecorator={<UserPlus size={14} />}
-                              onClick={() => setOpenManageTeam(false)}
-                            >
-                              Add to Team
-                            </Button>
-                          </Box>
-                        </Card>
-                      ));
-                  }
-
                   if (authLoading || loading) {
                     return (
                       <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>

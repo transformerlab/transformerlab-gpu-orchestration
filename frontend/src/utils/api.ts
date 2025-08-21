@@ -87,6 +87,20 @@ export const teamsApi = {
     return res.json();
   },
 
+  updateTeam: async (teamId: string, name: string) => {
+    const res = await apiFetch(buildApiUrl(`admin/teams/${teamId}`), {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to update team");
+    }
+    return res.json();
+  },
+
   createTeam: async (name: string) => {
     const res = await apiFetch(buildApiUrl("admin/teams/"), {
       method: "POST",
