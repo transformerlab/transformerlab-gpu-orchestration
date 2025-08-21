@@ -123,7 +123,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
           maxWidth: 800,
           maxHeight: "90vh",
           minWidth: "50vw",
-          overflow: "hidden",
+          overflow: "auto",
           display: "flex",
           flexDirection: "column",
         }}
