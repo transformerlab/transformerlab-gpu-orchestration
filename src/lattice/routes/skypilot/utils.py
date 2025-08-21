@@ -128,6 +128,8 @@ def launch_cluster_with_skypilot(
     disk_size: Optional[int] = None,
     storage_bucket_ids: Optional[list] = None,
     node_pool_name: Optional[str] = None,
+    docker_image: Optional[str] = None,
+    container_registry_id: Optional[str] = None,
 ):
     try:
         # Handle RunPod setup
@@ -173,18 +175,50 @@ def launch_cluster_with_skypilot(
                     status_code=500,
                     detail=f"Failed to run sky ssh up for cluster '{validation_name}': {str(e)}",
                 )
+        envs = None
+        # Set Docker authentication environment variables if registry is provided
+        if docker_image and container_registry_id:
+            from config import get_db
+            from db_models import ContainerRegistry
+
+            # Get database session
+            db = next(get_db())
+            try:
+                # Fetch container registry
+                registry = (
+                    db.query(ContainerRegistry)
+                    .filter(
+                        ContainerRegistry.id == container_registry_id,
+                        ContainerRegistry.is_active,
+                    )
+                    .first()
+                )
+
+                if registry:
+                    task_envs = {
+                        "SKYPILOT_DOCKER_USERNAME": registry.docker_username,
+                        "SKYPILOT_DOCKER_PASSWORD": registry.docker_password,
+                        "SKYPILOT_DOCKER_SERVER": registry.docker_server,
+                    }
+                    envs = task_envs.copy()
+                else:
+                    envs = None
+            finally:
+                db.close()
+        else:
+            envs = None
 
         task = sky.Task(
             name=f"lattice-task-{secure_filename(cluster_name)}",
             run=command,
             setup=setup,
+            envs=envs,
         )
 
         # Process storage buckets if provided
         if storage_bucket_ids:
             from config import get_db
             from db_models import StorageBucket
-            from sqlalchemy.orm import Session
 
             # Get database session
             db = next(get_db())
@@ -275,6 +309,10 @@ def launch_cluster_with_skypilot(
             resources_kwargs["use_spot"] = use_spot
         if disk_size:
             resources_kwargs["disk_size"] = disk_size
+
+        # Add Docker image support
+        if docker_image:
+            resources_kwargs["image_id"] = f"docker:{docker_image}"
 
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)

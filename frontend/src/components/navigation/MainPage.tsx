@@ -24,6 +24,7 @@ import Teams from "../pages/Admin/Teams";
 
 import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
+import PrivateContainerRegistry from "../pages/Admin/PrivateContainerRegistry";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
 import MyClusterDetails from "../pages/MyClusterDetails";
@@ -102,6 +103,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
+          <Route path="admin/container-registry" element={<PrivateContainerRegistry />} />
           <Route path="admin/volumes" element={<Volumes />} />
           <Route path="admin/quota" element={<OrgQuota />} />
 

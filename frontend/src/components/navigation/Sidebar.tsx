@@ -103,6 +103,10 @@ const adminSubItemsGroup2 = [
     path: "/dashboard/admin/object-storage",
   },
   {
+    content: "Private Container Registry",
+    path: "/dashboard/admin/container-registry",
+  },
+  {
     content: "Shared Volumes",
     path: "/dashboard/admin/volumes",
   },

@@ -31,6 +31,7 @@ from routes.terminal.routes import router as terminal_router
 from routes.quota.routes import router as quota_router
 from routes.storage_buckets.routes import router as storage_buckets_router
 from routes.ssh_keys.routes import router as ssh_keys_router
+from routes.container_registries.routes import router as container_registries_router
 
 
 api_v1_prefix = "/api/v1"
@@ -47,6 +48,7 @@ app.include_router(terminal_router, prefix=api_v1_prefix)
 app.include_router(quota_router, prefix=api_v1_prefix)
 app.include_router(storage_buckets_router, prefix=api_v1_prefix)
 app.include_router(ssh_keys_router, prefix=api_v1_prefix)
+app.include_router(container_registries_router, prefix=api_v1_prefix)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(
