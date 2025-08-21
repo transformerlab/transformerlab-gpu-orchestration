@@ -63,6 +63,10 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [dockerImage, setDockerImage] = useState("");
+  const [dockerUsername, setDockerUsername] = useState("");
+  const [dockerPassword, setDockerPassword] = useState("");
+  const [dockerServer, setDockerServer] = useState("");
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
   const { addNotification } = useNotification();
@@ -121,6 +125,10 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSelectedGpuType("");
     setSelectedGpuFullString("");
     setSelectedTemplate("");
+    setDockerImage("");
+    setDockerUsername("");
+    setDockerPassword("");
+    setDockerServer("");
   };
 
   const handleClose = () => {
@@ -149,6 +157,10 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
       if (selectedTemplate) formData.append("template", selectedTemplate);
+      if (dockerImage) formData.append("docker_image", dockerImage);
+      if (dockerUsername) formData.append("docker_username", dockerUsername);
+      if (dockerPassword) formData.append("docker_password", dockerPassword);
+      if (dockerServer) formData.append("docker_server", dockerServer);
 
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
@@ -229,6 +241,69 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               Choose a template for your node (functionality coming soon)
             </Typography>
           </FormControl>
+
+          <Card variant="outlined">
+            <Typography level="title-sm" sx={{ mb: 2 }}>
+              Docker Configuration (Optional)
+            </Typography>
+            <Stack spacing={2}>
+              <FormControl>
+                <FormLabel>Docker Image</FormLabel>
+                <Input
+                  value={dockerImage}
+                  onChange={(e) => setDockerImage(e.target.value)}
+                  placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 0.5, color: "text.secondary" }}
+                >
+                  Use a Docker image as runtime environment. Leave empty to use
+                  default RunPod image.
+                </Typography>
+              </FormControl>
+
+              {dockerImage && (
+                <>
+                  <Typography level="title-xs" sx={{ mt: 2, mb: 1 }}>
+                    Private Registry Authentication (if needed)
+                  </Typography>
+                  <FormControl>
+                    <FormLabel>Docker Username</FormLabel>
+                    <Input
+                      value={dockerUsername}
+                      onChange={(e) => setDockerUsername(e.target.value)}
+                      placeholder="Registry username (e.g., $oauthtoken for NGC)"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Docker Password</FormLabel>
+                    <Input
+                      type="password"
+                      value={dockerPassword}
+                      onChange={(e) => setDockerPassword(e.target.value)}
+                      placeholder="Registry password or API key"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Docker Server</FormLabel>
+                    <Input
+                      value={dockerServer}
+                      onChange={(e) => setDockerServer(e.target.value)}
+                      placeholder="e.g., docker.io, nvcr.io, gcr.io"
+                    />
+                    <Typography
+                      level="body-xs"
+                      sx={{ mt: 0.5, color: "text.secondary" }}
+                    >
+                      Leave empty for Docker Hub. Common servers: docker.io,
+                      nvcr.io, gcr.io, your-registry.com
+                    </Typography>
+                  </FormControl>
+                </>
+              )}
+            </Stack>
+          </Card>
 
           <FormControl required>
             <FormLabel>GPU Type</FormLabel>

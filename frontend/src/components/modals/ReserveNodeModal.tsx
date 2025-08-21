@@ -42,6 +42,10 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [accelerators, setAccelerators] = useState("");
   const [region, setRegion] = useState("");
   const [zone, setZone] = useState("");
+  const [dockerImage, setDockerImage] = useState("");
+  const [dockerUsername, setDockerUsername] = useState("");
+  const [dockerPassword, setDockerPassword] = useState("");
+  const [dockerServer, setDockerServer] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Calculate max resources from cluster nodes
@@ -113,6 +117,10 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
       if (accelerators) formData.append("accelerators", accelerators);
       if (region) formData.append("region", region);
       if (zone) formData.append("zone", zone);
+      if (dockerImage) formData.append("docker_image", dockerImage);
+      if (dockerUsername) formData.append("docker_username", dockerUsername);
+      if (dockerPassword) formData.append("docker_password", dockerPassword);
+      if (dockerServer) formData.append("docker_server", dockerServer);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
@@ -218,6 +226,60 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                 minRows={2}
               />
             </FormControl>
+
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Docker Image (optional)</FormLabel>
+              <Input
+                value={dockerImage}
+                onChange={(e) => setDockerImage(e.target.value)}
+                placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
+              />
+              <Typography
+                level="body-xs"
+                sx={{ mt: 0.5, color: "text.secondary" }}
+              >
+                Use a Docker image as runtime environment. Leave empty to use default VM image.
+              </Typography>
+            </FormControl>
+
+            {dockerImage && (
+              <>
+                <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
+                  Private Registry Authentication (if needed)
+                </Typography>
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Docker Username</FormLabel>
+                  <Input
+                    value={dockerUsername}
+                    onChange={(e) => setDockerUsername(e.target.value)}
+                    placeholder="Registry username (e.g., $oauthtoken for NGC)"
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Docker Password</FormLabel>
+                  <Input
+                    type="password"
+                    value={dockerPassword}
+                    onChange={(e) => setDockerPassword(e.target.value)}
+                    placeholder="Registry password or API key"
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Docker Server</FormLabel>
+                  <Input
+                    value={dockerServer}
+                    onChange={(e) => setDockerServer(e.target.value)}
+                    placeholder="e.g., docker.io, nvcr.io, gcr.io"
+                  />
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Leave empty for Docker Hub. Common servers: docker.io, nvcr.io, gcr.io
+                  </Typography>
+                </FormControl>
+              </>
+            )}
 
             {/* Resource Configuration */}
             <Box

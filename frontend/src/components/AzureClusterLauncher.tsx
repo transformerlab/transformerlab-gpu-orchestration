@@ -73,6 +73,10 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [dockerImage, setDockerImage] = useState("");
+  const [dockerUsername, setDockerUsername] = useState("");
+  const [dockerPassword, setDockerPassword] = useState("");
+  const [dockerServer, setDockerServer] = useState("");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
 
@@ -261,6 +265,10 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setUseSpot(false);
     setIdleMinutesToAutostop("");
     setSelectedTemplate("");
+    setDockerImage("");
+    setDockerUsername("");
+    setDockerPassword("");
+    setDockerServer("");
   };
 
   const handleClose = () => {
@@ -308,6 +316,10 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
       }
       if (selectedTemplate) formData.append("template", selectedTemplate);
+      if (dockerImage) formData.append("docker_image", dockerImage);
+      if (dockerUsername) formData.append("docker_username", dockerUsername);
+      if (dockerPassword) formData.append("docker_password", dockerPassword);
+      if (dockerServer) formData.append("docker_server", dockerServer);
 
       // Add storage bucket IDs if selected
       if (selectedStorageBuckets.length > 0) {
@@ -433,6 +445,64 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                     Choose a template for your node (functionality coming soon)
                   </Typography>
                 </FormControl>
+
+                <FormControl>
+                  <FormLabel>Docker Image (optional)</FormLabel>
+                  <Input
+                    value={dockerImage}
+                    onChange={(e) => setDockerImage(e.target.value)}
+                    placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
+                  />
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default VM image.
+                  </Typography>
+                </FormControl>
+
+                {dockerImage && (
+                  <>
+                    <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
+                      Private Registry Authentication (if needed)
+                    </Typography>
+                    <FormControl>
+                      <FormLabel>Docker Username</FormLabel>
+                      <Input
+                        value={dockerUsername}
+                        onChange={(e) => setDockerUsername(e.target.value)}
+                        placeholder="Registry username (e.g., $oauthtoken for NGC)"
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel>Docker Password</FormLabel>
+                      <Input
+                        type="password"
+                        value={dockerPassword}
+                        onChange={(e) => setDockerPassword(e.target.value)}
+                        placeholder="Registry password or API key"
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel>Docker Server</FormLabel>
+                      <Input
+                        value={dockerServer}
+                        onChange={(e) => setDockerServer(e.target.value)}
+                        placeholder="e.g., docker.io, nvcr.io, gcr.io"
+                      />
+                      <Typography
+                        level="body-xs"
+                        sx={{ mt: 0.5, color: "text.secondary" }}
+                      >
+                        Leave empty for Docker Hub. Otherwise enter the URL
+                        like:{" "}
+                        <code>your-user-id.dkr.ecr.region.amazonaws.com</code>{" "}
+                        (for AWS ECR)
+                      </Typography>
+                    </FormControl>
+                  </>
+                )}
               </Stack>
             </Card>
 
