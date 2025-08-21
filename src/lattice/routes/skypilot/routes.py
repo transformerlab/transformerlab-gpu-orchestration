@@ -328,6 +328,10 @@ async def launch_skypilot_cluster(
     template: Optional[str] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
+    docker_image: Optional[str] = Form(None),
+    docker_username: Optional[str] = Form(None),
+    docker_password: Optional[str] = Form(None),
+    docker_server: Optional[str] = Form(None),
 ):
     try:
         file_mounts = None
@@ -404,6 +408,10 @@ async def launch_skypilot_cluster(
             disk_size=disk_size,
             storage_bucket_ids=parsed_storage_bucket_ids,
             node_pool_name=node_pool_name,
+            docker_image=docker_image,
+            docker_username=docker_username,
+            docker_password=docker_password,
+            docker_server=docker_server,
         )
         # Record usage event for cluster launch and store user info
         try:

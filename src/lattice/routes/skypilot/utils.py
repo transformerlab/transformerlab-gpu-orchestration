@@ -128,6 +128,10 @@ def launch_cluster_with_skypilot(
     disk_size: Optional[int] = None,
     storage_bucket_ids: Optional[list] = None,
     node_pool_name: Optional[str] = None,
+    docker_image: Optional[str] = None,
+    docker_username: Optional[str] = None,
+    docker_password: Optional[str] = None,
+    docker_server: Optional[str] = None,
 ):
     try:
         # Handle RunPod setup
@@ -173,18 +177,32 @@ def launch_cluster_with_skypilot(
                     status_code=500,
                     detail=f"Failed to run sky ssh up for cluster '{validation_name}': {str(e)}",
                 )
+        envs = None
+        # Set Docker authentication environment variables if provided
+        if docker_image and (docker_username or docker_password or docker_server):
+            task_envs = {}
+            if docker_username:
+                task_envs["SKYPILOT_DOCKER_USERNAME"] = docker_username
+            if docker_password:
+                task_envs["SKYPILOT_DOCKER_PASSWORD"] = docker_password
+            if docker_server:
+                task_envs["SKYPILOT_DOCKER_SERVER"] = docker_server
+            if task_envs:
+                envs = task_envs.copy()
+            else:
+                envs = None
 
         task = sky.Task(
             name=f"lattice-task-{secure_filename(cluster_name)}",
             run=command,
             setup=setup,
+            envs=envs,
         )
 
         # Process storage buckets if provided
         if storage_bucket_ids:
             from config import get_db
             from db_models import StorageBucket
-            from sqlalchemy.orm import Session
 
             # Get database session
             db = next(get_db())
@@ -275,6 +293,10 @@ def launch_cluster_with_skypilot(
             resources_kwargs["use_spot"] = use_spot
         if disk_size:
             resources_kwargs["disk_size"] = disk_size
+
+        # Add Docker image support
+        if docker_image:
+            resources_kwargs["image_id"] = f"docker:{docker_image}"
 
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
