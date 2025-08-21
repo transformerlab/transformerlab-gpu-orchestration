@@ -129,9 +129,7 @@ def launch_cluster_with_skypilot(
     storage_bucket_ids: Optional[list] = None,
     node_pool_name: Optional[str] = None,
     docker_image: Optional[str] = None,
-    docker_username: Optional[str] = None,
-    docker_password: Optional[str] = None,
-    docker_server: Optional[str] = None,
+    container_registry_id: Optional[str] = None,
 ):
     try:
         # Handle RunPod setup
@@ -178,19 +176,37 @@ def launch_cluster_with_skypilot(
                     detail=f"Failed to run sky ssh up for cluster '{validation_name}': {str(e)}",
                 )
         envs = None
-        # Set Docker authentication environment variables if provided
-        if docker_image and (docker_username or docker_password or docker_server):
-            task_envs = {}
-            if docker_username:
-                task_envs["SKYPILOT_DOCKER_USERNAME"] = docker_username
-            if docker_password:
-                task_envs["SKYPILOT_DOCKER_PASSWORD"] = docker_password
-            if docker_server:
-                task_envs["SKYPILOT_DOCKER_SERVER"] = docker_server
-            if task_envs:
-                envs = task_envs.copy()
-            else:
-                envs = None
+        # Set Docker authentication environment variables if registry is provided
+        if docker_image and container_registry_id:
+            from config import get_db
+            from db_models import ContainerRegistry
+
+            # Get database session
+            db = next(get_db())
+            try:
+                # Fetch container registry
+                registry = (
+                    db.query(ContainerRegistry)
+                    .filter(
+                        ContainerRegistry.id == container_registry_id,
+                        ContainerRegistry.is_active,
+                    )
+                    .first()
+                )
+
+                if registry:
+                    task_envs = {
+                        "SKYPILOT_DOCKER_USERNAME": registry.docker_username,
+                        "SKYPILOT_DOCKER_PASSWORD": registry.docker_password,
+                        "SKYPILOT_DOCKER_SERVER": registry.docker_server,
+                    }
+                    envs = task_envs.copy()
+                else:
+                    envs = None
+            finally:
+                db.close()
+        else:
+            envs = None
 
         task = sky.Task(
             name=f"lattice-task-{secure_filename(cluster_name)}",

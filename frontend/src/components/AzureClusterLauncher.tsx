@@ -45,6 +45,18 @@ interface StorageBucket {
   mode: string;
 }
 
+interface ContainerRegistry {
+  id: string;
+  name: string;
+  docker_username: string;
+  docker_server: string;
+  organization_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
 interface InstanceType {
   name: string;
   display_name: string;
@@ -74,9 +86,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [dockerImage, setDockerImage] = useState("");
-  const [dockerUsername, setDockerUsername] = useState("");
-  const [dockerPassword, setDockerPassword] = useState("");
-  const [dockerServer, setDockerServer] = useState("");
+  const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
 
@@ -87,12 +97,19 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   >([]);
   const [loadingStorageBuckets, setLoadingStorageBuckets] = useState(false);
 
+  // Container registry state
+  const [containerRegistries, setContainerRegistries] = useState<
+    ContainerRegistry[]
+  >([]);
+  const [loadingRegistries, setLoadingRegistries] = useState(false);
+
   useEffect(() => {
     if (open) {
       fetchAzureConfig();
       fetchAvailableInstanceTypes();
       fetchAvailableRegions();
       fetchStorageBuckets();
+      fetchContainerRegistries();
     }
   }, [open]);
 
@@ -114,6 +131,27 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       console.error("Error fetching storage buckets:", err);
     } finally {
       setLoadingStorageBuckets(false);
+    }
+  };
+
+  const fetchContainerRegistries = async () => {
+    try {
+      setLoadingRegistries(true);
+      const response = await apiFetch(
+        buildApiUrl("container-registries/available"),
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch container registries");
+      }
+      const data = await response.json();
+      setContainerRegistries(data);
+    } catch (err) {
+      console.error("Error fetching container registries:", err);
+    } finally {
+      setLoadingRegistries(false);
     }
   };
 
@@ -266,9 +304,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setIdleMinutesToAutostop("");
     setSelectedTemplate("");
     setDockerImage("");
-    setDockerUsername("");
-    setDockerPassword("");
-    setDockerServer("");
+    setSelectedRegistryId("");
   };
 
   const handleClose = () => {
@@ -317,9 +353,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       }
       if (selectedTemplate) formData.append("template", selectedTemplate);
       if (dockerImage) formData.append("docker_image", dockerImage);
-      if (dockerUsername) formData.append("docker_username", dockerUsername);
-      if (dockerPassword) formData.append("docker_password", dockerPassword);
-      if (dockerServer) formData.append("docker_server", dockerServer);
+      if (selectedRegistryId)
+        formData.append("container_registry_id", selectedRegistryId);
 
       // Add storage bucket IDs if selected
       if (selectedStorageBuckets.length > 0) {
@@ -475,40 +510,40 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   {dockerImage && (
                     <>
                       <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
-                        Private Registry Authentication (if needed)
+                        Private Registry Authentication (optional)
                       </Typography>
                       <FormControl>
-                        <FormLabel>Docker Username</FormLabel>
-                        <Input
-                          value={dockerUsername}
-                          onChange={(e) => setDockerUsername(e.target.value)}
-                          placeholder="Registry username (e.g., $oauthtoken for NGC)"
-                        />
-                      </FormControl>
-                      <FormControl>
-                        <FormLabel>Docker Password</FormLabel>
-                        <Input
-                          type="password"
-                          value={dockerPassword}
-                          onChange={(e) => setDockerPassword(e.target.value)}
-                          placeholder="Registry password or API key"
-                        />
-                      </FormControl>
-                      <FormControl>
-                        <FormLabel>Docker Server</FormLabel>
-                        <Input
-                          value={dockerServer}
-                          onChange={(e) => setDockerServer(e.target.value)}
-                          placeholder="e.g., docker.io, nvcr.io, gcr.io"
-                        />
+                        <FormLabel>Container Registry</FormLabel>
+                        {loadingRegistries ? (
+                          <Typography level="body-sm" color="neutral">
+                            Loading registries...
+                          </Typography>
+                        ) : containerRegistries.length === 0 ? (
+                          <Typography level="body-sm" color="warning">
+                            No container registries configured. You can add them
+                            in Admin &gt; Private Container Registry.
+                          </Typography>
+                        ) : (
+                          <Select
+                            value={selectedRegistryId}
+                            onChange={(_, value) =>
+                              setSelectedRegistryId(value || "")
+                            }
+                            placeholder="Select a registry (optional)"
+                          >
+                            {containerRegistries.map((registry) => (
+                              <Option key={registry.id} value={registry.id}>
+                                {registry.name} ({registry.docker_server})
+                              </Option>
+                            ))}
+                          </Select>
+                        )}
                         <Typography
                           level="body-xs"
                           sx={{ mt: 0.5, color: "text.secondary" }}
                         >
-                          Leave empty for Docker Hub. Otherwise enter the URL
-                          like:{" "}
-                          <code>your-user-id.dkr.ecr.region.amazonaws.com</code>{" "}
-                          (for AWS ECR)
+                          Leave empty for public images or Docker Hub. Select a
+                          configured registry for private images.
                         </Typography>
                       </FormControl>
                     </>

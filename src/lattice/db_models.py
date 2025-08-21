@@ -250,3 +250,23 @@ class TeamMembership(Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "user_id", name="uq_team_memberships_org_user"),
     )
+
+
+class ContainerRegistry(Base):
+    __tablename__ = "container_registries"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    name = Column(String, nullable=False)  # Human-readable name for the registry
+    docker_username = Column(String, nullable=False)  # Docker registry username
+    docker_password = Column(Text, nullable=False)  # Docker registry password/token
+    docker_server = Column(String, nullable=False)  # Docker registry server URL
+    organization_id = Column(String, nullable=False)  # Organization that owns this registry
+    user_id = Column(String, nullable=False)  # User who created this registry
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)  # Whether the registry is active
+
+    # Registry name must be unique within an organization
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", name="uq_container_registries_org_name"),
+    )

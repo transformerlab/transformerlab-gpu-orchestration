@@ -13,10 +13,24 @@ import {
   Input,
   Alert,
   Textarea,
+  Select,
+  Option,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
 import { useNotification } from "../NotificationSystem";
+
+interface ContainerRegistry {
+  id: string;
+  name: string;
+  docker_username: string;
+  docker_server: string;
+  organization_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
 
 interface ReserveNodeModalProps {
   open: boolean;
@@ -43,10 +57,42 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [region, setRegion] = useState("");
   const [zone, setZone] = useState("");
   const [dockerImage, setDockerImage] = useState("");
-  const [dockerUsername, setDockerUsername] = useState("");
-  const [dockerPassword, setDockerPassword] = useState("");
-  const [dockerServer, setDockerServer] = useState("");
+  const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Container registry state
+  const [containerRegistries, setContainerRegistries] = useState<
+    ContainerRegistry[]
+  >([]);
+  const [loadingRegistries, setLoadingRegistries] = useState(false);
+
+  // Fetch container registries when modal opens
+  React.useEffect(() => {
+    if (open) {
+      fetchContainerRegistries();
+    }
+  }, [open]);
+
+  const fetchContainerRegistries = async () => {
+    try {
+      setLoadingRegistries(true);
+      const response = await apiFetch(
+        buildApiUrl("container-registries/available"),
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch container registries");
+      }
+      const data = await response.json();
+      setContainerRegistries(data);
+    } catch (err) {
+      console.error("Error fetching container registries:", err);
+    } finally {
+      setLoadingRegistries(false);
+    }
+  };
 
   // Calculate max resources from cluster nodes
   const maxResources = React.useMemo(() => {
@@ -118,9 +164,8 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
       if (region) formData.append("region", region);
       if (zone) formData.append("zone", zone);
       if (dockerImage) formData.append("docker_image", dockerImage);
-      if (dockerUsername) formData.append("docker_username", dockerUsername);
-      if (dockerPassword) formData.append("docker_password", dockerPassword);
-      if (dockerServer) formData.append("docker_server", dockerServer);
+      if (selectedRegistryId)
+        formData.append("container_registry_id", selectedRegistryId);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
@@ -238,44 +283,48 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                 level="body-xs"
                 sx={{ mt: 0.5, color: "text.secondary" }}
               >
-                Use a Docker image as runtime environment. Leave empty to use default VM image.
+                Use a Docker image as runtime environment. Leave empty to use
+                default VM image.
               </Typography>
             </FormControl>
 
             {dockerImage && (
               <>
                 <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
-                  Private Registry Authentication (if needed)
+                  Private Registry Authentication (optional)
                 </Typography>
                 <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Docker Username</FormLabel>
-                  <Input
-                    value={dockerUsername}
-                    onChange={(e) => setDockerUsername(e.target.value)}
-                    placeholder="Registry username (e.g., $oauthtoken for NGC)"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Docker Password</FormLabel>
-                  <Input
-                    type="password"
-                    value={dockerPassword}
-                    onChange={(e) => setDockerPassword(e.target.value)}
-                    placeholder="Registry password or API key"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Docker Server</FormLabel>
-                  <Input
-                    value={dockerServer}
-                    onChange={(e) => setDockerServer(e.target.value)}
-                    placeholder="e.g., docker.io, nvcr.io, gcr.io"
-                  />
+                  <FormLabel>Container Registry</FormLabel>
+                  {loadingRegistries ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading registries...
+                    </Typography>
+                  ) : containerRegistries.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No container registries configured. You can add them in
+                      Admin &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedRegistryId}
+                      onChange={(_, value) =>
+                        setSelectedRegistryId(value || "")
+                      }
+                      placeholder="Select a registry (optional)"
+                    >
+                      {containerRegistries.map((registry) => (
+                        <Option key={registry.id} value={registry.id}>
+                          {registry.name} ({registry.docker_server})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
                   <Typography
                     level="body-xs"
                     sx={{ mt: 0.5, color: "text.secondary" }}
                   >
-                    Leave empty for Docker Hub. Common servers: docker.io, nvcr.io, gcr.io
+                    Leave empty for public images or Docker Hub. Select a
+                    configured registry for private images.
                   </Typography>
                 </FormControl>
               </>
