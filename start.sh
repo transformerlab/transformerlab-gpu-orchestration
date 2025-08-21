@@ -34,12 +34,12 @@ else
     # I know it is weird to build the backend again but skypilot hardcodes the path to python
     # so if you are building locally, and then switch to docker, the sky command will not work
     # Create Python virtual environment and install backend dependencies
-    echo "📦 Creating Python virtual environment with uv..."
-    echo "📦 Installing backend dependencies with uv..."
-    uv venv --seed --python 3.10 --clear
-    source .venv/bin/activate
-    uv pip install .
-    echo "✅ Backend dependencies installed"
+    # echo "📦 Creating Python virtual environment with uv..."
+    # echo "📦 Installing backend dependencies with uv..."
+    # uv venv --seed --python 3.10 --clear
+    # source .venv/bin/activate
+    # uv pip install .
+    # echo "✅ Backend dependencies installed"
     
     # Run database migrations
     echo "🗄️  Running database migrations..."
