@@ -385,9 +385,17 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   return (
     <Modal open={open} onClose={handleClose}>
-      <ModalDialog sx={{ maxWidth: 600 }}>
+      <ModalDialog
+        sx={{
+          maxWidth: 600,
+          maxHeight: "90vh",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <ModalClose />
-        <Typography level="h4" sx={{ mb: 2 }}>
+        <Typography level="h4" sx={{ mb: 2, flexShrink: 0 }}>
           <Rocket
             size={24}
             style={{ marginRight: 8, verticalAlign: "middle" }}
@@ -395,291 +403,307 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
           Launch Azure Cluster
         </Typography>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            launchCluster();
-          }}
-        >
-          <Stack spacing={3}>
-            <Card variant="outlined">
-              <Typography level="title-sm" sx={{ mb: 2 }}>
-                Basic Configuration
-              </Typography>
-              <Stack spacing={2}>
-                <FormControl required>
-                  <FormLabel>Cluster Name</FormLabel>
-                  <Input
-                    value={clusterName}
-                    onChange={(e) => setClusterName(e.target.value)}
-                    placeholder="my-azure-cluster"
-                    required
-                  />
-                </FormControl>
+        <Box sx={{ overflow: "auto", flex: 1, pr: 1 }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              launchCluster();
+            }}
+          >
+            <Stack spacing={3}>
+              <Card variant="outlined">
+                <Typography level="title-sm" sx={{ mb: 2 }}>
+                  Basic Configuration
+                </Typography>
+                <Stack spacing={2}>
+                  <FormControl required>
+                    <FormLabel>Cluster Name</FormLabel>
+                    <Input
+                      value={clusterName}
+                      onChange={(e) => setClusterName(e.target.value)}
+                      placeholder="my-azure-cluster"
+                      required
+                    />
+                  </FormControl>
 
-                <FormControl>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setup}
-                    onChange={(e) => setSetup(e.target.value)}
-                    placeholder="pip install -r requirements.txt"
-                    minRows={2}
-                  />
-                </FormControl>
+                  <FormControl>
+                    <FormLabel>Setup Command (optional)</FormLabel>
+                    <Textarea
+                      value={setup}
+                      onChange={(e) => setSetup(e.target.value)}
+                      placeholder="pip install -r requirements.txt"
+                      minRows={2}
+                    />
+                  </FormControl>
 
-                <FormControl>
-                  <FormLabel>Select a Template</FormLabel>
-                  <Select
-                    value={selectedTemplate}
-                    onChange={(_, value) => setSelectedTemplate(value || "")}
-                    placeholder="Choose a template"
-                  >
-                    <Option value="transformer-lab">Transformer Lab</Option>
-                    <Option value="jupyter">Jupyter</Option>
-                    <Option value="vscode">VSCode</Option>
-                  </Select>
-                  <Typography
-                    level="body-xs"
-                    sx={{ mt: 0.5, color: "text.secondary" }}
-                  >
-                    Choose a template for your node (functionality coming soon)
-                  </Typography>
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel>Docker Image (optional)</FormLabel>
-                  <Input
-                    value={dockerImage}
-                    onChange={(e) => setDockerImage(e.target.value)}
-                    placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
-                  />
-                  <Typography
-                    level="body-xs"
-                    sx={{ mt: 0.5, color: "text.secondary" }}
-                  >
-                    Use a Docker image as runtime environment. Leave empty to
-                    use default VM image.
-                  </Typography>
-                </FormControl>
-
-                {dockerImage && (
-                  <>
-                    <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
-                      Private Registry Authentication (if needed)
-                    </Typography>
-                    <FormControl>
-                      <FormLabel>Docker Username</FormLabel>
-                      <Input
-                        value={dockerUsername}
-                        onChange={(e) => setDockerUsername(e.target.value)}
-                        placeholder="Registry username (e.g., $oauthtoken for NGC)"
-                      />
-                    </FormControl>
-                    <FormControl>
-                      <FormLabel>Docker Password</FormLabel>
-                      <Input
-                        type="password"
-                        value={dockerPassword}
-                        onChange={(e) => setDockerPassword(e.target.value)}
-                        placeholder="Registry password or API key"
-                      />
-                    </FormControl>
-                    <FormControl>
-                      <FormLabel>Docker Server</FormLabel>
-                      <Input
-                        value={dockerServer}
-                        onChange={(e) => setDockerServer(e.target.value)}
-                        placeholder="e.g., docker.io, nvcr.io, gcr.io"
-                      />
-                      <Typography
-                        level="body-xs"
-                        sx={{ mt: 0.5, color: "text.secondary" }}
-                      >
-                        Leave empty for Docker Hub. Otherwise enter the URL
-                        like:{" "}
-                        <code>your-user-id.dkr.ecr.region.amazonaws.com</code>{" "}
-                        (for AWS ECR)
-                      </Typography>
-                    </FormControl>
-                  </>
-                )}
-              </Stack>
-            </Card>
-
-            <Card variant="outlined">
-              <Typography level="title-sm" sx={{ mb: 2 }}>
-                Azure Configuration
-              </Typography>
-              <Stack spacing={2}>
-                <FormControl required>
-                  <FormLabel>Instance Type</FormLabel>
-                  <Select
-                    value={selectedInstanceType}
-                    onChange={(_, value) =>
-                      setSelectedInstanceType(value || "")
-                    }
-                    placeholder="Select instance type"
-                    required
-                  >
-                    {availableInstanceTypes
-                      .filter((type) =>
-                        azureConfig.allowed_instance_types.includes(type.name)
-                      )
-                      .map((type) => (
-                        <Option key={type.name} value={type.name}>
-                          {type.name}
-                        </Option>
-                      ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl required>
-                  <FormLabel>Region</FormLabel>
-                  <Select
-                    value={selectedRegion}
-                    onChange={(_, value) => setSelectedRegion(value || "")}
-                    placeholder="Select region"
-                    required
-                  >
-                    {availableRegions
-                      .filter((region) =>
-                        azureConfig.allowed_regions.includes(region)
-                      )
-                      .map((region) => (
-                        <Option key={region} value={region}>
-                          {region}
-                        </Option>
-                      ))}
-                  </Select>
-                </FormControl>
-              </Stack>
-            </Card>
-
-            <Card variant="outlined">
-              <Typography level="title-sm" sx={{ mb: 2 }}>
-                <DollarSign
-                  size={16}
-                  style={{ marginRight: 8, verticalAlign: "middle" }}
-                />
-                Cost Optimization
-              </Typography>
-              <Stack spacing={2}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Box>
-                    <Typography level="title-sm">Use Spot Instances</Typography>
+                  <FormControl>
+                    <FormLabel>Select a Template</FormLabel>
+                    <Select
+                      value={selectedTemplate}
+                      onChange={(_, value) => setSelectedTemplate(value || "")}
+                      placeholder="Choose a template"
+                    >
+                      <Option value="transformer-lab">Transformer Lab</Option>
+                      <Option value="jupyter">Jupyter</Option>
+                      <Option value="vscode">VSCode</Option>
+                    </Select>
                     <Typography
                       level="body-xs"
-                      sx={{ color: "text.secondary" }}
+                      sx={{ mt: 0.5, color: "text.secondary" }}
                     >
-                      Use spot instances for cost savings (may be interrupted)
+                      Choose a template for your node (functionality coming
+                      soon)
                     </Typography>
-                  </Box>
-                  <Switch
-                    checked={useSpot}
-                    onChange={(e) => setUseSpot(e.target.checked)}
-                  />
-                </Box>
+                  </FormControl>
 
-                <FormControl>
-                  <FormLabel>
-                    <Clock
-                      size={16}
-                      style={{ marginRight: 8, verticalAlign: "middle" }}
+                  <FormControl>
+                    <FormLabel>Docker Image (optional)</FormLabel>
+                    <Input
+                      value={dockerImage}
+                      onChange={(e) => setDockerImage(e.target.value)}
+                      placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
                     />
-                    Auto-stop after idle (minutes)
-                  </FormLabel>
-                  <Input
-                    value={idleMinutesToAutostop}
-                    onChange={(e) => setIdleMinutesToAutostop(e.target.value)}
-                    placeholder="e.g., 30 (leave empty for no auto-stop)"
-                    type="number"
-                  />
-                  <Typography
-                    level="body-xs"
-                    sx={{ color: "text.secondary", mt: 0.5 }}
-                  >
-                    Cluster will automatically stop after being idle for this
-                    many minutes
-                  </Typography>
-                </FormControl>
-              </Stack>
-            </Card>
-
-            {/* Storage Bucket Selection */}
-            <Card variant="outlined">
-              <Typography level="title-sm" sx={{ mb: 2 }}>
-                Storage Buckets (Optional)
-              </Typography>
-              <Stack spacing={2}>
-                <FormControl>
-                  <FormLabel>Select Storage Buckets</FormLabel>
-                  {loadingStorageBuckets ? (
-                    <Typography level="body-sm" color="neutral">
-                      Loading storage buckets...
-                    </Typography>
-                  ) : storageBuckets.length === 0 ? (
-                    <Typography level="body-sm" color="warning">
-                      No storage buckets available. Create storage buckets in
-                      the "Object Storage" tab first.
-                    </Typography>
-                  ) : (
-                    <Select
-                      multiple
-                      value={selectedStorageBuckets}
-                      onChange={(_, value) =>
-                        setSelectedStorageBuckets(value || [])
-                      }
-                      placeholder="Select storage buckets to mount"
+                    <Typography
+                      level="body-xs"
+                      sx={{ mt: 0.5, color: "text.secondary" }}
                     >
-                      {storageBuckets.map((bucket) => (
-                        <Option key={bucket.id} value={bucket.id}>
-                          {bucket.name} ({bucket.remote_path}) - {bucket.mode}
-                        </Option>
-                      ))}
-                    </Select>
-                  )}
-                  {selectedStorageBuckets.length > 0 && (
-                    <Typography level="body-xs" color="primary">
-                      Selected: {selectedStorageBuckets.length} bucket(s)
+                      Use a Docker image as runtime environment. Leave empty to
+                      use default VM image.
                     </Typography>
-                  )}
-                  <Typography
-                    level="body-xs"
-                    sx={{ color: "text.secondary", mt: 0.5 }}
-                  >
-                    Selected storage buckets will be mounted to your cluster for
-                    data access
-                  </Typography>
-                </FormControl>
-              </Stack>
-            </Card>
+                  </FormControl>
 
-            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Button variant="plain" onClick={handleClose} disabled={loading}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                loading={loading}
-                disabled={
-                  !clusterName ||
-                  !selectedInstanceType ||
-                  !selectedRegion ||
-                  loading
-                }
-                color="success"
-              >
-                Launch Azure Cluster
-              </Button>
-            </Box>
-          </Stack>
-        </form>
+                  {dockerImage && (
+                    <>
+                      <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
+                        Private Registry Authentication (if needed)
+                      </Typography>
+                      <FormControl>
+                        <FormLabel>Docker Username</FormLabel>
+                        <Input
+                          value={dockerUsername}
+                          onChange={(e) => setDockerUsername(e.target.value)}
+                          placeholder="Registry username (e.g., $oauthtoken for NGC)"
+                        />
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel>Docker Password</FormLabel>
+                        <Input
+                          type="password"
+                          value={dockerPassword}
+                          onChange={(e) => setDockerPassword(e.target.value)}
+                          placeholder="Registry password or API key"
+                        />
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel>Docker Server</FormLabel>
+                        <Input
+                          value={dockerServer}
+                          onChange={(e) => setDockerServer(e.target.value)}
+                          placeholder="e.g., docker.io, nvcr.io, gcr.io"
+                        />
+                        <Typography
+                          level="body-xs"
+                          sx={{ mt: 0.5, color: "text.secondary" }}
+                        >
+                          Leave empty for Docker Hub. Otherwise enter the URL
+                          like:{" "}
+                          <code>your-user-id.dkr.ecr.region.amazonaws.com</code>{" "}
+                          (for AWS ECR)
+                        </Typography>
+                      </FormControl>
+                    </>
+                  )}
+                </Stack>
+              </Card>
+
+              <Card variant="outlined">
+                <Typography level="title-sm" sx={{ mb: 2 }}>
+                  Azure Configuration
+                </Typography>
+                <Stack spacing={2}>
+                  <FormControl required>
+                    <FormLabel>Instance Type</FormLabel>
+                    <Select
+                      value={selectedInstanceType}
+                      onChange={(_, value) =>
+                        setSelectedInstanceType(value || "")
+                      }
+                      placeholder="Select instance type"
+                      required
+                    >
+                      {availableInstanceTypes
+                        .filter((type) =>
+                          azureConfig.allowed_instance_types.includes(type.name)
+                        )
+                        .map((type) => (
+                          <Option key={type.name} value={type.name}>
+                            {type.name}
+                          </Option>
+                        ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControl required>
+                    <FormLabel>Region</FormLabel>
+                    <Select
+                      value={selectedRegion}
+                      onChange={(_, value) => setSelectedRegion(value || "")}
+                      placeholder="Select region"
+                      required
+                    >
+                      {availableRegions
+                        .filter((region) =>
+                          azureConfig.allowed_regions.includes(region)
+                        )
+                        .map((region) => (
+                          <Option key={region} value={region}>
+                            {region}
+                          </Option>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+              </Card>
+
+              <Card variant="outlined">
+                <Typography level="title-sm" sx={{ mb: 2 }}>
+                  <DollarSign
+                    size={16}
+                    style={{ marginRight: 8, verticalAlign: "middle" }}
+                  />
+                  Cost Optimization
+                </Typography>
+                <Stack spacing={2}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Box>
+                      <Typography level="title-sm">
+                        Use Spot Instances
+                      </Typography>
+                      <Typography
+                        level="body-xs"
+                        sx={{ color: "text.secondary" }}
+                      >
+                        Use spot instances for cost savings (may be interrupted)
+                      </Typography>
+                    </Box>
+                    <Switch
+                      checked={useSpot}
+                      onChange={(e) => setUseSpot(e.target.checked)}
+                    />
+                  </Box>
+
+                  <FormControl>
+                    <FormLabel>
+                      <Clock
+                        size={16}
+                        style={{ marginRight: 8, verticalAlign: "middle" }}
+                      />
+                      Auto-stop after idle (minutes)
+                    </FormLabel>
+                    <Input
+                      value={idleMinutesToAutostop}
+                      onChange={(e) => setIdleMinutesToAutostop(e.target.value)}
+                      placeholder="e.g., 30 (leave empty for no auto-stop)"
+                      type="number"
+                    />
+                    <Typography
+                      level="body-xs"
+                      sx={{ color: "text.secondary", mt: 0.5 }}
+                    >
+                      Cluster will automatically stop after being idle for this
+                      many minutes
+                    </Typography>
+                  </FormControl>
+                </Stack>
+              </Card>
+
+              {/* Storage Bucket Selection */}
+              <Card variant="outlined">
+                <Typography level="title-sm" sx={{ mb: 2 }}>
+                  Storage Buckets (Optional)
+                </Typography>
+                <Stack spacing={2}>
+                  <FormControl>
+                    <FormLabel>Select Storage Buckets</FormLabel>
+                    {loadingStorageBuckets ? (
+                      <Typography level="body-sm" color="neutral">
+                        Loading storage buckets...
+                      </Typography>
+                    ) : storageBuckets.length === 0 ? (
+                      <Typography level="body-sm" color="warning">
+                        No storage buckets available. Create storage buckets in
+                        the "Object Storage" tab first.
+                      </Typography>
+                    ) : (
+                      <Select
+                        multiple
+                        value={selectedStorageBuckets}
+                        onChange={(_, value) =>
+                          setSelectedStorageBuckets(value || [])
+                        }
+                        placeholder="Select storage buckets to mount"
+                      >
+                        {storageBuckets.map((bucket) => (
+                          <Option key={bucket.id} value={bucket.id}>
+                            {bucket.name} ({bucket.remote_path}) - {bucket.mode}
+                          </Option>
+                        ))}
+                      </Select>
+                    )}
+                    {selectedStorageBuckets.length > 0 && (
+                      <Typography level="body-xs" color="primary">
+                        Selected: {selectedStorageBuckets.length} bucket(s)
+                      </Typography>
+                    )}
+                    <Typography
+                      level="body-xs"
+                      sx={{ color: "text.secondary", mt: 0.5 }}
+                    >
+                      Selected storage buckets will be mounted to your cluster
+                      for data access
+                    </Typography>
+                  </FormControl>
+                </Stack>
+              </Card>
+            </Stack>
+          </form>
+        </Box>
+
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            justifyContent: "flex-end",
+            mt: 2,
+            flexShrink: 0,
+            borderTop: "1px solid",
+            borderColor: "divider",
+            pt: 2,
+          }}
+        >
+          <Button variant="plain" onClick={handleClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={launchCluster}
+            loading={loading}
+            disabled={
+              !clusterName ||
+              !selectedInstanceType ||
+              !selectedRegion ||
+              loading
+            }
+            color="success"
+          >
+            Launch Azure Cluster
+          </Button>
+        </Box>
       </ModalDialog>
     </Modal>
   );
