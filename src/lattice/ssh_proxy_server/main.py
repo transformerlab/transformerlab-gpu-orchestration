@@ -42,7 +42,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 # Import SSHKey model from models.py
-from lattice.db_models import SSHKey
+from db_models import SSHKey
 
 # --- Configuration ---
 HOST = "0.0.0.0"  # Listen on all interfaces

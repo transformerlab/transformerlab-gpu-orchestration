@@ -17,9 +17,9 @@ import {
   FormLabel,
   Switch,
 } from "@mui/joy";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 import PageWithTitle from "../templates/PageWithTitle";
-import { buildApiUrl, apiFetch } from "../../../utils/api";
+import { buildApiUrl, apiFetch, teamsQuotaApi } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 
 interface OrganizationQuota {
@@ -85,6 +85,8 @@ interface UserQuota {
   custom_quota: boolean;
   created_at: string;
   updated_at: string;
+  effective_quota_source?: string;
+  effective_quota_limit?: number;
 }
 
 interface UserQuotaList {
@@ -117,6 +119,31 @@ const OrgQuota: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserQuota | null>(null);
   const [newUserQuotaHours, setNewUserQuotaHours] = useState<string>("");
   const [updatingUserQuota, setUpdatingUserQuota] = useState(false);
+
+  // Individuals filter
+  const [individualSearch, setIndividualSearch] = useState<string>("");
+
+  // Team quotas state
+  type TeamQuotaItem = {
+    team_id: string;
+    team_name: string;
+    organization_id: string;
+    monthly_gpu_hours_per_user: number;
+    created_at: string;
+    updated_at: string;
+  };
+  type TeamQuotaList = {
+    organization_id: string;
+    teams: TeamQuotaItem[];
+    default_quota_per_user: number;
+  };
+  const [teamQuotas, setTeamQuotas] = useState<TeamQuotaList | null>(null);
+  const [teamLoading, setTeamLoading] = useState<boolean>(false);
+  const [teamError, setTeamError] = useState<string | null>(null);
+  const [openTeamQuotaModal, setOpenTeamQuotaModal] = useState<boolean>(false);
+  const [selectedTeam, setSelectedTeam] = useState<TeamQuotaItem | null>(null);
+  const [newTeamQuotaHours, setNewTeamQuotaHours] = useState<string>("");
+  const [updatingTeamQuota, setUpdatingTeamQuota] = useState<boolean>(false);
 
   const organizationId = user?.organization_id;
 
@@ -180,6 +207,22 @@ const OrgQuota: React.FC = () => {
       setOrgUserData(data);
     } catch (err) {
       console.error("Failed to fetch organization user data:", err);
+    }
+  };
+
+  const fetchTeamQuotas = async () => {
+    if (!organizationId) return;
+    try {
+      setTeamLoading(true);
+      setTeamError(null);
+      const data = await teamsQuotaApi.listTeamQuotas(organizationId);
+      setTeamQuotas(data);
+    } catch (err) {
+      setTeamError(
+        err instanceof Error ? err.message : "Failed to fetch team quotas"
+      );
+    } finally {
+      setTeamLoading(false);
     }
   };
 
@@ -271,13 +314,15 @@ const OrgQuota: React.FC = () => {
       // Initial data fetch
       fetchQuotaData();
       fetchOrgUserData();
-      fetchUserQuotas(); // Fetch user quotas on mount
+  fetchUserQuotas(); // Fetch user quotas on mount
+  fetchTeamQuotas(); // Fetch team quotas on mount
 
       // Set up automatic sync every 45 seconds
       const interval = setInterval(() => {
         syncFromCostReport(false);
-        fetchOrgUserData();
-        fetchUserQuotas(); // Sync user quotas periodically
+  fetchOrgUserData();
+  fetchUserQuotas(); // Sync user quotas periodically
+  fetchTeamQuotas(); // Sync team quotas periodically
       }, 45000); // 45 seconds
 
       setAutoSyncInterval(interval);
@@ -558,7 +603,9 @@ const OrgQuota: React.FC = () => {
               >
                 <RotateCcw size={16} />
               </IconButton> */}
-                {organization_quota.monthly_gpu_hours_per_user} credits
+                <Chip size="sm" color="primary">
+                  {formatHours(organization_quota.monthly_gpu_hours_per_user)} credits
+                </Chip>
                 <Button onClick={handleEditOrg}>Edit</Button>
               </Stack>
             </Grid>
@@ -571,38 +618,84 @@ const OrgQuota: React.FC = () => {
           Team
         </Typography>
         <Card variant="outlined" sx={{ mb: 3 }}>
-          <Typography level="body-sm">
-            Set quota overrides for members of specific teams here
+          <Typography level="body-sm" sx={{ mb: 2 }}>
+            Set quota overrides for members of specific teams.
           </Typography>
-          <Table>
-            <thead>
-              <tr>
-                <th>Team Name</th>
-                <th>Quota</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Team Alpha</td>
-                <td>1000 credits</td>
-                <td style={{ textAlign: "right" }}>
-                  <Button size="sm" variant="outlined">
-                    Edit
-                  </Button>
-                </td>
-              </tr>
-              <tr>
-                <td>Team Beta</td>
-                <td>500 credits</td>
-                <td style={{ textAlign: "right" }}>
-                  <Button size="sm" variant="outlined">
-                    Edit
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </Table>
+          {teamError && <Alert color="danger" sx={{ mb: 2 }}>{teamError}</Alert>}
+          {teamLoading || !teamQuotas ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="120px">
+              <CircularProgress />
+            </Box>
+          ) : teamQuotas.teams.length === 0 ? (
+            <Alert color="neutral">No teams found.</Alert>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <th>Team Name</th>
+                  <th>Quota</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamQuotas.teams.map((t) => {
+                  const usesDefault =
+                    t.monthly_gpu_hours_per_user === teamQuotas.default_quota_per_user;
+                  return (
+                    <tr key={t.team_id}>
+                      <td>{t.team_name}</td>
+                      <td>
+                        {usesDefault ? (
+                          <Chip size="sm" color="neutral">
+                            {formatHours(teamQuotas.default_quota_per_user)} credits
+                          </Chip>
+                        ) : (
+                          <Chip size="sm" color="primary">
+                            {formatHours(t.monthly_gpu_hours_per_user)} credits
+                          </Chip>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            onClick={() => {
+                              setSelectedTeam(t);
+                              setNewTeamQuotaHours(String(t.monthly_gpu_hours_per_user));
+                              setOpenTeamQuotaModal(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          {!usesDefault && (
+                            <Button
+                              size="sm"
+                              variant="outlined"
+                              color="danger"
+                              onClick={async () => {
+                                if (!organizationId) return;
+                                try {
+                                  await teamsQuotaApi.deleteTeamQuota(organizationId, t.team_id);
+                                  await fetchTeamQuotas();
+                                } catch (err) {
+                                  setTeamError(
+                                    err instanceof Error ? err.message : "Failed to reset team quota"
+                                  );
+                                }
+                              }}
+                            >
+                              Reset
+                            </Button>
+                          )}
+                        </Stack>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </Card>
       </Box>
 
@@ -616,6 +709,13 @@ const OrgQuota: React.FC = () => {
             <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
               Set user level quotas here. Will override team and org quotas.
             </Typography>
+            <Input
+              placeholder="Search by name or email..."
+              value={individualSearch}
+              onChange={(e) => setIndividualSearch(e.target.value)}
+              startDecorator={<Search size={16} />}
+              sx={{ mb: 2, maxWidth: 420 }}
+            />
             {userQuotas.users.length === 0 ? (
               <Alert color="neutral">Loading user quotas...</Alert>
             ) : (
@@ -624,26 +724,40 @@ const OrgQuota: React.FC = () => {
                   <tr>
                     <th>User</th>
                     <th>Email</th>
-                    <th>Custom Quota</th>
+                    <th>Quota Source</th>
+                    <th>Quota</th>
                     <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {userQuotas.users.map((userQuota) => (
+                  {userQuotas.users
+                    .filter((u) => {
+                      const hay = [u.user_name, u.user_email, u.user_id]
+                        .filter(Boolean)
+                        .join(" ")
+                        .toLowerCase();
+                      return hay.includes(individualSearch.toLowerCase());
+                    })
+                    .map((userQuota) => (
                     <tr key={userQuota.user_id}>
                       <td>{userQuota.user_name || "Unknown"}</td>
                       <td>{userQuota.user_email || userQuota.user_id}</td>
                       <td>
+                        {(() => {
+                          const src = userQuota.effective_quota_source || (userQuota.custom_quota ? "user" : "org");
+                          const color = src === "user" ? "primary" : src === "team" ? "warning" : "neutral";
+                          const label = src === "user" ? "user" : src === "team" ? "team" : "org";
+                          return <Chip size="sm" color={color as any}>{label}</Chip>;
+                        })()}
+                      </td>
+                      <td>
                         {userQuota.custom_quota ? (
                           <Chip color="primary" size="sm">
-                            {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
-                            credits
+                            {formatHours(userQuota.monthly_gpu_hours_per_user)} credits
                           </Chip>
                         ) : (
-                          <Chip color="neutral" size="sm">
-                            Using Default (
-                            {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
-                            credits)
+                          <Chip color={(userQuota.effective_quota_source === "team" ? "warning" : "neutral") as any} size="sm">
+                            {formatHours(userQuota.effective_quota_limit ?? userQuota.monthly_gpu_hours_per_user)} credits
                           </Chip>
                         )}
                       </td>
@@ -857,17 +971,61 @@ const OrgQuota: React.FC = () => {
               >
                 Cancel
               </Button>
+            </Stack>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Team Quota Modal */}
+      <Modal open={openTeamQuotaModal} onClose={() => setOpenTeamQuotaModal(false)}>
+        <ModalDialog>
+          <Typography level="h4">Edit Team Quota</Typography>
+          <Typography level="body-sm" mb={2}>
+            Set the monthly GPU credit quota per user for team {selectedTeam?.team_name}
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Input
+              placeholder="Monthly GPU Credit Limit"
+              value={newTeamQuotaHours}
+              onChange={(e) => setNewTeamQuotaHours(e.target.value)}
+              slotProps={{
+                input: { type: "number", min: "0", step: "0.1" },
+              }}
+            />
+            <Stack direction="row" spacing={1}>
+              <Button
+                onClick={async () => {
+                  if (!organizationId || !selectedTeam) return;
+                  const parsed = parseFloat(newTeamQuotaHours);
+                  if (isNaN(parsed) || parsed < 0) return;
+                  try {
+                    setUpdatingTeamQuota(true);
+                    await teamsQuotaApi.updateTeamQuota(
+                      organizationId,
+                      selectedTeam.team_id,
+                      parsed
+                    );
+                    await fetchTeamQuotas();
+                    setOpenTeamQuotaModal(false);
+                  } catch (err) {
+                    setTeamError(
+                      err instanceof Error ? err.message : "Failed to update team quota"
+                    );
+                  } finally {
+                    setUpdatingTeamQuota(false);
+                  }
+                }}
+                loading={updatingTeamQuota}
+                disabled={!newTeamQuotaHours || parseFloat(newTeamQuotaHours) < 0}
+              >
+                Save Changes
+              </Button>
               <Button
                 variant="outlined"
-                color="danger"
-                onClick={async () => {
-                  await handleDeleteUserQuota(selectedUser!);
-                  setOpenUserQuotaModal(false);
-                  setSelectedUser(null);
-                }}
-                loading={updatingUserQuota}
+                onClick={() => setOpenTeamQuotaModal(false)}
+                disabled={updatingTeamQuota}
               >
-                Delete Quota
+                Cancel
               </Button>
             </Stack>
           </Stack>

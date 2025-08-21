@@ -280,6 +280,9 @@ class UserQuotaResponse(BaseModel):
     custom_quota: bool
     created_at: str
     updated_at: str
+    # Effective fields represent the actual limit in effect considering user, team, and org
+    effective_quota_source: str = "org"  # Can be 'org', 'team', or 'user'
+    effective_quota_limit: float = 0.0
 
 
 class UpdateUserQuotaRequest(BaseModel):
@@ -295,6 +298,26 @@ class UserQuotaListResponse(BaseModel):
 class CreateUserQuotaRequest(BaseModel):
     user_id: str
     monthly_gpu_hours_per_user: float
+
+
+# Team Quota Management Models
+class TeamQuotaRequest(BaseModel):
+    monthly_gpu_hours_per_user: float
+
+
+class TeamQuotaResponse(BaseModel):
+    team_id: str
+    team_name: str
+    organization_id: str
+    monthly_gpu_hours_per_user: float
+    created_at: str
+    updated_at: str
+
+
+class TeamQuotaListResponse(BaseModel):
+    organization_id: str
+    teams: List[TeamQuotaResponse]
+    default_quota_per_user: float  # Organization-wide default
 
 
 # Storage Bucket Models

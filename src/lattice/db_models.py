@@ -252,6 +252,21 @@ class TeamMembership(Base):
     )
 
 
+class TeamQuota(Base):
+    __tablename__ = "team_quotas"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    monthly_gpu_hours_per_user = Column(Float, nullable=False, default=100.0)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Composite unique constraint to ensure one quota per team per organization
+    __table_args__ = (
+        UniqueConstraint("organization_id", "team_id", name="uq_team_quotas_org_team"),
+    )
+    
 class ContainerRegistry(Base):
     __tablename__ = "container_registries"
 

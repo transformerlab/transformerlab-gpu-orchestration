@@ -195,6 +195,81 @@ export const teamsApi = {
   },
 };
 
+// Team Quotas API functions
+export const teamsQuotaApi = {
+  listTeamQuotas: async (organizationId: string): Promise<{
+    organization_id: string;
+    teams: Array<{
+      team_id: string;
+      team_name: string;
+      organization_id: string;
+      monthly_gpu_hours_per_user: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+    default_quota_per_user: number;
+  }> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/teams/quotas`),
+      { credentials: "include" }
+    );
+    if (!res.ok) throw new Error("Failed to fetch team quotas");
+    return res.json();
+  },
+
+  getTeamQuota: async (organizationId: string, teamId: string): Promise<{
+    team_id: string;
+    team_name: string;
+    organization_id: string;
+    monthly_gpu_hours_per_user: number;
+    created_at: string;
+    updated_at: string;
+  }> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/teams/${teamId}/quota`),
+      { credentials: "include" }
+    );
+    if (!res.ok) throw new Error("Failed to fetch team quota");
+    return res.json();
+  },
+
+  updateTeamQuota: async (
+    organizationId: string,
+    teamId: string,
+    monthlyGpuHoursPerUser: number
+  ): Promise<{
+    team_id: string;
+    team_name: string;
+    organization_id: string;
+    monthly_gpu_hours_per_user: number;
+    created_at: string;
+    updated_at: string;
+  }> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/teams/${teamId}/quota`),
+      {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthly_gpu_hours_per_user: monthlyGpuHoursPerUser }),
+      }
+    );
+    if (!res.ok) throw new Error("Failed to update team quota");
+    return res.json();
+  },
+
+  deleteTeamQuota: async (organizationId: string, teamId: string): Promise<void> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/teams/${teamId}/quota`),
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
+    if (!res.ok) throw new Error("Failed to delete team quota");
+  },
+};
+
 // RunPod API functions
 export const runpodApi = {
   setup: async (): Promise<{ message: string }> => {
@@ -254,7 +329,131 @@ export const jobApi = {
   },
 };
 
-// SSH Key management API functions
+export const quotaApi = {
+  getOrganizationQuota: async (organizationId: string): Promise<{
+    organization_quota: {
+      id: string;
+      organization_id: string;
+      monthly_gpu_hours_per_user: number;
+      created_at: string;
+      updated_at: string;
+    };
+    usage: {
+      current_period_limit: number;
+      current_period_used: number;
+      current_period_remaining: number;
+      usage_percentage: number;
+      period_start: string;
+      period_end: string;
+      total_usage_this_period: number;
+    }
+  }> => {
+    const res = await apiFetch(buildApiUrl(`quota/organization/${organizationId}`), {
+      credentials: "include"
+    });
+    if (!res.ok) throw new Error("Failed to fetch organization quota");
+    return res.json();
+  },
+
+  updateOrganizationQuota: async (
+    organizationId: string, 
+    monthlyGpuHoursPerUser: number
+  ): Promise<any> => {
+    const res = await apiFetch(buildApiUrl(`quota/organization/${organizationId}`), {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monthly_gpu_hours_per_user: monthlyGpuHoursPerUser })
+    });
+    if (!res.ok) throw new Error("Failed to update organization quota");
+    return res.json();
+  },
+
+  getUserQuota: async (organizationId: string, userId: string): Promise<{
+    user_id: string;
+    user_email?: string;
+    user_name?: string;
+    organization_id: string;
+    monthly_gpu_hours_per_user: number;
+    custom_quota: boolean;
+    created_at: string;
+    updated_at: string;
+    effective_quota_source: string;
+  }> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
+      { credentials: "include" }
+    );
+    if (!res.ok) throw new Error("Failed to fetch user quota");
+    return res.json();
+  },
+
+  listUserQuotas: async (organizationId: string): Promise<{
+    organization_id: string;
+    users: Array<{
+      user_id: string;
+      user_email?: string;
+      user_name?: string;
+      organization_id: string;
+      monthly_gpu_hours_per_user: number;
+      custom_quota: boolean;
+      created_at: string;
+      updated_at: string;
+      effective_quota_source: string;
+    }>;
+    default_quota_per_user: number;
+  }> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/users/quotas`),
+      { credentials: "include" }
+    );
+    if (!res.ok) throw new Error("Failed to fetch user quotas");
+    return res.json();
+  },
+
+  updateUserQuota: async (
+    organizationId: string,
+    userId: string,
+    monthlyGpuHoursPerUser: number
+  ): Promise<any> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
+      {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthly_gpu_hours_per_user: monthlyGpuHoursPerUser })
+      }
+    );
+    if (!res.ok) throw new Error("Failed to update user quota");
+    return res.json();
+  },
+
+  deleteUserQuota: async (organizationId: string, userId: string): Promise<void> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
+      {
+        method: "DELETE",
+        credentials: "include"
+      }
+    );
+    if (!res.ok) throw new Error("Failed to delete user quota");
+  },
+
+  refreshQuotaPeriods: async (organizationId: string): Promise<{ message: string }> => {
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}/refresh-quota-periods`),
+      {
+        method: "POST",
+        credentials: "include"
+      }
+    );
+    if (!res.ok) throw new Error("Failed to refresh quota periods");
+    return res.json();
+  }
+};
+
+// SSH Keys API functions
 export const sshKeyApi = {
   list: async (): Promise<{
     ssh_keys: Array<{

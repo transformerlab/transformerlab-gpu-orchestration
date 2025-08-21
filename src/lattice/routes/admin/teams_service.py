@@ -14,9 +14,9 @@ from models import (
     TeamMemberResponse,
     AddTeamMemberRequest,
     AvailableUsersResponse,
-    AvailableUser,
 )
-from routes.auth.provider.work_os import provider as auth_provider
+from lattice.routes.auth.provider.work_os import provider as auth_provider
+from lattice.routes.quota.utils import refresh_quota_periods_for_user
 
 
 def _team_to_response(db: Session, team: Team) -> TeamResponse:
@@ -183,6 +183,9 @@ def add_team_member(db: Session, organization_id: str, team_id: str, body: AddTe
 
     try:
         db.commit()
+        
+        # Refresh the user's quota period to reflect potential team quota
+        refresh_quota_periods_for_user(db, organization_id, body.user_id)
     except IntegrityError:
         db.rollback()
 
@@ -242,11 +245,18 @@ def remove_team_member(db: Session, organization_id: str, team_id: str, user_id:
         TeamMembership.team_id == team_id, TeamMembership.user_id == user_id
     ).delete()
     db.commit()
+    
+    # Refresh the user's quota period to reflect removal from team
+    refresh_quota_periods_for_user(db, organization_id, user_id)
 
     return list_team_members(db, organization_id, team_id)
 
 
 def list_available_users(db: Session, organization_id: str) -> AvailableUsersResponse:
+    """Return all org members along with whether they already belong to a team.
+
+    Shape must match AvailableUsersResponse -> { users: AvailableUser[] }.
+    """
     memberships = auth_provider.list_organization_memberships(organization_id=organization_id)
 
     existing_team_memberships = (
@@ -255,38 +265,29 @@ def list_available_users(db: Session, organization_id: str) -> AvailableUsersRes
         .filter(Team.organization_id == organization_id)
         .all()
     )
-    users_with_teams = {membership.user_id for membership in existing_team_memberships}
+    team_user_ids = {membership.user_id for membership in existing_team_memberships}
 
-    # Batch fetch user details for org memberships
-    member_user_ids = [m.user_id for m in memberships]
-    users_by_id: Dict[str, any] = {}
-    if member_user_ids:
+    users = []
+    for membership in memberships:
         try:
-            users = auth_provider.get_users(user_ids=member_user_ids)
-            users_by_id = {u.id: u for u in users}
-        except Exception:
-            users_by_id = {}
-
-    users: List[AvailableUser] = []
-    for m in memberships:
-        u = users_by_id.get(m.user_id)
-        if u is not None:
+            user = auth_provider.get_user(user_id=membership.user_id)
             users.append(
-                AvailableUser(
-                    user_id=u.id,
-                    email=u.email,
-                    first_name=u.first_name,
-                    last_name=u.last_name,
-                    profile_picture_url=getattr(u, "profile_picture_url", None),
-                    has_team=u.id in users_with_teams,
-                )
+                {
+                    "user_id": user.id,
+                    "email": getattr(user, "email", None),
+                    "first_name": getattr(user, "first_name", None),
+                    "last_name": getattr(user, "last_name", None),
+                    "profile_picture_url": getattr(user, "profile_picture_url", None),
+                    "has_team": user.id in team_user_ids,
+                }
             )
-        else:
+        except Exception:
+            # If we can't get user info, still add a basic entry
             users.append(
-                AvailableUser(
-                    user_id=m.user_id,
-                    has_team=m.user_id in users_with_teams,
-                )
+                {
+                    "user_id": membership.user_id,
+                    "has_team": membership.user_id in team_user_ids,
+                }
             )
 
     return AvailableUsersResponse(users=users)

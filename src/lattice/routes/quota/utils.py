@@ -1,10 +1,10 @@
 import re
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from config import get_db
-from db_models import GPUUsageLog, OrganizationQuota, QuotaPeriod
+from db_models import GPUUsageLog, OrganizationQuota, QuotaPeriod, TeamQuota, TeamMembership
 from lattice.utils.file_utils import get_cluster_user_info, get_cluster_platform
 from lattice.routes.skypilot.utils import generate_cost_report
 import sky
@@ -150,30 +150,73 @@ def get_or_create_user_quota(
     return user_quota
 
 
-def get_user_quota_limit(db: Session, organization_id: str, user_id: str) -> float:
-    """Get the quota limit for a specific user, falling back to organization default"""
+def get_user_quota_limit(db: Session, organization_id: str, user_id: str) -> Tuple[float, str]:
+    """
+    Get the quota limit for a specific user based on precedence:
+    individual > team > organization
+    
+    Returns:
+        Tuple[float, str]: (quota_limit, quota_source) where quota_source is 'user', 'team', or 'org'
+    """
+    # Check if user has an individual quota
     user_quota = (
         db.query(OrganizationQuota)
         .filter(
             OrganizationQuota.organization_id == organization_id,
             OrganizationQuota.user_id == user_id,
+            OrganizationQuota.custom_quota == True,
         )
         .first()
     )
 
     if user_quota:
-        return user_quota.monthly_gpu_hours_per_user
+        return user_quota.monthly_gpu_hours_per_user, "user"
 
-    # If no user quota exists, create one with organization default
-    user_quota = get_or_create_user_quota(db, organization_id, user_id)
-    return user_quota.monthly_gpu_hours_per_user
+    # Check if user has a team quota
+    team_id = get_user_team_id(db, organization_id, user_id)
+    if team_id:
+        team_quota = get_team_quota(db, organization_id, team_id)
+        if team_quota:
+            return team_quota.monthly_gpu_hours_per_user, "team"
+
+    # Fall back to organization default
+    org_quota = get_or_create_organization_quota(db, organization_id)
+    return org_quota.monthly_gpu_hours_per_user, "org"
+
+
+def get_user_team_id(db: Session, organization_id: str, user_id: str) -> Optional[str]:
+    """Get the team ID for a user in an organization"""
+    membership = (
+        db.query(TeamMembership)
+        .filter(
+            TeamMembership.organization_id == organization_id,
+            TeamMembership.user_id == user_id,
+        )
+        .first()
+    )
+    return membership.team_id if membership else None
+
+
+def get_team_quota(db: Session, organization_id: str, team_id: str) -> Optional[TeamQuota]:
+    """Get the team quota for a specific team"""
+    return (
+        db.query(TeamQuota)
+        .filter(
+            TeamQuota.organization_id == organization_id,
+            TeamQuota.team_id == team_id,
+        )
+        .first()
+    )
 
 
 def get_current_user_quota_info(
     db: Session, organization_id: str, user_id: str
 ) -> Dict[str, Any]:
     """Get comprehensive quota information for the current user"""
-    # Get user's quota record
+    # Get user's quota record and source
+    quota_limit, quota_source = get_user_quota_limit(db, organization_id, user_id)
+    
+    # Get or create user's quota record
     user_quota = get_or_create_user_quota(db, organization_id, user_id)
 
     # Get current period
@@ -181,11 +224,33 @@ def get_current_user_quota_info(
 
     # Get organization default for comparison
     org_quota = get_organization_default_quota(db, organization_id)
+    
+    # Get team quota information if applicable
+    team_id = get_user_team_id(db, organization_id, user_id)
+    team_quota_limit = None
+    team_name = None
+    
+    if team_id:
+        team_quota = get_team_quota(db, organization_id, team_id)
+        if team_quota:
+            team_quota_limit = team_quota.monthly_gpu_hours_per_user
+            
+            # Get team name via lazy import to avoid circular import
+            try:
+                from lattice.routes.admin.teams_service import get_team
+                team = get_team(db, team_id)
+                team_name = team.name if team else "Unknown Team"
+            except Exception:
+                team_name = "Unknown Team"
 
     return {
         "user_quota_limit": user_quota.monthly_gpu_hours_per_user,
         "is_custom_quota": user_quota.custom_quota,
         "organization_default": org_quota.monthly_gpu_hours_per_user,
+        "team_quota_limit": team_quota_limit,
+        "team_name": team_name,
+        "effective_quota_limit": quota_limit,
+        "effective_quota_source": quota_source,
         "current_period_limit": current_period.gpu_hours_limit,
         "current_period_used": current_period.gpu_hours_used,
         "current_period_remaining": max(
@@ -318,6 +383,17 @@ def refresh_quota_periods_for_organization(db: Session, organization_id: str) ->
         )
 
 
+def refresh_quota_periods_for_user(db: Session, organization_id: str, user_id: str) -> None:
+    """Refresh quota period for a specific user with their current quota limit"""
+    try:
+        # Get or create quota period for the user (this will update with current limits)
+        get_or_create_quota_period(db, organization_id, user_id)
+    except Exception as e:
+        print(
+            f"Failed to refresh quota period for user {user_id} in organization {organization_id}: {e}"
+        )
+
+
 def populate_user_quotas_for_organization(
     db: Session, organization_id: str
 ) -> List[OrganizationQuota]:
@@ -385,9 +461,9 @@ def get_or_create_quota_period(
     )
 
     if not period:
-        # Get the user-specific quota limit, falling back to organization default
+        # Get the user-specific quota limit, falling back to team or organization default
         if user_id:
-            quota_limit = get_user_quota_limit(db, organization_id, user_id)
+            quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)
         else:
             org_quota = get_or_create_organization_quota(db, organization_id)
             quota_limit = org_quota.monthly_gpu_hours_per_user
@@ -406,7 +482,12 @@ def get_or_create_quota_period(
     else:
         # Update existing period with current user quota limit if it's different
         if user_id:
-            current_quota_limit = get_user_quota_limit(db, organization_id, user_id)
+            current_quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)
+            if period.gpu_hours_limit != current_quota_limit:
+                period.gpu_hours_limit = current_quota_limit
+                period.updated_at = datetime.utcnow()
+                db.commit()
+                db.refresh(period)
             if period.gpu_hours_limit != current_quota_limit:
                 period.gpu_hours_limit = current_quota_limit
                 period.updated_at = datetime.utcnow()
@@ -706,8 +787,8 @@ def get_organization_user_usage_summary(
             if user_cluster:
                 user_info = get_cluster_user_info(user_cluster[0]) or {}
 
-            # Get user-specific quota limit
-            user_quota_limit = get_user_quota_limit(db, organization_id, user_id)
+            # Get user-specific effective quota limit (user > team > org)
+            user_quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)
 
             user_breakdown.append(
                 {
