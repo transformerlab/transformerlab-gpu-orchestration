@@ -206,7 +206,7 @@ const Nodes: React.FC = () => {
         <Button
           onClick={() => setShowInstanceLauncher(true)}
           color="success"
-          variant="soft"
+          variant="solid"
           sx={{ minWidth: 180 }}
           size="lg"
         >
@@ -226,15 +226,10 @@ const Nodes: React.FC = () => {
           </div>
         ))
       ) : (
-        <Box sx={{ textAlign: "center", py: 4 }}>
-          <Typography level="body-md" sx={{ color: "text.secondary" }}>
-            No fake data to display. Enable fake data in Settings to see sample
-            clusters.
-          </Typography>
-        </Box>
+        <></>
       )}
       {/* --- Clouds Section --- */}
-      <Box sx={{ mt: 6 }}>
+      <Box>
         {isLoading ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
             <Typography level="body-md" sx={{ color: "text.secondary" }}>

@@ -51,6 +51,18 @@ interface GpuType {
   type: string;
 }
 
+interface ContainerRegistry {
+  id: string;
+  name: string;
+  docker_username: string;
+  docker_server: string;
+  organization_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
 const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   open,
   onClose,
@@ -63,13 +75,22 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [dockerImage, setDockerImage] = useState("");
+  const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
+
+  // Container registry state
+  const [containerRegistries, setContainerRegistries] = useState<
+    ContainerRegistry[]
+  >([]);
+  const [loadingRegistries, setLoadingRegistries] = useState(false);
   const { addNotification } = useNotification();
 
   useEffect(() => {
     if (open) {
       fetchAvailableGpuTypes();
+      fetchContainerRegistries();
       // Set the first allowed GPU type as default when config is available
       if (
         runpodConfig.allowed_gpu_types &&
@@ -114,6 +135,27 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     }
   };
 
+  const fetchContainerRegistries = async () => {
+    try {
+      setLoadingRegistries(true);
+      const response = await apiFetch(
+        buildApiUrl("container-registries/available"),
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch container registries");
+      }
+      const data = await response.json();
+      setContainerRegistries(data);
+    } catch (err) {
+      console.error("Error fetching container registries:", err);
+    } finally {
+      setLoadingRegistries(false);
+    }
+  };
+
   const resetForm = () => {
     setClusterName("");
     setCommand('echo "Welcome to Lattice"');
@@ -121,6 +163,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSelectedGpuType("");
     setSelectedGpuFullString("");
     setSelectedTemplate("");
+    setDockerImage("");
+    setSelectedRegistryId("");
   };
 
   const handleClose = () => {
@@ -134,7 +178,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 
     // Show immediate notification that request is being processed
     addNotification({
-      type: "primary",
+      type: "success",
       message: `Launching RunPod cluster "${clusterName}"...`,
     });
 
@@ -149,6 +193,9 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
       if (selectedTemplate) formData.append("template", selectedTemplate);
+      if (dockerImage) formData.append("docker_image", dockerImage);
+      if (selectedRegistryId)
+        formData.append("container_registry_id", selectedRegistryId);
 
       const response = await apiFetch(buildApiUrl("skypilot/launch"), {
         method: "POST",
@@ -229,6 +276,71 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               Choose a template for your node (functionality coming soon)
             </Typography>
           </FormControl>
+
+          <Card variant="outlined">
+            <Typography level="title-sm" sx={{ mb: 2 }}>
+              Docker Configuration (Optional)
+            </Typography>
+            <Stack spacing={2}>
+              <FormControl>
+                <FormLabel>Docker Image</FormLabel>
+                <Input
+                  value={dockerImage}
+                  onChange={(e) => setDockerImage(e.target.value)}
+                  placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 0.5, color: "text.secondary" }}
+                >
+                  Use a Docker image as runtime environment. Leave empty to use
+                  default RunPod image.
+                </Typography>
+              </FormControl>
+
+              {dockerImage && (
+                <>
+                  <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
+                    Private Registry Authentication (optional)
+                  </Typography>
+                  <FormControl>
+                    <FormLabel>Container Registry</FormLabel>
+                    {loadingRegistries ? (
+                      <Typography level="body-sm" color="neutral">
+                        Loading registries...
+                      </Typography>
+                    ) : containerRegistries.length === 0 ? (
+                      <Typography level="body-sm" color="warning">
+                        No container registries configured. You can add them in
+                        Admin &gt; Private Container Registry.
+                      </Typography>
+                    ) : (
+                      <Select
+                        value={selectedRegistryId}
+                        onChange={(_, value) =>
+                          setSelectedRegistryId(value || "")
+                        }
+                        placeholder="Select a registry (optional)"
+                      >
+                        {containerRegistries.map((registry) => (
+                          <Option key={registry.id} value={registry.id}>
+                            {registry.name} ({registry.docker_server})
+                          </Option>
+                        ))}
+                      </Select>
+                    )}
+                    <Typography
+                      level="body-xs"
+                      sx={{ mt: 0.5, color: "text.secondary" }}
+                    >
+                      Leave empty for public images or Docker Hub. Select a
+                      configured registry for private images.
+                    </Typography>
+                  </FormControl>
+                </>
+              )}
+            </Stack>
+          </Card>
 
           <FormControl required>
             <FormLabel>GPU Type</FormLabel>

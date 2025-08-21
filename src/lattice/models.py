@@ -360,6 +360,39 @@ class StorageBucketListResponse(BaseModel):
     total_count: int
 
 
+# Container Registry Models
+class ContainerRegistryResponse(BaseModel):
+    id: str
+    name: str
+    docker_username: str
+    docker_server: str
+    organization_id: str
+    user_id: str
+    created_at: str
+    updated_at: str
+    is_active: bool
+
+
+class CreateContainerRegistryRequest(BaseModel):
+    name: str
+    docker_username: str
+    docker_password: str
+    docker_server: str
+
+
+class UpdateContainerRegistryRequest(BaseModel):
+    name: Optional[str] = None
+    docker_username: Optional[str] = None
+    docker_password: Optional[str] = None
+    docker_server: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ContainerRegistryListResponse(BaseModel):
+    registries: List[ContainerRegistryResponse]
+    total_count: int
+
+
 # SSH Key Models
 class SSHKeyResponse(BaseModel):
     id: str
