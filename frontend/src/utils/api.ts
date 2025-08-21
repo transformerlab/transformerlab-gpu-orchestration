@@ -60,6 +60,127 @@ export const apiFetch = async (
   return response;
 };
 
+// Teams API functions
+export const teamsApi = {
+  listTeams: async (): Promise<{
+    teams: Array<{
+      id: string;
+      name: string;
+      organization_id: string;
+      created_by: string;
+      created_at: string;
+      updated_at: string;
+      members: Array<{
+        user_id: string;
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        profile_picture_url?: string;
+      }>;
+    }>;
+    total_count: number;
+  }> => {
+    const res = await apiFetch(buildApiUrl("admin/teams/"), {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch teams");
+    return res.json();
+  },
+
+  createTeam: async (name: string) => {
+    const res = await apiFetch(buildApiUrl("admin/teams/"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to create team");
+    }
+    return res.json();
+  },
+
+  deleteTeam: async (teamId: string) => {
+    const res = await apiFetch(buildApiUrl(`admin/teams/${teamId}`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to delete team");
+    }
+    return res.json();
+  },
+
+  addMember: async (teamId: string, userId: string) => {
+    const res = await apiFetch(buildApiUrl(`admin/teams/${teamId}/members`), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to add member");
+    }
+    return res.json();
+  },
+
+  removeMember: async (teamId: string, userId: string) => {
+    const res = await apiFetch(buildApiUrl(`admin/teams/${teamId}/members/${userId}`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to remove member");
+    }
+    return res.json();
+  },
+
+  availableUsers: async (): Promise<{ users: Array<{
+    user_id: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    profile_picture_url?: string;
+    has_team?: boolean;
+  }>; }> => {
+    const res = await apiFetch(buildApiUrl("admin/teams/available-users"), {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch users");
+    return res.json();
+  },
+
+  getCurrentUserTeam: async () => {
+    const res = await apiFetch(buildApiUrl("admin/teams/current-user/team"), {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        return null; // User is not in any team
+      }
+      throw new Error("Failed to fetch current user team");
+    }
+    return res.json();
+  },
+
+  getUserTeam: async (userId: string) => {
+    const res = await apiFetch(buildApiUrl(`admin/teams/user/${userId}/team`), {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        return null; // User is not in any team
+      }
+      throw new Error("Failed to fetch user team");
+    }
+    return res.json();
+  },
+};
+
 // RunPod API functions
 export const runpodApi = {
   setup: async (): Promise<{ message: string }> => {
