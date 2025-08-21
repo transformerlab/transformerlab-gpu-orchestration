@@ -21,6 +21,7 @@ app.add_middleware(
 from routes.auth.routes import router as auth_router
 from routes.auth.cli import router as auth_cli_router
 from routes.admin.routes import router as admin_router
+from routes.admin.teams_routes import router as teams_admin_router
 from routes.clusters.routes import router as clusters_router
 from routes.skypilot.routes import router as skypilot_router
 from routes.reports.routes import router as reports_router
@@ -36,6 +37,7 @@ api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=api_v1_prefix)
 app.include_router(auth_cli_router, prefix=api_v1_prefix)
 app.include_router(admin_router, prefix=api_v1_prefix)
+app.include_router(teams_admin_router, prefix=api_v1_prefix)
 app.include_router(clusters_router, prefix=api_v1_prefix)
 app.include_router(skypilot_router, prefix=api_v1_prefix)
 app.include_router(reports_router, prefix=api_v1_prefix)

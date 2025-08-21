@@ -548,7 +548,7 @@ const Users: React.FC = () => {
                               level="body-sm"
                               sx={{ color: "text.secondary", fontStyle: "italic" }}
                             >
-                              Cannot edit or remove only admin
+                              Cannot edit/remove the only admin
                             </Typography>
                           )}
                       </Box>

@@ -136,6 +136,11 @@ class AuthProvider(ABC):
 	def get_user(self, *, user_id: str) -> AuthUser:
 		raise NotImplementedError
 
+	@abstractmethod
+	def get_users(self, *, user_ids: List[str]) -> List[AuthUser]:
+		"""Fetch multiple users in parallel and return them in the same order as user_ids."""
+		raise NotImplementedError
+
 	# Invitations
 	@abstractmethod
 	def send_invitation(

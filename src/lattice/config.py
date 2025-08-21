@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -14,10 +15,22 @@ DEFAULT_SQLITE_DB_PATH = os.path.join(
 )
 DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{DEFAULT_SQLITE_DB_PATH}"
 
-engine = create_engine(DATABASE_URL)
+# Determine backend before creating the engine so we only instantiate once
+url = make_url(DATABASE_URL)
 
-if engine.dialect.name == "sqlite":
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+if url.get_backend_name() == "sqlite":
+    from sqlalchemy import event
+
+    def _fk_pragma_on_connect(dbapi_con, con_record):
+        dbapi_con.execute("pragma foreign_keys=ON")
+
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+    )
+    event.listen(engine, "connect", _fk_pragma_on_connect)
+else:
+    engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

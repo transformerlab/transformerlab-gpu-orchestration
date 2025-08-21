@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import workos
 from lattice.routes.auth.provider.auth_provider import (
@@ -184,6 +185,43 @@ class WorkOSProvider(AuthProvider):
             last_name=getattr(u, "last_name", None),
             profile_picture_url=getattr(u, "profile_picture_url", None),
         )
+
+    def get_users(self, *, user_ids: List[str]) -> List[AuthUser]:
+        # Fetch multiple users concurrently and preserve input order.
+        if not user_ids:
+            return []
+
+        # Map index to future to reconstruct order
+        results: List[Optional[AuthUser]] = [None] * len(user_ids)
+
+        def fetch(idx: int, uid: str) -> None:
+            try:
+                u = self._client.user_management.get_user(user_id=uid)
+                results[idx] = AuthUser(
+                    id=u.id,
+                    email=getattr(u, "email", None),
+                    first_name=getattr(u, "first_name", None),
+                    last_name=getattr(u, "last_name", None),
+                    profile_picture_url=getattr(u, "profile_picture_url", None),
+                )
+            except Exception:
+                # Leave None on failure; callers can filter or handle
+                results[idx] = None
+
+        # Reasonable default max_workers; bound by number of ids
+        max_workers = min(8, len(user_ids))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(fetch, i, uid) for i, uid in enumerate(user_ids)]
+            for f in as_completed(futures):
+                # ensure exceptions are raised during execution if not handled
+                try:
+                    f.result()
+                except Exception:
+                    # already captured per-item; skip
+                    pass
+
+        # Filter out None entries to return only successful lookups
+        return [u for u in results if u is not None]
 
     # Invitations
     def send_invitation(

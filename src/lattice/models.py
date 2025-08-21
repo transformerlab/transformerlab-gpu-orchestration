@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LoginResponse(BaseModel):
@@ -363,3 +363,52 @@ class UpdateSSHKeyRequest(BaseModel):
 class SSHKeyListResponse(BaseModel):
     ssh_keys: List[SSHKeyResponse]
     total_count: int
+
+
+# Team Models
+class TeamMemberResponse(BaseModel):
+    user_id: str
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+
+
+class TeamResponse(BaseModel):
+    id: str
+    name: str
+    organization_id: str
+    created_by: str
+    created_at: str
+    updated_at: str
+    members: List[TeamMemberResponse] = Field(default_factory=list)
+
+
+class TeamListResponse(BaseModel):
+    teams: List[TeamResponse]
+    total_count: int
+
+
+class CreateTeamRequest(BaseModel):
+    name: str
+
+
+class UpdateTeamRequest(BaseModel):
+    name: Optional[str] = None
+
+
+class AddTeamMemberRequest(BaseModel):
+    user_id: str
+
+
+class AvailableUser(BaseModel):
+    user_id: str
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+    has_team: Optional[bool] = False
+
+
+class AvailableUsersResponse(BaseModel):
+    users: List[AvailableUser]

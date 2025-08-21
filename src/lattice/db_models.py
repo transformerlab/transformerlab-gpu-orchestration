@@ -219,3 +219,34 @@ class SSHKey(Base):
     def update_last_used(self):
         """Update the last_used_at timestamp"""
         self.last_used_at = datetime.utcnow()
+
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    name = Column(String, nullable=False)
+    organization_id = Column(String, nullable=False)
+    created_by = Column(String, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Team name must be unique within an organization
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", name="uq_teams_org_name"),
+    )
+
+
+class TeamMembership(Base):
+    __tablename__ = "team_memberships"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, nullable=False)
+    organization_id = Column(String, nullable=False)  # Denormalized for constraint
+    created_at = Column(DateTime, default=func.now())
+
+    # A user can only be in one team per organization (not globally)
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", name="uq_team_memberships_org_user"),
+    )
