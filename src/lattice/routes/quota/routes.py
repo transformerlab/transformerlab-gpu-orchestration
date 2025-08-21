@@ -14,6 +14,9 @@ from lattice.models import (
     UpdateUserQuotaRequest,
     UserQuotaListResponse,
     CreateUserQuotaRequest,
+    TeamQuotaResponse,
+    TeamQuotaRequest,
+    TeamQuotaListResponse,
 )
 from db_models import GPUUsageLog, OrganizationQuota
 from lattice.routes.quota.utils import (
@@ -31,9 +34,14 @@ from lattice.routes.quota.utils import (
     populate_user_quotas_for_organization,
     get_current_user_quota_info,
     refresh_quota_periods_for_organization,
+    refresh_quota_periods_for_user,
 )
+from lattice.routes.quota.team_quota_routes import router as team_quota_router
 
 router = APIRouter(prefix="/quota")
+
+# Include team quota routes
+router.include_router(team_quota_router)
 
 
 @router.get("/organization/{organization_id}", response_model=OrganizationQuotaResponse)
@@ -367,6 +375,11 @@ async def get_organization_user_quotas(
 
         users = []
         for user_quota in user_quotas:
+            # Get effective quota limit and source for each user (user > team > org)
+            effective_quota_limit, effective_quota_source = get_user_quota_limit(
+                db, organization_id, user_quota.user_id
+            )
+            
             try:
                 user_info = auth_provider.get_user(user_id=user_quota.user_id)
                 users.append(
@@ -379,6 +392,8 @@ async def get_organization_user_quotas(
                         custom_quota=user_quota.custom_quota,
                         created_at=user_quota.created_at.isoformat(),
                         updated_at=user_quota.updated_at.isoformat(),
+                        effective_quota_source=effective_quota_source,
+                        effective_quota_limit=effective_quota_limit,
                     )
                 )
             except Exception as e:
@@ -393,6 +408,8 @@ async def get_organization_user_quotas(
                         custom_quota=user_quota.custom_quota,
                         created_at=user_quota.created_at.isoformat(),
                         updated_at=user_quota.updated_at.isoformat(),
+                        effective_quota_source=effective_quota_source,
+                        effective_quota_limit=effective_quota_limit,
                     )
                 )
 
@@ -420,6 +437,11 @@ async def get_user_quota(
     """Get quota for a specific user"""
     try:
         user_quota = get_or_create_user_quota(db, organization_id, user_id)
+        
+        # Get effective quota limit and source (user > team > org)
+        effective_quota_limit, effective_quota_source = get_user_quota_limit(
+            db, organization_id, user_id
+        )
 
         # Get user information from auth provider
         from lattice.routes.auth.provider.work_os import provider as auth_provider
@@ -443,6 +465,8 @@ async def get_user_quota(
             custom_quota=user_quota.custom_quota,
             created_at=user_quota.created_at.isoformat(),
             updated_at=user_quota.updated_at.isoformat(),
+            effective_quota_source=effective_quota_source,
+            effective_quota_limit=effective_quota_limit,
         )
     except Exception as e:
         raise HTTPException(
@@ -466,6 +490,9 @@ async def update_user_quota_endpoint(
         updated_quota = update_user_quota(
             db, organization_id, user_id, request.monthly_gpu_hours_per_user
         )
+        
+        # Refresh the user's quota period to reflect the new limit
+        refresh_quota_periods_for_user(db, organization_id, user_id)
 
         # Get user information from auth provider
         from lattice.routes.auth.provider.work_os import provider as auth_provider
@@ -479,6 +506,11 @@ async def update_user_quota_endpoint(
         except Exception:
             user_name = None
             user_email = None
+        
+        # Get effective quota limit and source after update
+        effective_quota_limit, effective_quota_source = get_user_quota_limit(
+            db, organization_id, user_id
+        )
 
         return UserQuotaResponse(
             user_id=updated_quota.user_id,
@@ -489,6 +521,8 @@ async def update_user_quota_endpoint(
             custom_quota=updated_quota.custom_quota,
             created_at=updated_quota.created_at.isoformat(),
             updated_at=updated_quota.updated_at.isoformat(),
+            effective_quota_source=effective_quota_source,
+            effective_quota_limit=effective_quota_limit,
         )
     except Exception as e:
         print(f"Failed to update user quota: {str(e)}")
@@ -507,6 +541,9 @@ async def delete_user_quota_endpoint(
     """Delete user quota, reverting to organization default"""
     try:
         success = delete_user_quota(db, organization_id, user_id)
+        
+        # Refresh the user's quota period to reflect the new limit (org default or team quota)
+        refresh_quota_periods_for_user(db, organization_id, user_id)
 
         if success:
             return {
@@ -557,6 +594,9 @@ async def create_user_quota_endpoint(
         db.add(new_quota)
         db.commit()
         db.refresh(new_quota)
+        
+        # Refresh the user's quota period to reflect the new limit
+        refresh_quota_periods_for_user(db, organization_id, user_id)
 
         # Get user information from auth provider
         from lattice.routes.auth.provider.work_os import provider as auth_provider
@@ -570,6 +610,11 @@ async def create_user_quota_endpoint(
         except Exception:
             user_name = None
             user_email = None
+        
+        # Get effective quota limit and source
+        effective_quota_limit, effective_quota_source = get_user_quota_limit(
+            db, organization_id, user_id
+        )
 
         return UserQuotaResponse(
             user_id=new_quota.user_id,
@@ -580,6 +625,8 @@ async def create_user_quota_endpoint(
             custom_quota=new_quota.custom_quota,
             created_at=new_quota.created_at.isoformat(),
             updated_at=new_quota.updated_at.isoformat(),
+            effective_quota_source=effective_quota_source,
+            effective_quota_limit=effective_quota_limit,
         )
     except HTTPException:
         raise

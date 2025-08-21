@@ -308,71 +308,22 @@ const Teams: React.FC = () => {
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}>
               <Users size={24} />
-              {editingTitle ? (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1, minWidth: 0 }}>
-                  <Input
-                    value={editTeamName}
-                    onChange={(e) => setEditTeamName(e.target.value)}
-                    size="md"
-                    autoFocus
-                    sx={{ flex: 1, minWidth: 160 }}
-                    placeholder="Team name"
-                  />
-                  <Button
-                    variant="solid"
+              <Typography level="h3" sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                Manage Team: <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedTeamName}</span>
+                {isAdmin && (
+                  <IconButton
                     size="sm"
-                    disabled={
-                      !selectedTeamId ||
-                      !editTeamName.trim() ||
-                      editTeamName.trim() === selectedTeamName ||
-                      renaming
-                    }
-                    loading={renaming}
-                    onClick={async () => {
-                      if (!selectedTeamId) return;
-                      const teamId = selectedTeamId;
-                      const newName = editTeamName.trim();
-                      if (!newName || newName === selectedTeamName) return;
-
-                      const prevTeams = [...teams];
-                      const prevName = selectedTeamName;
-                      setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, name: newName } : t)));
-                      setSelectedTeamName(newName);
-                      setRenaming(true);
-                      try {
-                        await teamsApi.updateTeam(teamId, newName);
-                        setEditingTitle(false);
-                        setEditTeamName("");
-                      } catch (e: any) {
-                        setTeams(prevTeams);
-                        if (prevName) setSelectedTeamName(prevName);
-                        setError(e.message || "Failed to rename team");
-                      } finally {
-                        setRenaming(false);
-                      }
+                    variant="plain"
+                    onClick={() => {
+                      setEditTeamName(selectedTeamName || "");
+                      setEditingTitle(true);
                     }}
+                    title="Rename team"
                   >
-                    Save
-                  </Button>
-                </Box>
-              ) : (
-                <Typography level="h3" sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-                  Manage Team: <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedTeamName}</span>
-                  {isAdmin && (
-                    <IconButton
-                      size="sm"
-                      variant="plain"
-                      onClick={() => {
-                        setEditTeamName(selectedTeamName || "");
-                        setEditingTitle(true);
-                      }}
-                      title="Rename team"
-                    >
-                      <Pencil size={18} />
-                    </IconButton>
-                  )}
-                </Typography>
-              )}
+                    <Pencil size={18} />
+                  </IconButton>
+                )}
+              </Typography>
             </Box>
             <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
               <Button
@@ -406,6 +357,65 @@ const Teams: React.FC = () => {
           </Box>
 
           <Divider sx={{ mb: 3 }} />
+
+          {/* Rename Team Section (when editing) */}
+          {editingTitle && (
+            <Box sx={{ mb: 3 }}>
+              <FormControl>
+                <FormLabel>Edit Team Name</FormLabel>
+                <Input
+                  value={editTeamName}
+                  onChange={(e) => setEditTeamName(e.target.value)}
+                  size="md"
+                  autoFocus
+                  placeholder="Team name"
+                />
+              </FormControl>
+              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                <Button
+                  variant="solid"
+                  size="sm"
+                  disabled={!selectedTeamId || !editTeamName.trim() || editTeamName.trim() === selectedTeamName || renaming}
+                  loading={renaming}
+                  onClick={async () => {
+                    if (!selectedTeamId) return;
+                    const teamId = selectedTeamId;
+                    const newName = editTeamName.trim();
+                    if (!newName || newName === selectedTeamName) return;
+
+                    const prevTeams = [...teams];
+                    const prevName = selectedTeamName;
+                    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, name: newName } : t)));
+                    setSelectedTeamName(newName);
+                    setRenaming(true);
+                    try {
+                      await teamsApi.updateTeam(teamId, newName);
+                      setEditingTitle(false);
+                      setEditTeamName("");
+                    } catch (e: any) {
+                      setTeams(prevTeams);
+                      if (prevName) setSelectedTeamName(prevName);
+                      setError(e.message || "Failed to rename team");
+                    } finally {
+                      setRenaming(false);
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="plain"
+                  size="sm"
+                  onClick={() => {
+                    setEditingTitle(false);
+                    setEditTeamName("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Stack>
+            </Box>
+          )}
 
 
           {/* Current Members Section */}

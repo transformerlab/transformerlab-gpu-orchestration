@@ -98,3 +98,64 @@ class RoleChecker:
 
 requires_admin = RoleChecker(required_role="admin")
 requires_member = RoleChecker(required_role="member")
+
+
+# Helpers to normalize role representations from providers
+def _role_slug(role_val):
+    """Return a normalized role slug string from various role representations."""
+    if role_val is None:
+        return None
+    if isinstance(role_val, str):
+        return role_val
+    if isinstance(role_val, dict):
+        # common keys: slug, name
+        return role_val.get("slug") or role_val.get("name")
+    # fallback to string conversion
+    try:
+        return str(role_val)
+    except Exception:
+        return None
+
+
+def check_organization_member(
+    organization_id: str,
+    request: Request,
+    response: Response = None,
+):
+    """FastAPI dependency to ensure the user is a member of the organization.
+
+    Accepts admins as members as well. Verifies the authenticated session's
+    organization matches the path parameter.
+    """
+    auth_info = verify_auth(request, response)
+
+    # Validate organization match
+    user_org = getattr(auth_info, "organization_id", None)
+    if not user_org or user_org != organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization mismatch")
+
+    role = _role_slug(getattr(auth_info, "role", None))
+    if role not in ("member", "admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
+    return {"ok": True, "role": role, "organization_id": user_org}
+
+
+def check_organization_admin(
+    organization_id: str,
+    request: Request,
+    response: Response = None,
+):
+    """FastAPI dependency to ensure the user is an admin in the organization."""
+    auth_info = verify_auth(request, response)
+
+    # Validate organization match
+    user_org = getattr(auth_info, "organization_id", None)
+    if not user_org or user_org != organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization mismatch")
+
+    role = _role_slug(getattr(auth_info, "role", None))
+    if role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+
+    return {"ok": True, "role": role, "organization_id": user_org}
