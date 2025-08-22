@@ -81,9 +81,18 @@ from lattice.utils.file_utils import (
     save_ssh_node_info,
     get_cluster_platform,
     load_cluster_platforms,
-    set_cluster_platform,
     get_cluster_user_info,
     get_cluster_template,
+)
+from lattice.utils.cluster_utils import (
+    create_cluster_platform_entry,
+    get_actual_cluster_name,
+    get_display_name_from_actual,
+    delete_cluster_platform_entry,
+    get_cluster_platform_info,
+)
+from lattice.utils.cluster_resolver import (
+    handle_cluster_name_param,
 )
 from ..auth.api_key_auth import get_user_or_api_key
 from ..auth.utils import get_current_user
@@ -253,7 +262,10 @@ async def list_ssh_clusters(request: Request, response: Response):
 
 @router.get("/fetch-resources/{cluster_name}")
 async def fetch_cluster_resources(
-    cluster_name: str, request: Request, response: Response
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
 ):
     """
     For a given SSH cluster, bring it up, show GPU info, and bring it down again.
@@ -261,7 +273,12 @@ async def fetch_cluster_resources(
     Also updates ~/.sky/lattice_data/ssh_node_info.json for all nodes in the cluster.
     """
     try:
-        gpu_info = await fetch_and_parse_gpu_resources(cluster_name)
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        gpu_info = await fetch_and_parse_gpu_resources(actual_cluster_name)
         # Update persistent file for all node IPs in node_gpus
         try:
             node_info = load_ssh_node_info()
@@ -385,8 +402,38 @@ async def launch_skypilot_cluster(
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
+        # Get user info first for cluster creation
+        user_info = get_current_user(request, response)
+        user_id = user_info["id"]
+        organization_id = user_info["organization_id"]
+
+        # Create cluster platform entry and get the actual cluster name
+        # For SSH clusters, use the node pool name as platform for easier mapping
+        if cloud == "ssh" and node_pool_name is not None:
+            platform = node_pool_name
+        else:
+            platform = cloud or "unknown"
+
+        cluster_user_info = {
+            "name": user_info.get("first_name", ""),
+            "email": user_info.get("email", ""),
+            "id": user_info.get("id", ""),
+            "organization_id": user_info.get("organization_id", ""),
+        }
+
+        # Create cluster platform entry with display name and get actual cluster name
+        actual_cluster_name = create_cluster_platform_entry(
+            display_name=cluster_name,
+            platform=platform,
+            user_id=user_id,
+            organization_id=organization_id,
+            user_info=cluster_user_info,
+            template=template,
+        )
+
+        # Launch cluster using the actual cluster name
         request_id = launch_cluster_with_skypilot(
-            cluster_name=cluster_name,
+            cluster_name=actual_cluster_name,
             command=command,
             setup=setup,
             cloud=cloud,
@@ -409,36 +456,21 @@ async def launch_skypilot_cluster(
             docker_image=docker_image,
             container_registry_id=container_registry_id,
         )
-        # Record usage event for cluster launch and store user info
+
+        # Record usage event for cluster launch
         try:
-            user_info = get_current_user(request, response)
-            user_id = user_info["id"]
             record_usage(
                 user_id=user_id,
-                cluster_name=cluster_name,
+                cluster_name=actual_cluster_name,
                 usage_type="cluster_launch",
                 duration_minutes=None,
             )
-
-            # Store user info with cluster platform
-            # For SSH clusters, use the node pool name as platform for easier mapping
-            if cloud == "ssh" and node_pool_name is not None:
-                platform = node_pool_name
-            else:
-                platform = cloud or "unknown"
-            # Store both name and email, use email as unique identifier
-            cluster_user_info = {
-                "name": user_info.get("first_name", ""),
-                "email": user_info.get("email", ""),
-                "id": user_info.get("id", ""),
-                "organization_id": user_info.get("organization_id", ""),
-            }
-            set_cluster_platform(cluster_name, platform, cluster_user_info, template)
         except Exception as e:
             print(f"Warning: Failed to record usage event for cluster launch: {e}")
+
         return LaunchClusterResponse(
             request_id=request_id,
-            cluster_name=cluster_name,
+            cluster_name=cluster_name,  # Return display name to user
             message=f"Cluster '{cluster_name}' launch initiated successfully",
         )
     except Exception as e:
@@ -459,10 +491,19 @@ async def get_skypilot_cluster_status(
         # Get current user
         # user = await get_user_or_api_key(request, response)
 
-        cluster_list = None
+        # Handle cluster names parameter - could be display names, need to resolve to actual names
+        actual_cluster_list = None
         if cluster_names:
-            cluster_list = [name.strip() for name in cluster_names.split(",")]
-        cluster_records = get_skypilot_status(cluster_list)
+            display_names = [name.strip() for name in cluster_names.split(",")]
+            actual_cluster_list = []
+            for display_name in display_names:
+                actual_name = get_actual_cluster_name(
+                    display_name, user["id"], user["organization_id"]
+                )
+                if actual_name:
+                    actual_cluster_list.append(actual_name)
+
+        cluster_records = get_skypilot_status(actual_cluster_list)
         clusters = []
 
         for record in cluster_records:
@@ -479,9 +520,14 @@ async def get_skypilot_cluster_status(
             ):
                 continue
 
+            # Get display name for the response
+            display_name = get_display_name_from_actual(record["name"])
+            if not display_name:
+                display_name = record["name"]  # Fallback to actual name
+
             clusters.append(
                 ClusterStatusResponse(
-                    cluster_name=record["name"],
+                    cluster_name=display_name,  # Return display name to user
                     status=str(record["status"]),
                     launched_at=record.get("launched_at"),
                     last_use=record.get("last_use"),
@@ -519,13 +565,21 @@ async def get_skypilot_request_status(
 
 @router.get("/ssh-session/{cluster_name}")
 async def start_web_ssh_session(
-    cluster_name: str, request: Request, response: Response
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
 ):
     """Start web SSH session using Wetty for this cluster.
     This runs Wetty on this server and connects to the cluster via SSH.
     Skypilot sets it up so that 'ssh <cluster_name>' connects to the right cluster.
     """
     try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
         import subprocess
 
         # Start Wetty with the SSH command
@@ -534,7 +588,7 @@ async def start_web_ssh_session(
             "--port",
             "8080",
             "--ssh-host",
-            cluster_name,
+            actual_cluster_name,
             "--ssh-port",
             "22",
             "--ssh-command",
@@ -561,11 +615,25 @@ async def start_web_ssh_session(
 
 
 @router.get("/jobs/{cluster_name}", response_model=JobQueueResponse)
-async def get_cluster_jobs(cluster_name: str, request: Request, response: Response):
+async def get_cluster_jobs(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
     try:
-        if cluster_name in ["tailscale-final", "newest-cluster", "new-test-clust"]:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        if actual_cluster_name in [
+            "tailscale-final",
+            "newest-cluster",
+            "new-test-clust",
+        ]:
             return JobQueueResponse(jobs=[])
-        job_records = get_cluster_job_queue(cluster_name)
+        job_records = get_cluster_job_queue(actual_cluster_name)
         jobs = []
         for record in job_records:
             jobs.append(
@@ -593,9 +661,15 @@ async def get_cluster_job_logs(
     request: Request,
     response: Response,
     tail_lines: int = 50,
+    user: dict = Depends(get_user_or_api_key),
 ):
     try:
-        logs = get_job_logs(cluster_name, job_id, tail_lines)
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        logs = get_job_logs(actual_cluster_name, job_id, tail_lines)
         return JobLogsResponse(job_id=job_id, logs=logs)
     except Exception as e:
         print(f"Failed to get job logs: {str(e)}")
@@ -608,14 +682,20 @@ async def cancel_cluster_job(
     job_id: int,
     request: Request,
     response: Response,
+    user: dict = Depends(get_user_or_api_key),
 ):
     """Cancel a job on a SkyPilot cluster."""
     try:
-        result = cancel_job_with_skypilot(cluster_name, job_id)
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        result = cancel_job_with_skypilot(actual_cluster_name, job_id)
         return {
             "request_id": result["request_id"],
             "job_id": job_id,
-            "cluster_name": cluster_name,
+            "cluster_name": cluster_name,  # Return display name
             "message": result["message"],
             "result": result["result"],
         }
@@ -666,20 +746,26 @@ async def stop_skypilot_cluster(
     request: Request,
     response: Response,
     stop_request: StopClusterRequest,
+    user: dict = Depends(get_user_or_api_key),
 ):
     try:
-        cluster_name = stop_request.cluster_name
-        if is_down_only_cluster(cluster_name):
-            cluster_type = "SSH" if is_ssh_cluster(cluster_name) else "RunPod"
+        # Resolve display name to actual cluster name
+        display_name = stop_request.cluster_name
+        actual_cluster_name = handle_cluster_name_param(
+            display_name, user["id"], user["organization_id"]
+        )
+
+        if is_down_only_cluster(actual_cluster_name):
+            cluster_type = "SSH" if is_ssh_cluster(actual_cluster_name) else "RunPod"
             raise HTTPException(
                 status_code=400,
-                detail=f"{cluster_type} cluster '{cluster_name}' cannot be stopped. Use down operation instead.",
+                detail=f"{cluster_type} cluster '{display_name}' cannot be stopped. Use down operation instead.",
             )
-        request_id = stop_cluster_with_skypilot(cluster_name)
+        request_id = stop_cluster_with_skypilot(actual_cluster_name)
         return StopClusterResponse(
             request_id=request_id,
-            cluster_name=cluster_name,
-            message=f"Cluster '{cluster_name}' stop initiated successfully",
+            cluster_name=display_name,  # Return display name to user
+            message=f"Cluster '{display_name}' stop initiated successfully",
         )
     except HTTPException:
         raise
@@ -692,14 +778,27 @@ async def down_skypilot_cluster(
     request: Request,
     response: Response,
     down_request: DownClusterRequest,
+    user: dict = Depends(get_user_or_api_key),
 ):
     try:
-        cluster_name = down_request.cluster_name
-        request_id = down_cluster_with_skypilot(cluster_name)
+        # Resolve display name to actual cluster name
+        display_name = down_request.cluster_name
+        actual_cluster_name = handle_cluster_name_param(
+            display_name, user["id"], user["organization_id"]
+        )
+
+        request_id = down_cluster_with_skypilot(actual_cluster_name)
+
+        # Clean up the cluster platform entry when cluster is terminated
+        try:
+            delete_cluster_platform_entry(actual_cluster_name)
+        except Exception as e:
+            print(f"Warning: Failed to clean up cluster platform entry: {e}")
+
         return DownClusterResponse(
             request_id=request_id,
-            cluster_name=cluster_name,
-            message=f"Cluster '{cluster_name}' termination initiated successfully",
+            cluster_name=display_name,  # Return display name to user
+            message=f"Cluster '{display_name}' termination initiated successfully",
         )
     except Exception as e:
         raise HTTPException(
@@ -708,16 +807,26 @@ async def down_skypilot_cluster(
 
 
 @router.get("/cluster-type/{cluster_name}")
-async def get_cluster_type(cluster_name: str, request: Request, response: Response):
+async def get_cluster_type(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
     try:
-        is_ssh = is_ssh_cluster(cluster_name)
-        is_down_only = is_down_only_cluster(cluster_name)
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        is_ssh = is_ssh_cluster(actual_cluster_name)
+        is_down_only = is_down_only_cluster(actual_cluster_name)
         cluster_type = "ssh" if is_ssh else "cloud"
         available_operations = ["down"]
         if not is_down_only:
             available_operations.append("stop")
         return {
-            "cluster_name": cluster_name,
+            "cluster_name": cluster_name,  # Return display name to user
             "cluster_type": cluster_type,
             "is_ssh": is_ssh,
             "available_operations": available_operations,
@@ -802,6 +911,7 @@ async def submit_job_to_cluster(
     job_type: Optional[str] = Form(None),
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
+    user: dict = Depends(get_user_or_api_key),
 ):
     try:
         file_mounts = None
@@ -828,8 +938,13 @@ async def submit_job_to_cluster(
         if job_name:
             secure_job_name = secure_filename(job_name)
 
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
         request_id = submit_job_to_existing_cluster(
-            cluster_name=cluster_name,
+            cluster_name=actual_cluster_name,
             command=command,
             setup=setup,
             file_mounts=file_mounts,
@@ -1138,27 +1253,18 @@ async def get_azure_instances(
 
         # Count current Azure clusters using platform information
         skyPilotStatus = get_skypilot_status()
-        platforms = load_cluster_platforms()
 
-        azure_clusters = [
-            cluster
-            for cluster in skyPilotStatus
-            if platforms.get(cluster.get("name", "")) == "azure"
-        ]
-
-        # Filter clusters by current user and organization
         user_azure_clusters = []
-        for cluster in azure_clusters:
-            user_info = get_cluster_user_info(cluster.get("name", ""))
+        for cluster in skyPilotStatus:
+            cluster_name = cluster.get("name", "")
+            platform_info = get_cluster_platform_info(cluster_name)
 
-            # Skip clusters without user info (they might be from before user tracking was added)
-            if not user_info or not user_info.get("id"):
-                continue
-
-            # Only include clusters that belong to the current user and organization
+            # Check if this is an Azure cluster belonging to current user
             if (
-                user_info.get("id") == user["id"]
-                and user_info.get("organization_id") == user["organization_id"]
+                platform_info
+                and platform_info.get("platform") == "azure"
+                and platform_info.get("user_id") == user["id"]
+                and platform_info.get("organization_id") == user["organization_id"]
             ):
                 user_azure_clusters.append(cluster)
 
@@ -1469,26 +1575,18 @@ async def get_runpod_instances(
 
         # Count current RunPod clusters using platform information
         skyPilotStatus = get_skypilot_status()
-        platforms = load_cluster_platforms()
-        runpod_clusters = [
-            cluster
-            for cluster in skyPilotStatus
-            if platforms.get(cluster.get("name", ""))["platform"] == "runpod"
-        ]
 
-        # Filter clusters by current user and organization
         user_runpod_clusters = []
-        for cluster in runpod_clusters:
-            user_info = get_cluster_user_info(cluster.get("name", ""))
+        for cluster in skyPilotStatus:
+            cluster_name = cluster.get("name", "")
+            platform_info = get_cluster_platform_info(cluster_name)
 
-            # Skip clusters without user info (they might be from before user tracking was added)
-            if not user_info or not user_info.get("id"):
-                continue
-
-            # Only include clusters that belong to the current user and organization
+            # Check if this is a RunPod cluster belonging to current user
             if (
-                user_info.get("id") == user["id"]
-                and user_info.get("organization_id") == user["organization_id"]
+                platform_info
+                and platform_info.get("platform") == "runpod"
+                and platform_info.get("user_id") == user["id"]
+                and platform_info.get("organization_id") == user["organization_id"]
             ):
                 user_runpod_clusters.append(cluster)
 
@@ -1538,11 +1636,19 @@ async def stop_port_forward(request: Request, response: Response, cluster_name: 
 
 @router.get("/cluster-platform/{cluster_name}")
 async def get_cluster_platform_info(
-    cluster_name: str, request: Request, response: Response
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
 ):
     """Get platform information for a specific cluster."""
     try:
-        platform_info = get_cluster_platform(cluster_name)
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        platform_info = get_cluster_platform(actual_cluster_name)
         return platform_info
     except Exception as e:
         raise HTTPException(
@@ -1564,11 +1670,19 @@ async def get_all_cluster_platforms(request: Request, response: Response):
 
 @router.get("/cluster-template/{cluster_name}")
 async def get_cluster_template_info(
-    cluster_name: str, request: Request, response: Response
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
 ):
     """Get template information for a specific cluster."""
     try:
-        template = get_cluster_template(cluster_name)
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        template = get_cluster_template(actual_cluster_name)
         return {"template": template}
     except Exception as e:
         raise HTTPException(

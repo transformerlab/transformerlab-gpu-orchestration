@@ -285,3 +285,30 @@ class ContainerRegistry(Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "name", name="uq_container_registries_org_name"),
     )
+
+
+class ClusterPlatform(Base):
+    __tablename__ = "cluster_platforms"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    # The actual cluster name used by SkyPilot (with nanoid prefix)
+    cluster_name = Column(String, nullable=False, unique=True)
+    # The display name that users see and specify
+    display_name = Column(String, nullable=False)
+    # Platform: runpod, azure, ssh, etc.
+    platform = Column(String, nullable=False)
+    # Template used for cluster creation
+    template = Column(String, nullable=True)
+    # User who owns this cluster
+    user_id = Column(String, nullable=False)
+    # Organization the cluster belongs to
+    organization_id = Column(String, nullable=False)
+    # User info JSON (name, email, etc.)
+    user_info = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Display name must be unique within user+organization scope
+    __table_args__ = (
+        UniqueConstraint("user_id", "organization_id", "display_name", name="uq_cluster_platforms_user_org_display"),
+    )

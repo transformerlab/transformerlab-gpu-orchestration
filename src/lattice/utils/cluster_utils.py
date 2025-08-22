@@ -1,0 +1,375 @@
+"""
+Cluster utilities for managing cluster platforms and name mapping with database storage.
+"""
+
+from pathlib import Path
+from typing import Optional, Dict, Any
+from nanoid import generate
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+
+from config import SessionLocal
+from db_models import ClusterPlatform
+
+
+def generate_unique_cluster_name(display_name: str) -> str:
+    """
+    Generate a unique cluster name by prepending a nanoid to the display name.
+
+    Args:
+        display_name: The name specified by the user
+
+    Returns:
+        Unique cluster name with format: {nanoid}-{display_name}
+    """
+    # Generate an 8-character nanoid for uniqueness
+    nanoid = generate(size=8)
+    # Clean the display name to be safe for cluster names
+    safe_display_name = display_name.replace(" ", "-").replace("_", "-").lower()
+    return f"{nanoid}-{safe_display_name}"
+
+
+def get_actual_cluster_name(
+    display_name: str, user_id: str, organization_id: str, db: Optional[Session] = None
+) -> Optional[str]:
+    """
+    Get the actual cluster name from the display name for a specific user and org.
+
+    Args:
+        display_name: The display name shown to users
+        user_id: User ID
+        organization_id: Organization ID
+        db: Optional database session
+
+    Returns:
+        The actual cluster name used internally, or None if not found
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(
+                ClusterPlatform.display_name == display_name,
+                ClusterPlatform.user_id == user_id,
+                ClusterPlatform.organization_id == organization_id,
+            )
+            .first()
+        )
+        return cluster.cluster_name if cluster else None
+    finally:
+        if should_close_db:
+            db.close()
+
+
+def get_display_name_from_actual(
+    cluster_name: str, db: Optional[Session] = None
+) -> Optional[str]:
+    """
+    Get the display name from the actual cluster name.
+
+    Args:
+        cluster_name: The actual cluster name used internally
+        db: Optional database session
+
+    Returns:
+        The display name shown to users, or None if not found
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        )
+        return cluster.display_name if cluster else None
+    finally:
+        if should_close_db:
+            db.close()
+
+
+def create_cluster_platform_entry(
+    display_name: str,
+    platform: str,
+    user_id: str,
+    organization_id: str,
+    user_info: Optional[Dict[str, Any]] = None,
+    template: Optional[str] = None,
+    db: Optional[Session] = None,
+) -> str:
+    """
+    Create a new cluster platform entry in the database.
+
+    Args:
+        display_name: The display name specified by the user
+        platform: The platform (runpod, azure, ssh, etc.)
+        user_id: User ID
+        organization_id: Organization ID
+        user_info: Optional user info dictionary
+        template: Optional template name
+        db: Optional database session
+
+    Returns:
+        The generated actual cluster name
+
+    Raises:
+        HTTPException: If display name already exists for user+org
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        # Check if display name already exists for this user+org
+        existing = (
+            db.query(ClusterPlatform)
+            .filter(
+                ClusterPlatform.display_name == display_name,
+                ClusterPlatform.user_id == user_id,
+                ClusterPlatform.organization_id == organization_id,
+            )
+            .first()
+        )
+
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cluster with name '{display_name}' already exists",
+            )
+
+        # Generate unique cluster name
+        cluster_name = generate_unique_cluster_name(display_name)
+
+        # Ensure the generated name is globally unique
+        while (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        ):
+            cluster_name = generate_unique_cluster_name(display_name)
+
+        # Create new cluster platform entry
+        cluster_platform = ClusterPlatform(
+            cluster_name=cluster_name,
+            display_name=display_name,
+            platform=platform,
+            template=template,
+            user_id=user_id,
+            organization_id=organization_id,
+            user_info=user_info or {},
+        )
+
+        db.add(cluster_platform)
+        db.commit()
+        db.refresh(cluster_platform)
+
+        return cluster_name
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create cluster platform entry: {str(e)}"
+        )
+    finally:
+        if should_close_db:
+            db.close()
+
+
+def get_cluster_platform_info(
+    cluster_name: str, db: Optional[Session] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Get cluster platform information by actual cluster name.
+
+    Args:
+        cluster_name: The actual cluster name
+        db: Optional database session
+
+    Returns:
+        Dictionary with platform info or None if not found
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        )
+
+        if not cluster:
+            return None
+
+        return {
+            "platform": cluster.platform,
+            "user_info": cluster.user_info or {},
+            "template": cluster.template,
+            "display_name": cluster.display_name,
+            "user_id": cluster.user_id,
+            "organization_id": cluster.organization_id,
+        }
+    finally:
+        if should_close_db:
+            db.close()
+
+
+def get_user_clusters(
+    user_id: str, organization_id: str, db: Optional[Session] = None
+) -> list[Dict[str, Any]]:
+    """
+    Get all clusters for a specific user and organization.
+
+    Args:
+        user_id: User ID
+        organization_id: Organization ID
+        db: Optional database session
+
+    Returns:
+        List of cluster information dictionaries
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        clusters = (
+            db.query(ClusterPlatform)
+            .filter(
+                ClusterPlatform.user_id == user_id,
+                ClusterPlatform.organization_id == organization_id,
+            )
+            .all()
+        )
+
+        return [
+            {
+                "cluster_name": cluster.cluster_name,
+                "display_name": cluster.display_name,
+                "platform": cluster.platform,
+                "template": cluster.template,
+                "user_info": cluster.user_info or {},
+                "created_at": cluster.created_at.isoformat()
+                if cluster.created_at
+                else None,
+            }
+            for cluster in clusters
+        ]
+    finally:
+        if should_close_db:
+            db.close()
+
+
+def delete_cluster_platform_entry(
+    cluster_name: str, db: Optional[Session] = None
+) -> bool:
+    """
+    Delete a cluster platform entry.
+
+    Args:
+        cluster_name: The actual cluster name
+        db: Optional database session
+
+    Returns:
+        True if deleted, False if not found
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        )
+
+        if not cluster:
+            return False
+
+        db.delete(cluster)
+        db.commit()
+        return True
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete cluster platform entry: {str(e)}"
+        )
+    finally:
+        if should_close_db:
+            db.close()
+
+
+# Legacy compatibility functions to maintain backward compatibility
+def get_cluster_platforms_path():
+    """Legacy function - kept for backward compatibility."""
+    sky_dir = Path.home() / ".sky" / "lattice_data"
+    return sky_dir / "cluster_platforms.json"
+
+
+def load_cluster_platforms():
+    """Legacy function - returns empty dict to maintain compatibility."""
+    return {}
+
+
+def save_cluster_platforms(platforms_data):
+    """Legacy function - does nothing to maintain compatibility."""
+    pass
+
+
+def set_cluster_platform(
+    cluster_name: str, platform: str, user_info: dict = None, template: str = None
+):
+    """
+    Legacy function updated to use database storage.
+    Note: This function doesn't handle display names since legacy code doesn't provide user context.
+    """
+    # For legacy compatibility, we'll just try to update if the cluster exists
+    db = SessionLocal()
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        )
+        if cluster:
+            cluster.platform = platform
+            cluster.user_info = user_info or {}
+            cluster.template = template
+            db.commit()
+    except Exception as e:
+        print(f"Warning: Failed to update cluster platform for {cluster_name}: {e}")
+    finally:
+        db.close()
+
+
+def get_cluster_platform(cluster_name: str) -> str:
+    """Legacy function updated to use database storage."""
+    info = get_cluster_platform_info(cluster_name)
+    return info["platform"] if info else "unknown"
+
+
+def get_cluster_user_info(cluster_name: str) -> dict:
+    """Legacy function updated to use database storage."""
+    info = get_cluster_platform_info(cluster_name)
+    return info["user_info"] if info else {}
+
+
+def get_cluster_template(cluster_name: str) -> str:
+    """Legacy function updated to use database storage."""
+    info = get_cluster_platform_info(cluster_name)
+    return info["template"] if info else ""
+
+
+def remove_cluster_platform(cluster_name: str):
+    """Legacy function updated to use database storage."""
+    delete_cluster_platform_entry(cluster_name)
