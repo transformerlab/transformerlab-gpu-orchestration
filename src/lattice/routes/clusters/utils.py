@@ -7,6 +7,7 @@ from utils.file_utils import (
 )
 from models import SSHNode
 import threading
+import os
 from ..skypilot.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
 from db_models import SSHNodePool as SSHNodePoolDB, SSHNodeEntry as SSHNodeDB
@@ -295,6 +296,45 @@ def list_cluster_names_from_db() -> list[str]:
     db = SessionLocal()
     try:
         return [row.name for row in db.query(SSHNodePoolDB).all()]
+    finally:
+        db.close()
+
+
+def validate_node_pool_identity_files(node_pool_name: str) -> list[str]:
+    """
+    Validate that all identity files for nodes in a node pool still exist.
+
+    Args:
+        node_pool_name: Name of the node pool to validate
+
+    Returns:
+        List of missing identity file paths (empty if all exist)
+
+    Raises:
+        HTTPException: If node pool not found
+    """
+    missing_files = []
+    db = SessionLocal()
+    try:
+        pool = (
+            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == node_pool_name).first()
+        )
+        if pool is None:
+            raise HTTPException(
+                status_code=404, detail=f"Node pool '{node_pool_name}' not found"
+            )
+
+        # Check pool default identity file
+        if pool.identity_file_path and not os.path.exists(pool.identity_file_path):
+            missing_files.append(pool.identity_file_path)
+
+        # Check each node's identity file
+        nodes = db.query(SSHNodeDB).filter(SSHNodeDB.pool_id == pool.id).all()
+        for node in nodes:
+            if node.identity_file_path and not os.path.exists(node.identity_file_path):
+                missing_files.append(node.identity_file_path)
+
+        return missing_files
     finally:
         db.close()
 

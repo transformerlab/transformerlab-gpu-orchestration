@@ -149,7 +149,10 @@ def launch_cluster_with_skypilot(
 
         if cloud and cloud.lower() == "ssh":
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
-            from lattice.routes.clusters.utils import is_ssh_cluster
+            from lattice.routes.clusters.utils import (
+                is_ssh_cluster,
+                validate_node_pool_identity_files,
+            )
 
             # Use node_pool_name for validation if provided, otherwise use cluster_name
             validation_name = node_pool_name if node_pool_name else cluster_name
@@ -159,6 +162,18 @@ def launch_cluster_with_skypilot(
                     status_code=400,
                     detail=(
                         f"SSH cluster '{validation_name}' not found. Create it in SSH Clusters first."
+                    ),
+                )
+
+            # Validate that all identity files for nodes in the node pool still exist
+            missing_files = validate_node_pool_identity_files(validation_name)
+            if missing_files:
+                files_list = "\n".join(f"  - {file}" for file in missing_files)
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Some identity files for node pool '{validation_name}' are missing or no longer exist:\n"
+                        f"Please check your SSH configuration and ensure all identity files are present."
                     ),
                 )
             try:
