@@ -166,6 +166,33 @@ async def check_auth(
     request: Request, response: Response, user=Depends(get_user_or_api_key)
 ):
     if user:
+        # Best-effort: refresh the sealed session to capture any new role/org claims
+        try:
+            session_cookie = request.cookies.get("wos_session")
+            if session_cookie:
+                session = auth_provider.load_sealed_session(
+                    sealed_session=session_cookie, cookie_password=AUTH_COOKIE_PASSWORD
+                )
+                refreshed_session = session.refresh()
+                if getattr(refreshed_session, "authenticated", False):
+                    response.set_cookie(
+                        key="wos_session",
+                        value=refreshed_session.sealed_session,
+                        httponly=True,
+                        secure=False,
+                        samesite="lax",
+                        max_age=86400 * 7,
+                        path="/",
+                    )
+                    # If this was a session user, prefer the refreshed role/org
+                    if user.get("auth_method") == "session":
+                        user["role"] = getattr(refreshed_session, "role", user.get("role"))
+                        user["organization_id"] = getattr(
+                            refreshed_session, "organization_id", user.get("organization_id")
+                        )
+        except Exception:
+            pass
+
         return {
             "authenticated": True,
             "user": {

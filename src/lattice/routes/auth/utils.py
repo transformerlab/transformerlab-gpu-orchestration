@@ -3,6 +3,7 @@ from fastapi import HTTPException, Request, Response, Depends, status
 from config import AUTH_COOKIE_PASSWORD
 from .provider.work_os import provider as auth_provider
 import logging
+from typing import Optional
 
 
 def get_auth_info(request: Request, response: Response = None):
@@ -87,14 +88,43 @@ class RoleChecker:
     def __init__(self, required_role: str):
         self.required_role = required_role
 
-    def __call__(self, auth_info=Depends(verify_auth)):
-        if not hasattr(auth_info, "role") or auth_info.role != self.required_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to perform this action.",
-            )
-        return auth_info.user
+    def __call__(
+        self,
+        request: Request,
+        response: Response,
+        auth_info=Depends(verify_auth),
+    ):
+        """Check role, revalidating with WorkOS if stale.
 
+        This ensures demotions/promotions take effect without logout by
+        fetching the latest membership role when the cached role doesn't satisfy
+        the requirement. On successful revalidation, it also attempts to refresh
+        the session cookie to embed the latest claims.
+        """
+        current_role = _role_slug(getattr(auth_info, "role", None))
+        if current_role == self.required_role:
+            return auth_info.user
+
+        # Revalidate against WorkOS memberships and try to refresh cookie
+        try:
+            user_id = getattr(auth_info.user, "id", None)
+            org_id = getattr(auth_info, "organization_id", None)
+            if user_id and org_id:
+                fresh_role = _revalidate_and_refresh_session(
+                    request=request,
+                    response=response,
+                    user_id=user_id,
+                    organization_id=org_id,
+                )
+                if fresh_role == self.required_role:
+                    return auth_info.user
+        except Exception as e:
+            logging.warning(f"RoleChecker revalidation failed: {e}")
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action.",
+        )
 
 requires_admin = RoleChecker(required_role="admin")
 requires_member = RoleChecker(required_role="member")
@@ -136,6 +166,19 @@ def check_organization_member(
 
     role = _role_slug(getattr(auth_info, "role", None))
     if role not in ("member", "admin"):
+        # Revalidate role via WorkOS memberships and refresh cookie if possible
+        try:
+            user_id = getattr(auth_info.user, "id", None)
+            fresh_role = _revalidate_and_refresh_session(
+                request=request,
+                response=response,
+                user_id=user_id,
+                organization_id=organization_id,
+            )
+            if fresh_role in ("member", "admin"):
+                return {"ok": True, "role": fresh_role, "organization_id": user_org}
+        except Exception as e:
+            logging.warning(f"Member revalidation failed: {e}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
     return {"ok": True, "role": role, "organization_id": user_org}
@@ -156,6 +199,70 @@ def check_organization_admin(
 
     role = _role_slug(getattr(auth_info, "role", None))
     if role != "admin":
+        # Revalidate role via WorkOS memberships and refresh cookie if possible
+        try:
+            user_id = getattr(auth_info.user, "id", None)
+            fresh_role = _revalidate_and_refresh_session(
+                request=request,
+                response=response,
+                user_id=user_id,
+                organization_id=organization_id,
+            )
+            if fresh_role == "admin":
+                return {"ok": True, "role": fresh_role, "organization_id": user_org}
+        except Exception as e:
+            logging.warning(f"Admin revalidation failed: {e}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
 
     return {"ok": True, "role": role, "organization_id": user_org}
+
+
+def _revalidate_and_refresh_session(
+    request: Request,
+    response: Optional[Response],
+    user_id: Optional[str],
+    organization_id: Optional[str],
+) -> Optional[str]:
+    """
+    Revalidates user role against WorkOS and refreshes session cookie on success.
+    Returns the fresh role slug if revalidation is successful, otherwise None.
+    """
+    try:
+        if not user_id or not organization_id:
+            return None
+
+        memberships = auth_provider.list_organization_memberships(
+            user_id=user_id, organization_id=organization_id
+        )
+        fresh_role: Optional[str] = None
+        for m in memberships:
+            if getattr(m, "organization_id", None) == organization_id:
+                fresh_role = _role_slug(getattr(m, "role", None))
+                break
+
+        if fresh_role:
+            # Best-effort: refresh cookie to embed latest claims
+            try:
+                session_cookie = request.cookies.get("wos_session")
+                if session_cookie and response is not None:
+                    session = auth_provider.load_sealed_session(
+                        sealed_session=session_cookie,
+                        cookie_password=AUTH_COOKIE_PASSWORD,
+                    )
+                    refreshed_session = session.refresh()
+                    if getattr(refreshed_session, "authenticated", False):
+                        response.set_cookie(
+                            key="wos_session",
+                            value=refreshed_session.sealed_session,
+                            httponly=True,
+                            secure=False,
+                            samesite="lax",
+                            max_age=86400 * 7,
+                            path="/",
+                        )
+            except Exception as e:
+                logging.warning(f"Session cookie refresh failed: {e}")
+        return fresh_role
+    except Exception as e:
+        logging.warning(f"Failed to revalidate user role: {e}")
+        return None
