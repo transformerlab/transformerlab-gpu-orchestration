@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "click>=8.0.0",
-    "lab-client",
+    "openapi-client>=1.1.7",
     "typer>=0.9.0",
 ]
 
@@ -21,5 +21,3 @@ lab = "cli.main:app"
 where = ["."]
 include = ["cli*"]
 
-[tool.uv.sources]
-lab-client = { path = "../lattice-client" }
