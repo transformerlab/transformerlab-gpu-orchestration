@@ -1601,11 +1601,45 @@ async def get_vscode_tunnel_info_endpoint(
 
 
 @router.get("/cost-report")
-async def get_cost_report(request: Request, response: Response):
-    """Get cost report for all clusters."""
+async def get_cost_report(
+    request: Request, response: Response, user: dict = Depends(get_user_or_api_key)
+):
+    """Get cost report for clusters belonging to the current user within their organization."""
     try:
         report = generate_cost_report()
-        return report
+        if not report:
+            return []
+
+            # Filter clusters to include only those belonging to the current user within their organization
+        filtered_clusters = []
+        current_user_id = user.get("id")
+        current_user_org_id = user.get("organization_id")
+
+        if not current_user_id:
+            return []
+
+        for cluster_data in report:
+            cluster_name = cluster_data.get("name")
+            if not cluster_name:
+                continue
+
+            # Get user info for this cluster to check ownership
+            cluster_user_info = get_cluster_user_info(cluster_name)
+            if not cluster_user_info or not cluster_user_info.get("id"):
+                continue
+
+            # Include clusters that belong to the current user AND are in the current user's organization
+            cluster_user_id = cluster_user_info.get("id")
+            cluster_org_id = cluster_user_info.get("organization_id")
+
+            if (
+                cluster_user_id == current_user_id
+                and current_user_org_id
+                and cluster_org_id == current_user_org_id
+            ):
+                filtered_clusters.append(cluster_data)
+
+        return filtered_clusters
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cost report: {str(e)}"
