@@ -13,11 +13,10 @@ from lattice.cli.util.auth import status
 # from lattice.cli.commands.ssh import ssh_command
 from lattice.cli.commands.node_pools import list_node_pools_command
 from lattice.cli.commands.login import login_command, logout_command
-
-# from lattice.cli.commands.instances import (
-#     list_instances_command,
-#     request_instance_command,
-# )
+from lattice.cli.commands.instances import (
+    list_instances_command,
+    request_instance_command,
+)
 import typer
 from rich.console import Console
 

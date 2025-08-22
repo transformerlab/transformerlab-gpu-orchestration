@@ -1,9 +1,6 @@
 import time
 import os
-from lattice.cli.util.auth import get_saved_api_key
-from lattice.cli.util.api import TLAB_API_BASE_URL
-import openapi_client as openapi_client
-from openapi_client.api import default_api
+from lattice.cli.util.auth import api_request
 
 from rich.console import Console
 from rich.panel import Panel
@@ -23,29 +20,15 @@ def list_instances_command(console: Console):
         transient=True,
     ) as progress:
         progress.add_task("", total=None)
-        current_api_key = get_saved_api_key()
+        resp = api_request("GET", "/skypilot/status", auth_needed=True)
 
-        try:
-            base_url = TLAB_API_BASE_URL
-            config = (
-                openapi_client.Configuration(host=base_url)
-                if base_url
-                else openapi_client.Configuration()
-            )
-            # Add the hardcoded Bearer token
-            config.access_token = current_api_key
-            with openapi_client.ApiClient(config) as api_client:
-                api = default_api.DefaultApi(api_client)
-                resp = api.get_skypilot_cluster_status_api_v1_skypilot_status_get()
-        except openapi_client.exceptions.ApiException as e:
-            console.print(f"[bold red]API Error:[/bold red] {e}")
-            return
-        except Exception as e:
-            console.print(f"[bold red]Error fetching instances:[/bold red] {e}")
-            return
+    # convert response object to json:
+    resp_json = resp.json()
+
+    print(resp_json)
 
     # Parse the response
-    clusters = getattr(resp, "clusters", [])
+    clusters = resp_json.get("clusters", [])
     if not clusters:
         console.print("[yellow]No instances found.[/yellow]")
         return
