@@ -55,9 +55,7 @@ async def get_organization_quota(
 
         return OrganizationQuotaResponse(
             organization_id=organization_id,
-            monthly_gpu_hours_per_user=quota_info[
-                "user_quota_limit"
-            ],  # Use user's actual quota limit
+            monthly_gpu_hours_per_user=quota_info["effective_quota_limit"],
             current_period_start=period_start.isoformat(),
             current_period_end=period_end.isoformat(),
             gpu_hours_used=quota_info["current_period_used"],
