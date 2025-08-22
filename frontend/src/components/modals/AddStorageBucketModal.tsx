@@ -13,7 +13,11 @@ import {
   FormLabel,
   Box,
   Divider,
+  IconButton,
+  Tooltip,
+  Link,
 } from "@mui/joy";
+import { Info } from "lucide-react";
 import { apiFetch, buildApiUrl } from "../../utils/api";
 
 interface CreateStorageBucketRequest {
@@ -61,8 +65,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
       if (!formData.name.trim()) errors.name = "Name is required";
       if (!formData.remote_path.trim())
         errors.remote_path = "Remote path is required";
-      if (!formData.store || formData.store === "auto")
-        errors.store = "Please select a cloud provider";
+      if (!formData.store) errors.store = "Please select a cloud provider";
       if (isExistingBucket && !formData.source?.trim())
         errors.source = "Source is required when using an existing bucket";
 
@@ -268,7 +271,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
               Source Configuration
             </Typography>
             <FormControl>
-              <FormLabel>Source *</FormLabel>
+              <FormLabel>Bucket URI *</FormLabel>
               <Input
                 name="source"
                 value={formData.source}
@@ -296,7 +299,88 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
           </Typography>
           <Stack spacing={2}>
             <FormControl>
-              <FormLabel>Mode</FormLabel>
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}
+              >
+                <FormLabel>Mode</FormLabel>
+                <Tooltip
+                  title={
+                    <Box sx={{ p: 1, maxWidth: 350 }}>
+                      <Typography level="title-sm" sx={{ mb: 1 }}>
+                        Storage Mount Modes
+                      </Typography>
+                      <Stack spacing={1}>
+                        <Box>
+                          <Typography level="body-sm" sx={{ fontWeight: "md" }}>
+                            MOUNT (Recommended)
+                          </Typography>
+                          <Typography level="body-xs" color="neutral">
+                            Streamed access to files with writes replicated to
+                            cloud storage. Best for most use cases with
+                            immediate cloud backup.
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography level="body-sm" sx={{ fontWeight: "md" }}>
+                            COPY
+                          </Typography>
+                          <Typography level="body-xs" color="neutral">
+                            Downloads all files locally before task starts.
+                            Faster access but no cloud sync during execution.
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography level="body-sm" sx={{ fontWeight: "md" }}>
+                            MOUNT_CACHED
+                          </Typography>
+                          <Typography level="body-xs" color="neutral">
+                            Cached mount with async synchronization. Balance
+                            between performance and cloud sync.
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            mt: 1,
+                            pt: 1,
+                            borderTop: "1px solid",
+                            borderColor: "divider",
+                          }}
+                        >
+                          <Link
+                            href="https://skypilot.readthedocs.io/en/latest/reference/storage.html#storage-modes"
+                            target="_blank"
+                            level="body-xs"
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
+                          >
+                            📚 View Documentation
+                          </Link>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  }
+                  variant="outlined"
+                  placement="right"
+                  arrow
+                >
+                  <IconButton
+                    size="sm"
+                    variant="plain"
+                    color="neutral"
+                    sx={{
+                      minHeight: "auto",
+                      minWidth: "auto",
+                      p: 0.25,
+                      "--IconButton-size": "20px",
+                    }}
+                  >
+                    <Info size={12} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
               <Select
                 name="mode"
                 value={formData.mode}
@@ -306,10 +390,6 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
                 <Option value="COPY">COPY</Option>
                 <Option value="MOUNT_CACHED">MOUNT_CACHED</Option>
               </Select>
-              <Typography level="body-xs" color="neutral">
-                MOUNT: Streamed access, writes replicated. COPY: Pre-fetched,
-                local writes only. MOUNT_CACHED: Cached with async sync.
-              </Typography>
               {formErrors.mode && (
                 <Typography color="danger" level="body-xs">
                   {formErrors.mode}
