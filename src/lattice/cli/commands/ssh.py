@@ -68,6 +68,11 @@ def ssh_command(console: Console, instance_name: str):
         console.print("[bold green]✓[/bold green] SSH configuration saved.")
         console.print("[bold blue]Connecting directly to your instance:[/bold blue]")
 
+        # Print out the command so the user can use it later:
+        console.print(
+            f"[bold blue]SSH Command:[/bold blue] ssh -F {config_dir / 'config'} -i {config_dir / 'ssh_key'} {ssh_user}@{ssh_host}"
+        )
+
         # Run ssh directly for the user
         ssh_command = [
             "ssh",
