@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
     email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    organization_id: Optional[str] = None
 
 
 class Organization(BaseModel):

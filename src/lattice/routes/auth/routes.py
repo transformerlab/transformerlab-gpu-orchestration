@@ -120,6 +120,7 @@ async def get_current_user_info(
         email=user.get("email", ""),
         first_name=user.get("first_name", ""),
         last_name=user.get("last_name", ""),
+        organization_id=user.get("organization_id"),
     )
 
 

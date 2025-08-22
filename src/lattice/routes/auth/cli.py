@@ -74,6 +74,7 @@ async def start_cli_authorization(
                     "status": "success",
                     "message": "API key is valid",
                     "user_id": api_key_record.user_id,
+                    "organization_id": api_key_record.organization_id,
                 }
             else:
                 print("[DEBUG] API key is invalid or expired")
@@ -269,6 +270,7 @@ async def authorize_cli(
             user_id = user["id"]
             hostname = session["hostname"]
             username = session["username"]
+            organization_id = user.get("organization_id")
 
             # Log the info we're using
             print(
@@ -282,6 +284,7 @@ async def authorize_cli(
             api_key_value, api_key_record = APIKeyService.create_api_key(
                 user_id=user_id,
                 name=api_key_name,
+                organization_id=organization_id,
                 expires_in_days=90,  # 90-day expiration
                 scopes=["cli:access"],  # Define appropriate scope for CLI access
                 db=db,
