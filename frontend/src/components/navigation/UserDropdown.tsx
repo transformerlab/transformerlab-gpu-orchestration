@@ -42,52 +42,27 @@ const UserDropdown: React.FC = () => {
     const run = async () => {
       try {
         setQuotaLoading(true);
-        // Fetch organization quota usage (for limit and billing period)
+        // Use summary endpoint which returns effective quota (user > team > org) and current period usage
         const res = await apiFetch(
-          buildApiUrl(`quota/organization/${organizationId}/usage`),
+          buildApiUrl(`quota/summary/${organizationId}`),
           { credentials: "include" }
         );
-        if (!res.ok) throw new Error("Failed to load quota");
-        const data = await res.json();
-        const oq = data?.organization_quota;
+        if (!res.ok) throw new Error("Failed to load quota summary");
+        const summary = await res.json();
 
-        // Fetch cost report to compute usage this period
-        const crRes = await apiFetch(buildApiUrl("skypilot/cost-report"), {
-          credentials: "include",
-        });
-        if (!crRes.ok) throw new Error("Failed to load cost report");
-        const costReport = await crRes.json();
-
-        if (!cancelled && oq) {
-          const limit = oq.monthly_gpu_hours_per_user ?? 0;
-          // Determine billing period
-          const periodStart = oq.current_period_start
-            ? new Date(oq.current_period_start)
-            : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-          const periodEnd = oq.current_period_end
-            ? new Date(oq.current_period_end)
-            : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
-          const startMs = periodStart.getTime();
-          const endMs = periodEnd.getTime();
-
-          // Sum usage in current billing period
-          const used = Array.isArray(costReport)
-            ? costReport.reduce((sum: number, job: any) => {
-                const ts = job?.launched_at ? job.launched_at * 1000 : 0;
-                const val = Number(job?.total_cost || 0);
-                return ts >= startMs && ts <= endMs ? sum + val : sum;
-              }, 0)
-            : 0;
+        if (!cancelled && summary) {
+          const limit = Number(summary.quota_limit || 0);
+          const used = Number(summary.quota_used || 0);
+          const remaining = Math.max(0, Number(summary.quota_remaining || Math.max(0, limit - used)));
           const percentage = limit > 0 ? (used / limit) * 100 : 0;
-          const remaining = Math.max(0, limit - used);
 
           setQuota({
             limit,
             used,
             remaining,
             percentage,
-            period_start: oq.current_period_start,
-            period_end: oq.current_period_end,
+            period_start: summary.period_start,
+            period_end: summary.period_end,
           });
         }
       } catch (e) {
