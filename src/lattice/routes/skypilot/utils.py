@@ -207,8 +207,12 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
+        parts = secure_filename(cluster_name).split("-")
+        prefix = "-".join(parts[:-1]) if len(parts) > 1 else parts[0]
+        name = f"lattice-task-setup-{prefix}"
+
         task = sky.Task(
-            name=f"lattice-task-{secure_filename(cluster_name)}",
+            name=name,
             run=command,
             setup=setup,
             envs=envs,
@@ -450,17 +454,6 @@ def down_cluster_with_skypilot(cluster_name: str, display_name: str = None):
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
         request_id = sky.down(cluster_name=cluster_name)
-
-        # # Clean up cluster platform metadata after successful down operation
-        # try:
-        #     from lattice.utils.file_utils import remove_cluster_platform
-
-        #     remove_cluster_platform(cluster_name)
-        #     print(f"Cleaned up platform metadata for cluster: {cluster_name}")
-        # except Exception as e:
-        #     print(
-        #         f"Warning: Failed to clean up platform metadata for cluster {cluster_name}: {e}"
-        #     )
 
         return request_id
     except Exception as e:
