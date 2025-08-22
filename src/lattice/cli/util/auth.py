@@ -1,11 +1,8 @@
 import os
 import json
 import requests
-import lattice.api_client.python.openapi_client
-from lattice.api_client.python.openapi_client.api import default_api
 from typing import Optional, Dict, Union
 from .api import BACKEND_URL
-
 
 # Enable debug mode
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
@@ -100,30 +97,7 @@ def status() -> Union[Dict, None]:
     Check the current user's authentication status by calling the /me endpoint.
     Returns user information if logged in, None otherwise.
     """
-    api_key = get_saved_api_key()
-    if not api_key:
-        return None
-
-    try:
-        base_url = os.getenv("TLAB_API_BASE_URL", BACKEND_URL)
-        config = (
-            openapi_client.Configuration(host=base_url)
-            if base_url
-            else openapi_client.Configuration()
-        )
-        # Add the hardcoded Bearer token
-        config.access_token = "lk_rQRo6-fHRqFsMsUTGwBTO9Xqgjcq6n6YgteqTIYY5LA"
-
-        with openapi_client.ApiClient(config) as api_client:
-            api = default_api.DefaultApi(api_client)
-            resp = api.get_current_user_info_api_v1_auth_me_get(_request_timeout=10)
-            return resp.to_dict() if hasattr(resp, "to_dict") else resp
-
-    except openapi_client.exceptions.ApiException as e:
-        if DEBUG:
-            print(f"[DEBUG] API Error checking status: {e}")
-        return None
-    except Exception as e:
-        if DEBUG:
-            print(f"[DEBUG] Error checking status: {str(e)}")
-        return None
+    data = api_request("GET", "/auth/me", auth_needed=True)
+    if data.status_code == 200:
+        return data.json()
+    return None

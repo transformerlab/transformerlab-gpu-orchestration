@@ -89,6 +89,23 @@ def login_command(console: Console, username: Optional[str] = None):
                 )
                 return
 
+            # if the error is specifically about expired, tell the user to run login clear:
+            if (
+                data.get("status") == "error"
+                and data.get("message") == "API key is invalid or expired"
+            ):
+                console.print(
+                    "[bold red]Error: API key is invalid or expired.[/bold red]"
+                )
+                console.print(
+                    "[bold]Please run `lab logout` to remove the invalid API key.[/bold]"
+                )
+                return
+
+            if data.get("status") == "error" and "message" in data:
+                console.print(f"[bold red]Error: {data['message']}[/bold red]")
+                return
+
             # Get web authorization details
             if data.get("status") != "pending" or "authorization_url" not in data:
                 console.print("[bold red]Error: Unexpected response format[/bold red]")

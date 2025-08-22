@@ -49,6 +49,7 @@ dependencies = [
     # end of explicit deps for azure-cli
     "azure-cli==2.75.0",
     "msrestazure==0.6.4.post1",
+    "lab-client",
 ]
 
 [project.scripts]
@@ -60,6 +61,9 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.uv.sources]
+lab-client = { path = "src/lattice/lattice-client" }
 
 [project.optional-dependencies]
 dev = [
