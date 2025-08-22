@@ -16,8 +16,11 @@ import {
   FormControl,
   FormLabel,
   Switch,
+  List,
+  ListItem,
+  ListItemButton,
 } from "@mui/joy";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, Plus } from "lucide-react";
 import useSWR, { mutate } from "swr";
 import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch, teamsQuotaApi } from "../../../utils/api";
@@ -208,6 +211,17 @@ const OrgQuota: React.FC = () => {
   const [selectedTeam, setSelectedTeam] = useState<TeamQuotaItem | null>(null);
   const [newTeamQuotaHours, setNewTeamQuotaHours] = useState<string>("");
   const [updatingTeamQuota, setUpdatingTeamQuota] = useState<boolean>(false);
+
+  // Add-override modals
+  const [openAddTeamOverride, setOpenAddTeamOverride] = useState<boolean>(false);
+  const [selectedTeamIdForOverride, setSelectedTeamIdForOverride] = useState<string | null>(null);
+  const [newTeamOverrideHours, setNewTeamOverrideHours] = useState<string>("");
+  const [addTeamSearch, setAddTeamSearch] = useState<string>("");
+
+  const [openAddUserOverride, setOpenAddUserOverride] = useState<boolean>(false);
+  const [selectedUserIdForOverride, setSelectedUserIdForOverride] = useState<string | null>(null);
+  const [newUserOverrideHours, setNewUserOverrideHours] = useState<string>("");
+  const [addUserSearch, setAddUserSearch] = useState<string>("");
 
   // Derived state
   const loading = quotaLoading;
@@ -543,9 +557,12 @@ const OrgQuota: React.FC = () => {
       </Box>
 
       <Box sx={{ mb: 4 }}>
-        <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-          Team
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+          <Typography level="h4" component="h2">Team</Typography>
+          <Button size="sm" startDecorator={<Plus size={16} />} onClick={() => setOpenAddTeamOverride(true)}>
+            Add Override
+          </Button>
+        </Box>
         <Card variant="outlined" sx={{ mb: 3 }}>
           <Typography level="body-sm" sx={{ mb: 2 }}>
             Set quota overrides for members of specific teams.
@@ -564,9 +581,17 @@ const OrgQuota: React.FC = () => {
             >
               <CircularProgress />
             </Box>
-          ) : teamQuotas.teams.length === 0 ? (
-            <Alert color="neutral">No teams found.</Alert>
           ) : (
+            (() => {
+              const overrides = teamQuotas.teams.filter(
+                (t) => t.monthly_gpu_hours_per_user !== teamQuotas.default_quota_per_user
+              );
+              if (overrides.length === 0) {
+                return (
+                  <Alert color="neutral">No team overrides yet. Use "Add Override" to create one.</Alert>
+                );
+              }
+              return (
             <Table>
               <thead>
                 <tr>
@@ -576,24 +601,15 @@ const OrgQuota: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {teamQuotas.teams.map((t) => {
-                  const usesDefault =
-                    t.monthly_gpu_hours_per_user ===
-                    teamQuotas.default_quota_per_user;
+                {overrides.map((t) => {
+                  const usesDefault = false; // by definition, overrides list excludes defaults
                   return (
                     <tr key={t.team_id}>
                       <td>{t.team_name}</td>
                       <td>
-                        {usesDefault ? (
-                          <Chip size="sm" color="neutral">
-                            {formatHours(teamQuotas.default_quota_per_user)}{" "}
-                            credits
-                          </Chip>
-                        ) : (
                           <Chip size="sm" color="primary">
                             {formatHours(t.monthly_gpu_hours_per_user)} credits
                           </Chip>
-                        )}
                       </td>
                       <td style={{ textAlign: "right" }}>
                         <Stack
@@ -614,7 +630,6 @@ const OrgQuota: React.FC = () => {
                           >
                             Edit
                           </Button>
-                          {!usesDefault && (
                             <Button
                               size="sm"
                               variant="outlined"
@@ -637,7 +652,6 @@ const OrgQuota: React.FC = () => {
                             >
                               Reset
                             </Button>
-                          )}
                         </Stack>
                       </td>
                     </tr>
@@ -645,6 +659,8 @@ const OrgQuota: React.FC = () => {
                 })}
               </tbody>
             </Table>
+              );
+            })()
           )}
         </Card>
       </Box>
@@ -652,9 +668,12 @@ const OrgQuota: React.FC = () => {
       {/* Individual User Quota Management */}
       {userQuotas && (
         <Box sx={{ mb: 4 }}>
-          <Typography level="h4" component="h2" sx={{ mb: 2 }}>
-            Individuals
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Typography level="h4" component="h2">Individuals</Typography>
+            <Button size="sm" startDecorator={<Plus size={16} />} onClick={() => setOpenAddUserOverride(true)}>
+              Add Override
+            </Button>
+          </Box>
           <Card variant="outlined">
             <Typography level="body-sm" color="neutral" sx={{ mb: 2 }}>
               Set user level quotas here. Will override team and org quotas.
@@ -681,6 +700,7 @@ const OrgQuota: React.FC = () => {
                 </thead>
                 <tbody>
                   {userQuotas.users
+                    .filter((u) => u.custom_quota) // show only active overrides
                     .filter((u) => {
                       const hay = [u.user_name, u.user_email, u.user_id]
                         .filter(Boolean)
@@ -694,21 +714,10 @@ const OrgQuota: React.FC = () => {
                         <td>{userQuota.user_email || userQuota.user_id}</td>
                         <td>
                           {(() => {
-                            const src =
-                              userQuota.effective_quota_source ||
-                              (userQuota.custom_quota ? "user" : "org");
+                            const src = "user"; // override rows are user-level
                             const color =
-                              src === "user"
-                                ? "primary"
-                                : src === "team"
-                                ? "warning"
-                                : "neutral";
-                            const label =
-                              src === "user"
-                                ? "user"
-                                : src === "team"
-                                ? "team"
-                                : "org";
+                              src === "user" ? "primary" : "neutral";
+                            const label = "user";
                             return (
                               <Chip size="sm" color={color as any}>
                                 {label}
@@ -717,29 +726,12 @@ const OrgQuota: React.FC = () => {
                           })()}
                         </td>
                         <td>
-                          {userQuota.custom_quota ? (
                             <Chip color="primary" size="sm">
                               {formatHours(
                                 userQuota.monthly_gpu_hours_per_user
                               )}{" "}
                               credits
                             </Chip>
-                          ) : (
-                            <Chip
-                              color={
-                                (userQuota.effective_quota_source === "team"
-                                  ? "warning"
-                                  : "neutral") as any
-                              }
-                              size="sm"
-                            >
-                              {formatHours(
-                                userQuota.effective_quota_limit ??
-                                  userQuota.monthly_gpu_hours_per_user
-                              )}{" "}
-                              credits
-                            </Chip>
-                          )}
                         </td>
                         <td style={{ textAlign: "right" }}>
                           <Stack
@@ -754,7 +746,6 @@ const OrgQuota: React.FC = () => {
                             >
                               Edit
                             </Button>
-                            {userQuota.custom_quota && (
                               <Button
                                 size="sm"
                                 variant="outlined"
@@ -763,13 +754,17 @@ const OrgQuota: React.FC = () => {
                               >
                                 Reset
                               </Button>
-                            )}
                           </Stack>
                         </td>
                       </tr>
                     ))}
                 </tbody>
               </Table>
+            )}
+            {userQuotas.users.filter((u) => u.custom_quota).length === 0 && (
+              <Alert color="neutral" sx={{ mt: 2 }}>
+                No individual overrides yet. Use "Add Override" to create one.
+              </Alert>
             )}
           </Card>
         </Box>
@@ -1009,6 +1004,195 @@ const OrgQuota: React.FC = () => {
                 onClick={() => setOpenTeamQuotaModal(false)}
                 disabled={updatingTeamQuota}
               >
+                Cancel
+              </Button>
+            </Stack>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Add Team Override Modal */}
+      <Modal open={openAddTeamOverride} onClose={() => setOpenAddTeamOverride(false)}>
+        <ModalDialog>
+          <Typography level="h4">Add Team Override</Typography>
+          <Typography level="body-sm" mb={2}>
+            Choose a team and set a custom monthly GPU credit limit per user.
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Input
+              placeholder="Search teams..."
+              value={addTeamSearch}
+              onChange={(e) => setAddTeamSearch(e.target.value)}
+              startDecorator={<Search size={16} />}
+            />
+            <FormControl>
+              <FormLabel>Team</FormLabel>
+              <Box sx={{ maxHeight: 280, overflow: "auto", border: "1px solid", borderColor: "neutral.outlinedBorder", borderRadius: "sm" }}>
+                <List sx={{ py: 0 }}>
+                  {teamQuotas?.teams
+                    .filter((t) => t.monthly_gpu_hours_per_user === teamQuotas.default_quota_per_user)
+                    .filter((t) => (t.team_name || "").toLowerCase().includes(addTeamSearch.toLowerCase()))
+                    .map((t) => (
+                      <ListItem key={t.team_id} sx={{ py: 0 }}>
+                        <ListItemButton
+                          selected={selectedTeamIdForOverride === t.team_id}
+                          onClick={() => setSelectedTeamIdForOverride(t.team_id)}
+                        >
+                          {t.team_name}
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  {teamQuotas && teamQuotas.teams.filter((t) => t.monthly_gpu_hours_per_user === teamQuotas.default_quota_per_user).filter((t) => (t.team_name || "").toLowerCase().includes(addTeamSearch.toLowerCase())).length === 0 && (
+                    <Box sx={{ p: 2 }}>
+                      <Typography level="body-sm" color="neutral">No matching teams.</Typography>
+                    </Box>
+                  )}
+                </List>
+              </Box>
+            </FormControl>
+            <FormControl>
+              <FormLabel>Monthly GPU Credit Limit</FormLabel>
+              <Input
+                placeholder="e.g. 100"
+                value={newTeamOverrideHours}
+                onChange={(e) => setNewTeamOverrideHours(e.target.value)}
+                slotProps={{ input: { type: "number", min: "0", step: "0.1" } }}
+              />
+            </FormControl>
+            <Stack direction="row" spacing={1}>
+              <Button
+                onClick={async () => {
+                  if (!organizationId || !selectedTeamIdForOverride) return;
+                  const parsed = parseFloat(newTeamOverrideHours);
+                  if (isNaN(parsed) || parsed < 0) return;
+                  try {
+                    setUpdatingTeamQuota(true);
+                    await teamsQuotaApi.updateTeamQuota(
+                      organizationId,
+                      selectedTeamIdForOverride,
+                      parsed
+                    );
+                    await mutateTeamQuotas();
+                    setOpenAddTeamOverride(false);
+                    setSelectedTeamIdForOverride(null);
+                    setNewTeamOverrideHours("");
+                    setAddTeamSearch("");
+                  } catch (err) {
+                    console.error("Failed to add team override:", err);
+                  } finally {
+                    setUpdatingTeamQuota(false);
+                  }
+                }}
+                disabled={!selectedTeamIdForOverride || !newTeamOverrideHours || parseFloat(newTeamOverrideHours) < 0}
+                loading={updatingTeamQuota}
+              >
+                Save Override
+              </Button>
+              <Button variant="outlined" onClick={() => setOpenAddTeamOverride(false)} disabled={updatingTeamQuota}>
+                Cancel
+              </Button>
+            </Stack>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Add User Override Modal */}
+      <Modal open={openAddUserOverride} onClose={() => setOpenAddUserOverride(false)}>
+        <ModalDialog>
+          <Typography level="h4">Add Individual Override</Typography>
+          <Typography level="body-sm" mb={2}>
+            Choose a user and set a custom monthly GPU credit limit.
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Input
+              placeholder="Search users..."
+              value={addUserSearch}
+              onChange={(e) => setAddUserSearch(e.target.value)}
+              startDecorator={<Search size={16} />}
+            />
+            <FormControl>
+              <FormLabel>User</FormLabel>
+              <Box sx={{ maxHeight: 280, overflow: "auto", border: "1px solid", borderColor: "neutral.outlinedBorder", borderRadius: "sm" }}>
+                <List sx={{ py: 0 }}>
+                  {userQuotas?.users
+                    .filter((u) => !u.custom_quota)
+                    .filter((u) =>
+                      [u.user_name, u.user_email, u.user_id]
+                        .filter(Boolean)
+                        .join(" ")
+                        .toLowerCase()
+                        .includes(addUserSearch.toLowerCase())
+                    )
+                    .map((u) => {
+                      const primary = (u.user_name || u.user_email || u.user_id) as string;
+                      const secondary = u.user_email && u.user_name ? u.user_email : undefined;
+                      return (
+                        <ListItem key={u.user_id} sx={{ py: 0 }}>
+                          <ListItemButton
+                            selected={selectedUserIdForOverride === u.user_id}
+                            onClick={() => setSelectedUserIdForOverride(u.user_id)}
+                          >
+                            <Box>
+                              <Typography level="body-md">{primary}</Typography>
+                              {secondary && (
+                                <Typography level="body-sm" color="neutral">{secondary}</Typography>
+                              )}
+                            </Box>
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  {userQuotas && userQuotas.users.filter((u) => !u.custom_quota).filter((u) => [u.user_name, u.user_email, u.user_id].filter(Boolean).join(" ").toLowerCase().includes(addUserSearch.toLowerCase())).length === 0 && (
+                    <Box sx={{ p: 2 }}>
+                      <Typography level="body-sm" color="neutral">No matching users.</Typography>
+                    </Box>
+                  )}
+                </List>
+              </Box>
+            </FormControl>
+            <FormControl>
+              <FormLabel>Monthly GPU Credit Limit</FormLabel>
+              <Input
+                placeholder="e.g. 100"
+                value={newUserOverrideHours}
+                onChange={(e) => setNewUserOverrideHours(e.target.value)}
+                slotProps={{ input: { type: "number", min: "0", step: "0.1" } }}
+              />
+            </FormControl>
+            <Stack direction="row" spacing={1}>
+              <Button
+                onClick={async () => {
+                  if (!organizationId || !selectedUserIdForOverride) return;
+                  const parsed = parseFloat(newUserOverrideHours);
+                  if (isNaN(parsed) || parsed < 0) return;
+                  try {
+                    setUpdatingUserQuota(true);
+                    await apiFetch(
+                      buildApiUrl(`quota/organization/${organizationId}/users/${selectedUserIdForOverride}/quota`),
+                      {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ monthly_gpu_hours_per_user: parsed }),
+                        credentials: "include",
+                      }
+                    );
+                    await mutateUserQuotas();
+                    setOpenAddUserOverride(false);
+                    setSelectedUserIdForOverride(null);
+                    setNewUserOverrideHours("");
+                    setAddUserSearch("");
+                  } catch (err) {
+                    console.error("Failed to add user override:", err);
+                  } finally {
+                    setUpdatingUserQuota(false);
+                  }
+                }}
+                disabled={!selectedUserIdForOverride || !newUserOverrideHours || parseFloat(newUserOverrideHours) < 0}
+                loading={updatingUserQuota}
+              >
+                Save Override
+              </Button>
+              <Button variant="outlined" onClick={() => setOpenAddUserOverride(false)} disabled={updatingUserQuota}>
                 Cancel
               </Button>
             </Stack>
