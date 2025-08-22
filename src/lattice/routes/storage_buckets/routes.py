@@ -124,7 +124,7 @@ async def create_storage_bucket(
             )
 
         # Validate store if provided
-        valid_stores = ["s3", "gcs", "azure", "r2", "ibm", "oci"]
+        valid_stores = ["auto", "s3", "gcs", "azure", "r2", "ibm", "oci"]
         if bucket_request.store and bucket_request.store not in valid_stores:
             raise HTTPException(
                 status_code=400,
@@ -323,7 +323,7 @@ async def update_storage_bucket(
 
         # Validate store if provided
         if bucket_request.store:
-            valid_stores = ["s3", "gcs", "azure", "r2", "ibm", "oci"]
+            valid_stores = ["auto", "s3", "gcs", "azure", "r2", "ibm", "oci"]
             if bucket_request.store not in valid_stores:
                 raise HTTPException(
                     status_code=400,
