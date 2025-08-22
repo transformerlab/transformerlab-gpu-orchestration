@@ -8,15 +8,99 @@ import {
   ListDivider,
   Typography,
   Box,
+  LinearProgress,
+  Chip,
 } from "@mui/joy";
 import { useAuth } from "../../context/AuthContext";
 import UserSettingsModal from "../user-settings/UserSettingsModal";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useNavigate } from "react-router-dom";
 
 const UserDropdown: React.FC = () => {
   const { user, logout } = useAuth();
   const [settingsModalOpen, setSettingsModalOpen] = React.useState(false);
+  const [quotaLoading, setQuotaLoading] = React.useState(false);
+  const [quota, setQuota] = React.useState<
+    | {
+        limit: number;
+        used: number;
+        remaining: number;
+        percentage: number;
+        period_start?: string;
+        period_end?: string;
+      }
+    | null
+  >(null);
+  const navigate = useNavigate();
 
   if (!user) return null;
+
+  React.useEffect(() => {
+    const organizationId = user.organization_id;
+    if (!organizationId) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setQuotaLoading(true);
+        // Fetch organization quota usage (for limit and billing period)
+        const res = await apiFetch(
+          buildApiUrl(`quota/organization/${organizationId}/usage`),
+          { credentials: "include" }
+        );
+        if (!res.ok) throw new Error("Failed to load quota");
+        const data = await res.json();
+        const oq = data?.organization_quota;
+
+        // Fetch cost report to compute usage this period
+        const crRes = await apiFetch(buildApiUrl("skypilot/cost-report"), {
+          credentials: "include",
+        });
+        if (!crRes.ok) throw new Error("Failed to load cost report");
+        const costReport = await crRes.json();
+
+        if (!cancelled && oq) {
+          const limit = oq.monthly_gpu_hours_per_user ?? 0;
+          // Determine billing period
+          const periodStart = oq.current_period_start
+            ? new Date(oq.current_period_start)
+            : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+          const periodEnd = oq.current_period_end
+            ? new Date(oq.current_period_end)
+            : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
+          const startMs = periodStart.getTime();
+          const endMs = periodEnd.getTime();
+
+          // Sum usage in current billing period
+          const used = Array.isArray(costReport)
+            ? costReport.reduce((sum: number, job: any) => {
+                const ts = job?.launched_at ? job.launched_at * 1000 : 0;
+                const val = Number(job?.total_cost || 0);
+                return ts >= startMs && ts <= endMs ? sum + val : sum;
+              }, 0)
+            : 0;
+          const percentage = limit > 0 ? (used / limit) * 100 : 0;
+          const remaining = Math.max(0, limit - used);
+
+          setQuota({
+            limit,
+            used,
+            remaining,
+            percentage,
+            period_start: oq.current_period_start,
+            period_end: oq.current_period_end,
+          });
+        }
+      } catch (e) {
+        // Silent fail in dropdown
+      } finally {
+        if (!cancelled) setQuotaLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.organization_id]);
 
   return (
     <>
@@ -70,6 +154,67 @@ const UserDropdown: React.FC = () => {
             </Typography>
           </Box>
           <ListDivider />
+          {quota && (
+            <MenuItem
+              onClick={() => navigate("/dashboard/costs")}
+              sx={{
+                cursor: "pointer",
+                p: 0,
+                "&:hover": { backgroundColor: "transparent" },
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  width: "100%",
+                  px: 2,
+                  py: 1.25,
+                }}
+              >
+                <Typography level="title-sm">Quota Usage</Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>Used</Typography>
+                    <Typography level="title-sm">
+                      {new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quota.used)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>Remaining</Typography>
+                    <Typography level="title-sm">
+                      {new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.max(0, quota.remaining))}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>Limit</Typography>
+                    <Typography level="title-sm">
+                      {new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quota.limit)}
+                    </Typography>
+                  </Box>
+                </Box>
+                <LinearProgress
+                  determinate
+                  value={Math.max(0, Math.min(100, quota.percentage))}
+                  sx={{ height: 6, borderRadius: 9999, mt: 0.5 }}
+                  color="neutral"
+                />
+                {quota.period_start && quota.period_end && (
+                  <Typography level="body-xs" sx={{ color: "text.secondary" }}>
+                    {new Date(quota.period_start).toLocaleDateString()} - {new Date(quota.period_end).toLocaleDateString()}
+                  </Typography>
+                )}
+              </Box>
+            </MenuItem>
+          )}
+          {quotaLoading && (
+            <MenuItem disabled>
+              <Box sx={{ width: "100%", px: 2 }}>
+                <LinearProgress sx={{ height: 6, borderRadius: 9999 }} />
+              </Box>
+            </MenuItem>
+          )}
           {/* <MenuItem disabled sx={{ cursor: "default" }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               <Typography level="title-sm">User ID</Typography>
