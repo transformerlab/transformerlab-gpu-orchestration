@@ -41,6 +41,7 @@ def ssh_command(console: Console, instance_name: str):
         # Now grab the raw_config part of data and save it to a temporary place in
         # ~/.lab/ssh/<instance_name>/config
         config_dir = Path.home() / ".lab" / "ssh" / instance_name
+        config_dir.mkdir(parents=True, exist_ok=True)
 
         # Now grab the Identity file from identity_file_content and save it near the config:
         identity_file = data.get("identity_file_content")
@@ -61,12 +62,16 @@ def ssh_command(console: Console, instance_name: str):
             #     else f"IdentityFile {config_dir / 'ssh_key'}"
             #     for line in ssh_config.splitlines()
             # )
-            config_dir.mkdir(parents=True, exist_ok=True)
             with open(config_dir / "config", "w") as f:
                 f.write(ssh_config)
 
         console.print("[bold green]✓[/bold green] SSH configuration saved.")
         console.print("[bold blue]Connecting directly to your instance:[/bold blue]")
+
+        # Print out the command so the user can use it later:
+        console.print(
+            f"[bold blue]SSH Command:[/bold blue] ssh -F {config_dir / 'config'} -i {config_dir / 'ssh_key'} {ssh_user}@{ssh_host}"
+        )
 
         # Run ssh directly for the user
         ssh_command = [
