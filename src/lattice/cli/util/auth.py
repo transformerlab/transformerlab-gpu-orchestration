@@ -1,8 +1,8 @@
 import os
 import json
 import requests
-import openapi_client
-from openapi_client.api import default_api
+import lattice.api_client.python.openapi_client
+from lattice.api_client.python.openapi_client.api import default_api
 from typing import Optional, Dict, Union
 from .api import BACKEND_URL
 

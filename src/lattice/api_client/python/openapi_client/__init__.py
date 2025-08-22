@@ -18,6 +18,7 @@ __version__ = "1.0.0"
 
 # Define package exports
 __all__ = [
+    "SSHKeysApi",
     "DefaultApi",
     "ApiResponse",
     "ApiClient",
@@ -30,6 +31,9 @@ __all__ = [
     "ApiException",
     "APIKeyResponse",
     "AddMemberRequest",
+    "AddTeamMemberRequest",
+    "AvailableUser",
+    "AvailableUsersResponse",
     "AzureConfigRequest",
     "AzureTestRequest",
     "BodyAuthorizeCliApiV1AuthCliAuthorizePost",
@@ -41,7 +45,9 @@ __all__ = [
     "CreateAPIKeyRequest",
     "CreateAPIKeyResponse",
     "CreateOrganizationRequest",
+    "CreateSSHKeyRequest",
     "CreateStorageBucketRequest",
+    "CreateTeamRequest",
     "CreateUserQuotaRequest",
     "DownClusterRequest",
     "DownClusterResponse",
@@ -61,6 +67,8 @@ __all__ = [
     "ReportsResponse",
     "RunPodConfigRequest",
     "RunPodTestRequest",
+    "SSHKeyListResponse",
+    "SSHKeyResponse",
     "SSHNode",
     "SendInvitationRequest",
     "StatusResponse",
@@ -68,10 +76,15 @@ __all__ = [
     "StopClusterResponse",
     "StorageBucketListResponse",
     "StorageBucketResponse",
+    "TeamListResponse",
+    "TeamMemberResponse",
+    "TeamResponse",
     "UpdateAPIKeyRequest",
     "UpdateMemberRoleRequest",
     "UpdateQuotaRequest",
+    "UpdateSSHKeyRequest",
     "UpdateStorageBucketRequest",
+    "UpdateTeamRequest",
     "UpdateUserQuotaRequest",
     "UserQuotaListResponse",
     "UserQuotaResponse",
@@ -82,6 +95,7 @@ __all__ = [
 ]
 
 # import apis into sdk package
+from openapi_client.api.ssh_keys_api import SSHKeysApi as SSHKeysApi
 from openapi_client.api.default_api import DefaultApi as DefaultApi
 
 # import ApiClient
@@ -98,6 +112,9 @@ from openapi_client.exceptions import ApiException as ApiException
 # import models into sdk package
 from openapi_client.models.api_key_response import APIKeyResponse as APIKeyResponse
 from openapi_client.models.add_member_request import AddMemberRequest as AddMemberRequest
+from openapi_client.models.add_team_member_request import AddTeamMemberRequest as AddTeamMemberRequest
+from openapi_client.models.available_user import AvailableUser as AvailableUser
+from openapi_client.models.available_users_response import AvailableUsersResponse as AvailableUsersResponse
 from openapi_client.models.azure_config_request import AzureConfigRequest as AzureConfigRequest
 from openapi_client.models.azure_test_request import AzureTestRequest as AzureTestRequest
 from openapi_client.models.body_authorize_cli_api_v1_auth_cli_authorize_post import BodyAuthorizeCliApiV1AuthCliAuthorizePost as BodyAuthorizeCliApiV1AuthCliAuthorizePost
@@ -109,7 +126,9 @@ from openapi_client.models.clusters_list_response import ClustersListResponse as
 from openapi_client.models.create_api_key_request import CreateAPIKeyRequest as CreateAPIKeyRequest
 from openapi_client.models.create_api_key_response import CreateAPIKeyResponse as CreateAPIKeyResponse
 from openapi_client.models.create_organization_request import CreateOrganizationRequest as CreateOrganizationRequest
+from openapi_client.models.create_ssh_key_request import CreateSSHKeyRequest as CreateSSHKeyRequest
 from openapi_client.models.create_storage_bucket_request import CreateStorageBucketRequest as CreateStorageBucketRequest
+from openapi_client.models.create_team_request import CreateTeamRequest as CreateTeamRequest
 from openapi_client.models.create_user_quota_request import CreateUserQuotaRequest as CreateUserQuotaRequest
 from openapi_client.models.down_cluster_request import DownClusterRequest as DownClusterRequest
 from openapi_client.models.down_cluster_response import DownClusterResponse as DownClusterResponse
@@ -129,6 +148,8 @@ from openapi_client.models.report_data import ReportData as ReportData
 from openapi_client.models.reports_response import ReportsResponse as ReportsResponse
 from openapi_client.models.run_pod_config_request import RunPodConfigRequest as RunPodConfigRequest
 from openapi_client.models.run_pod_test_request import RunPodTestRequest as RunPodTestRequest
+from openapi_client.models.ssh_key_list_response import SSHKeyListResponse as SSHKeyListResponse
+from openapi_client.models.ssh_key_response import SSHKeyResponse as SSHKeyResponse
 from openapi_client.models.ssh_node import SSHNode as SSHNode
 from openapi_client.models.send_invitation_request import SendInvitationRequest as SendInvitationRequest
 from openapi_client.models.status_response import StatusResponse as StatusResponse
@@ -136,10 +157,15 @@ from openapi_client.models.stop_cluster_request import StopClusterRequest as Sto
 from openapi_client.models.stop_cluster_response import StopClusterResponse as StopClusterResponse
 from openapi_client.models.storage_bucket_list_response import StorageBucketListResponse as StorageBucketListResponse
 from openapi_client.models.storage_bucket_response import StorageBucketResponse as StorageBucketResponse
+from openapi_client.models.team_list_response import TeamListResponse as TeamListResponse
+from openapi_client.models.team_member_response import TeamMemberResponse as TeamMemberResponse
+from openapi_client.models.team_response import TeamResponse as TeamResponse
 from openapi_client.models.update_api_key_request import UpdateAPIKeyRequest as UpdateAPIKeyRequest
 from openapi_client.models.update_member_role_request import UpdateMemberRoleRequest as UpdateMemberRoleRequest
 from openapi_client.models.update_quota_request import UpdateQuotaRequest as UpdateQuotaRequest
+from openapi_client.models.update_ssh_key_request import UpdateSSHKeyRequest as UpdateSSHKeyRequest
 from openapi_client.models.update_storage_bucket_request import UpdateStorageBucketRequest as UpdateStorageBucketRequest
+from openapi_client.models.update_team_request import UpdateTeamRequest as UpdateTeamRequest
 from openapi_client.models.update_user_quota_request import UpdateUserQuotaRequest as UpdateUserQuotaRequest
 from openapi_client.models.user_quota_list_response import UserQuotaListResponse as UserQuotaListResponse
 from openapi_client.models.user_quota_response import UserQuotaResponse as UserQuotaResponse

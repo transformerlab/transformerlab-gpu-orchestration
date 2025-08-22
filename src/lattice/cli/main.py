@@ -34,7 +34,7 @@ app = typer.Typer(
 console = Console()
 
 # Set a default API base URL if not already set
-os.environ.setdefault("TLAB_wAPI_BASE_URL", "http://localhost:8000")
+os.environ.setdefault("TLAB_API_BASE_URL", "http://localhost:8000")
 
 # Subcommands for different functionalities
 instances_app = typer.Typer(help="Manage your Transformer Lab instances")

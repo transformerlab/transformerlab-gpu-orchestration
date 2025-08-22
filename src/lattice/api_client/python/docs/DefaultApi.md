@@ -6,6 +6,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**add_node_api_v1_clusters_cluster_name_nodes_post**](DefaultApi.md#add_node_api_v1_clusters_cluster_name_nodes_post) | **POST** /api/v1/clusters/{cluster_name}/nodes | Add Node
 [**add_organization_member_api_v1_admin_orgs_organization_id_members_post**](DefaultApi.md#add_organization_member_api_v1_admin_orgs_organization_id_members_post) | **POST** /api/v1/admin/orgs/{organization_id}/members | Add Organization Member
+[**add_team_member_api_v1_admin_teams_team_id_members_post**](DefaultApi.md#add_team_member_api_v1_admin_teams_team_id_members_post) | **POST** /api/v1/admin/teams/{team_id}/members | Add Team Member
 [**auth_callback_api_v1_auth_callback_get**](DefaultApi.md#auth_callback_api_v1_auth_callback_get) | **GET** /api/v1/auth/callback | Auth Callback
 [**authorize_cli_api_v1_auth_cli_authorize_post**](DefaultApi.md#authorize_cli_api_v1_auth_cli_authorize_post) | **POST** /api/v1/auth/cli/authorize | Authorize Cli
 [**cancel_cluster_job_api_v1_skypilot_jobs_cluster_name_job_id_cancel_post**](DefaultApi.md#cancel_cluster_job_api_v1_skypilot_jobs_cluster_name_job_id_cancel_post) | **POST** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/cancel | Cancel Cluster Job
@@ -15,6 +16,7 @@ Method | HTTP request | Description
 [**create_cluster_api_v1_clusters_post**](DefaultApi.md#create_cluster_api_v1_clusters_post) | **POST** /api/v1/clusters | Create Cluster
 [**create_organization_api_v1_admin_orgs_post**](DefaultApi.md#create_organization_api_v1_admin_orgs_post) | **POST** /api/v1/admin/orgs | Create Organization
 [**create_storage_bucket_api_v1_storage_buckets_post**](DefaultApi.md#create_storage_bucket_api_v1_storage_buckets_post) | **POST** /api/v1/storage-buckets/ | Create Storage Bucket
+[**create_team_api_v1_admin_teams_post**](DefaultApi.md#create_team_api_v1_admin_teams_post) | **POST** /api/v1/admin/teams/ | Create Team
 [**create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post**](DefaultApi.md#create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post) | **POST** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Create User Quota Endpoint
 [**delete_api_key_api_v1_api_keys_key_id_delete**](DefaultApi.md#delete_api_key_api_v1_api_keys_key_id_delete) | **DELETE** /api/v1/api-keys/{key_id} | Delete Api Key
 [**delete_azure_config_route_api_v1_skypilot_azure_config_config_key_delete**](DefaultApi.md#delete_azure_config_route_api_v1_skypilot_azure_config_config_key_delete) | **DELETE** /api/v1/skypilot/azure/config/{config_key} | Delete Azure Config Route
@@ -23,6 +25,7 @@ Method | HTTP request | Description
 [**delete_organization_api_v1_admin_orgs_organization_id_delete**](DefaultApi.md#delete_organization_api_v1_admin_orgs_organization_id_delete) | **DELETE** /api/v1/admin/orgs/{organization_id} | Delete Organization
 [**delete_runpod_config_route_api_v1_skypilot_runpod_config_config_key_delete**](DefaultApi.md#delete_runpod_config_route_api_v1_skypilot_runpod_config_config_key_delete) | **DELETE** /api/v1/skypilot/runpod/config/{config_key} | Delete Runpod Config Route
 [**delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete**](DefaultApi.md#delete_storage_bucket_api_v1_storage_buckets_bucket_id_delete) | **DELETE** /api/v1/storage-buckets/{bucket_id} | Delete Storage Bucket
+[**delete_team_api_v1_admin_teams_team_id_delete**](DefaultApi.md#delete_team_api_v1_admin_teams_team_id_delete) | **DELETE** /api/v1/admin/teams/{team_id} | Delete Team
 [**delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete**](DefaultApi.md#delete_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_delete) | **DELETE** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Delete User Quota Endpoint
 [**down_skypilot_cluster_api_v1_skypilot_down_post**](DefaultApi.md#down_skypilot_cluster_api_v1_skypilot_down_post) | **POST** /api/v1/skypilot/down | Down Skypilot Cluster
 [**fetch_cluster_resources_api_v1_skypilot_fetch_resources_cluster_name_get**](DefaultApi.md#fetch_cluster_resources_api_v1_skypilot_fetch_resources_cluster_name_get) | **GET** /api/v1/skypilot/fetch-resources/{cluster_name} | Fetch Cluster Resources
@@ -47,6 +50,7 @@ Method | HTTP request | Description
 [**get_cluster_type_api_v1_skypilot_cluster_type_cluster_name_get**](DefaultApi.md#get_cluster_type_api_v1_skypilot_cluster_type_cluster_name_get) | **GET** /api/v1/skypilot/cluster-type/{cluster_name} | Get Cluster Type
 [**get_cost_report_api_v1_skypilot_cost_report_get**](DefaultApi.md#get_cost_report_api_v1_skypilot_cost_report_get) | **GET** /api/v1/skypilot/cost-report | Get Cost Report
 [**get_current_user_info_api_v1_auth_me_get**](DefaultApi.md#get_current_user_info_api_v1_auth_me_get) | **GET** /api/v1/auth/me | Get Current User Info
+[**get_current_user_team_api_v1_admin_teams_current_user_team_get**](DefaultApi.md#get_current_user_team_api_v1_admin_teams_current_user_team_get) | **GET** /api/v1/admin/teams/current-user/team | Get Current User Team
 [**get_job_success_reports_api_v1_reports_job_success_get**](DefaultApi.md#get_job_success_reports_api_v1_reports_job_success_get) | **GET** /api/v1/reports/job-success | Get Job Success Reports
 [**get_login_url_api_v1_auth_login_url_get**](DefaultApi.md#get_login_url_api_v1_auth_login_url_get) | **GET** /api/v1/auth/login-url | Get Login Url
 [**get_node_pools_api_v1_node_pools_get**](DefaultApi.md#get_node_pools_api_v1_node_pools_get) | **GET** /api/v1/node-pools | Get Node Pools
@@ -71,16 +75,20 @@ Method | HTTP request | Description
 [**get_usage_summary_api_v1_quota_summary_organization_id_get**](DefaultApi.md#get_usage_summary_api_v1_quota_summary_organization_id_get) | **GET** /api/v1/quota/summary/{organization_id} | Get Usage Summary
 [**get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get**](DefaultApi.md#get_user_quota_api_v1_quota_organization_organization_id_users_user_id_quota_get) | **GET** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Get User Quota
 [**get_user_reports_api_v1_reports_get**](DefaultApi.md#get_user_reports_api_v1_reports_get) | **GET** /api/v1/reports | Get User Reports
+[**get_user_team_api_v1_admin_teams_user_user_id_team_get**](DefaultApi.md#get_user_team_api_v1_admin_teams_user_user_id_team_get) | **GET** /api/v1/admin/teams/user/{user_id}/team | Get User Team
 [**get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get**](DefaultApi.md#get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get) | **GET** /api/v1/skypilot/jobs/{cluster_name}/{job_id}/vscode-info | Get Vscode Tunnel Info Endpoint
 [**launch_skypilot_cluster_api_v1_skypilot_launch_post**](DefaultApi.md#launch_skypilot_cluster_api_v1_skypilot_launch_post) | **POST** /api/v1/skypilot/launch | Launch Skypilot Cluster
 [**list_all_organizations_api_v1_admin_orgs_get**](DefaultApi.md#list_all_organizations_api_v1_admin_orgs_get) | **GET** /api/v1/admin/orgs | List All Organizations
 [**list_api_keys_api_v1_api_keys_get**](DefaultApi.md#list_api_keys_api_v1_api_keys_get) | **GET** /api/v1/api-keys | List Api Keys
+[**list_available_users_api_v1_admin_teams_available_users_get**](DefaultApi.md#list_available_users_api_v1_admin_teams_available_users_get) | **GET** /api/v1/admin/teams/available-users | List Available Users
 [**list_clusters_api_v1_clusters_get**](DefaultApi.md#list_clusters_api_v1_clusters_get) | **GET** /api/v1/clusters | List Clusters
 [**list_identity_files_api_v1_clusters_identity_files_get**](DefaultApi.md#list_identity_files_api_v1_clusters_identity_files_get) | **GET** /api/v1/clusters/identity-files | List Identity Files
 [**list_node_pools_api_v1_skypilot_node_pools_get**](DefaultApi.md#list_node_pools_api_v1_skypilot_node_pools_get) | **GET** /api/v1/skypilot/node-pools | List Node Pools
 [**list_organization_members_api_v1_admin_orgs_organization_id_members_get**](DefaultApi.md#list_organization_members_api_v1_admin_orgs_organization_id_members_get) | **GET** /api/v1/admin/orgs/{organization_id}/members | List Organization Members
 [**list_ssh_clusters_api_v1_skypilot_ssh_clusters_get**](DefaultApi.md#list_ssh_clusters_api_v1_skypilot_ssh_clusters_get) | **GET** /api/v1/skypilot/ssh-clusters | List Ssh Clusters
 [**list_storage_buckets_api_v1_storage_buckets_get**](DefaultApi.md#list_storage_buckets_api_v1_storage_buckets_get) | **GET** /api/v1/storage-buckets/ | List Storage Buckets
+[**list_team_members_api_v1_admin_teams_team_id_members_get**](DefaultApi.md#list_team_members_api_v1_admin_teams_team_id_members_get) | **GET** /api/v1/admin/teams/{team_id}/members | List Team Members
+[**list_teams_api_v1_admin_teams_get**](DefaultApi.md#list_teams_api_v1_admin_teams_get) | **GET** /api/v1/admin/teams/ | List Teams
 [**logout_api_v1_auth_logout_get**](DefaultApi.md#logout_api_v1_auth_logout_get) | **GET** /api/v1/auth/logout | Logout
 [**poll_cli_authorization_api_v1_auth_cli_poll_post**](DefaultApi.md#poll_cli_authorization_api_v1_auth_cli_poll_post) | **POST** /api/v1/auth/cli/poll | Poll Cli Authorization
 [**populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post**](DefaultApi.md#populate_user_quotas_endpoint_api_v1_quota_organization_organization_id_populate_user_quotas_post) | **POST** /api/v1/quota/organization/{organization_id}/populate-user-quotas | Populate User Quotas Endpoint
@@ -89,9 +97,11 @@ Method | HTTP request | Description
 [**regenerate_api_key_api_v1_api_keys_key_id_regenerate_post**](DefaultApi.md#regenerate_api_key_api_v1_api_keys_key_id_regenerate_post) | **POST** /api/v1/api-keys/{key_id}/regenerate | Regenerate Api Key
 [**remove_node_api_v1_clusters_cluster_name_nodes_node_ip_delete**](DefaultApi.md#remove_node_api_v1_clusters_cluster_name_nodes_node_ip_delete) | **DELETE** /api/v1/clusters/{cluster_name}/nodes/{node_ip} | Remove Node
 [**remove_organization_member_api_v1_admin_orgs_organization_id_members_user_id_delete**](DefaultApi.md#remove_organization_member_api_v1_admin_orgs_organization_id_members_user_id_delete) | **DELETE** /api/v1/admin/orgs/{organization_id}/members/{user_id} | Remove Organization Member
+[**remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete**](DefaultApi.md#remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete) | **DELETE** /api/v1/admin/teams/{team_id}/members/{user_id} | Remove Team Member
 [**rename_identity_file_route_api_v1_clusters_identity_files_file_path_put**](DefaultApi.md#rename_identity_file_route_api_v1_clusters_identity_files_file_path_put) | **PUT** /api/v1/clusters/identity-files/{file_path} | Rename Identity File Route
 [**run_sky_check_azure_route_api_v1_skypilot_azure_sky_check_get**](DefaultApi.md#run_sky_check_azure_route_api_v1_skypilot_azure_sky_check_get) | **GET** /api/v1/skypilot/azure/sky-check | Run Sky Check Azure Route
 [**run_sky_check_runpod_route_api_v1_skypilot_runpod_sky_check_get**](DefaultApi.md#run_sky_check_runpod_route_api_v1_skypilot_runpod_sky_check_get) | **GET** /api/v1/skypilot/runpod/sky-check | Run Sky Check Runpod Route
+[**run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get**](DefaultApi.md#run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get) | **GET** /api/v1/skypilot/ssh/sky-check | Run Sky Check Ssh Route
 [**save_azure_config_route_api_v1_skypilot_azure_config_post**](DefaultApi.md#save_azure_config_route_api_v1_skypilot_azure_config_post) | **POST** /api/v1/skypilot/azure/config | Save Azure Config Route
 [**save_runpod_config_route_api_v1_skypilot_runpod_config_post**](DefaultApi.md#save_runpod_config_route_api_v1_skypilot_runpod_config_post) | **POST** /api/v1/skypilot/runpod/config | Save Runpod Config Route
 [**send_organization_invitation_api_v1_admin_orgs_organization_id_invitations_post**](DefaultApi.md#send_organization_invitation_api_v1_admin_orgs_organization_id_invitations_post) | **POST** /api/v1/admin/orgs/{organization_id}/invitations | Send Organization Invitation
@@ -115,6 +125,7 @@ Method | HTTP request | Description
 [**update_member_role_api_v1_admin_orgs_organization_id_members_user_id_role_put**](DefaultApi.md#update_member_role_api_v1_admin_orgs_organization_id_members_user_id_role_put) | **PUT** /api/v1/admin/orgs/{organization_id}/members/{user_id}/role | Update Member Role
 [**update_organization_quota_api_v1_quota_organization_organization_id_put**](DefaultApi.md#update_organization_quota_api_v1_quota_organization_organization_id_put) | **PUT** /api/v1/quota/organization/{organization_id} | Update Organization Quota
 [**update_storage_bucket_api_v1_storage_buckets_bucket_id_put**](DefaultApi.md#update_storage_bucket_api_v1_storage_buckets_bucket_id_put) | **PUT** /api/v1/storage-buckets/{bucket_id} | Update Storage Bucket
+[**update_team_api_v1_admin_teams_team_id_put**](DefaultApi.md#update_team_api_v1_admin_teams_team_id_put) | **PUT** /api/v1/admin/teams/{team_id} | Update Team
 [**update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put**](DefaultApi.md#update_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_put) | **PUT** /api/v1/quota/organization/{organization_id}/users/{user_id}/quota | Update User Quota Endpoint
 [**upload_identity_file_api_v1_clusters_identity_files_post**](DefaultApi.md#upload_identity_file_api_v1_clusters_identity_files_post) | **POST** /api/v1/clusters/identity-files | Upload Identity File
 [**verify_azure_api_v1_skypilot_azure_verify_get**](DefaultApi.md#verify_azure_api_v1_skypilot_azure_verify_get) | **GET** /api/v1/skypilot/azure/verify | Verify Azure
@@ -282,6 +293,76 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **add_team_member_api_v1_admin_teams_team_id_members_post**
+> List[TeamMemberResponse] add_team_member_api_v1_admin_teams_team_id_members_post(team_id, add_team_member_request)
+
+Add Team Member
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.add_team_member_request import AddTeamMemberRequest
+from openapi_client.models.team_member_response import TeamMemberResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    team_id = 'team_id_example' # str | 
+    add_team_member_request = openapi_client.AddTeamMemberRequest() # AddTeamMemberRequest | 
+
+    try:
+        # Add Team Member
+        api_response = api_instance.add_team_member_api_v1_admin_teams_team_id_members_post(team_id, add_team_member_request)
+        print("The response of DefaultApi->add_team_member_api_v1_admin_teams_team_id_members_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->add_team_member_api_v1_admin_teams_team_id_members_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **team_id** | **str**|  | 
+ **add_team_member_request** | [**AddTeamMemberRequest**](AddTeamMemberRequest.md)|  | 
+
+### Return type
+
+[**List[TeamMemberResponse]**](TeamMemberResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **auth_callback_api_v1_auth_callback_get**
 > object auth_callback_api_v1_auth_callback_get(code)
 
@@ -289,7 +370,6 @@ Auth Callback
 
 ### Example
 
-* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -302,15 +382,6 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure Bearer authorization: HTTPBearer
-configuration = openapi_client.Configuration(
-    access_token = os.environ["BEARER_TOKEN"]
-)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -342,7 +413,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[HTTPBearer](../README.md#HTTPBearer)
+No authorization required
 
 ### HTTP request headers
 
@@ -960,6 +1031,74 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **create_team_api_v1_admin_teams_post**
+> TeamResponse create_team_api_v1_admin_teams_post(create_team_request)
+
+Create Team
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.create_team_request import CreateTeamRequest
+from openapi_client.models.team_response import TeamResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    create_team_request = openapi_client.CreateTeamRequest() # CreateTeamRequest | 
+
+    try:
+        # Create Team
+        api_response = api_instance.create_team_api_v1_admin_teams_post(create_team_request)
+        print("The response of DefaultApi->create_team_api_v1_admin_teams_post:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->create_team_api_v1_admin_teams_post: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **create_team_request** | [**CreateTeamRequest**](CreateTeamRequest.md)|  | 
+
+### Return type
+
+[**TeamResponse**](TeamResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post**
 > UserQuotaResponse create_user_quota_endpoint_api_v1_quota_organization_organization_id_users_user_id_quota_post(organization_id, user_id, create_user_quota_request)
 
@@ -1541,6 +1680,72 @@ Name | Type | Description  | Notes
 ### Authorization
 
 [HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **delete_team_api_v1_admin_teams_team_id_delete**
+> object delete_team_api_v1_admin_teams_team_id_delete(team_id)
+
+Delete Team
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    team_id = 'team_id_example' # str | 
+
+    try:
+        # Delete Team
+        api_response = api_instance.delete_team_api_v1_admin_teams_team_id_delete(team_id)
+        print("The response of DefaultApi->delete_team_api_v1_admin_teams_team_id_delete:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->delete_team_api_v1_admin_teams_team_id_delete: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **team_id** | **str**|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+No authorization required
 
 ### HTTP request headers
 
@@ -3336,6 +3541,70 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **get_current_user_team_api_v1_admin_teams_current_user_team_get**
+> TeamResponse get_current_user_team_api_v1_admin_teams_current_user_team_get()
+
+Get Current User Team
+
+Get the team that the current user is in (if any).
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.team_response import TeamResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+
+    try:
+        # Get Current User Team
+        api_response = api_instance.get_current_user_team_api_v1_admin_teams_current_user_team_get()
+        print("The response of DefaultApi->get_current_user_team_api_v1_admin_teams_current_user_team_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_current_user_team_api_v1_admin_teams_current_user_team_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**TeamResponse**](TeamResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **get_job_success_reports_api_v1_reports_job_success_get**
 > object get_job_success_reports_api_v1_reports_job_success_get(days=days)
 
@@ -3411,7 +3680,6 @@ Get Login Url
 
 ### Example
 
-* Bearer Authentication (HTTPBearer):
 
 ```python
 import openapi_client
@@ -3424,15 +3692,6 @@ configuration = openapi_client.Configuration(
     host = "http://localhost"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure Bearer authorization: HTTPBearer
-configuration = openapi_client.Configuration(
-    access_token = os.environ["BEARER_TOKEN"]
-)
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
@@ -3460,7 +3719,7 @@ This endpoint does not need any parameter.
 
 ### Authorization
 
-[HTTPBearer](../README.md#HTTPBearer)
+No authorization required
 
 ### HTTP request headers
 
@@ -5070,6 +5329,75 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **get_user_team_api_v1_admin_teams_user_user_id_team_get**
+> TeamResponse get_user_team_api_v1_admin_teams_user_user_id_team_get(user_id)
+
+Get User Team
+
+Get the team that a user is currently in (if any).
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.team_response import TeamResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    user_id = 'user_id_example' # str | 
+
+    try:
+        # Get User Team
+        api_response = api_instance.get_user_team_api_v1_admin_teams_user_user_id_team_get(user_id)
+        print("The response of DefaultApi->get_user_team_api_v1_admin_teams_user_user_id_team_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->get_user_team_api_v1_admin_teams_user_user_id_team_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **user_id** | **str**|  | 
+
+### Return type
+
+[**TeamResponse**](TeamResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get**
 > object get_vscode_tunnel_info_endpoint_api_v1_skypilot_jobs_cluster_name_job_id_vscode_info_get(cluster_name, job_id)
 
@@ -5151,7 +5479,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **launch_skypilot_cluster_api_v1_skypilot_launch_post**
-> LaunchClusterResponse launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template, storage_bucket_ids=storage_bucket_ids)
+> LaunchClusterResponse launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template, storage_bucket_ids=storage_bucket_ids, node_pool_name=node_pool_name)
 
 Launch Skypilot Cluster
 
@@ -5203,10 +5531,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     vscode_port = 56 # int |  (optional)
     template = 'template_example' # str |  (optional)
     storage_bucket_ids = 'storage_bucket_ids_example' # str |  (optional)
+    node_pool_name = 'node_pool_name_example' # str |  (optional)
 
     try:
         # Launch Skypilot Cluster
-        api_response = api_instance.launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template, storage_bucket_ids=storage_bucket_ids)
+        api_response = api_instance.launch_skypilot_cluster_api_v1_skypilot_launch_post(cluster_name, command=command, setup=setup, cloud=cloud, instance_type=instance_type, cpus=cpus, memory=memory, accelerators=accelerators, region=region, zone=zone, use_spot=use_spot, idle_minutes_to_autostop=idle_minutes_to_autostop, python_file=python_file, launch_mode=launch_mode, jupyter_port=jupyter_port, vscode_port=vscode_port, template=template, storage_bucket_ids=storage_bucket_ids, node_pool_name=node_pool_name)
         print("The response of DefaultApi->launch_skypilot_cluster_api_v1_skypilot_launch_post:\n")
         pprint(api_response)
     except Exception as e:
@@ -5238,6 +5567,7 @@ Name | Type | Description  | Notes
  **vscode_port** | **int**|  | [optional] 
  **template** | **str**|  | [optional] 
  **storage_bucket_ids** | **str**|  | [optional] 
+ **node_pool_name** | **str**|  | [optional] 
 
 ### Return type
 
@@ -5371,6 +5701,71 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**List[APIKeyResponse]**](APIKeyResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_available_users_api_v1_admin_teams_available_users_get**
+> AvailableUsersResponse list_available_users_api_v1_admin_teams_available_users_get()
+
+List Available Users
+
+List users in the current organization to add to teams.
+Uses the auth provider's organization memberships to identify users.
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.available_users_response import AvailableUsersResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+
+    try:
+        # List Available Users
+        api_response = api_instance.list_available_users_api_v1_admin_teams_available_users_get()
+        print("The response of DefaultApi->list_available_users_api_v1_admin_teams_available_users_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->list_available_users_api_v1_admin_teams_available_users_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AvailableUsersResponse**](AvailableUsersResponse.md)
 
 ### Authorization
 
@@ -5822,6 +6217,135 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** | Successful Response |  -  |
 **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_team_members_api_v1_admin_teams_team_id_members_get**
+> List[TeamMemberResponse] list_team_members_api_v1_admin_teams_team_id_members_get(team_id)
+
+List Team Members
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.team_member_response import TeamMemberResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    team_id = 'team_id_example' # str | 
+
+    try:
+        # List Team Members
+        api_response = api_instance.list_team_members_api_v1_admin_teams_team_id_members_get(team_id)
+        print("The response of DefaultApi->list_team_members_api_v1_admin_teams_team_id_members_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->list_team_members_api_v1_admin_teams_team_id_members_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **team_id** | **str**|  | 
+
+### Return type
+
+[**List[TeamMemberResponse]**](TeamMemberResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_teams_api_v1_admin_teams_get**
+> TeamListResponse list_teams_api_v1_admin_teams_get()
+
+List Teams
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.team_list_response import TeamListResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+
+    try:
+        # List Teams
+        api_response = api_instance.list_teams_api_v1_admin_teams_get()
+        print("The response of DefaultApi->list_teams_api_v1_admin_teams_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->list_teams_api_v1_admin_teams_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**TeamListResponse**](TeamListResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -6392,6 +6916,75 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete**
+> List[TeamMemberResponse] remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete(team_id, user_id)
+
+Remove Team Member
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.team_member_response import TeamMemberResponse
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    team_id = 'team_id_example' # str | 
+    user_id = 'user_id_example' # str | 
+
+    try:
+        # Remove Team Member
+        api_response = api_instance.remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete(team_id, user_id)
+        print("The response of DefaultApi->remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->remove_team_member_api_v1_admin_teams_team_id_members_user_id_delete: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **team_id** | **str**|  | 
+ **user_id** | **str**|  | 
+
+### Return type
+
+[**List[TeamMemberResponse]**](TeamMemberResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **rename_identity_file_route_api_v1_clusters_identity_files_file_path_put**
 > object rename_identity_file_route_api_v1_clusters_identity_files_file_path_put(file_path, new_display_name)
 
@@ -6587,6 +7180,79 @@ with openapi_client.ApiClient(configuration) as api_client:
         pprint(api_response)
     except Exception as e:
         print("Exception when calling DefaultApi->run_sky_check_runpod_route_api_v1_skypilot_runpod_sky_check_get: %s\n" % e)
+```
+
+
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**object**
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get**
+> object run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get()
+
+Run Sky Check Ssh Route
+
+Run 'sky check ssh' to validate the SSH setup
+
+### Example
+
+* Bearer Authentication (HTTPBearer):
+
+```python
+import openapi_client
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure Bearer authorization: HTTPBearer
+configuration = openapi_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+
+    try:
+        # Run Sky Check Ssh Route
+        api_response = api_instance.run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get()
+        print("The response of DefaultApi->run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->run_sky_check_ssh_route_api_v1_skypilot_ssh_sky_check_get: %s\n" % e)
 ```
 
 
@@ -8363,6 +9029,76 @@ Name | Type | Description  | Notes
 ### Authorization
 
 [HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_team_api_v1_admin_teams_team_id_put**
+> TeamResponse update_team_api_v1_admin_teams_team_id_put(team_id, update_team_request)
+
+Update Team
+
+### Example
+
+
+```python
+import openapi_client
+from openapi_client.models.team_response import TeamResponse
+from openapi_client.models.update_team_request import UpdateTeamRequest
+from openapi_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = openapi_client.DefaultApi(api_client)
+    team_id = 'team_id_example' # str | 
+    update_team_request = openapi_client.UpdateTeamRequest() # UpdateTeamRequest | 
+
+    try:
+        # Update Team
+        api_response = api_instance.update_team_api_v1_admin_teams_team_id_put(team_id, update_team_request)
+        print("The response of DefaultApi->update_team_api_v1_admin_teams_team_id_put:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DefaultApi->update_team_api_v1_admin_teams_team_id_put: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **team_id** | **str**|  | 
+ **update_team_request** | [**UpdateTeamRequest**](UpdateTeamRequest.md)|  | 
+
+### Return type
+
+[**TeamResponse**](TeamResponse.md)
+
+### Authorization
+
+No authorization required
 
 ### HTTP request headers
 

@@ -16,6 +16,9 @@
 # import models into model package
 from openapi_client.models.api_key_response import APIKeyResponse
 from openapi_client.models.add_member_request import AddMemberRequest
+from openapi_client.models.add_team_member_request import AddTeamMemberRequest
+from openapi_client.models.available_user import AvailableUser
+from openapi_client.models.available_users_response import AvailableUsersResponse
 from openapi_client.models.azure_config_request import AzureConfigRequest
 from openapi_client.models.azure_test_request import AzureTestRequest
 from openapi_client.models.body_authorize_cli_api_v1_auth_cli_authorize_post import BodyAuthorizeCliApiV1AuthCliAuthorizePost
@@ -27,7 +30,9 @@ from openapi_client.models.clusters_list_response import ClustersListResponse
 from openapi_client.models.create_api_key_request import CreateAPIKeyRequest
 from openapi_client.models.create_api_key_response import CreateAPIKeyResponse
 from openapi_client.models.create_organization_request import CreateOrganizationRequest
+from openapi_client.models.create_ssh_key_request import CreateSSHKeyRequest
 from openapi_client.models.create_storage_bucket_request import CreateStorageBucketRequest
+from openapi_client.models.create_team_request import CreateTeamRequest
 from openapi_client.models.create_user_quota_request import CreateUserQuotaRequest
 from openapi_client.models.down_cluster_request import DownClusterRequest
 from openapi_client.models.down_cluster_response import DownClusterResponse
@@ -47,6 +52,8 @@ from openapi_client.models.report_data import ReportData
 from openapi_client.models.reports_response import ReportsResponse
 from openapi_client.models.run_pod_config_request import RunPodConfigRequest
 from openapi_client.models.run_pod_test_request import RunPodTestRequest
+from openapi_client.models.ssh_key_list_response import SSHKeyListResponse
+from openapi_client.models.ssh_key_response import SSHKeyResponse
 from openapi_client.models.ssh_node import SSHNode
 from openapi_client.models.send_invitation_request import SendInvitationRequest
 from openapi_client.models.status_response import StatusResponse
@@ -54,10 +61,15 @@ from openapi_client.models.stop_cluster_request import StopClusterRequest
 from openapi_client.models.stop_cluster_response import StopClusterResponse
 from openapi_client.models.storage_bucket_list_response import StorageBucketListResponse
 from openapi_client.models.storage_bucket_response import StorageBucketResponse
+from openapi_client.models.team_list_response import TeamListResponse
+from openapi_client.models.team_member_response import TeamMemberResponse
+from openapi_client.models.team_response import TeamResponse
 from openapi_client.models.update_api_key_request import UpdateAPIKeyRequest
 from openapi_client.models.update_member_role_request import UpdateMemberRoleRequest
 from openapi_client.models.update_quota_request import UpdateQuotaRequest
+from openapi_client.models.update_ssh_key_request import UpdateSSHKeyRequest
 from openapi_client.models.update_storage_bucket_request import UpdateStorageBucketRequest
+from openapi_client.models.update_team_request import UpdateTeamRequest
 from openapi_client.models.update_user_quota_request import UpdateUserQuotaRequest
 from openapi_client.models.user_quota_list_response import UserQuotaListResponse
 from openapi_client.models.user_quota_response import UserQuotaResponse
