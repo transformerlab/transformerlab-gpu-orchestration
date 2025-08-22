@@ -25,8 +25,6 @@ def list_instances_command(console: Console):
     # convert response object to json:
     resp_json = resp.json()
 
-    print(resp_json)
-
     # Parse the response
     clusters = resp_json.get("clusters", [])
     if not clusters:
@@ -43,16 +41,26 @@ def list_instances_command(console: Console):
     table.add_column("User", justify="center")
 
     for cluster in clusters:
-        cluster_name = cluster.cluster_name or "-"
-        status = cluster.status.replace("ClusterStatus.", "") if cluster.status else "-"
-        launched_at = (
-            time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cluster.launched_at))
-            if cluster.launched_at
+        cluster_name = cluster.get("cluster_name") or "-"
+        status = (
+            cluster.get("status").replace("ClusterStatus.", "")
+            if cluster.get("status")
             else "-"
         )
-        last_use = cluster.last_use or "-"
-        autostop = str(cluster.autostop) if cluster.autostop != -1 else "Disabled"
-        user_info = cluster.user_info or {}
+        launched_at = (
+            time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.localtime(cluster.get("launched_at"))
+            )
+            if cluster.get("launched_at")
+            else "-"
+        )
+        last_use = cluster.get("last_use") or "-"
+        autostop = (
+            str(cluster.get("autostop"))
+            if cluster.get("autostop") != -1
+            else "Disabled"
+        )
+        user_info = cluster.get("user_info") or {}
         user_name = user_info.get("name", "-")
         user_email = user_info.get("email", "-")
         user_display = f"{user_name} ({user_email})"
