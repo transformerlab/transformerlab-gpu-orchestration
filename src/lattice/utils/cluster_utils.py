@@ -94,6 +94,55 @@ def get_display_name_from_actual(
             db.close()
 
 
+def _generate_unique_display_name(
+    display_name: str, user_id: str, organization_id: str, db: Session
+) -> str:
+    """
+    Generate a unique display name by appending a number if the original already exists.
+
+    Args:
+        display_name: The original display name
+        user_id: User ID
+        organization_id: Organization ID
+        db: Database session
+
+    Returns:
+        A unique display name for the user+org combination
+    """
+    # Check if the original display name is available
+    existing = (
+        db.query(ClusterPlatform)
+        .filter(
+            ClusterPlatform.display_name == display_name,
+            ClusterPlatform.user_id == user_id,
+            ClusterPlatform.organization_id == organization_id,
+        )
+        .first()
+    )
+
+    if not existing:
+        return display_name
+
+    # If the original exists, try appending numbers until we find a unique one
+    counter = 2
+    while True:
+        candidate_name = f"{display_name}-{counter}"
+        existing = (
+            db.query(ClusterPlatform)
+            .filter(
+                ClusterPlatform.display_name == candidate_name,
+                ClusterPlatform.user_id == user_id,
+                ClusterPlatform.organization_id == organization_id,
+            )
+            .first()
+        )
+
+        if not existing:
+            return candidate_name
+
+        counter += 1
+
+
 def create_cluster_platform_entry(
     display_name: str,
     platform: str,
@@ -118,33 +167,22 @@ def create_cluster_platform_entry(
     Returns:
         The generated actual cluster name
 
-    Raises:
-        HTTPException: If display name already exists for user+org
+    Note:
+        If display name already exists for user+org, automatically generates
+        a unique variant by appending a number (e.g., "my-cluster-2")
     """
     should_close_db = db is None
     if db is None:
         db = SessionLocal()
 
     try:
-        # Check if display name already exists for this user+org
-        existing = (
-            db.query(ClusterPlatform)
-            .filter(
-                ClusterPlatform.display_name == display_name,
-                ClusterPlatform.user_id == user_id,
-                ClusterPlatform.organization_id == organization_id,
-            )
-            .first()
+        # Generate a unique display name if the original already exists
+        unique_display_name = _generate_unique_display_name(
+            display_name, user_id, organization_id, db
         )
 
-        if existing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cluster with name '{display_name}' already exists",
-            )
-
-        # Generate unique cluster name
-        cluster_name = generate_unique_cluster_name(display_name)
+        # Generate unique cluster name using the unique display name
+        cluster_name = generate_unique_cluster_name(unique_display_name)
 
         # Ensure the generated name is globally unique
         while (
@@ -152,12 +190,12 @@ def create_cluster_platform_entry(
             .filter(ClusterPlatform.cluster_name == cluster_name)
             .first()
         ):
-            cluster_name = generate_unique_cluster_name(display_name)
+            cluster_name = generate_unique_cluster_name(unique_display_name)
 
         # Create new cluster platform entry
         cluster_platform = ClusterPlatform(
             cluster_name=cluster_name,
-            display_name=display_name,
+            display_name=unique_display_name,
             platform=platform,
             template=template,
             user_id=user_id,
