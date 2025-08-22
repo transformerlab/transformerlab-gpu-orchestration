@@ -5,12 +5,12 @@ from rich.text import Text
 # Define the ASCII art for the "lab.cloud" logo.
 # You can generate your own at many websites like patorjk.com/software/taag/
 LOGO = r"""
-  _       _          _                 _ 
- | |     | |        | |               | |
- | | __ _| |__   ___| | ___  _   _  __| |
- | |/ _` | '_ \ / __| |/ _ \| | | |/ _` |
- | | (_| | |_) | (__| | (_) | |_| | (_| |
- |_|\__,_|_.__(_)___|_|\___/ \__,_|\__,_|         
+dP          dP                   dP                         dP 
+88          88                   88                         88 
+88 .d8888b. 88d888b.    .d8888b. 88 .d8888b. dP    dP .d888b88 
+88 88'  `88 88'  `88    88'  `"" 88 88'  `88 88    88 88'  `88 
+88 88.  .88 88.  .88 dP 88.  ... 88 88.  .88 88.  .88 88.  .88 
+dP `88888P8 88Y8888' 88 `88888P' dP `88888P' `88888P' `88888P8  
 """
 
 console = Console()
