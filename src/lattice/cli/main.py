@@ -6,7 +6,7 @@ Transformer Lab CLI - A beautiful command line interface for Transformer Lab
 import sys
 from typing import Optional
 
-from lattice.cli.commands.ssh import ssh_command_listing
+from lattice.cli.commands.ssh import ssh_command_listing, ssh_command
 from lattice.cli.util.common import show_header
 from lattice.cli.util.auth import status
 

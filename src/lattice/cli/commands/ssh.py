@@ -1,4 +1,7 @@
+import os
+from pathlib import Path
 import time
+from lattice.cli.util.auth import api_request
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -19,39 +22,87 @@ def ssh_command(console: Console, instance_name: str):
         transient=True,
     ) as progress:
         progress.add_task("", total=None)
-        # Simulate connection process
-        time.sleep(2)
+        response = api_request("GET", f"/ssh-config/{instance_name}")
+        data = response.json()
 
-    if instance_name == "training-cluster":
+        # Print the the instance name which is at data['instance_name']
         console.print(
-            "[yellow]Warning: This instance is still starting up. Connection might be unstable.[/yellow]"
+            f"[bold blue]Instance Name: [cyan]{data['instance_name']}[/cyan][/bold blue]"
         )
-    elif instance_name == "inference-api":
-        console.print("[red]Error: Cannot connect to stopped instance.[/red]")
-        return
 
-    console.print(
-        "[bold green]✓[/bold green] Connected to [cyan]{}[/cyan]".format(instance_name)
-    )
-    console.print(
-        Panel.fit(
-            "[dim]In a real implementation, this would establish an actual SSH session.\n"
-            "For this demo, we're just simulating the connection.[/dim]",
-            border_style="dim",
-            box=box.SIMPLE,
-        )
-    )
+        ssh_config = data.get("ssh_config")
+        # ssh_config is json from which we can get the Host and User:
+        ssh_host = ssh_config.get("Host")
+        ssh_user = ssh_config.get("User")
+
+        # console.print(f"[bold blue]SSH Host: [cyan]{ssh_host}[/cyan][/bold blue]")
+        # console.print(f"[bold blue]SSH User: [cyan]{ssh_user}[/cyan][/bold blue]")
+
+        # Now grab the raw_config part of data and save it to a temporary place in
+        # ~/.lab/ssh/<instance_name>/config
+        config_dir = Path.home() / ".lab" / "ssh" / instance_name
+
+        # Now grab the Identity file from identity_file_content and save it near the config:
+        identity_file = data.get("identity_file_content")
+        if identity_file:
+            with open(config_dir / "ssh_key", "w") as f:
+                f.write(identity_file)
+            # Set the appropriate permissions
+            os.chmod(config_dir / "ssh_key", 0o600)
+
+        ssh_config = data.get("raw_config")
+        # Edit the config so that the line that looks like:
+        #   IdentityFile /Users/ali/.sky/clients/ac345ac0/ssh/sky-key
+        # gets rewritten to the path of the new ssh_key file we just wrote above
+        if ssh_config:
+            # ssh_config = "\n".join(
+            #     line
+            #     if not line.strip().startswith("IdentityFile")
+            #     else f"IdentityFile {config_dir / 'ssh_key'}"
+            #     for line in ssh_config.splitlines()
+            # )
+            config_dir.mkdir(parents=True, exist_ok=True)
+            with open(config_dir / "config", "w") as f:
+                f.write(ssh_config)
+
+        console.print("[bold green]✓[/bold green] SSH configuration saved.")
+        console.print("[bold blue]Connecting directly to your instance:[/bold blue]")
+
+        # Run ssh directly for the user
+        ssh_command = [
+            "ssh",
+            "-F",
+            str(config_dir / "config"),
+            "-i",
+            str(config_dir / "ssh_key"),
+            f"{ssh_user}@{ssh_host}",
+        ]
+        os.execvp("ssh", ssh_command)
 
 
 def ssh_command_listing(console: Console):
     """If no instance is provided, this command interactively
     lists all the options you have and then once you select one
-    it runs the command above. in v1 have a fake list of
-    "server1, server2, server3"""
+    it runs the command above."""
+    # Fetch available clusters from API
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Fetching instances...[/bold blue]"),
+        transient=True,
+    ) as progress:
+        progress.add_task("", total=None)
+        resp = api_request("GET", "/skypilot/status", auth_needed=True)
+
+    resp_json = resp.json()
+    clusters = resp_json.get("clusters", [])
+    if not clusters:
+        console.print("[yellow]No instances found.[/yellow]")
+        return
+
     console.print("[bold blue]Available Transformer Lab Instances[/bold blue]")
-    instances = ["server1", "server2", "server3"]
-    for idx, instance in enumerate(instances, start=1):
-        console.print(f"{idx}. [cyan]{instance}[/cyan]")
+    for idx, cluster in enumerate(clusters, start=1):
+        cluster_name = cluster.get("cluster_name", str(cluster))
+        console.print(f"{idx}. [cyan]{cluster_name}[/cyan]")
 
     choice = console.input(
         "[bold yellow]Select an instance by number (or type 'q' to cancel): [/bold yellow]"
@@ -63,8 +114,11 @@ def ssh_command_listing(console: Console):
 
     try:
         instance_index = int(choice) - 1
-        if 0 <= instance_index < len(instances):
-            ssh_command(console, instances[instance_index])
+        if 0 <= instance_index < len(clusters):
+            cluster_name = clusters[instance_index].get(
+                "cluster_name", str(clusters[instance_index])
+            )
+            ssh_command(console, cluster_name)
         else:
             console.print("[bold red]Invalid selection.[/bold red]")
     except ValueError:
