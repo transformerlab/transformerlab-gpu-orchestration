@@ -61,6 +61,8 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
       if (!formData.name.trim()) errors.name = "Name is required";
       if (!formData.remote_path.trim())
         errors.remote_path = "Remote path is required";
+      if (!formData.store || formData.store === "auto")
+        errors.store = "Please select a cloud provider";
       if (isExistingBucket && !formData.source?.trim())
         errors.source = "Source is required when using an existing bucket";
 
@@ -188,6 +190,33 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
           </Typography>
           <Stack spacing={2}>
             <FormControl>
+              <FormLabel>Store *</FormLabel>
+              <Select
+                name="store"
+                value={formData.store}
+                onChange={(_, value) => handleInputChange("store", value)}
+                placeholder="Select cloud provider"
+                required
+              >
+                <Option value="auto">Auto-detect</Option>
+                <Option value="azure">Azure Blob Storage</Option>
+                <Option value="s3">AWS S3</Option>
+                <Option value="gcs">Google Cloud Storage</Option>
+                <Option value="r2">Cloudflare R2</Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                Choose the cloud provider where your storage bucket will be
+                hosted. If you select "Auto-detect", Lattice will choose
+                automatically based on the configured cloud providers.
+              </Typography>
+              {formErrors.store && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.store}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
               <FormLabel>Name *</FormLabel>
               <Input
                 name="name"
@@ -266,31 +295,6 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
             Storage & Access Configuration
           </Typography>
           <Stack spacing={2}>
-            <FormControl>
-              <FormLabel>Store (Optional)</FormLabel>
-              <Select
-                name="store"
-                value={formData.store}
-                onChange={(_, value) => handleInputChange("store", value)}
-                placeholder="Auto-detect"
-              >
-                <Option value="auto">Auto-detect</Option>
-                <Option value="azure">Azure Blob Storage</Option>
-                <Option value="s3">AWS S3</Option>
-                <Option value="gcs">Google Cloud Storage</Option>
-                <Option value="r2">Cloudflare R2</Option>
-              </Select>
-              <Typography level="body-xs" color="neutral">
-                Cloud provider for the bucket. If not specified, SkyPilot will
-                choose based on the source path and task's cloud provider.
-              </Typography>
-              {formErrors.store && (
-                <Typography color="danger" level="body-xs">
-                  {formErrors.store}
-                </Typography>
-              )}
-            </FormControl>
-
             <FormControl>
               <FormLabel>Mode</FormLabel>
               <Select
