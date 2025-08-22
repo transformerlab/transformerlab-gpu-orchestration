@@ -19,6 +19,8 @@ from lattice.routes.auth.api_key_auth import get_user_or_api_key
 from lattice.routes.auth.utils import (
     auth_from_cookie,
 )  # Import get_auth_info
+from lattice.utils.cluster_utils import get_cluster_platform_info
+from lattice.utils.cluster_resolver import handle_cluster_name_param
 
 
 router = APIRouter()  # Add prefix to all routes
@@ -34,13 +36,53 @@ async def terminal_connect(
     response: Response,
     user: dict = Depends(get_user_or_api_key),
 ):
-    # sanitize the client name:
-    cluster_name = secure_filename(cluster_name)
+    # Get user info from request
+    user_id = user["id"]
+    org_id = user.get("organization_id")
 
-    # Using the client name, look in ~/.sky/generated/ssh/<client_name> and open that file:
-    ssh_config_path = os.path.expanduser(f"~/.sky/generated/ssh/{cluster_name}")
+    if not org_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Organization ID not found in user context",
+        )
+
+    # Resolve display name to actual cluster name
+    try:
+        actual_cluster_name = handle_cluster_name_param(cluster_name, user_id, org_id)
+    except HTTPException:
+        # If cluster name resolution fails, it means the cluster doesn't exist for this user/org
+        raise HTTPException(
+            status_code=404,
+            detail=f"Cluster '{cluster_name}' not found",
+        )
+
+    # Verify cluster ownership using the new system
+    platform_info = get_cluster_platform_info(actual_cluster_name)
+
+    if not platform_info:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Cluster '{cluster_name}' not found",
+        )
+
+    cluster_user_id = platform_info.get("user_id")
+    cluster_org_id = platform_info.get("organization_id")
+
+    if cluster_user_id != user_id or cluster_org_id != org_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: cluster does not belong to your user or organization",
+        )
+
+    # sanitize the actual cluster name:
+    actual_cluster_name = secure_filename(actual_cluster_name)
+
+    # Using the actual cluster name, look in ~/.sky/generated/ssh/<actual_cluster_name> and open that file:
+    ssh_config_path = os.path.expanduser(f"~/.sky/generated/ssh/{actual_cluster_name}")
     if not os.path.exists(ssh_config_path):
-        raise HTTPException(status_code=404, detail="SSH config not found")
+        raise HTTPException(
+            status_code=404, detail=f"SSH config not found for cluster '{cluster_name}'"
+        )
 
     with open(ssh_config_path) as f:
         ssh_config = f.read()
@@ -68,7 +110,7 @@ async def terminal_connect(
             continue
         if line.startswith("Host "):
             parts = line.split(maxsplit=1)
-            if len(parts) > 1 and parts[1] == cluster_name:
+            if len(parts) > 1 and parts[1] == actual_cluster_name:
                 continue
         elif line.startswith("HostName"):
             parts = line.split(maxsplit=1)
@@ -94,7 +136,7 @@ async def terminal_connect(
     """Render xterm.js terminal pre-logged in with provided parameters"""
     # Validate parameters
     if not cluster_name:
-        raise HTTPException(status_code=400, detail="Client name is required")
+        raise HTTPException(status_code=400, detail="Cluster name is required")
     if not username:
         raise HTTPException(status_code=400, detail="Username is required")
     if not isinstance(port, int) or port <= 0:
@@ -146,7 +188,7 @@ async def terminal_connect(
                 const socket = new WebSocket(`ws://localhost:8000/api/v1/terminal/ws/{session_id}`);
 
                 socket.onopen = () => {{
-                    term.writeln('Connected to {hostname}:{port} as {username}');
+                    term.writeln('Connected to {cluster_name} ({hostname}:{port}) as {username}');
                     term.onData(data => {{
                         socket.send(btoa(data)); // Encode input as Base64
                     }});
