@@ -1,63 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+import os
 from datetime import datetime
 
 from config import get_db
 from db_models import SSHKey
+from fastapi import APIRouter, Depends, HTTPException, status
 from models import (
-    SSHKeyResponse,
     CreateSSHKeyRequest,
-    UpdateSSHKeyRequest,
     SSHKeyListResponse,
+    SSHKeyResponse,
+    UpdateSSHKeyRequest,
 )
+from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
+from routes.ssh_keys.utils import validate_ssh_public_key, parse_ssh_config
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from lattice.utils.file_utils import get_cluster_user_info
 
 router = APIRouter(prefix="/ssh-keys", tags=["SSH Keys"])
-
-
-def validate_ssh_public_key(public_key: str) -> tuple[str, str]:
-    """
-    Validate SSH public key format and extract key type.
-    Returns (key_type, cleaned_key)
-    """
-    # Remove extra whitespace and newlines
-    key = public_key.strip()
-
-    # Check basic format: key_type key_data [comment]
-    parts = key.split()
-    if len(parts) < 2:
-        raise ValueError(
-            "Invalid SSH public key format. Expected: key_type key_data [comment]"
-        )
-
-    key_type = parts[0]
-    key_data = parts[1]
-
-    # Validate key type
-    valid_key_types = [
-        "ssh-rsa",
-        "ssh-dss",
-        "ssh-ed25519",
-        "ecdsa-sha2-nistp256",
-        "ecdsa-sha2-nistp384",
-        "ecdsa-sha2-nistp521",
-        "sk-ssh-ed25519@openssh.com",
-        "sk-ecdsa-sha2-nistp256@openssh.com",
-    ]
-
-    if key_type not in valid_key_types:
-        raise ValueError(f"Unsupported key type: {key_type}")
-
-    # Validate base64 key data
-    try:
-        import base64
-
-        base64.b64decode(key_data)
-    except Exception:
-        raise ValueError("Invalid base64 encoded key data")
-
-    return key_type, key
 
 
 @router.post("/", response_model=SSHKeyResponse, status_code=status.HTTP_201_CREATED)
@@ -319,4 +280,87 @@ async def lookup_user_by_ssh_key(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid SSH key format: {str(e)}",
+        )
+
+
+@router.get("/ssh-config/{instance_name}")
+async def get_cluster_ssh_config(
+    instance_name: str,
+    user=Depends(get_user_or_api_key),
+):
+    """
+    Get SSH configuration for a specific cluster.
+    Returns the SSH config as JSON along with the identity file contents.
+    """
+    try:
+        # Get user info from request
+        user_id = user["id"]
+        org_id = user.get("organization_id")
+
+        if not org_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Organization ID not found in user context",
+            )
+
+        # Verify cluster ownership
+        cluster_user_info = get_cluster_user_info(instance_name)
+
+        if not cluster_user_info:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Cluster '{instance_name}' not found",
+            )
+
+        cluster_user_id = cluster_user_info.get("id")
+        cluster_org_id = cluster_user_info.get("organization_id")
+
+        if cluster_user_id != user_id or cluster_org_id != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: cluster does not belong to your user or organization",
+            )
+
+        # Read SSH config file
+        ssh_config_dir = os.path.expanduser("~/.sky/generated/ssh")
+        ssh_config_file = os.path.join(ssh_config_dir, instance_name)
+
+        if not os.path.exists(ssh_config_file):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"SSH config file for cluster '{instance_name}' not found",
+            )
+
+        # Parse SSH config
+        with open(ssh_config_file, "r") as f:
+            ssh_config_content = f.read()
+
+        ssh_config_json = parse_ssh_config(ssh_config_content)
+
+        # Read identity file if present
+        identity_file_content = None
+        identity_file_path = ssh_config_json.get("IdentityFile")
+
+        if identity_file_path and os.path.exists(identity_file_path):
+            try:
+                with open(identity_file_path, "r") as f:
+                    identity_file_content = f.read()
+            except Exception as e:
+                print(
+                    f"Warning: Could not read identity file {identity_file_path}: {e}"
+                )
+
+        return {
+            "instance_name": instance_name,
+            "ssh_config": ssh_config_json,
+            "identity_file_content": identity_file_content,
+            "raw_config": ssh_config_content,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error reading SSH config: {str(e)}",
         )
