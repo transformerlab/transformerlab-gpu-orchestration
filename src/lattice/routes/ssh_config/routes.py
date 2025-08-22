@@ -16,7 +16,8 @@ from routes.ssh_config.utils import validate_ssh_public_key, parse_ssh_config
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from lattice.utils.file_utils import get_cluster_user_info
+from lattice.utils.cluster_utils import get_cluster_platform_info
+from lattice.utils.cluster_resolver import handle_cluster_name_param
 
 router = APIRouter(prefix="/ssh-config", tags=["SSH Config"])
 
@@ -305,17 +306,29 @@ async def get_cluster_ssh_config(
                 detail="Organization ID not found in user context",
             )
 
-        # Verify cluster ownership
-        cluster_user_info = get_cluster_user_info(instance_name)
-
-        if not cluster_user_info:
+        # Resolve display name to actual cluster name
+        try:
+            actual_cluster_name = handle_cluster_name_param(
+                instance_name, user_id, org_id
+            )
+        except HTTPException:
+            # If cluster name resolution fails, it means the cluster doesn't exist for this user/org
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Cluster '{instance_name}' not found",
             )
 
-        cluster_user_id = cluster_user_info.get("id")
-        cluster_org_id = cluster_user_info.get("organization_id")
+        # Verify cluster ownership using the new system
+        platform_info = get_cluster_platform_info(actual_cluster_name)
+
+        if not platform_info:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Cluster '{instance_name}' not found",
+            )
+
+        cluster_user_id = platform_info.get("user_id")
+        cluster_org_id = platform_info.get("organization_id")
 
         if cluster_user_id != user_id or cluster_org_id != org_id:
             raise HTTPException(
@@ -323,9 +336,9 @@ async def get_cluster_ssh_config(
                 detail="Access denied: cluster does not belong to your user or organization",
             )
 
-        # Read SSH config file
+        # Read SSH config file using the actual cluster name
         ssh_config_dir = os.path.expanduser("~/.sky/generated/ssh")
-        ssh_config_file = os.path.join(ssh_config_dir, instance_name)
+        ssh_config_file = os.path.join(ssh_config_dir, actual_cluster_name)
 
         if not os.path.exists(ssh_config_file):
             raise HTTPException(
