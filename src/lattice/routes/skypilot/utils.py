@@ -8,7 +8,6 @@ from typing import Optional
 from werkzeug.utils import secure_filename
 
 import asyncio
-from lattice.utils.file_utils import set_cluster_platform
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -325,27 +324,7 @@ def launch_cluster_with_skypilot(
         )
         print(f"REQUEST ID: {request_id}")
 
-        # Store platform information for the cluster
-        if cloud:
-            platform = cloud.lower()
-            if platform == "ssh":
-                platform = "ssh"
-            elif platform == "runpod":
-                platform = "runpod"
-            elif platform == "azure":
-                platform = "azure"
-            else:
-                platform = "unknown"
-
-            try:
-                set_cluster_platform(cluster_name, platform)
-                print(
-                    f"[SkyPilot] Stored platform '{platform}' for cluster '{cluster_name}'"
-                )
-            except Exception as e:
-                print(
-                    f"[SkyPilot] Warning: Failed to store platform for cluster '{cluster_name}': {e}"
-                )
+        # Note: Platform information is now handled by the calling route before launch
 
         # Setup port forwarding for interactive development modes
         if launch_mode in ["jupyter", "vscode"]:
@@ -448,7 +427,7 @@ def stop_cluster_with_skypilot(cluster_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to stop cluster: {str(e)}")
 
 
-def down_cluster_with_skypilot(cluster_name: str):
+def down_cluster_with_skypilot(cluster_name: str, display_name: str = None):
     try:
         # First, get all jobs from the cluster before tearing down
         try:
@@ -457,10 +436,16 @@ def down_cluster_with_skypilot(cluster_name: str):
             if job_records and hasattr(job_records, "jobs"):
                 jobs = job_records.jobs
                 if jobs:
-                    save_cluster_jobs(cluster_name, jobs)
+                    if display_name:
+                        save_cluster_jobs(display_name, jobs)
+                    else:
+                        save_cluster_jobs(cluster_name, jobs)
             elif isinstance(job_records, list):
                 # If it's already a list of jobs
-                save_cluster_jobs(cluster_name, job_records)
+                if display_name:
+                    save_cluster_jobs(display_name, job_records)
+                else:
+                    save_cluster_jobs(cluster_name, job_records)
         except Exception as e:
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 

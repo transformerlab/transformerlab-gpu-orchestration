@@ -11,8 +11,10 @@ from lattice.routes.skypilot.azure_utils import (
 )
 from lattice.utils.file_utils import (
     load_ssh_node_info,
-    load_cluster_platforms,
-    get_cluster_user_info,
+)
+from lattice.utils.cluster_utils import (
+    get_cluster_platform_info,
+    get_display_name_from_actual,
 )
 from lattice.routes.clusters.utils import (
     list_cluster_names_from_db,
@@ -50,39 +52,28 @@ async def get_node_pools(
         }
 
         # 1. Get clusters from /clusters endpoint (will be added to node_pools as direct provider)
-        try:
-            cluster_names = list_cluster_names_from_db()
-            # Note: clusters will be added to node_pools array below
-        except Exception as e:
-            print(f"Error loading clusters: {e}")
+        # Note: SSH clusters will be added to node_pools array below
 
-            # 2. Get aggregated instances data (combining all cloud providers)
+        # 2. Get aggregated instances data (combining all cloud providers)
         try:
             skyPilotStatus = get_skypilot_status()
-            platforms = load_cluster_platforms()
 
             # Count all cloud clusters (non-SSH clusters) that belong to the current user
             cloud_clusters = []
             for cluster in skyPilotStatus:
                 cluster_name = cluster.get("name", "")
-                platform_info = platforms.get(cluster_name, {})
+                platform_info = get_cluster_platform_info(cluster_name)
 
                 # Check if this is a cloud cluster
-                if isinstance(platform_info, dict) and platform_info.get(
-                    "platform"
-                ) in ["runpod", "azure"]:
-                    # Get user info for this cluster
-
-                    user_info = get_cluster_user_info(cluster_name)
-
-                    # Skip clusters without user info (they might be from before user tracking was added)
-                    if not user_info or not user_info.get("id"):
-                        continue
-
+                if platform_info and platform_info.get("platform") in [
+                    "runpod",
+                    "azure",
+                ]:
                     # Only include clusters that belong to the current user and organization
                     if (
-                        user_info.get("id") == user["id"]
-                        and user_info.get("organization_id") == user["organization_id"]
+                        platform_info.get("user_id") == user["id"]
+                        and platform_info.get("organization_id")
+                        == user["organization_id"]
                     ):
                         cloud_clusters.append(cluster)
 
@@ -123,10 +114,31 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading SSH node info: {e}")
 
-        # 5. Get SkyPilot status
+        # 5. Get SkyPilot status (filtered by user and with display names)
         try:
             cluster_records = get_skypilot_status()
-            response_data["sky_pilot_status"] = cluster_records
+            filtered_status = []
+
+            for record in cluster_records:
+                cluster_name = record.get("name", "")
+                platform_info = get_cluster_platform_info(cluster_name)
+
+                # Only include clusters that belong to the current user and organization
+                if platform_info and (
+                    platform_info.get("user_id") == user["id"]
+                    and platform_info.get("organization_id") == user["organization_id"]
+                ):
+                    # Get display name for the response
+                    display_name = get_display_name_from_actual(cluster_name)
+                    if not display_name:
+                        display_name = cluster_name  # Fallback to actual name
+
+                    # Create a copy of the record with display name
+                    filtered_record = record.copy()
+                    filtered_record["name"] = display_name
+                    filtered_status.append(filtered_record)
+
+            response_data["sky_pilot_status"] = filtered_status
         except Exception as e:
             print(f"Error loading SkyPilot status: {e}")
 
@@ -143,22 +155,15 @@ async def get_node_pools(
                         azure_instances = 0
                         for cluster in skyPilotStatus:
                             cluster_name = cluster.get("name", "")
-                            platform_info = platforms.get(cluster_name, {})
+                            platform_info = get_cluster_platform_info(cluster_name)
                             if (
-                                isinstance(platform_info, dict)
+                                platform_info
                                 and platform_info.get("platform") == "azure"
                             ):
-                                # Get user info for this cluster
-                                user_info = get_cluster_user_info(cluster_name)
-
-                                # Skip clusters without user info (they might be from before user tracking was added)
-                                if not user_info or not user_info.get("id"):
-                                    continue
-
                                 # Only count clusters that belong to the current user and organization
                                 if (
-                                    user_info.get("id") == user["id"]
-                                    and user_info.get("organization_id")
+                                    platform_info.get("user_id") == user["id"]
+                                    and platform_info.get("organization_id")
                                     == user["organization_id"]
                                 ):
                                     azure_instances += 1
@@ -206,22 +211,15 @@ async def get_node_pools(
                         runpod_instances = 0
                         for cluster in skyPilotStatus:
                             cluster_name = cluster.get("name", "")
-                            platform_info = platforms.get(cluster_name, {})
+                            platform_info = get_cluster_platform_info(cluster_name)
                             if (
-                                isinstance(platform_info, dict)
+                                platform_info
                                 and platform_info.get("platform") == "runpod"
                             ):
-                                # Get user info for this cluster
-                                user_info = get_cluster_user_info(cluster_name)
-
-                                # Skip clusters without user info (they might be from before user tracking was added)
-                                if not user_info or not user_info.get("id"):
-                                    continue
-
                                 # Only count clusters that belong to the current user and organization
                                 if (
-                                    user_info.get("id") == user["id"]
-                                    and user_info.get("organization_id")
+                                    platform_info.get("user_id") == user["id"]
+                                    and platform_info.get("organization_id")
                                     == user["organization_id"]
                                 ):
                                     runpod_instances += 1
@@ -268,31 +266,33 @@ async def get_node_pools(
                     ssh_instances_for_user = 0
                     for cluster in skyPilotStatus:
                         sky_cluster_name = cluster.get("name", "")
-                        platform_info = platforms.get(sky_cluster_name, {})
+                        platform_info = get_cluster_platform_info(sky_cluster_name)
 
                         # Check if this cluster uses this node pool as platform
                         if (
-                            isinstance(platform_info, dict)
+                            platform_info
                             and platform_info.get("platform") == cluster_name
                         ):
-                            # Get user info for this cluster
-                            user_info = get_cluster_user_info(sky_cluster_name)
-
-                            # Skip clusters without user info
-                            if not user_info or not user_info.get("id"):
-                                continue
-
                             # Only include clusters that belong to the current user and organization
                             if (
-                                user_info.get("id") == user["id"]
-                                and user_info.get("organization_id")
+                                platform_info.get("user_id") == user["id"]
+                                and platform_info.get("organization_id")
                                 == user["organization_id"]
                             ):
+                                # Get display name for the response
+                                display_name = get_display_name_from_actual(
+                                    sky_cluster_name
+                                )
+                                if not display_name:
+                                    display_name = (
+                                        sky_cluster_name  # Fallback to actual name
+                                    )
+
                                 active_clusters.append(
                                     {
-                                        "cluster_name": sky_cluster_name,
+                                        "cluster_name": display_name,  # Return display name
                                         "status": cluster.get("status"),
-                                        "user_info": user_info,
+                                        "user_info": platform_info.get("user_info", {}),
                                     }
                                 )
                                 ssh_instances_for_user += 1

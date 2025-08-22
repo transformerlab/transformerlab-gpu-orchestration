@@ -277,83 +277,14 @@ def save_ssh_node_info(data):
         )
 
 
-def get_cluster_platforms_path():
-    """Get the path to the cluster platforms metadata file"""
-    sky_dir = Path.home() / ".sky" / "lattice_data"
-    sky_dir.mkdir(parents=True, exist_ok=True)
-    return sky_dir / "cluster_platforms.json"
-
-
-def load_cluster_platforms():
-    """Load cluster platform metadata"""
-    platforms_path = get_cluster_platforms_path()
-    if not platforms_path.exists():
-        return {}
-    try:
-        with open(platforms_path, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading cluster platforms: {e}")
-        return {}
-
-
-def save_cluster_platforms(platforms_data):
-    """Save cluster platform metadata"""
-    platforms_path = get_cluster_platforms_path()
-    try:
-        with open(platforms_path, "w") as f:
-            json.dump(platforms_data, f, indent=2)
-    except Exception as e:
-        print(f"Error saving cluster platforms: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save cluster platforms: {str(e)}"
-        )
-
-
-def set_cluster_platform(cluster_name: str, platform: str, user_info: dict = None, template: str = None):
-    """Set the platform, user info, and template for a specific cluster"""
-    platforms = load_cluster_platforms()
-    platforms[cluster_name] = {
-        "platform": platform, 
-        "user_info": user_info or {},
-        "template": template
-    }
-    save_cluster_platforms(platforms)
-
-
-def get_cluster_platform(cluster_name: str) -> str:
-    """Get the platform for a specific cluster"""
-    platforms = load_cluster_platforms()
-    cluster_data = platforms.get(cluster_name, {})
-    if isinstance(cluster_data, str):
-        # Backward compatibility with old format
-        return cluster_data
-    return cluster_data.get("platform", "unknown")
-
-
-def get_cluster_user_info(cluster_name: str) -> dict:
-    """Get the user info for a specific cluster"""
-    platforms = load_cluster_platforms()
-    cluster_data = platforms.get(cluster_name, {})
-    if isinstance(cluster_data, str):
-        # Backward compatibility with old format
-        return {}
-    return cluster_data.get("user_info", {})
-
-
-def get_cluster_template(cluster_name: str) -> str:
-    """Get the template for a specific cluster"""
-    platforms = load_cluster_platforms()
-    cluster_data = platforms.get(cluster_name, {})
-    if isinstance(cluster_data, str):
-        # Backward compatibility with old format
-        return None
-    return cluster_data.get("template")
-
-
-def remove_cluster_platform(cluster_name: str):
-    """Remove platform metadata for a cluster (when it's deleted)"""
-    platforms = load_cluster_platforms()
-    if cluster_name in platforms:
-        del platforms[cluster_name]
-        save_cluster_platforms(platforms)
+# Import cluster platform functions from the new database-based implementation
+from .cluster_utils import (
+    get_cluster_platforms_path,
+    load_cluster_platforms,
+    save_cluster_platforms,
+    set_cluster_platform,
+    get_cluster_platform,
+    get_cluster_user_info,
+    get_cluster_template,
+    remove_cluster_platform,
+)
