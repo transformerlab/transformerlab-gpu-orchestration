@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from config import SessionLocal
 from db_models import ClusterPlatform
+from werkzeug.utils import secure_filename
 
 
 def generate_unique_cluster_name(display_name: str) -> str:
@@ -25,8 +26,8 @@ def generate_unique_cluster_name(display_name: str) -> str:
     # Generate an 8-character nanoid for uniqueness
     nanoid = generate(size=8)
     # Clean the display name to be safe for cluster names
-    safe_display_name = display_name.replace(" ", "-").replace("_", "-").lower()
-    return f"{nanoid}-{safe_display_name}"
+    safe_display_name = secure_filename(display_name).replace("_", "-").lower()
+    return f"{safe_display_name}-{nanoid}"
 
 
 def get_actual_cluster_name(
