@@ -54,10 +54,10 @@ def ssh_command_listing(console: Console):
         console.print(f"{idx}. [cyan]{instance}[/cyan]")
 
     choice = console.input(
-        "[bold yellow]Select an instance by number (or type 'exit' to cancel): [/bold yellow]"
+        "[bold yellow]Select an instance by number (or type 'q' to cancel): [/bold yellow]"
     )
 
-    if choice.lower() == "exit":
+    if choice.lower() == "q":
         console.print("[bold red]Operation cancelled.[/bold red]")
         return
 
