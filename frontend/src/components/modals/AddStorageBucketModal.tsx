@@ -53,7 +53,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isExistingBucket, setIsExistingBucket] = useState(false);
+  const [isExistingBucket, setIsExistingBucket] = useState(true);
 
   // Create bucket
   const createBucket = async () => {
@@ -113,7 +113,6 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
       mode: "MOUNT",
     });
     setFormErrors({});
-    setIsExistingBucket(false);
   };
 
   // Handle close
@@ -138,7 +137,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
       <ModalDialog size="lg">
         <Typography level="h4">Add Storage Bucket</Typography>
 
-        {/* Bucket Type Selection */}
+        {/* 
         <Box sx={{ mt: 2, mb: 1 }}>
           <FormControl>
             <FormLabel sx={{ mb: 1, fontSize: "sm", fontWeight: "md" }}>
@@ -184,7 +183,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
           </FormControl>
         </Box>
 
-        <Divider sx={{ my: 2 }} />
+        <Divider sx={{ my: 2 }} /> */}
 
         {/* Basic Configuration */}
         <Box sx={{ mb: 3 }}>
@@ -228,11 +227,6 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
                 placeholder="my-sky-bucket"
                 required
               />
-              {!isExistingBucket && (
-                <Typography level="body-xs" color="neutral">
-                  This name will be used to create the new bucket
-                </Typography>
-              )}
               {formErrors.name && (
                 <Typography color="danger" level="body-xs">
                   {formErrors.name}
@@ -265,32 +259,30 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
         </Box>
 
         {/* Source Configuration (only for existing buckets) */}
-        {isExistingBucket && (
-          <Box sx={{ mb: 3 }}>
-            <Typography level="title-sm" sx={{ mb: 2, color: "text.primary" }}>
-              Source Configuration
+        <Box sx={{ mb: 3 }}>
+          <Typography level="title-sm" sx={{ mb: 2, color: "text.primary" }}>
+            Source Configuration
+          </Typography>
+          <FormControl>
+            <FormLabel>Bucket URI *</FormLabel>
+            <Input
+              name="source"
+              value={formData.source}
+              onChange={(e) => handleInputChange("source", e.target.value)}
+              placeholder="s3://my-bucket/ or ~/local_dataset"
+              required
+            />
+            <Typography level="body-xs" color="neutral">
+              Existing bucket URI (s3://, gs://, r2://, cos://) or local path to
+              upload.
             </Typography>
-            <FormControl>
-              <FormLabel>Bucket URI *</FormLabel>
-              <Input
-                name="source"
-                value={formData.source}
-                onChange={(e) => handleInputChange("source", e.target.value)}
-                placeholder="s3://my-bucket/ or ~/local_dataset"
-                required
-              />
-              <Typography level="body-xs" color="neutral">
-                Existing bucket URI (s3://, gs://, r2://, cos://) or local path
-                to upload.
+            {formErrors.source && (
+              <Typography color="danger" level="body-xs">
+                {formErrors.source}
               </Typography>
-              {formErrors.source && (
-                <Typography color="danger" level="body-xs">
-                  {formErrors.source}
-                </Typography>
-              )}
-            </FormControl>
-          </Box>
-        )}
+            )}
+          </FormControl>
+        </Box>
 
         {/* Storage & Access Configuration */}
         <Box sx={{ mb: 3 }}>
@@ -452,7 +444,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
             Cancel
           </Button>
           <Button onClick={createBucket} variant="solid" size="md">
-            {isExistingBucket ? "Add Existing Bucket" : "Create New Bucket"}
+            Add Bucket
           </Button>
         </Stack>
       </ModalDialog>
