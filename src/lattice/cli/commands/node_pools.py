@@ -1,15 +1,10 @@
 from typing import Optional
 
+from lattice.cli.util.auth import api_request
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich import box
-
-import openapi_client
-from openapi_client.api import default_api
-
-from lattice.cli.util.api import TLAB_API_BASE_URL
-from lattice.cli.util.auth import get_saved_api_key
 
 
 def list_node_pools_command(console: Console):
@@ -21,28 +16,14 @@ def list_node_pools_command(console: Console):
         transient=True,
     ) as progress:
         progress.add_task("", total=None)
-        current_api_key = get_saved_api_key()
+        data = api_request("GET", "/node-pools", auth_needed=True)
 
-        try:
-            base_url = TLAB_API_BASE_URL
-            config = (
-                openapi_client.Configuration(host=base_url)
-                if base_url
-                else openapi_client.Configuration()
-            )
-            # Add the hardcoded Bearer token
-            config.access_token = current_api_key
-            with openapi_client.ApiClient(config) as api_client:
-                api = default_api.DefaultApi(api_client)
-                resp = api.list_node_pools_api_v1_skypilot_node_pools_get(
-                    _request_timeout=10
-                )
-        except openapi_client.exceptions.ApiException as e:
-            console.print(f"[bold red]API Error:[/bold red] {e}")
-            return
-        except Exception as e:
-            console.print(f"[bold red]Error fetching node pools:[/bold red] {e}")
-            return
+    # Handle response object
+    if hasattr(data, "json") and callable(data.json):
+        data = data.json()
+
+    # Extract node pools list from response
+    items = data.get("node_pools", [])
 
     def _to_dict(obj):
         # Best-effort conversion to dict
@@ -57,19 +38,13 @@ def list_node_pools_command(console: Console):
                 return getattr(obj, "__dict__", {"value": str(obj)})
 
     # Normalize response into a list of items
-    items = []
-    if isinstance(resp, (list, tuple)):
-        items = list(resp)
-    else:
-        # Try common wrappers: items/data/node_pools
-        rd = _to_dict(resp)
-        items = rd.get("items") or rd.get("data") or rd.get("node_pools") or []
-        if not isinstance(items, list):
-            items = [items] if items else []
+    import json
+
+    # The data looks like this
 
     # Create a table with node pool data
     table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
-    table.add_column("Name", style="dim")
+    table.add_column("Name", style="bold")
     table.add_column("Nodes", justify="center")
     table.add_column("Type", justify="center")
     table.add_column("Provider", justify="center")
