@@ -1732,13 +1732,11 @@ async def get_cost_report(
 
         for cluster_data in report:
             cluster_name = cluster_data.get("name")
-            print(f"🔍 Cluster name: {cluster_name}")
             if not cluster_name:
                 continue
 
             # Get platform info for this cluster to check ownership
             platform_info = get_cluster_platform_data(cluster_name)
-            print(f"🔍 Cluster platform info: {platform_info}")
             if not platform_info or not platform_info.get("user_id"):
                 continue
 
@@ -1762,7 +1760,7 @@ async def get_cost_report(
 
         return filtered_clusters
     except Exception as e:
-        print(f"🔍 Error: {str(e)}")
+        print(f"🔍 Error in /cost-report: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cost report: {str(e)}"
         )
