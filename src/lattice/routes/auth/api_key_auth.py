@@ -8,6 +8,7 @@ from .utils import get_current_user
 from typing import Optional, Union
 from datetime import datetime
 import json
+from .provider.work_os import provider as auth_provider
 
 security = HTTPBearer(auto_error=False)
 
@@ -55,7 +56,19 @@ async def get_api_key_user(
         if api_key_record.is_expired():
             return None
 
-        # Update last used time
+        # If org missing, try to infer from user's memberships and persist
+        try:
+            if not api_key_record.organization_id:
+                memberships = auth_provider.list_organization_memberships(
+                    user_id=api_key_record.user_id
+                )
+                if memberships:
+                    # choose the first membership as default
+                    api_key_record.organization_id = memberships[0].organization_id
+        except Exception as _org_err:
+            pass
+
+        # Update last used time and persist any inferred org
         api_key_record.update_last_used()
         db.commit()
 
