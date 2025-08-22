@@ -787,7 +787,7 @@ async def down_skypilot_cluster(
             display_name, user["id"], user["organization_id"]
         )
 
-        request_id = down_cluster_with_skypilot(actual_cluster_name)
+        request_id = down_cluster_with_skypilot(actual_cluster_name, display_name)
 
         return DownClusterResponse(
             request_id=request_id,

@@ -427,7 +427,7 @@ def stop_cluster_with_skypilot(cluster_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to stop cluster: {str(e)}")
 
 
-def down_cluster_with_skypilot(cluster_name: str):
+def down_cluster_with_skypilot(cluster_name: str, display_name: str = None):
     try:
         # First, get all jobs from the cluster before tearing down
         try:
@@ -436,10 +436,16 @@ def down_cluster_with_skypilot(cluster_name: str):
             if job_records and hasattr(job_records, "jobs"):
                 jobs = job_records.jobs
                 if jobs:
-                    save_cluster_jobs(cluster_name, jobs)
+                    if display_name:
+                        save_cluster_jobs(display_name, jobs)
+                    else:
+                        save_cluster_jobs(cluster_name, jobs)
             elif isinstance(job_records, list):
                 # If it's already a list of jobs
-                save_cluster_jobs(cluster_name, job_records)
+                if display_name:
+                    save_cluster_jobs(display_name, job_records)
+                else:
+                    save_cluster_jobs(cluster_name, job_records)
         except Exception as e:
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
