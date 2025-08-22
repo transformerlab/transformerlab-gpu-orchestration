@@ -466,16 +466,16 @@ def down_cluster_with_skypilot(cluster_name: str):
 
         request_id = sky.down(cluster_name=cluster_name)
 
-        # Clean up cluster platform metadata after successful down operation
-        try:
-            from lattice.utils.file_utils import remove_cluster_platform
+        # # Clean up cluster platform metadata after successful down operation
+        # try:
+        #     from lattice.utils.file_utils import remove_cluster_platform
 
-            remove_cluster_platform(cluster_name)
-            print(f"Cleaned up platform metadata for cluster: {cluster_name}")
-        except Exception as e:
-            print(
-                f"Warning: Failed to clean up platform metadata for cluster {cluster_name}: {e}"
-            )
+        #     remove_cluster_platform(cluster_name)
+        #     print(f"Cleaned up platform metadata for cluster: {cluster_name}")
+        # except Exception as e:
+        #     print(
+        #         f"Warning: Failed to clean up platform metadata for cluster {cluster_name}: {e}"
+        #     )
 
         return request_id
     except Exception as e:
