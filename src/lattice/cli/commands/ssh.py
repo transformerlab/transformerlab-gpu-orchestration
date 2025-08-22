@@ -41,6 +41,7 @@ def ssh_command(console: Console, instance_name: str):
         # Now grab the raw_config part of data and save it to a temporary place in
         # ~/.lab/ssh/<instance_name>/config
         config_dir = Path.home() / ".lab" / "ssh" / instance_name
+        config_dir.mkdir(parents=True, exist_ok=True)
 
         # Now grab the Identity file from identity_file_content and save it near the config:
         identity_file = data.get("identity_file_content")
@@ -61,7 +62,6 @@ def ssh_command(console: Console, instance_name: str):
             #     else f"IdentityFile {config_dir / 'ssh_key'}"
             #     for line in ssh_config.splitlines()
             # )
-            config_dir.mkdir(parents=True, exist_ok=True)
             with open(config_dir / "config", "w") as f:
                 f.write(ssh_config)
 
