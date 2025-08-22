@@ -4,8 +4,14 @@ from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from config import get_db
-from db_models import GPUUsageLog, OrganizationQuota, QuotaPeriod, TeamQuota, TeamMembership
-from lattice.utils.file_utils import get_cluster_user_info, get_cluster_platform
+from db_models import (
+    GPUUsageLog,
+    OrganizationQuota,
+    QuotaPeriod,
+    TeamQuota,
+    TeamMembership,
+)
+from lattice.utils.cluster_utils import get_cluster_platform_info
 from lattice.routes.skypilot.utils import generate_cost_report
 import sky
 
@@ -150,11 +156,13 @@ def get_or_create_user_quota(
     return user_quota
 
 
-def get_user_quota_limit(db: Session, organization_id: str, user_id: str) -> Tuple[float, str]:
+def get_user_quota_limit(
+    db: Session, organization_id: str, user_id: str
+) -> Tuple[float, str]:
     """
     Get the quota limit for a specific user based on precedence:
     individual > team > organization
-    
+
     Returns:
         Tuple[float, str]: (quota_limit, quota_source) where quota_source is 'user', 'team', or 'org'
     """
@@ -197,7 +205,9 @@ def get_user_team_id(db: Session, organization_id: str, user_id: str) -> Optiona
     return membership.team_id if membership else None
 
 
-def get_team_quota(db: Session, organization_id: str, team_id: str) -> Optional[TeamQuota]:
+def get_team_quota(
+    db: Session, organization_id: str, team_id: str
+) -> Optional[TeamQuota]:
     """Get the team quota for a specific team"""
     return (
         db.query(TeamQuota)
@@ -215,7 +225,7 @@ def get_current_user_quota_info(
     """Get comprehensive quota information for the current user"""
     # Get user's quota record and source
     quota_limit, quota_source = get_user_quota_limit(db, organization_id, user_id)
-    
+
     # Get or create user's quota record
     user_quota = get_or_create_user_quota(db, organization_id, user_id)
 
@@ -224,20 +234,21 @@ def get_current_user_quota_info(
 
     # Get organization default for comparison
     org_quota = get_organization_default_quota(db, organization_id)
-    
+
     # Get team quota information if applicable
     team_id = get_user_team_id(db, organization_id, user_id)
     team_quota_limit = None
     team_name = None
-    
+
     if team_id:
         team_quota = get_team_quota(db, organization_id, team_id)
         if team_quota:
             team_quota_limit = team_quota.monthly_gpu_hours_per_user
-            
+
             # Get team name via lazy import to avoid circular import
             try:
                 from lattice.routes.admin.teams_service import get_team
+
                 team = get_team(db, team_id)
                 team_name = team.name if team else "Unknown Team"
             except Exception:
@@ -383,7 +394,9 @@ def refresh_quota_periods_for_organization(db: Session, organization_id: str) ->
         )
 
 
-def refresh_quota_periods_for_user(db: Session, organization_id: str, user_id: str) -> None:
+def refresh_quota_periods_for_user(
+    db: Session, organization_id: str, user_id: str
+) -> None:
     """Refresh quota period for a specific user with their current quota limit"""
     try:
         # Get or create quota period for the user (this will update with current limits)
@@ -518,13 +531,13 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
             if not cluster_name:
                 continue
 
-            # Get user info from cluster_platforms.json
-            user_info = get_cluster_user_info(cluster_name)
-            if not user_info or not user_info.get("id"):
+            # Get user info from cluster platforms database
+            platform_info = get_cluster_platform_info(cluster_name)
+            if not platform_info or not platform_info.get("user_id"):
                 continue
 
-            user_id = user_info["id"]
-            organization_id = user_info.get("organization_id")
+            user_id = platform_info["user_id"]
+            organization_id = platform_info.get("organization_id")
 
             if not organization_id:
                 continue
@@ -767,8 +780,6 @@ def get_organization_user_usage_summary(
         )
 
         # Get user info for display
-        from lattice.utils.file_utils import get_cluster_user_info
-
         user_breakdown = []
         total_org_usage = 0
 
@@ -785,7 +796,8 @@ def get_organization_user_usage_summary(
 
             user_info = {}
             if user_cluster:
-                user_info = get_cluster_user_info(user_cluster[0]) or {}
+                platform_info = get_cluster_platform_info(user_cluster[0])
+                user_info = platform_info.get("user_info", {}) if platform_info else {}
 
             # Get user-specific effective quota limit (user > team > org)
             user_quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)

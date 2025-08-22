@@ -16,6 +16,7 @@ from lattice.models import (
     CreateUserQuotaRequest,
 )
 from db_models import GPUUsageLog, OrganizationQuota
+from lattice.utils.cluster_utils import get_display_name_from_actual
 from lattice.routes.quota.utils import (
     get_or_create_organization_quota,
     get_or_create_quota_period,
@@ -158,9 +159,14 @@ async def get_organization_usage(
         recent_usage = []
         for log in usage_logs:
             # Get user info from cluster platforms
-            from lattice.utils.file_utils import get_cluster_user_info
+            from lattice.utils.cluster_utils import get_cluster_platform_info
 
-            user_info = get_cluster_user_info(log.cluster_name)
+            platform_info = get_cluster_platform_info(log.cluster_name)
+            user_info = platform_info.get("user_info", {}) if platform_info else {}
+
+            # Get display name for user-facing response
+            display_name = get_display_name_from_actual(log.cluster_name)
+            cluster_display_name = display_name if display_name else log.cluster_name
 
             recent_usage.append(
                 GPUUsageLogResponse(
@@ -169,7 +175,7 @@ async def get_organization_usage(
                     user_id=log.user_id,
                     user_email=user_info.get("email") if user_info else None,
                     user_name=user_info.get("name") if user_info else None,
-                    cluster_name=log.cluster_name,
+                    cluster_name=cluster_display_name,
                     job_id=log.job_id,
                     gpu_count=log.gpu_count,
                     start_time=log.start_time.isoformat(),
@@ -317,9 +323,14 @@ async def get_all_organization_usage(
         recent_usage = []
         for log in usage_logs:
             # Get user info from cluster platforms
-            from lattice.utils.file_utils import get_cluster_user_info
+            from lattice.utils.cluster_utils import get_cluster_platform_info
 
-            user_info = get_cluster_user_info(log.cluster_name)
+            platform_info = get_cluster_platform_info(log.cluster_name)
+            user_info = platform_info.get("user_info", {}) if platform_info else {}
+
+            # Get display name for user-facing response
+            display_name = get_display_name_from_actual(log.cluster_name)
+            cluster_display_name = display_name if display_name else log.cluster_name
 
             recent_usage.append(
                 GPUUsageLogResponse(
@@ -328,7 +339,7 @@ async def get_all_organization_usage(
                     user_id=log.user_id,
                     user_email=user_info.get("email") if user_info else None,
                     user_name=user_info.get("name") if user_info else None,
-                    cluster_name=log.cluster_name,
+                    cluster_name=cluster_display_name,
                     job_id=log.job_id,
                     gpu_count=log.gpu_count,
                     start_time=log.start_time.isoformat(),

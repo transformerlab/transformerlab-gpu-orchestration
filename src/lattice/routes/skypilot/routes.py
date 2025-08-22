@@ -89,7 +89,7 @@ from lattice.utils.cluster_utils import (
     get_actual_cluster_name,
     get_display_name_from_actual,
     delete_cluster_platform_entry,
-    get_cluster_platform_info,
+    get_cluster_platform_info as get_cluster_platform_data,
 )
 from lattice.utils.cluster_resolver import (
     handle_cluster_name_param,
@@ -789,12 +789,6 @@ async def down_skypilot_cluster(
 
         request_id = down_cluster_with_skypilot(actual_cluster_name)
 
-        # Clean up the cluster platform entry when cluster is terminated
-        try:
-            delete_cluster_platform_entry(actual_cluster_name)
-        except Exception as e:
-            print(f"Warning: Failed to clean up cluster platform entry: {e}")
-
         return DownClusterResponse(
             request_id=request_id,
             cluster_name=display_name,  # Return display name to user
@@ -1257,7 +1251,7 @@ async def get_azure_instances(
         user_azure_clusters = []
         for cluster in skyPilotStatus:
             cluster_name = cluster.get("name", "")
-            platform_info = get_cluster_platform_info(cluster_name)
+            platform_info = get_cluster_platform_data(cluster_name)
 
             # Check if this is an Azure cluster belonging to current user
             if (
@@ -1579,7 +1573,7 @@ async def get_runpod_instances(
         user_runpod_clusters = []
         for cluster in skyPilotStatus:
             cluster_name = cluster.get("name", "")
-            platform_info = get_cluster_platform_info(cluster_name)
+            platform_info = get_cluster_platform_data(cluster_name)
 
             # Check if this is a RunPod cluster belonging to current user
             if (
@@ -1700,8 +1694,12 @@ async def get_vscode_tunnel_info_endpoint(
 ):
     """Get VSCode tunnel information from job logs."""
     try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
         # Get job logs
-        logs = get_job_logs(cluster_name, job_id)
+        logs = get_job_logs(actual_cluster_name, job_id)
 
         # Parse VSCode tunnel info from logs
         tunnel_info = get_vscode_tunnel_info(logs)
@@ -1734,27 +1732,37 @@ async def get_cost_report(
 
         for cluster_data in report:
             cluster_name = cluster_data.get("name")
+            print(f"🔍 Cluster name: {cluster_name}")
             if not cluster_name:
                 continue
 
-            # Get user info for this cluster to check ownership
-            cluster_user_info = get_cluster_user_info(cluster_name)
-            if not cluster_user_info or not cluster_user_info.get("id"):
+            # Get platform info for this cluster to check ownership
+            platform_info = get_cluster_platform_data(cluster_name)
+            print(f"🔍 Cluster platform info: {platform_info}")
+            if not platform_info or not platform_info.get("user_id"):
                 continue
 
             # Include clusters that belong to the current user AND are in the current user's organization
-            cluster_user_id = cluster_user_info.get("id")
-            cluster_org_id = cluster_user_info.get("organization_id")
+            cluster_user_id = platform_info.get("user_id")
+            cluster_org_id = platform_info.get("organization_id")
 
             if (
                 cluster_user_id == current_user_id
                 and current_user_org_id
                 and cluster_org_id == current_user_org_id
             ):
-                filtered_clusters.append(cluster_data)
+                # Get display name for user-facing response
+                display_name = get_display_name_from_actual(cluster_name)
+                cluster_display_name = display_name if display_name else cluster_name
+
+                # Create a copy of cluster data with display name
+                filtered_cluster_data = cluster_data.copy()
+                filtered_cluster_data["name"] = cluster_display_name
+                filtered_clusters.append(filtered_cluster_data)
 
         return filtered_clusters
     except Exception as e:
+        print(f"🔍 Error: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cost report: {str(e)}"
         )
