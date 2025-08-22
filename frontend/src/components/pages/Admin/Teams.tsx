@@ -198,7 +198,7 @@ const Teams: React.FC = () => {
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
             </Box>
-          ) : (
+          ) : teams.length > 0 ? (
             <Table>
               <thead>
                 <tr>
@@ -252,6 +252,10 @@ const Teams: React.FC = () => {
                 ))}
               </tbody>
             </Table>
+          ) : (
+            <Alert color="warning" sx={{ mb: 2 }}>
+              {`No teams created${isAdmin ? '. Use "Create Team" to add your first team.' : '.'}`}
+            </Alert>
           )}
 
   {/* Create Team Modal */}
