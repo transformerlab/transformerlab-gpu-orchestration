@@ -12,16 +12,18 @@ from models import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
-from routes.ssh_keys.utils import validate_ssh_public_key, parse_ssh_config
+from routes.ssh_config.utils import validate_ssh_public_key, parse_ssh_config
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from lattice.utils.file_utils import get_cluster_user_info
 
-router = APIRouter(prefix="/ssh-keys", tags=["SSH Keys"])
+router = APIRouter(prefix="/ssh-config", tags=["SSH Config"])
 
 
-@router.post("/", response_model=SSHKeyResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/ssh-keys", response_model=SSHKeyResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_ssh_key(
     request: CreateSSHKeyRequest,
     user=Depends(get_current_user),
@@ -94,7 +96,7 @@ async def create_ssh_key(
         )
 
 
-@router.get("/", response_model=SSHKeyListResponse)
+@router.get("/ssh-keys", response_model=SSHKeyListResponse)
 async def list_ssh_keys(
     user=Depends(get_current_user),
     session: Session = Depends(get_db),
@@ -127,7 +129,7 @@ async def list_ssh_keys(
     )
 
 
-@router.get("/{key_id}", response_model=SSHKeyResponse)
+@router.get("/ssh-keys/{key_id}", response_model=SSHKeyResponse)
 async def get_ssh_key(
     key_id: str,
     user=Depends(get_current_user),
@@ -158,7 +160,7 @@ async def get_ssh_key(
     )
 
 
-@router.put("/{key_id}", response_model=SSHKeyResponse)
+@router.put("/ssh-keys/{key_id}", response_model=SSHKeyResponse)
 async def update_ssh_key(
     key_id: str,
     request: UpdateSSHKeyRequest,
@@ -216,7 +218,7 @@ async def update_ssh_key(
         )
 
 
-@router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/ssh-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_ssh_key(
     key_id: str,
     user=Depends(get_current_user),
@@ -239,7 +241,7 @@ async def delete_ssh_key(
 
 
 # Utility endpoint for SSH proxy server to lookup keys
-@router.get("/lookup/by-key", response_model=dict)
+@router.get("/ssh-keys/lookup/by-key", response_model=dict)
 async def lookup_user_by_ssh_key(
     public_key: str,
     session: Session = Depends(get_db),
@@ -283,7 +285,7 @@ async def lookup_user_by_ssh_key(
         )
 
 
-@router.get("/ssh-config/{instance_name}")
+@router.get("/{instance_name}")
 async def get_cluster_ssh_config(
     instance_name: str,
     user=Depends(get_user_or_api_key),
