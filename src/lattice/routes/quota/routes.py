@@ -14,9 +14,6 @@ from lattice.models import (
     UpdateUserQuotaRequest,
     UserQuotaListResponse,
     CreateUserQuotaRequest,
-    TeamQuotaResponse,
-    TeamQuotaRequest,
-    TeamQuotaListResponse,
 )
 from db_models import GPUUsageLog, OrganizationQuota
 from lattice.routes.quota.utils import (
@@ -220,7 +217,7 @@ async def check_quota_availability(
         raise HTTPException(status_code=500, detail=f"Failed to check quota: {str(e)}")
 
 
-@router.post("/sync-from-cost-report")
+@router.get("/sync-from-cost-report")
 async def sync_usage_from_cost_report(
     user=Depends(get_current_user), db: Session = Depends(get_db)
 ):
@@ -379,7 +376,7 @@ async def get_organization_user_quotas(
             effective_quota_limit, effective_quota_source = get_user_quota_limit(
                 db, organization_id, user_quota.user_id
             )
-            
+
             try:
                 user_info = auth_provider.get_user(user_id=user_quota.user_id)
                 users.append(
@@ -437,7 +434,7 @@ async def get_user_quota(
     """Get quota for a specific user"""
     try:
         user_quota = get_or_create_user_quota(db, organization_id, user_id)
-        
+
         # Get effective quota limit and source (user > team > org)
         effective_quota_limit, effective_quota_source = get_user_quota_limit(
             db, organization_id, user_id
@@ -490,7 +487,7 @@ async def update_user_quota_endpoint(
         updated_quota = update_user_quota(
             db, organization_id, user_id, request.monthly_gpu_hours_per_user
         )
-        
+
         # Refresh the user's quota period to reflect the new limit
         refresh_quota_periods_for_user(db, organization_id, user_id)
 
@@ -506,7 +503,7 @@ async def update_user_quota_endpoint(
         except Exception:
             user_name = None
             user_email = None
-        
+
         # Get effective quota limit and source after update
         effective_quota_limit, effective_quota_source = get_user_quota_limit(
             db, organization_id, user_id
@@ -541,7 +538,7 @@ async def delete_user_quota_endpoint(
     """Delete user quota, reverting to organization default"""
     try:
         success = delete_user_quota(db, organization_id, user_id)
-        
+
         # Refresh the user's quota period to reflect the new limit (org default or team quota)
         refresh_quota_periods_for_user(db, organization_id, user_id)
 
@@ -594,7 +591,7 @@ async def create_user_quota_endpoint(
         db.add(new_quota)
         db.commit()
         db.refresh(new_quota)
-        
+
         # Refresh the user's quota period to reflect the new limit
         refresh_quota_periods_for_user(db, organization_id, user_id)
 
@@ -610,7 +607,7 @@ async def create_user_quota_endpoint(
         except Exception:
             user_name = None
             user_email = None
-        
+
         # Get effective quota limit and source
         effective_quota_limit, effective_quota_source = get_user_quota_limit(
             db, organization_id, user_id
