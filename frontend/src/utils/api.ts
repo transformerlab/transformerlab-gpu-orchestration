@@ -142,10 +142,13 @@ export const teamsApi = {
   },
 
   removeMember: async (teamId: string, userId: string) => {
-    const res = await apiFetch(buildApiUrl(`admin/teams/${teamId}/members/${userId}`), {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const res = await apiFetch(
+      buildApiUrl(`admin/teams/${teamId}/members/${userId}`),
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || "Failed to remove member");
@@ -153,14 +156,16 @@ export const teamsApi = {
     return res.json();
   },
 
-  availableUsers: async (): Promise<{ users: Array<{
-    user_id: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-    profile_picture_url?: string;
-    has_team?: boolean;
-  }>; }> => {
+  availableUsers: async (): Promise<{
+    users: Array<{
+      user_id: string;
+      email?: string;
+      first_name?: string;
+      last_name?: string;
+      profile_picture_url?: string;
+      has_team?: boolean;
+    }>;
+  }> => {
     const res = await apiFetch(buildApiUrl("admin/teams/available-users"), {
       credentials: "include",
     });
@@ -197,7 +202,9 @@ export const teamsApi = {
 
 // Team Quotas API functions
 export const teamsQuotaApi = {
-  listTeamQuotas: async (organizationId: string): Promise<{
+  listTeamQuotas: async (
+    organizationId: string
+  ): Promise<{
     organization_id: string;
     teams: Array<{
       team_id: string;
@@ -217,7 +224,10 @@ export const teamsQuotaApi = {
     return res.json();
   },
 
-  getTeamQuota: async (organizationId: string, teamId: string): Promise<{
+  getTeamQuota: async (
+    organizationId: string,
+    teamId: string
+  ): Promise<{
     team_id: string;
     team_name: string;
     organization_id: string;
@@ -251,14 +261,19 @@ export const teamsQuotaApi = {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monthly_gpu_hours_per_user: monthlyGpuHoursPerUser }),
+        body: JSON.stringify({
+          monthly_gpu_hours_per_user: monthlyGpuHoursPerUser,
+        }),
       }
     );
     if (!res.ok) throw new Error("Failed to update team quota");
     return res.json();
   },
 
-  deleteTeamQuota: async (organizationId: string, teamId: string): Promise<void> => {
+  deleteTeamQuota: async (
+    organizationId: string,
+    teamId: string
+  ): Promise<void> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/teams/${teamId}/quota`),
       {
@@ -330,7 +345,9 @@ export const jobApi = {
 };
 
 export const quotaApi = {
-  getOrganizationQuota: async (organizationId: string): Promise<{
+  getOrganizationQuota: async (
+    organizationId: string
+  ): Promise<{
     organization_quota: {
       id: string;
       organization_id: string;
@@ -346,30 +363,41 @@ export const quotaApi = {
       period_start: string;
       period_end: string;
       total_usage_this_period: number;
-    }
+    };
   }> => {
-    const res = await apiFetch(buildApiUrl(`quota/organization/${organizationId}`), {
-      credentials: "include"
-    });
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}`),
+      {
+        credentials: "include",
+      }
+    );
     if (!res.ok) throw new Error("Failed to fetch organization quota");
     return res.json();
   },
 
   updateOrganizationQuota: async (
-    organizationId: string, 
+    organizationId: string,
     monthlyGpuHoursPerUser: number
   ): Promise<any> => {
-    const res = await apiFetch(buildApiUrl(`quota/organization/${organizationId}`), {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monthly_gpu_hours_per_user: monthlyGpuHoursPerUser })
-    });
+    const res = await apiFetch(
+      buildApiUrl(`quota/organization/${organizationId}`),
+      {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          monthly_gpu_hours_per_user: monthlyGpuHoursPerUser,
+        }),
+      }
+    );
     if (!res.ok) throw new Error("Failed to update organization quota");
     return res.json();
   },
 
-  getUserQuota: async (organizationId: string, userId: string): Promise<{
+  getUserQuota: async (
+    organizationId: string,
+    userId: string
+  ): Promise<{
     user_id: string;
     user_email?: string;
     user_name?: string;
@@ -388,7 +416,9 @@ export const quotaApi = {
     return res.json();
   },
 
-  listUserQuotas: async (organizationId: string): Promise<{
+  listUserQuotas: async (
+    organizationId: string
+  ): Promise<{
     organization_id: string;
     users: Array<{
       user_id: string;
@@ -422,35 +452,42 @@ export const quotaApi = {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monthly_gpu_hours_per_user: monthlyGpuHoursPerUser })
+        body: JSON.stringify({
+          monthly_gpu_hours_per_user: monthlyGpuHoursPerUser,
+        }),
       }
     );
     if (!res.ok) throw new Error("Failed to update user quota");
     return res.json();
   },
 
-  deleteUserQuota: async (organizationId: string, userId: string): Promise<void> => {
+  deleteUserQuota: async (
+    organizationId: string,
+    userId: string
+  ): Promise<void> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
       {
         method: "DELETE",
-        credentials: "include"
+        credentials: "include",
       }
     );
     if (!res.ok) throw new Error("Failed to delete user quota");
   },
 
-  refreshQuotaPeriods: async (organizationId: string): Promise<{ message: string }> => {
+  refreshQuotaPeriods: async (
+    organizationId: string
+  ): Promise<{ message: string }> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/refresh-quota-periods`),
       {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
       }
     );
     if (!res.ok) throw new Error("Failed to refresh quota periods");
     return res.json();
-  }
+  },
 };
 
 // SSH Keys API functions
@@ -469,7 +506,7 @@ export const sshKeyApi = {
     }>;
     total_count: number;
   }> => {
-    const response = await apiFetch(buildApiUrl("ssh-keys/"), {
+    const response = await apiFetch(buildApiUrl("ssh-config/ssh-keys"), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -492,7 +529,7 @@ export const sshKeyApi = {
     last_used_at?: string;
     is_active: boolean;
   }> => {
-    const response = await apiFetch(buildApiUrl("ssh-keys/"), {
+    const response = await apiFetch(buildApiUrl("ssh-config/ssh-keys"), {
       method: "POST",
       credentials: "include",
       headers: {
@@ -527,14 +564,17 @@ export const sshKeyApi = {
     last_used_at?: string;
     is_active: boolean;
   }> => {
-    const response = await apiFetch(buildApiUrl(`ssh-keys/${keyId}`), {
-      method: "PUT",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updates),
-    });
+    const response = await apiFetch(
+      buildApiUrl(`ssh-config/ssh-keys/${keyId}`),
+      {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      }
+    );
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.detail || "Failed to update SSH key");
@@ -543,10 +583,13 @@ export const sshKeyApi = {
   },
 
   delete: async (keyId: string): Promise<void> => {
-    const response = await apiFetch(buildApiUrl(`ssh-keys/${keyId}`), {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const response = await apiFetch(
+      buildApiUrl(`ssh-config/ssh-keys/${keyId}`),
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.detail || "Failed to delete SSH key");
