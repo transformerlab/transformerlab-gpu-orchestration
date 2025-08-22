@@ -11,6 +11,8 @@ import {
   Typography,
   FormControl,
   FormLabel,
+  Box,
+  Divider,
 } from "@mui/joy";
 import { apiFetch, buildApiUrl } from "../../utils/api";
 
@@ -47,6 +49,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isExistingBucket, setIsExistingBucket] = useState(false);
 
   // Create bucket
   const createBucket = async () => {
@@ -58,11 +61,19 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
       if (!formData.name.trim()) errors.name = "Name is required";
       if (!formData.remote_path.trim())
         errors.remote_path = "Remote path is required";
+      if (isExistingBucket && !formData.source?.trim())
+        errors.source = "Source is required when using an existing bucket";
 
       if (Object.keys(errors).length > 0) {
         setFormErrors(errors);
         return;
       }
+
+      // If not using existing bucket, send empty source
+      const requestData = {
+        ...formData,
+        source: isExistingBucket ? formData.source : "",
+      };
 
       const response = await apiFetch(buildApiUrl("storage-buckets/"), {
         method: "POST",
@@ -70,7 +81,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
@@ -97,6 +108,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
       mode: "MOUNT",
     });
     setFormErrors({});
+    setIsExistingBucket(false);
   };
 
   // Handle close
@@ -120,139 +132,244 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
     <Modal open={open} onClose={handleClose}>
       <ModalDialog size="lg">
         <Typography level="h4">Add Storage Bucket</Typography>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <FormControl>
-            <FormLabel>Name *</FormLabel>
-            <Input
-              name="name"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              placeholder="my-sky-bucket"
-              required
-            />
-            <Typography level="body-xs" color="neutral">
-              Unique identifier for the storage bucket. Used when creating a new
-              bucket or referencing an existing one.
-            </Typography>
-            {formErrors.name && (
-              <Typography color="danger" level="body-xs">
-                {formErrors.name}
-              </Typography>
-            )}
-          </FormControl>
 
+        {/* Bucket Type Selection */}
+        <Box sx={{ mt: 2, mb: 1 }}>
           <FormControl>
-            <FormLabel>Remote Path *</FormLabel>
-            <Input
-              name="remote_path"
-              value={formData.remote_path}
-              onChange={(e) => handleInputChange("remote_path", e.target.value)}
-              placeholder="/my_data"
-              required
-            />
-            <Typography level="body-xs" color="neutral">
-              Local path on the remote VM where the bucket will be mounted
-              (e.g., /my_data, /datasets).
-            </Typography>
-            {formErrors.remote_path && (
-              <Typography color="danger" level="body-xs">
-                {formErrors.remote_path}
-              </Typography>
-            )}
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Source (Optional)</FormLabel>
-            <Input
-              name="source"
-              value={formData.source}
-              onChange={(e) => handleInputChange("source", e.target.value)}
-              placeholder="s3://my-bucket/ or ~/local_dataset"
-            />
-            <Typography level="body-xs" color="neutral">
-              Local path to upload or existing bucket URI (s3://, gs://, r2://,
-              cos://). Leave empty to create an empty bucket.
-            </Typography>
-            {formErrors.source && (
-              <Typography color="danger" level="body-xs">
-                {formErrors.source}
-              </Typography>
-            )}
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Store (Optional)</FormLabel>
-            <Select
-              name="store"
-              value={formData.store}
-              onChange={(_, value) => handleInputChange("store", value)}
-              placeholder="Auto-detect"
+            <FormLabel sx={{ mb: 1, fontSize: "sm", fontWeight: "md" }}>
+              Bucket Type
+            </FormLabel>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                p: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "md",
+                bgcolor: "background.level1",
+              }}
             >
-              <Option value="auto">Auto-detect</Option>
-              <Option value="azure">Azure Blob Storage</Option>
-              <Option value="s3">AWS S3</Option>
-              <Option value="gcs">Google Cloud Storage</Option>
-              <Option value="r2">Cloudflare R2</Option>
-            </Select>
-            <Typography level="body-xs" color="neutral">
-              Cloud provider for the bucket. If not specified, SkyPilot will
-              choose based on the source path and task's cloud provider.
-            </Typography>
-            {formErrors.store && (
-              <Typography color="danger" level="body-xs">
-                {formErrors.store}
-              </Typography>
-            )}
+              <Box>
+                <Typography level="body-sm" sx={{ fontWeight: "md" }}>
+                  {isExistingBucket
+                    ? "Use Existing Bucket"
+                    : "Create New Bucket"}
+                </Typography>
+                <Typography level="body-xs" color="neutral">
+                  {isExistingBucket
+                    ? "Reference an existing storage bucket or local directory"
+                    : "Create a new empty storage bucket"}
+                </Typography>
+              </Box>
+              <Switch
+                checked={isExistingBucket}
+                onChange={(e) => {
+                  setIsExistingBucket(e.target.checked);
+                  if (!e.target.checked) {
+                    // Clear source when switching to new bucket
+                    handleInputChange("source", "");
+                  }
+                }}
+                size="lg"
+                color={isExistingBucket ? "primary" : "neutral"}
+              />
+            </Box>
           </FormControl>
+        </Box>
 
-          <FormControl>
-            <FormLabel>Mode</FormLabel>
-            <Select
-              name="mode"
-              value={formData.mode}
-              onChange={(_, value) => handleInputChange("mode", value)}
-            >
-              <Option value="MOUNT">MOUNT (Default)</Option>
-              <Option value="COPY">COPY</Option>
-              <Option value="MOUNT_CACHED">MOUNT_CACHED</Option>
-            </Select>
-            <Typography level="body-xs" color="neutral">
-              MOUNT: Streamed access, writes replicated. COPY: Pre-fetched,
-              local writes only. MOUNT_CACHED: Cached with async sync.
-            </Typography>
-            {formErrors.mode && (
-              <Typography color="danger" level="body-xs">
-                {formErrors.mode}
-              </Typography>
-            )}
-          </FormControl>
+        <Divider sx={{ my: 2 }} />
 
-          <FormControl>
-            <FormLabel>Persistent</FormLabel>
-            <Switch
-              checked={formData.persistent}
-              onChange={(e) =>
-                handleInputChange("persistent", e.target.checked)
-              }
-            />
-            <Typography level="body-xs" color="neutral">
-              Keep the bucket after task completion. Set to true to avoid
-              re-uploading data in subsequent runs.
-            </Typography>
-            {formErrors.persistent && (
-              <Typography color="danger" level="body-xs">
-                {formErrors.persistent}
+        {/* Basic Configuration */}
+        <Box sx={{ mb: 3 }}>
+          <Typography level="title-sm" sx={{ mb: 2, color: "text.primary" }}>
+            Basic Configuration
+          </Typography>
+          <Stack spacing={2}>
+            <FormControl>
+              <FormLabel>Name *</FormLabel>
+              <Input
+                name="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="my-sky-bucket"
+                required
+              />
+              {!isExistingBucket && (
+                <Typography level="body-xs" color="neutral">
+                  This name will be used to create the new bucket
+                </Typography>
+              )}
+              {formErrors.name && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.name}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Mount Path *</FormLabel>
+              <Input
+                name="remote_path"
+                value={formData.remote_path}
+                onChange={(e) =>
+                  handleInputChange("remote_path", e.target.value)
+                }
+                placeholder="/my_data"
+                required
+              />
+              <Typography level="body-xs" color="neutral">
+                Local path on the remote VM where the bucket will be mounted
+                (e.g., /my_data, /datasets).
               </Typography>
-            )}
-          </FormControl>
-          <Stack direction="row" spacing={1}>
-            <Button onClick={handleClose} variant="outlined">
-              Cancel
-            </Button>
-            <Button onClick={createBucket} variant="solid">
-              Create Bucket
-            </Button>
+              {formErrors.remote_path && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.remote_path}
+                </Typography>
+              )}
+            </FormControl>
           </Stack>
+        </Box>
+
+        {/* Source Configuration (only for existing buckets) */}
+        {isExistingBucket && (
+          <Box sx={{ mb: 3 }}>
+            <Typography level="title-sm" sx={{ mb: 2, color: "text.primary" }}>
+              Source Configuration
+            </Typography>
+            <FormControl>
+              <FormLabel>Source *</FormLabel>
+              <Input
+                name="source"
+                value={formData.source}
+                onChange={(e) => handleInputChange("source", e.target.value)}
+                placeholder="s3://my-bucket/ or ~/local_dataset"
+                required
+              />
+              <Typography level="body-xs" color="neutral">
+                Existing bucket URI (s3://, gs://, r2://, cos://) or local path
+                to upload.
+              </Typography>
+              {formErrors.source && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.source}
+                </Typography>
+              )}
+            </FormControl>
+          </Box>
+        )}
+
+        {/* Storage & Access Configuration */}
+        <Box sx={{ mb: 3 }}>
+          <Typography level="title-sm" sx={{ mb: 2, color: "text.primary" }}>
+            Storage & Access Configuration
+          </Typography>
+          <Stack spacing={2}>
+            <FormControl>
+              <FormLabel>Store (Optional)</FormLabel>
+              <Select
+                name="store"
+                value={formData.store}
+                onChange={(_, value) => handleInputChange("store", value)}
+                placeholder="Auto-detect"
+              >
+                <Option value="auto">Auto-detect</Option>
+                <Option value="azure">Azure Blob Storage</Option>
+                <Option value="s3">AWS S3</Option>
+                <Option value="gcs">Google Cloud Storage</Option>
+                <Option value="r2">Cloudflare R2</Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                Cloud provider for the bucket. If not specified, SkyPilot will
+                choose based on the source path and task's cloud provider.
+              </Typography>
+              {formErrors.store && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.store}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Mode</FormLabel>
+              <Select
+                name="mode"
+                value={formData.mode}
+                onChange={(_, value) => handleInputChange("mode", value)}
+              >
+                <Option value="MOUNT">MOUNT (Default)</Option>
+                <Option value="COPY">COPY</Option>
+                <Option value="MOUNT_CACHED">MOUNT_CACHED</Option>
+              </Select>
+              <Typography level="body-xs" color="neutral">
+                MOUNT: Streamed access, writes replicated. COPY: Pre-fetched,
+                local writes only. MOUNT_CACHED: Cached with async sync.
+              </Typography>
+              {formErrors.mode && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.mode}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Persistent Storage</FormLabel>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "md",
+                  bgcolor: "background.level1",
+                }}
+              >
+                <Box>
+                  <Typography level="body-sm" sx={{ fontWeight: "md" }}>
+                    {formData.persistent
+                      ? "Keep after completion"
+                      : "Delete after completion"}
+                  </Typography>
+                  <Typography level="body-xs" color="neutral">
+                    {formData.persistent
+                      ? "Bucket will persist after task completion"
+                      : "Bucket will be deleted when task completes"}
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={formData.persistent}
+                  onChange={(e) =>
+                    handleInputChange("persistent", e.target.checked)
+                  }
+                  size="lg"
+                  color={formData.persistent ? "success" : "neutral"}
+                />
+              </Box>
+              {formErrors.persistent && (
+                <Typography color="danger" level="body-xs">
+                  {formErrors.persistent}
+                </Typography>
+              )}
+            </FormControl>
+          </Stack>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ justifyContent: "flex-end", pt: 1 }}
+        >
+          <Button onClick={handleClose} variant="outlined" size="md">
+            Cancel
+          </Button>
+          <Button onClick={createBucket} variant="solid" size="md">
+            {isExistingBucket ? "Add Existing Bucket" : "Create New Bucket"}
+          </Button>
         </Stack>
       </ModalDialog>
     </Modal>
