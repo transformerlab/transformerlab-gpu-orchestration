@@ -74,7 +74,7 @@ def save_azure_configs(configs: Dict[str, Dict], default_config: str = None):
     return config
 
 
-def save_azure_config(
+def az_save_config(
     name: str,
     subscription_id: str,
     tenant_id: str,
@@ -133,7 +133,7 @@ def save_azure_config(
     return save_azure_configs(config_data["configs"], config_data["default_config"])
 
 
-def get_azure_config_for_display():
+def az_get_config_for_display():
     """Get Azure configuration for display (with masked credentials)"""
     config_data = load_azure_config()
 
@@ -151,7 +151,7 @@ def get_azure_config_for_display():
     }
 
 
-def get_current_azure_config():
+def az_get_current_config():
     """Get the current default Azure configuration"""
     config_data = load_azure_config()
     default_key = config_data.get("default_config")
@@ -160,7 +160,7 @@ def get_current_azure_config():
     return None
 
 
-def set_azure_default_config(config_key: str):
+def az_set_default_config(config_key: str):
     """Set a specific Azure config as default and update environment"""
     config_data = load_azure_config()
 
@@ -189,7 +189,7 @@ def set_azure_default_config(config_key: str):
     }
 
 
-def delete_azure_config(config_key: str):
+def az_delete_config(config_key: str):
     """Delete an Azure configuration"""
     config_data = load_azure_config()
 
@@ -212,7 +212,7 @@ def delete_azure_config(config_key: str):
     return save_azure_configs(config_data["configs"], config_data["default_config"])
 
 
-def test_azure_connection(
+def az_test_connection(
     subscription_id: str,
     tenant_id: str,
     client_id: str,
@@ -290,7 +290,7 @@ def test_azure_connection(
         return False
 
 
-def verify_azure_setup():
+def az_verify_setup():
     """Verify Azure setup by checking if Azure CLI is installed and service principal is configured"""
     try:
         # Check if Azure CLI is installed
@@ -314,7 +314,7 @@ def verify_azure_setup():
         return False
 
 
-def setup_azure_config():
+def az_setup_config():
     """Setup Azure configuration - now only supports service principal authentication"""
     try:
         # Check if Azure CLI is installed
@@ -341,7 +341,7 @@ def setup_azure_config():
             )
 
         # Test the connection
-        if not test_azure_connection(
+        if not az_test_connection(
             config["subscription_id"],
             config["tenant_id"],
             config["client_id"],
@@ -354,7 +354,7 @@ def setup_azure_config():
         # Update config to mark as configured
         config["is_configured"] = True
         config["auth_method"] = "service_principal"
-        save_azure_config(
+        az_save_config(
             config["name"],
             config["subscription_id"],
             config["tenant_id"],
@@ -372,7 +372,7 @@ def setup_azure_config():
         raise
 
 
-def get_azure_regions():
+def az_get_regions():
     """Get available Azure regions from SkyPilot's Azure catalog"""
     try:
         from sky.catalog.common import read_catalog
@@ -404,7 +404,7 @@ def get_azure_regions():
         return []
 
 
-def get_azure_instance_types():
+def az_get_instance_types():
     """Get available Azure instance types from SkyPilot's Azure catalog"""
     try:
         from sky.catalog.common import read_catalog
@@ -489,7 +489,7 @@ run: |
     return yaml_content
 
 
-def run_sky_check_azure():
+def az_run_sky_check():
     """Run 'sky check azure' to validate the Azure setup"""
     try:
         print("🔍 Running 'sky check azure' to validate setup...")
@@ -518,3 +518,87 @@ def run_sky_check_azure():
     except Exception as e:
         print(f"❌ Error running sky check azure: {e}")
         return False, str(e)
+
+
+def az_save_config_with_setup(
+    name: str,
+    subscription_id: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
+    allowed_instance_types: list[str],
+    allowed_regions: list[str],
+    max_instances: int = 0,
+    config_key: str = None,
+):
+    """Save Azure configuration with environment setup and sky check"""
+    import os
+
+    # Save the configuration
+    config = az_save_config(
+        name,
+        subscription_id,
+        tenant_id,
+        client_id,
+        client_secret,
+        allowed_instance_types,
+        allowed_regions,
+        max_instances,
+        config_key,
+    )
+
+    # Set environment variables for Azure
+    if subscription_id and not subscription_id.startswith("*"):
+        os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
+    elif config.get("subscription_id"):
+        os.environ["AZURE_SUBSCRIPTION_ID"] = config["subscription_id"]
+
+    if tenant_id and not tenant_id.startswith("*"):
+        os.environ["AZURE_TENANT_ID"] = tenant_id
+    elif config.get("tenant_id"):
+        os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
+
+    if client_id and not client_id.startswith("*"):
+        os.environ["AZURE_CLIENT_ID"] = client_id
+    elif config.get("client_id"):
+        os.environ["AZURE_CLIENT_ID"] = config["client_id"]
+
+    if client_secret and not client_secret.startswith("*"):
+        os.environ["AZURE_CLIENT_SECRET"] = client_secret
+    elif config.get("client_secret"):
+        os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
+
+    # Set the new config as default
+    config_key = name.lower().replace(" ", "_").replace("-", "_")
+    az_set_default_config(config_key)
+
+    # Run sky check for Azure
+    sky_check_result = None
+    if (
+        config.get("subscription_id")
+        and config.get("tenant_id")
+        and config.get("client_id")
+        and config.get("client_secret")
+    ):
+        try:
+            is_valid, output = az_run_sky_check()
+            sky_check_result = {
+                "valid": is_valid,
+                "output": output,
+                "message": "Sky check azure completed successfully"
+                if is_valid
+                else "Sky check azure failed",
+            }
+        except Exception as e:
+            sky_check_result = {
+                "valid": False,
+                "output": str(e),
+                "message": f"Error during Azure sky check: {str(e)}",
+            }
+
+    # Return the final result
+    result = az_get_config_for_display()
+    if sky_check_result:
+        result["sky_check_result"] = sky_check_result
+
+    return result

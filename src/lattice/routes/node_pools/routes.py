@@ -3,11 +3,11 @@ from routes.auth.api_key_auth import get_user_or_api_key
 from routes.instances.utils import get_skypilot_status
 from routes.clouds.runpod.utils import (
     load_runpod_config,
-    get_current_runpod_config,
+    rp_get_current_config,
 )
 from routes.clouds.azure.utils import (
     load_azure_config,
-    get_current_azure_config,
+    az_get_current_config,
 )
 from utils.file_utils import (
     load_ssh_node_info,
@@ -82,7 +82,7 @@ async def get_node_pools(
 
             # Add RunPod max instances
             try:
-                runpod_config = get_current_runpod_config()
+                runpod_config = rp_get_current_config()
                 if runpod_config:
                     total_max_instances += runpod_config.get("max_instances", 0)
             except Exception as e:
@@ -90,7 +90,7 @@ async def get_node_pools(
 
             # Add Azure max instances
             try:
-                azure_config = get_current_azure_config()
+                azure_config = az_get_current_config()
                 if azure_config:
                     total_max_instances += azure_config.get("max_instances", 0)
             except Exception as e:

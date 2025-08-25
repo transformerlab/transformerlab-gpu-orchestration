@@ -70,7 +70,7 @@ def save_runpod_configs(configs: Dict[str, Dict], default_config: str = None):
     return config
 
 
-def get_runpod_api_key():
+def rp_get_api_key():
     """Get RunPod API key from config file or environment variable"""
     config_data = load_runpod_config()
     default_key = config_data.get("default_config")
@@ -79,7 +79,7 @@ def get_runpod_api_key():
     return os.getenv("RUNPOD_API_KEY", None)
 
 
-def save_runpod_config(
+def rp_save_config(
     name: str,
     api_key: str,
     allowed_gpu_types: list[str],
@@ -129,7 +129,7 @@ def save_runpod_config(
     return save_runpod_configs(config_data["configs"], config_data["default_config"])
 
 
-def get_runpod_config_for_display():
+def rp_get_config_for_display():
     """Get RunPod configuration for display (with masked API key)"""
     config_data = load_runpod_config()
     print(
@@ -149,7 +149,7 @@ def get_runpod_config_for_display():
     }
 
 
-def get_current_runpod_config():
+def rp_get_current_config():
     """Get the current default RunPod configuration"""
     config_data = load_runpod_config()
     default_key = config_data.get("default_config")
@@ -158,7 +158,7 @@ def get_current_runpod_config():
     return None
 
 
-def set_runpod_default_config(config_key: str):
+def rp_set_default_config(config_key: str):
     """Set a specific RunPod config as default and update environment"""
     config_data = load_runpod_config()
 
@@ -187,7 +187,7 @@ def set_runpod_default_config(config_key: str):
     }
 
 
-def delete_runpod_config(config_key: str):
+def rp_delete_config(config_key: str):
     """Delete a RunPod configuration"""
     config_data = load_runpod_config()
 
@@ -210,11 +210,11 @@ def delete_runpod_config(config_key: str):
     return save_runpod_configs(config_data["configs"], config_data["default_config"])
 
 
-def test_runpod_connection(api_key: str):
+def rp_test_connection(api_key: str):
     """Test RunPod API connection with a specific API key"""
     try:
         # Test the connection with passed api_key
-        is_valid = verify_runpod_setup(api_key)
+        is_valid = rp_verify_setup(api_key)
         return is_valid
 
     except Exception as e:
@@ -244,7 +244,7 @@ api_key = "{api_key}"
         return False
 
 
-def run_sky_check_runpod():
+def rp_run_sky_check():
     """Run 'sky check runpod' to validate the RunPod setup"""
     try:
         print("🔍 Running 'sky check runpod' to validate setup...")
@@ -275,9 +275,9 @@ def run_sky_check_runpod():
         return False, str(e)
 
 
-def setup_runpod_config():
+def rp_setup_config():
     """Setup RunPod configuration for SkyPilot integration"""
-    api_key = get_runpod_api_key()
+    api_key = rp_get_api_key()
     if not api_key:
         raise ValueError(
             "RunPod API key is required. Please configure it in the Admin section."
@@ -294,7 +294,7 @@ def setup_runpod_config():
         raise ValueError("Failed to create RunPod config.toml file")
 
     # Run sky check runpod to validate the setup
-    is_valid, output = run_sky_check_runpod()
+    is_valid, output = rp_run_sky_check()
     if not is_valid:
         print(f"⚠️ Sky check runpod validation failed: {output}")
         # Don't raise an exception here, just log the warning
@@ -304,7 +304,7 @@ def setup_runpod_config():
     return True
 
 
-def verify_runpod_setup(test_api_key: str = None):
+def rp_verify_setup(test_api_key: str = None):
     """
     Verify that RunPod is properly configured and API is accessible
 
@@ -313,7 +313,7 @@ def verify_runpod_setup(test_api_key: str = None):
     """
     try:
         # Use the provided API key if given, otherwise fetch from config
-        api_key = test_api_key or get_runpod_api_key()
+        api_key = test_api_key or rp_get_api_key()
         if not api_key:
             print(
                 "❌ RunPod API key is required. Please configure it in the Admin section."
@@ -440,7 +440,7 @@ def map_runpod_display_to_instance_type(display_string: str) -> str:
         return display_string
 
 
-def get_runpod_display_options():
+def rp_get_display_options():
     """
     Get available RunPod options with user-friendly display names.
     Returns both GPU instances (AcceleratorName:Count) and CPU instances (CPU:vCPUs).
@@ -524,7 +524,7 @@ def get_runpod_display_options():
         return []
 
 
-def get_runpod_display_options_with_pricing():
+def rp_get_display_options_with_pricing():
     """
     Get available RunPod options with user-friendly display names and pricing information.
     Returns both GPU instances (AcceleratorName:Count) and CPU instances (CPU:vCPUs).
@@ -660,12 +660,12 @@ def get_runpod_display_options_with_pricing():
 # Keep the old functions for backward compatibility
 def get_runpod_gpu_types():
     """Get available GPU types from SkyPilot's RunPod catalog (legacy function)"""
-    return get_runpod_display_options()
+    return rp_get_display_options()
 
 
 def get_runpod_gpu_types_with_pricing():
     """Get available GPU types from SkyPilot's RunPod catalog with pricing information (legacy function)"""
-    return get_runpod_display_options_with_pricing()
+    return rp_get_display_options_with_pricing()
 
 
 def create_runpod_sky_yaml(
@@ -686,3 +686,71 @@ def create_runpod_sky_yaml(
     config["run"] = command
 
     return config
+
+
+def rp_save_config_with_setup(
+    name: str,
+    api_key: str,
+    allowed_gpu_types: list[str],
+    max_instances: int = 0,
+    config_key: str = None,
+    allowed_display_options: list[str] = None,
+):
+    """Save RunPod configuration with environment setup, config.toml creation, and sky check"""
+    import os
+
+    # Save the configuration
+    config = rp_save_config(
+        name,
+        api_key,
+        allowed_gpu_types,
+        max_instances,
+        config_key,
+    )
+
+    # Update display options if provided
+    if allowed_display_options:
+        config["allowed_display_options"] = allowed_display_options
+
+    # Set environment variable for RunPod
+    if api_key and not api_key.startswith("*"):
+        os.environ["RUNPOD_API_KEY"] = api_key
+    elif config.get("api_key"):
+        os.environ["RUNPOD_API_KEY"] = config["api_key"]
+
+    # Set the new config as default
+    config_key = name.lower().replace(" ", "_").replace("-", "_")
+    rp_set_default_config(config_key)
+
+    # Create config.toml and run sky check for RunPod
+    sky_check_result = None
+    if config.get("api_key"):
+        try:
+            if create_runpod_config_toml(config["api_key"]):
+                is_valid, output = rp_run_sky_check()
+                sky_check_result = {
+                    "valid": is_valid,
+                    "output": output,
+                    "message": "Sky check runpod completed successfully"
+                    if is_valid
+                    else "Sky check runpod failed",
+                }
+            else:
+                sky_check_result = {
+                    "valid": False,
+                    "output": "Failed to create config.toml file",
+                    "message": "Failed to create RunPod config.toml file",
+                }
+        except Exception as e:
+            sky_check_result = {
+                "valid": False,
+                "output": str(e),
+                "message": f"Error during RunPod setup: {str(e)}",
+            }
+
+    # Return the final result
+    result = rp_get_config_for_display()
+    if sky_check_result:
+        result["sky_check_result"] = sky_check_result
+
+    return result

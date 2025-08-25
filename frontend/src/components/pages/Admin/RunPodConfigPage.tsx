@@ -150,7 +150,7 @@ const RunPodConfigPage: React.FC = () => {
   const fetchAvailableGpuTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("clouds/runpod/display-options-with-pricing"),
+        buildApiUrl("clouds/runpod/info"),
         {
           credentials: "include",
         }
