@@ -51,6 +51,8 @@ from utils.cluster_resolver import (
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
+from routes.jobs.utils import get_cluster_job_queue
+from routes.clouds.ssh.utils import load_ssh_node_info
 from typing import Optional
 from .utils import generate_cost_report
 
@@ -482,4 +484,150 @@ async def get_cost_report(
         print(f"🔍 Error in /cost-report: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cost report: {str(e)}"
+        )
+
+
+@router.get("/{cluster_name}/info")
+async def get_cluster_info(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get comprehensive information for a specific cluster in a single API call.
+
+    This endpoint consolidates data from multiple sources:
+    - Cluster status and basic information
+    - Cluster type and available operations
+    - Platform information
+    - Template information
+    - Jobs associated with the cluster
+    - SSH node information (if applicable)
+
+    Returns:
+        dict: A comprehensive object containing all cluster information
+            - cluster: Basic cluster status and metadata
+            - cluster_type: Type information and available operations
+            - platform: Platform-specific information
+            - template: Template information
+            - jobs: List of jobs associated with the cluster
+            - ssh_node_info: SSH node information (only for SSH clusters)
+    """
+    try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        # Get cluster status information
+        cluster_records = get_skypilot_status([actual_cluster_name])
+        cluster_data = None
+
+        for record in cluster_records:
+            user_info = get_cluster_user_info(record["name"])
+
+            # Skip clusters without user info or not belonging to current user
+            if not user_info or not user_info.get("id"):
+                continue
+
+            if not (
+                user_info.get("id") == user["id"]
+                and user_info.get("organization_id") == user["organization_id"]
+            ):
+                continue
+
+            # Get display name for the response
+            display_name = get_display_name_from_actual(record["name"])
+            if not display_name:
+                display_name = record["name"]  # Fallback to actual name
+
+            cluster_data = {
+                "cluster_name": display_name,
+                "status": str(record["status"]),
+                "launched_at": record.get("launched_at"),
+                "last_use": record.get("last_use"),
+                "autostop": record.get("autostop"),
+                "to_down": record.get("to_down"),
+                "resources_str": record.get("resources_str_full")
+                or record.get("resources_str"),
+                "user_info": user_info,
+            }
+            break
+
+        if not cluster_data:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        # Get cluster type information
+        is_ssh = is_ssh_cluster(actual_cluster_name)
+        is_down_only = is_down_only_cluster(actual_cluster_name)
+        cluster_type = "ssh" if is_ssh else "cloud"
+        available_operations = ["down"]
+        if not is_down_only:
+            available_operations.append("stop")
+
+        cluster_type_info = {
+            "cluster_name": cluster_name,
+            "cluster_type": cluster_type,
+            "is_ssh": is_ssh,
+            "available_operations": available_operations,
+            "recommendations": {
+                "stop": "Stops the cluster while preserving disk data (AWS, GCP, Azure clusters only)",
+                "down": "Tears down the cluster and deletes all resources (SSH, RunPod, and cloud clusters)",
+            },
+        }
+
+        # Get platform information
+        platform_info = get_cluster_platform(actual_cluster_name)
+
+        # Get template information
+        template = get_cluster_template(actual_cluster_name)
+
+        # Get jobs for this cluster
+        try:
+            job_records = get_cluster_job_queue(actual_cluster_name)
+            jobs = []
+            for record in job_records:
+                jobs.append(
+                    {
+                        "job_id": record["job_id"],
+                        "job_name": record["job_name"],
+                        "username": record["username"],
+                        "submitted_at": record["submitted_at"],
+                        "start_at": record.get("start_at"),
+                        "end_at": record.get("end_at"),
+                        "resources": record["resources"],
+                        "status": str(record["status"]),
+                        "log_path": record["log_path"],
+                    }
+                )
+        except Exception as e:
+            print(f"Warning: Failed to get jobs for cluster {cluster_name}: {e}")
+            jobs = []
+
+        # Get SSH node information if it's an SSH cluster
+        ssh_node_info = None
+        if is_ssh:
+            try:
+                ssh_node_info = load_ssh_node_info()
+            except Exception as e:
+                print(
+                    f"Warning: Failed to get SSH node info for cluster {cluster_name}: {e}"
+                )
+
+        return {
+            "cluster": cluster_data,
+            "cluster_type": cluster_type_info,
+            "platform": platform_info,
+            "template": template,
+            "jobs": jobs,
+            "ssh_node_info": ssh_node_info,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting cluster info: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster info: {str(e)}"
         )
