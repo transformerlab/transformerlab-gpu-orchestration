@@ -181,6 +181,7 @@ class SSHKey(Base):
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     user_id = Column(String, nullable=False)  # WorkOS user ID
+    organization_id = Column(String, nullable=False)  # Organization ID
     name = Column(String, nullable=False)  # Human-readable name for the key
     public_key = Column(Text, nullable=False)  # The SSH public key content
     fingerprint = Column(
@@ -194,9 +195,11 @@ class SSHKey(Base):
     )  # Track when key was last used for SSH
     is_active = Column(Boolean, default=True)  # Whether the key is active
 
-    # Composite unique constraint to prevent duplicate key names per user
+    # Composite unique constraint to prevent duplicate key names per user within an organization
     __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_ssh_keys_user_name"),
+        UniqueConstraint(
+            "organization_id", "user_id", "name", name="uq_ssh_keys_org_user_name"
+        ),
     )
 
     @staticmethod

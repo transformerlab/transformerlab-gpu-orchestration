@@ -401,6 +401,7 @@ class SSHKeyResponse(BaseModel):
     public_key: str
     fingerprint: str
     key_type: str
+    organization_id: str
     created_at: str
     updated_at: str
     last_used_at: Optional[str] = None
