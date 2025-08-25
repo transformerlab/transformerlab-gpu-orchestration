@@ -38,6 +38,7 @@ const Pools: React.FC = () => {
     platform: string;
     name?: string;
     numberOfNodes?: number;
+    max_instances?: number;
     status?: string;
     config?: {
       is_configured: boolean;
@@ -59,7 +60,7 @@ const Pools: React.FC = () => {
 
   // Use SWR for data fetching
   const { data, error, mutate } = useSWR(
-    buildApiUrl("skypilot/node-pools"),
+    buildApiUrl("node-pools"),
     fetcher
   );
 
@@ -307,7 +308,7 @@ const Pools: React.FC = () => {
                   </td>
                   <td>
                     <Typography level="body-sm" fontWeight="lg">
-                      {pool.numberOfNodes || 0}
+                      {pool.numberOfNodes || pool.max_instances || 0}
                     </Typography>
                   </td>
                   <td>

@@ -8,11 +8,8 @@ from fastapi import (
     Request,
     Response,
 )
-from pydantic import BaseModel
 import uuid
-import os
 from config import UPLOADS_DIR
-from werkzeug.utils import secure_filename
 from lattice.models import (
     LaunchClusterResponse,
     StatusResponse,
@@ -63,97 +60,6 @@ from typing import Optional
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key)])
-
-
-@router.get("/node-pools")
-async def list_node_pools(
-    request: Request,
-    response: Response,
-):
-    """Get all node pools (Azure, RunPod, and SSH clusters)"""
-    try:
-        node_pools = []
-
-        # Get Azure configs - show each config as a separate entry
-        try:
-            azure_config_data = load_azure_config()
-            if azure_config_data.get("configs"):
-                for config_key, config in azure_config_data["configs"].items():
-                    node_pools.append(
-                        {
-                            "name": config.get("name", "Azure Pool"),
-                            "platform": "azure",
-                            "numberOfNodes": config.get("max_instances", 0),
-                            "status": "enabled",
-                            "access": ["Admin"],  # Default access
-                            "config": {
-                                "is_configured": azure_config_data.get(
-                                    "is_configured", False
-                                ),
-                                "max_instances": config.get("max_instances", 0),
-                                "config_key": config_key,
-                                "is_default": azure_config_data.get("default_config")
-                                == config_key,
-                            },
-                        }
-                    )
-        except Exception as e:
-            print(f"Error loading Azure config: {e}")
-
-        # Get RunPod configs - show each config as a separate entry
-        try:
-            runpod_config_data = load_runpod_config()
-            if runpod_config_data.get("configs"):
-                for config_key, config in runpod_config_data["configs"].items():
-                    node_pools.append(
-                        {
-                            "name": config.get("name", "RunPod Pool"),
-                            "platform": "runpod",
-                            "numberOfNodes": config.get("max_instances", 0),
-                            "status": "enabled",
-                            "access": ["Admin"],  # Default access
-                            "config": {
-                                "is_configured": runpod_config_data.get(
-                                    "is_configured", False
-                                ),
-                                "max_instances": config.get("max_instances", 0),
-                                "config_key": config_key,
-                                "is_default": runpod_config_data.get("default_config")
-                                == config_key,
-                            },
-                        }
-                    )
-        except Exception as e:
-            print(f"Error loading RunPod config: {e}")
-
-        # Get SSH clusters (DB-backed)
-        try:
-            from lattice.routes.clusters.utils import (
-                list_cluster_names_from_db,
-                get_cluster_config_from_db,
-            )
-
-            for cluster_name in list_cluster_names_from_db():
-                cfg = get_cluster_config_from_db(cluster_name)
-                hosts_count = len(cfg.get("hosts", []))
-                node_pools.append(
-                    {
-                        "name": cluster_name,
-                        "platform": "direct",
-                        "numberOfNodes": hosts_count,
-                        "status": "enabled",
-                        "access": ["Admin"],
-                        "config": {"is_configured": True, "max_instances": hosts_count},
-                    }
-                )
-        except Exception as e:
-            print(f"Error loading SSH clusters: {e}")
-
-        return {"node_pools": node_pools}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list node pools: {str(e)}"
-        )
 
 
 @router.post("/launch", response_model=LaunchClusterResponse)
