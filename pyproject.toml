@@ -63,9 +63,8 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
-
 [project.optional-dependencies]
-dev = ["openapi-client>=1.1.7"]
+dev = ["openapi-client>=1.1.7", "ruff>=0.12.10"]
 
 cli = [
     "typer", # A popular choice for creating CLIs
