@@ -42,7 +42,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 # Import SSHKey model from models.py
-from db_models import SSHKey
+from lattice.db_models import SSHKey
 
 # --- Configuration ---
 HOST = "0.0.0.0"  # Listen on all interfaces
@@ -63,6 +63,10 @@ def get_database_session() -> Session:
 
 
 # --- Database SSH Key Lookup ---
+# Optional hardening: require the proxy username segment to match the authenticated user ID
+ENFORCE_PROXY_USERNAME = os.getenv("ENFORCE_PROXY_USERNAME", "0") == "1"
+
+
 def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
     """
     Look up user by SSH public key in the database.
@@ -77,20 +81,25 @@ def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
         fingerprint = SSHKey.generate_fingerprint(public_key)
 
         # Look up the key in the database
-        ssh_key = (
+        # Enforce uniqueness: the same fingerprint should not belong to multiple users
+        matches = (
             session.query(SSHKey)
             .filter(SSHKey.fingerprint == fingerprint, SSHKey.is_active)
-            .first()
+            .all()
         )
 
-        if not ssh_key:
+        if not matches:
             raise ValueError("SSH key not found or inactive")
+        if len(matches) > 1:
+            raise ValueError("SSH key fingerprint is not unique in database")
+
+        ssh_key = matches[0]
 
         # Update last_used_at
         ssh_key.update_last_used()
         session.commit()
 
-        return ssh_key.user_id, ssh_key.name
+        return ssh_key.user_id.value, ssh_key.name.value
 
     except Exception as e:
         if session:
@@ -162,17 +171,15 @@ class ProxySSHServer(paramiko.ServerInterface):
             f"Key type: {key.get_name()}, Key fingerprint: {key.get_fingerprint().hex()}"
         )
 
-        # 1. Parse username for target node
-        try:
-            target_node, proxy_user = username.split("/", 1)
-            logging.debug(
-                f"Parsed username - target_node: '{target_node}', proxy_user: '{proxy_user}'"
-            )
-        except ValueError:
+        # 1. Validate username as target node
+        if not (3 <= len(username) <= 256):
             logging.error(
-                f"Invalid username format. Expected '<target>/<user>', got '{username}'."
+                f"Invalid username length. Expected between 3 and 256 characters, got '{len(username)}'."
             )
             return paramiko.AUTH_FAILED
+
+        target_node = username
+        logging.debug(f"Validated username as target_node: '{target_node}'")
 
         # 2. Look up public key to identify the real user in database
         key_str = f"{key.get_name()} {key.get_base64()}"
@@ -185,6 +192,13 @@ class ProxySSHServer(paramiko.ServerInterface):
             )
         except ValueError as e:
             logging.warning(f"Key rejected: {e}")
+            return paramiko.AUTH_FAILED
+
+        # Optional: bind the proxy username to the authenticated user identity
+        if ENFORCE_PROXY_USERNAME and proxy_user != str(user_id):
+            logging.warning(
+                f"Proxy username mismatch: provided '{proxy_user}' does not match authenticated user_id '{user_id}'"
+            )
             return paramiko.AUTH_FAILED
 
         # 3. Authorize against the ACL
@@ -436,7 +450,9 @@ def handle_client_connection(client_socket):
         )
 
         # Launch OpenSSH subprocess with PTY
-        ssh_proc, master_fd = launch_ssh_subprocess_with_pty(destination="Home")
+        ssh_proc, master_fd = launch_ssh_subprocess_with_pty(
+            destination=server.target_node
+        )
 
         # Do a test to see if the SSH process is running
         if ssh_proc.poll() is None:
