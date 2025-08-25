@@ -238,7 +238,7 @@ const MyClusterDetails: React.FC = () => {
       // If it's an SSH cluster, fetch SSH node information
       if (typeData?.is_ssh) {
         const sshResponse = await apiFetch(
-          buildApiUrl("skypilot/ssh-node-info"),
+          buildApiUrl("clouds/ssh/ssh-node-info"),
           { credentials: "include" }
         );
 

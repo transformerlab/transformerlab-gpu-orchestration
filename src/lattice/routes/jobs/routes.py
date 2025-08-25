@@ -23,8 +23,7 @@ from .utils import (
     submit_job_to_existing_cluster,
     get_past_jobs,
 )
-from routes.skypilot.port_forwarding import port_forward_manager
-from routes.skypilot.vscode_parser import get_vscode_tunnel_info
+from routes.jobs.vscode_parser import get_vscode_tunnel_info
 from utils.cluster_resolver import (
     handle_cluster_name_param,
 )

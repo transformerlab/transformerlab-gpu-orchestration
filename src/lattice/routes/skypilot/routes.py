@@ -28,7 +28,6 @@ from .utils import (
     get_skypilot_status,
     stop_cluster_with_skypilot,
     down_cluster_with_skypilot,
-    run_sky_check_ssh,
 )
 from .port_forwarding import port_forward_manager
 from ..clouds.azure.utils import (
@@ -43,7 +42,6 @@ from ..clouds.runpod.utils import (
 
 from lattice.routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
 from lattice.utils.file_utils import (
-    load_ssh_node_info,
     get_cluster_platform,
     load_cluster_platforms,
     get_cluster_user_info,
@@ -473,35 +471,6 @@ async def get_cluster_type(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster type: {str(e)}"
-        )
-
-
-@router.get("/ssh-node-info")
-async def get_ssh_node_info(request: Request, response: Response):
-    try:
-        node_info = load_ssh_node_info()
-        return node_info
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to load SSH node info: {str(e)}"
-        )
-
-
-@router.get("/ssh/sky-check")
-async def run_sky_check_ssh_route(request: Request, response: Response):
-    """Run 'sky check ssh' to validate the SSH setup"""
-    try:
-        is_valid, output = run_sky_check_ssh()
-        return {
-            "valid": is_valid,
-            "output": output,
-            "message": "Sky check ssh completed successfully"
-            if is_valid
-            else "Sky check ssh failed",
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to run sky check ssh: {str(e)}"
         )
 
 

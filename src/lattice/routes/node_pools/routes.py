@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from lattice.routes.auth.api_key_auth import get_user_or_api_key
 from lattice.routes.skypilot.utils import get_skypilot_status
-from lattice.routes.skypilot.runpod_utils import (
+from lattice.routes.clouds.runpod.utils import (
     load_runpod_config,
     get_current_runpod_config,
 )
-from lattice.routes.skypilot.azure_utils import (
+from lattice.routes.clouds.azure.utils import (
     load_azure_config,
     get_current_azure_config,
 )

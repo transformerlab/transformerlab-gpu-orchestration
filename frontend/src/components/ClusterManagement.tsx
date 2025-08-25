@@ -72,7 +72,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
           onClusterSelected(clusterName);
         }
         // Fetch GPU info for all nodes
-        const gpuRes = await apiFetch(buildApiUrl("skypilot/ssh-node-info"), {
+        const gpuRes = await apiFetch(buildApiUrl("clouds/ssh/ssh-node-info"), {
           credentials: "include",
         });
         if (gpuRes.ok) {
