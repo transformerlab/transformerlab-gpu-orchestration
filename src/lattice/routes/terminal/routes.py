@@ -181,6 +181,7 @@ async def terminal_websocket(
     try:
         # Allocate a PTY for the SSH process
         master_fd, slave_fd = pty.openpty()
+        os.set_blocking(master_fd, False)  # Make PTY non-blocking
         process = await asyncio.create_subprocess_exec(
             *ssh_cmd,
             stdin=slave_fd,
@@ -196,10 +197,24 @@ async def terminal_websocket(
             try:
                 loop = asyncio.get_event_loop()
                 while True:
-                    data = await loop.run_in_executor(None, os.read, master_fd, 1024)
-                    if not data:
+                    try:
+                        data = await loop.run_in_executor(
+                            None, os.read, master_fd, 1024
+                        )
+                        if not data:
+                            await asyncio.sleep(0.05)
+                            continue
+                        await websocket.send_text(
+                            base64.b64encode(data).decode("utf-8")
+                        )
+                    except BlockingIOError:
+                        await asyncio.sleep(0.05)
+                    except OSError:
+                        # FD closed or process exited
                         break
-                    await websocket.send_text(base64.b64encode(data).decode("utf-8"))
+            except asyncio.CancelledError:
+                # Task was cancelled, exit cleanly
+                pass
             except Exception as e:
                 error_message = f"Error in reader: {str(e)}"
                 print(f"WebSocket error: {error_message}")
@@ -227,15 +242,6 @@ async def terminal_websocket(
                         pass
         except WebSocketDisconnect:
             print(f"WebSocket disconnected: Session ID {session_id}")
-            reader_task.cancel()
-            try:
-                os.close(master_fd)
-                process.terminate()
-                await process.wait()
-            except Exception as e:
-                print(f"Error closing SSH process: {str(e)}")
-            if session_id in active_sessions:
-                del active_sessions[session_id]
         except Exception as e:
             error_message = f"Connection error: {str(e)}"
             print(f"WebSocket error: {error_message}")
@@ -247,6 +253,24 @@ async def terminal_websocket(
                 await websocket.close(code=1011, reason="Connection error")
             except Exception as close_error:
                 print(f"Error closing WebSocket: {str(close_error)}")
+        finally:
+            # Cleanup: cancel reader, close PTY, terminate process, remove session
+            if reader_task:
+                reader_task.cancel()
+                # Close PTY and terminate process before awaiting reader_task
+                try:
+                    os.close(master_fd)
+                except Exception:
+                    pass
+                try:
+                    process.terminate()
+                    await process.wait()
+                except Exception:
+                    pass
+                try:
+                    await asyncio.wait_for(reader_task, timeout=2)
+                except Exception:
+                    pass
             if session_id in active_sessions:
                 del active_sessions[session_id]
     except Exception as e:
