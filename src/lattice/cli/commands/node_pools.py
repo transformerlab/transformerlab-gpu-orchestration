@@ -16,7 +16,7 @@ def list_node_pools_command(console: Console):
         transient=True,
     ) as progress:
         progress.add_task("", total=None)
-        data = api_request("GET", "/node-pools", auth_needed=True)
+        data = api_request("GET", "/node-pools/", auth_needed=True)
 
     # Handle response object
     if hasattr(data, "json") and callable(data.json):

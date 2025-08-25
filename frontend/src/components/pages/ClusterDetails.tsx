@@ -53,7 +53,7 @@ const ClusterDetails: React.FC = () => {
 
   // Fetch cluster platform information
   const { data: clusterPlatforms } = useSWR(
-            clusterName ? buildApiUrl("instances/cluster-platforms") : null,
+    clusterName ? buildApiUrl("instances/cluster-platforms") : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 5000 }
@@ -147,7 +147,7 @@ const ClusterDetails: React.FC = () => {
         });
     } else {
       // For regular clusters, fetch nodes as before
-      apiFetch(buildApiUrl(`clusters/${clusterName}`), {
+      apiFetch(buildApiUrl(`node-pools/ssh-node-pools/${clusterName}`), {
         credentials: "include",
       })
         .then((res) => {

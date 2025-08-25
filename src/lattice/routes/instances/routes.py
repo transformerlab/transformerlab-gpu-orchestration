@@ -32,7 +32,7 @@ from routes.clouds.runpod.utils import (
     rp_setup_config,
     map_runpod_display_to_instance_type,
 )
-from routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
+from routes.node_pools.utils import is_ssh_cluster, is_down_only_cluster
 from utils.cluster_utils import (
     create_cluster_platform_entry,
     get_actual_cluster_name,

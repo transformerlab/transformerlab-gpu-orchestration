@@ -60,7 +60,7 @@ const Pools: React.FC = () => {
   };
 
   // Use SWR for data fetching
-  const { data, error, mutate } = useSWR(buildApiUrl("node-pools"), fetcher);
+  const { data, error, mutate } = useSWR(buildApiUrl("node-pools/"), fetcher);
 
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
@@ -213,10 +213,13 @@ const Pools: React.FC = () => {
     }
 
     try {
-      const response = await apiFetch(buildApiUrl(`clusters/${pool.name}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl(`node-pools/ssh-node-pools/${pool.name}`),
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         // Refresh the data

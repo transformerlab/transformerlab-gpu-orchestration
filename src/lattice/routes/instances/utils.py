@@ -157,7 +157,7 @@ def launch_cluster_with_skypilot(
 
         if cloud and cloud.lower() == "ssh":
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
-            from lattice.routes.clusters.utils import (
+            from lattice.routes.node_pools.utils import (
                 is_ssh_cluster,
                 validate_node_pool_identity_files,
             )

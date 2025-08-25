@@ -9,7 +9,6 @@ from routes.auth.routes import router as auth_router
 from routes.auth.cli import router as auth_cli_router
 from routes.admin.routes import router as admin_router
 from routes.admin.teams_routes import router as teams_admin_router
-from routes.clusters.routes import router as clusters_router
 from routes.clouds.routes import router as clouds_router
 from routes.jobs.routes import router as jobs_router
 from routes.instances.routes import router as instances_router
@@ -41,7 +40,6 @@ app.include_router(auth_router, prefix=api_v1_prefix)
 app.include_router(auth_cli_router, prefix=api_v1_prefix)
 app.include_router(admin_router, prefix=api_v1_prefix)
 app.include_router(teams_admin_router, prefix=api_v1_prefix)
-app.include_router(clusters_router, prefix=api_v1_prefix)
 app.include_router(clouds_router, prefix=api_v1_prefix)
 app.include_router(jobs_router, prefix=api_v1_prefix)
 app.include_router(instances_router, prefix=api_v1_prefix)

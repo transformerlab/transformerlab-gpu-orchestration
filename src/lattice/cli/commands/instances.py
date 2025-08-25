@@ -25,7 +25,7 @@ def list_instances_command(console: Console):
     resp_json = resp.json()
 
     # Parse the response
-    clusters = resp_json.get("clusters", [])
+    clusters = resp_json.get("node-pools/ssh-node-pools", [])
     if not clusters:
         console.print("[yellow]No instances found.[/yellow]")
         return

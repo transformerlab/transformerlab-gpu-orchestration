@@ -108,9 +108,12 @@ const SSHConfigPage: React.FC = () => {
 
   const fetchIdentityFiles = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("clusters/identity-files"), {
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl("node-pools/ssh-node-pools/identity-files"),
+        {
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setIdentityFiles(data.identity_files);
@@ -123,9 +126,12 @@ const SSHConfigPage: React.FC = () => {
   const fetchClusters = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(buildApiUrl("clusters"), {
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl("node-pools/ssh-node-pools"),
+        {
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setClusters(data.clusters);
@@ -141,9 +147,12 @@ const SSHConfigPage: React.FC = () => {
 
   const fetchClusterDetails = async (clusterName: string) => {
     try {
-      const response = await apiFetch(buildApiUrl(`clusters/${clusterName}`), {
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl(`node-pools/ssh-node-pools/${clusterName}`),
+        {
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setSelectedCluster(data);
@@ -173,11 +182,14 @@ const SSHConfigPage: React.FC = () => {
       if (newClusterVcpus) formData.append("vcpus", newClusterVcpus);
       if (newClusterMemoryGb) formData.append("memory_gb", newClusterMemoryGb);
 
-      const response = await apiFetch(buildApiUrl("clusters"), {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const response = await apiFetch(
+        buildApiUrl("node-pools/ssh-node-pools"),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
 
       if (response.ok) {
         addNotification({
@@ -227,7 +239,9 @@ const SSHConfigPage: React.FC = () => {
       if (newNodeMemoryGb) formData.append("memory_gb", newNodeMemoryGb);
 
       const response = await apiFetch(
-        buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes`),
+        buildApiUrl(
+          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/nodes`
+        ),
         {
           method: "POST",
           credentials: "include",
@@ -267,10 +281,13 @@ const SSHConfigPage: React.FC = () => {
 
   const deleteCluster = async (clusterName: string) => {
     try {
-      const response = await apiFetch(buildApiUrl(`clusters/${clusterName}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl(`node-pools/ssh-node-pools/${clusterName}`),
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         addNotification({
@@ -301,7 +318,9 @@ const SSHConfigPage: React.FC = () => {
 
     try {
       const response = await apiFetch(
-        buildApiUrl(`clusters/${selectedCluster.cluster_name}/nodes/${nodeIp}`),
+        buildApiUrl(
+          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/nodes/${nodeIp}`
+        ),
         {
           method: "DELETE",
           credentials: "include",
