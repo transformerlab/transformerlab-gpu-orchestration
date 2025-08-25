@@ -70,10 +70,10 @@ def get_database_session() -> Session:
 # ENFORCE_PROXY_USERNAME is no longer used
 
 
-def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
+def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str, str]:
     """
     Look up user by SSH public key in the database.
-    Returns (user_id, real_user_name) if found, raises ValueError if not found.
+    Returns (user_id, real_user_name, organization_id) if found, raises ValueError if not found.
     """
     session = None
     try:
@@ -105,8 +105,10 @@ def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
         # Return raw attributes (some deployments store strings, not Enum-like objects)
         user_id = getattr(ssh_key.user_id, "value", ssh_key.user_id)
         key_name = getattr(ssh_key.name, "value", ssh_key.name)
-        return str(user_id), str(key_name)
-
+        organization_id = getattr(
+            ssh_key.organization_id, "value", ssh_key.organization_id
+        )
+        return str(user_id), str(key_name), str(organization_id)
     except Exception as e:
         if session:
             session.rollback()
@@ -168,6 +170,7 @@ def get_host_key():
 class ProxySSHServer(paramiko.ServerInterface):
     def __init__(self):
         self.authenticated_user = None
+        self.organization_id = None  # Store organization_id in the session
         self.target_node = None
         self.channel = None
         logging.debug("ProxySSHServer instance created")
@@ -214,9 +217,9 @@ class ProxySSHServer(paramiko.ServerInterface):
         logging.debug(f"Looking up key in database: {key_str[:50]}...")
 
         try:
-            user_id, key_name = lookup_user_by_ssh_key(key_str)
+            user_id, key_name, organization_id = lookup_user_by_ssh_key(key_str)
             logging.info(
-                f"Key found. Real user ID: '{user_id}', Key name: '{key_name}'."
+                f"Key found. Real user ID: '{user_id}', Key name: '{key_name}', Org ID: '{organization_id}'."
             )
         except ValueError as e:
             logging.warning(f"Key rejected: {e}")
@@ -234,6 +237,9 @@ class ProxySSHServer(paramiko.ServerInterface):
                 f"Authorization successful for user '{user_id}' to '{target_node}'."
             )
             self.authenticated_user = user_id
+            self.organization_id = (
+                organization_id  # Save organization_id to the session
+            )
             self.target_node = target_node
             return paramiko.AUTH_SUCCESSFUL
         else:
@@ -424,7 +430,7 @@ def bridge_channel_and_pty(client_channel, master_fd):
             pass
 
 
-def get_cluster_name_from_db(display_name, user_id):
+def get_cluster_name_from_db(display_name, user_id, organization_id):
     """
     Retrieve the cluster name from the database based on the display name and user ID.
 
@@ -446,6 +452,7 @@ def get_cluster_name_from_db(display_name, user_id):
             .filter(
                 ClusterPlatform.display_name == display_name,
                 ClusterPlatform.user_id == user_id,
+                ClusterPlatform.organization_id == organization_id,
             )
             .one_or_none()
         )
@@ -486,7 +493,7 @@ def handle_client_connection(client_socket):
             return
 
         logging.info(
-            f"Establishing proxy connection for {server.authenticated_user} to {server.target_node}"
+            f"Establishing proxy connection for {server.authenticated_user}  at {server.organization_id} to {server.target_node}"
         )
 
         # First look up server.target_node in the db table cluster_platforms and find out the cluster_name
@@ -494,7 +501,9 @@ def handle_client_connection(client_socket):
         cluster_name = "None"
         try:
             cluster_name = get_cluster_name_from_db(
-                display_name=server.target_node, user_id=server.authenticated_user
+                display_name=server.target_node,
+                user_id=server.authenticated_user,
+                organization_id=server.organization_id,
             )
         except Exception as e:
             logging.error(f"Error looking up cluster name: {e}")
