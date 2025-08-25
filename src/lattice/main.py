@@ -26,6 +26,7 @@ from routes.clusters.routes import router as clusters_router
 from routes.clouds.routes import router as clouds_router
 from routes.jobs.routes import router as jobs_router
 from routes.skypilot.routes import router as skypilot_router
+from routes.instances.routes import router as instances_router
 from routes.reports.routes import router as reports_router
 from routes.api_keys.routes import router as api_keys_router
 from routes.node_pools.routes import router as node_pools_router
@@ -45,6 +46,7 @@ app.include_router(clusters_router, prefix=api_v1_prefix)
 app.include_router(clouds_router, prefix=api_v1_prefix)
 app.include_router(jobs_router, prefix=api_v1_prefix)
 app.include_router(skypilot_router, prefix=api_v1_prefix)
+app.include_router(instances_router, prefix=api_v1_prefix)
 app.include_router(reports_router, prefix=api_v1_prefix)
 app.include_router(api_keys_router, prefix=api_v1_prefix)
 app.include_router(node_pools_router, prefix=api_v1_prefix)

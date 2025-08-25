@@ -1,19 +1,18 @@
 import re
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Tuple
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from config import get_db
+from typing import Any, Dict, List, Optional, Tuple
+
 from db_models import (
     GPUUsageLog,
     OrganizationQuota,
     QuotaPeriod,
-    TeamQuota,
     TeamMembership,
+    TeamQuota,
 )
-from lattice.utils.cluster_utils import get_cluster_platform_info
-from lattice.routes.skypilot.utils import generate_cost_report
-import sky
+from routes.skypilot.utils import generate_cost_report
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+from utils.cluster_utils import get_cluster_platform_info
 
 
 def parse_resources_string(resources_str: str) -> Dict[str, Any]:

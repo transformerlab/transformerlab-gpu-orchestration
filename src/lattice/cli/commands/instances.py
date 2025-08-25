@@ -20,7 +20,7 @@ def list_instances_command(console: Console):
         transient=True,
     ) as progress:
         progress.add_task("", total=None)
-        resp = api_request("GET", "/skypilot/status", auth_needed=True)
+        resp = api_request("GET", "/instances/status", auth_needed=True)
 
     # convert response object to json:
     resp_json = resp.json()

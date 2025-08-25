@@ -75,7 +75,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
 
   // For cloud clusters, fetch SkyPilot status to determine if cluster is active
   const { data: skyPilotStatus } = useSWR(
-    clusterType === "cloud" ? buildApiUrl("skypilot/status") : null,
+    clusterType === "cloud" ? buildApiUrl("instances/status") : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 2000 }

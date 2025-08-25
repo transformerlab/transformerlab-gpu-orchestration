@@ -23,7 +23,7 @@ from .utils import (
     delete_azure_config,
     get_current_azure_config,
 )
-from routes.skypilot.utils import get_skypilot_status
+from routes.instances.utils import get_skypilot_status
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_data,
 )

@@ -197,7 +197,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       if (selectedRegistryId)
         formData.append("container_registry_id", selectedRegistryId);
 
-      const response = await apiFetch(buildApiUrl("skypilot/launch"), {
+      const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
         credentials: "include",
         body: formData,

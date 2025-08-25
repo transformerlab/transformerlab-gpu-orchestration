@@ -361,7 +361,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         formData.append("storage_bucket_ids", selectedStorageBuckets.join(","));
       }
 
-      const response = await apiFetch(buildApiUrl("skypilot/launch"), {
+      const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
         credentials: "include",
         body: formData,

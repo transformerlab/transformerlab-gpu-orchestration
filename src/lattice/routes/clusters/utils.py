@@ -210,7 +210,7 @@ def is_down_only_cluster(cluster_name: str):
             return True
 
         # Check if it's a RunPod cluster by looking at SkyPilot status
-        from skypilot.utils import get_skypilot_status
+        from routes.instances.utils import get_skypilot_status
 
         cluster_records = get_skypilot_status([cluster_name])
         for record in cluster_records:

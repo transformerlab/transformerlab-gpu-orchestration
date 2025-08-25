@@ -167,7 +167,7 @@ const MyClusterDetails: React.FC = () => {
 
   // Fetch cluster status data
   const { data: statusData, isLoading: statusLoading } = useSWR(
-    clusterName ? buildApiUrl("skypilot/status") : null,
+    clusterName ? buildApiUrl("instances/status") : null,
     (url) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 5000 }
@@ -264,7 +264,7 @@ const MyClusterDetails: React.FC = () => {
         down: true,
       }));
 
-      const response = await apiFetch(buildApiUrl("skypilot/down"), {
+      const response = await apiFetch(buildApiUrl("instances/down"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -306,7 +306,7 @@ const MyClusterDetails: React.FC = () => {
         ...prev,
         stop: true,
       }));
-      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
+      const response = await apiFetch(buildApiUrl("instances/stop"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -169,7 +169,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
-      const response = await apiFetch(buildApiUrl("skypilot/launch"), {
+      const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
         credentials: "include",
         body: formData,

@@ -104,7 +104,7 @@ const SkyPilotClusterStatus: React.FC = () => {
 
   // SWR for cluster status
   const { data, isLoading, mutate } = useSWR(
-    buildApiUrl("skypilot/status"),
+    buildApiUrl("instances/status"),
     fetcher,
     { refreshInterval: 2000 }
   );
