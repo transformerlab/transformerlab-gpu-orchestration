@@ -570,11 +570,22 @@ def setup_logging(level):
     if not isinstance(numeric_level, int):
         raise ValueError(f"Invalid log level: {level}")
 
-    logging.basicConfig(
-        level=numeric_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    class SSHProxyLogFormatter(logging.Formatter):
+        PINK = "\033[95m"
+        RESET = "\033[0m"
+
+        def format(self, record):
+            record.msg = f"SSH_PROXY {record.msg}"
+            return f"{self.PINK}{super().format(record)}{self.RESET}"
+
+    handler = logging.StreamHandler()
+    formatter = SSHProxyLogFormatter(
+        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    handler.setFormatter(formatter)
+    logging.root.handlers = [handler]
+    logging.root.setLevel(numeric_level)
 
     # Set paramiko logging to WARNING to reduce noise unless we're in DEBUG mode
     if numeric_level > logging.DEBUG:
@@ -600,7 +611,16 @@ def main():
 
     logging.info("Starting SSH Proxy Server")
     logging.info(f"Log level set to: {args.log_level}")
-    logging.info(f"Database URL: {DATABASE_URL}")
+    logging.info(
+        f"Database URL: {os.path.abspath(DATABASE_URL.replace('sqlite:///', '', 1)) if DATABASE_URL.startswith('sqlite:///') else DATABASE_URL}"
+    )
+
+    # Check if database file exists (only for SQLite)
+    if DATABASE_URL.startswith("sqlite:///"):
+        db_path = DATABASE_URL.replace("sqlite:///", "", 1)
+        if not os.path.isfile(db_path):
+            logging.error(f"Database file does not exist: {db_path}")
+            return
 
     # Test database connection
     try:

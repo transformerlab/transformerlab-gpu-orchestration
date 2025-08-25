@@ -83,6 +83,19 @@ echo $PATH
 sky check
 
 echo "✅ Virtual environment activated"
+
+# Start SSH proxy server in the background only if START_SSH_PROXY_SERVER is true
+if [[ "$START_SSH_PROXY_SERVER" == "true" ]]; then
+    echo "🔄 Starting SSH proxy server..."
+    cd src/lattice
+    uv run ssh_proxy_server/main.py &
+    SSH_PROXY_PID=$!
+    cd -
+    trap 'echo "🔴 Killing SSH proxy server..."; kill $SSH_PROXY_PID' EXIT
+else
+    echo "🚫 START_SSH_PROXY_SERVER is not set to true. Skipping SSH proxy server startup."
+fi
+
 # Start the application with uvicorn instead of running main.py directly
 if [[ "$DEBUG" == "True" ]]; then
     uv run ./src/lattice/main.py --host 0.0.0.0 --port "$PORT" --reload
