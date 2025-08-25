@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 
 from config import get_db
@@ -10,14 +9,11 @@ from models import (
     SSHKeyResponse,
     UpdateSSHKeyRequest,
 )
-from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
-from routes.ssh_config.utils import validate_ssh_public_key, parse_ssh_config
+from routes.ssh_config.utils import validate_ssh_public_key
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from lattice.utils.cluster_utils import get_cluster_platform_info
-from lattice.utils.cluster_resolver import handle_cluster_name_param
 
 router = APIRouter(prefix="/ssh-config", tags=["SSH Config"])
 
