@@ -2,7 +2,7 @@ import os
 import time
 import webbrowser
 import json
-from typing import Optional, Dict, Union
+from typing import Optional
 
 import requests
 
@@ -236,7 +236,6 @@ def logout_command(console: Console):
 
     try:
         # Delete the API key from storage
-        import os
         from pathlib import Path
 
         # Get the credentials file path (same as used in save_api_key)

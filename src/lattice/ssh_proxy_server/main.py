@@ -542,7 +542,7 @@ def main():
     server_socket.bind((HOST, PORT))
     server_socket.listen(5)
     logging.info(f"Lighthouse SSH proxy (username-based) listening on {HOST}:{PORT}")
-    logging.debug(f"Server socket bound and listening with backlog of 5")
+    logging.debug("Server socket bound and listening with backlog of 5")
 
     try:
         while True:

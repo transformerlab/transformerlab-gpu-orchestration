@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from typing import List
 
 from config import get_db
-from db_models import TeamQuota, Team
+from db_models import Team
 from lattice.models import TeamQuotaRequest, TeamQuotaResponse, TeamQuotaListResponse
 from lattice.routes.admin.teams_service import list_teams
 from lattice.routes.auth.utils import check_organization_admin, check_organization_member

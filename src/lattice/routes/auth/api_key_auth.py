@@ -5,8 +5,7 @@ from sqlalchemy import and_
 from config import SessionLocal
 from db_models import APIKey
 from .utils import get_current_user
-from typing import Optional, Union
-from datetime import datetime
+from typing import Optional
 import json
 from .provider.work_os import provider as auth_provider
 

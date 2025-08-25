@@ -7,19 +7,16 @@ from fastapi import (
 )
 from pydantic import BaseModel
 import os
-from typing import Optional
 
 from .utils import (
     verify_runpod_setup,
     get_runpod_gpu_types_with_pricing,
     get_runpod_display_options,
     get_runpod_display_options_with_pricing,
-    map_runpod_display_to_instance_type,
     setup_runpod_config,
     save_runpod_config,
     get_runpod_config_for_display,
     test_runpod_connection,
-    load_runpod_config,
     run_sky_check_runpod,
     create_runpod_config_toml,
     set_runpod_default_config,

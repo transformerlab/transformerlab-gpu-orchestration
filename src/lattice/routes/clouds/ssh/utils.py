@@ -1,7 +1,5 @@
 import subprocess
-from pathlib import Path
 from fastapi import HTTPException
-from typing import Optional
 
 
 def run_sky_check_ssh():

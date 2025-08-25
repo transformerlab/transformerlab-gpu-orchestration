@@ -7,7 +7,6 @@ from fastapi import (
 )
 from pydantic import BaseModel
 import os
-from typing import Optional
 
 from .utils import (
     verify_azure_setup,

@@ -9,12 +9,6 @@ from .utils import (
     generate_cost_report,
 )
 from .port_forwarding import port_forward_manager
-from ..clouds.azure.utils import (
-    load_azure_config,
-)
-from ..clouds.runpod.utils import (
-    load_runpod_config,
-)
 from lattice.utils.file_utils import (
     get_cluster_platform,
     load_cluster_platforms,
@@ -22,7 +16,6 @@ from lattice.utils.file_utils import (
 )
 from lattice.routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
 from lattice.utils.cluster_utils import (
-    get_actual_cluster_name,
     get_display_name_from_actual,
     get_cluster_platform_info as get_cluster_platform_data,
 )
@@ -30,7 +23,6 @@ from lattice.utils.cluster_resolver import (
     handle_cluster_name_param,
 )
 from ..auth.api_key_auth import get_user_or_api_key
-from typing import Optional
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key)])

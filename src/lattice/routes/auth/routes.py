@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from models import UserResponse
-from .utils import get_current_user
 from config import AUTH_COOKIE_PASSWORD
 import os
 from .provider.work_os import provider as auth_provider
@@ -95,7 +94,7 @@ async def auth_callback(request: Request, code: str):
             path="/",
         )
         return response
-    except Exception as e:
+    except Exception:
         frontend_url = os.getenv("FRONTEND_URL")
         if not frontend_url:
             referer = request.headers.get("referer", "")
@@ -147,7 +146,7 @@ async def logout(request: Request, user=Depends(get_user_or_api_key)):
                     frontend_url = ""
             login_url = f"{frontend_url}/login" if frontend_url else "/login"
             return RedirectResponse(url=login_url)
-    except Exception as e:
+    except Exception:
         frontend_url = os.getenv("FRONTEND_URL")
         if not frontend_url:
             referer = request.headers.get("referer", "")

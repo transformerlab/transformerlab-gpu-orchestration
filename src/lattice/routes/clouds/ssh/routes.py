@@ -1,17 +1,14 @@
 from fastapi import (
     APIRouter,
-    Depends,
     HTTPException,
     Request,
     Response,
 )
-from typing import Optional
 
 from .utils import (
     run_sky_check_ssh,
     load_ssh_node_info,
 )
-from routes.auth.api_key_auth import get_user_or_api_key
 
 
 router = APIRouter()
