@@ -490,6 +490,42 @@ export const quotaApi = {
   },
 };
 
+// Node Pools Access API
+export const nodePoolsAccessApi = {
+  // poolKey is like: azure:<config_key> | runpod:<config_key> | direct:<pool_name>
+  getPoolAccess: async (
+    poolKey: string
+  ): Promise<{ pool_key: string; team_access: Array<{ team_id: string; team_name: string }> }> => {
+    const res = await apiFetch(buildApiUrl(`node-pools/access/${encodeURIComponent(poolKey)}`), {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch pool access");
+    return res.json();
+  },
+
+  updatePoolAccess: async (
+    poolKey: string,
+    teamIds: string[]
+  ): Promise<{ pool_key: string; team_access: Array<{ team_id: string; team_name: string }> }> => {
+    const res = await apiFetch(buildApiUrl(`node-pools/access/${encodeURIComponent(poolKey)}`), {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team_ids: teamIds }),
+    });
+    if (!res.ok) throw new Error("Failed to update pool access");
+    return res.json();
+  },
+};
+
+// Helper to compute pool key from admin pool row
+export const getPoolKey = (pool: any): string => {
+  if (pool.platform === "azure" && pool?.config?.config_key) return `azure:${pool.config.config_key}`;
+  if (pool.platform === "runpod" && pool?.config?.config_key) return `runpod:${pool.config.config_key}`;
+  if (pool.platform === "direct" && pool?.name) return `direct:${pool.name}`;
+  return `${pool.platform}:${pool.name || pool?.config?.config_key || "unknown"}`;
+};
+
 // SSH Keys API functions
 export const sshKeyApi = {
   list: async (): Promise<{

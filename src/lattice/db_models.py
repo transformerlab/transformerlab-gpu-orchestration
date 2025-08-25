@@ -267,6 +267,21 @@ class TeamQuota(Base):
         UniqueConstraint("organization_id", "team_id", name="uq_team_quotas_org_team"),
     )
     
+class NodePoolAccess(Base):
+    __tablename__ = "node_pool_access"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    # Unique identifier for a pool across providers, e.g., "azure:<config_key>", "runpod:<config_key>", "direct:<pool_name>"
+    pool_key = Column(String, nullable=False)
+    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    # Ensure only one assignment per org/pool/team
+    __table_args__ = (
+        UniqueConstraint("organization_id", "pool_key", "team_id", name="uq_node_pool_access_org_pool_team"),
+    )
+    
 class ContainerRegistry(Base):
     __tablename__ = "container_registries"
 

@@ -255,72 +255,70 @@ const Nodes: React.FC = () => {
         )}
 
         {/* RunPod Cluster */}
-        {runpodConfig.is_configured &&
-          (() => {
-            // Find RunPod pool from node pools
-            const runpodPool = nodePools.find(
-              (pool: any) => pool.provider === "runpod"
-            );
+        {(() => {
+          // Find RunPod pool from node pools
+          const runpodPool = nodePools.find(
+            (pool: any) => pool.provider === "runpod"
+          );
 
-            if (!runpodPool) return null;
+          if (!runpodPool) return null;
 
-            return (
-              <ClusterCard
-                cluster={{
-                  id: "runpod-cluster",
-                  name: runpodPool?.name || "RunPod Node Pool",
-                  nodes: generateDedicatedNodes(
-                    runpodPool.max_instances,
-                    runpodPool.current_instances,
-                    currentUserEmail
-                  ),
-                }}
-                provider={runpodPool?.provider}
-                clusterType="regular"
-                onLaunchCluster={() => {
-                  if (runpodConfig.is_configured) {
-                    setShowRunPodLauncher(true);
-                  }
-                }}
-                launchDisabled={!runpodPool.can_launch}
-                launchButtonText="Request Instance"
-                allowedGpuTypes={runpodConfig.allowed_gpu_types}
-                currentUser={currentUserEmail}
-              />
-            );
-          })()}
+          return (
+            <ClusterCard
+              cluster={{
+                id: "runpod-cluster",
+                name: runpodPool?.name || "RunPod Node Pool",
+                nodes: generateDedicatedNodes(
+                  runpodPool.max_instances,
+                  runpodPool.current_instances,
+                  currentUserEmail
+                ),
+              }}
+              provider={runpodPool?.provider}
+              clusterType="regular"
+              onLaunchCluster={() => {
+                if (runpodPool?.config?.is_configured) {
+                  setShowRunPodLauncher(true);
+                }
+              }}
+              launchDisabled={!runpodPool.can_launch || !runpodPool?.config?.is_configured}
+              launchButtonText="Request Instance"
+              allowedGpuTypes={runpodConfig.allowed_gpu_types}
+              currentUser={currentUserEmail}
+            />
+          );
+        })()}
 
         {/* Azure Cluster */}
-        {azureConfig.is_configured &&
-          (() => {
-            // Find Azure pool from node pools
-            const azurePool = nodePools.find(
-              (pool: any) => pool.provider === "azure"
-            );
+        {(() => {
+          // Find Azure pool from node pools
+          const azurePool = nodePools.find(
+            (pool: any) => pool.provider === "azure"
+          );
 
-            if (!azurePool) return null;
+          if (!azurePool) return null;
 
-            return (
-              <ClusterCard
-                cluster={{
-                  id: "azure-cluster",
-                  name: azurePool?.name || "Azure Node Pool",
-                  nodes: generateDedicatedNodes(
-                    azurePool.max_instances,
-                    azurePool.current_instances,
-                    currentUserEmail
-                  ),
-                }}
-                provider={azurePool?.provider}
-                clusterType="regular"
-                onLaunchCluster={() => setShowAzureLauncher(true)}
-                launchDisabled={!azurePool.can_launch}
-                launchButtonText="Request Instance"
-                allowedGpuTypes={azureConfig.allowed_instance_types}
-                currentUser={currentUserEmail}
-              />
-            );
-          })()}
+          return (
+            <ClusterCard
+              cluster={{
+                id: "azure-cluster",
+                name: azurePool?.name || "Azure Node Pool",
+                nodes: generateDedicatedNodes(
+                  azurePool.max_instances,
+                  azurePool.current_instances,
+                  currentUserEmail
+                ),
+              }}
+              provider={azurePool?.provider}
+              clusterType="regular"
+              onLaunchCluster={() => setShowAzureLauncher(true)}
+              launchDisabled={!azurePool.can_launch || !azurePool?.config?.is_configured}
+              launchButtonText="Request Instance"
+              allowedGpuTypes={azureConfig.allowed_instance_types}
+              currentUser={currentUserEmail}
+            />
+          );
+        })()}
       </Box>
 
       {/* RunPod Cluster Launcher Modal */}

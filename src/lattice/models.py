@@ -469,3 +469,17 @@ class AvailableUser(BaseModel):
 
 class AvailableUsersResponse(BaseModel):
     users: List[AvailableUser]
+
+# Node Pool Access Models
+class NodePoolAccessEntry(BaseModel):
+    team_id: str
+    team_name: str
+
+
+class NodePoolAccessListResponse(BaseModel):
+    pool_key: str
+    team_access: List[NodePoolAccessEntry]
+
+
+class NodePoolAccessUpdateRequest(BaseModel):
+    team_ids: List[str]

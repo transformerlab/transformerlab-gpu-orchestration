@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -18,7 +18,7 @@ import { Plus, Server, Gpu, Cloud, Trash2, Settings, Star } from "lucide-react";
 import useSWR from "swr";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useFakeData } from "../../../context/FakeDataContext";
-import { buildApiUrl, apiFetch } from "../../../utils/api";
+import { buildApiUrl, apiFetch, teamsApi, nodePoolsAccessApi, getPoolKey } from "../../../utils/api";
 import { useNotification } from "../../../components/NotificationSystem";
 
 import RunPodIcon from "./icons/runpod.svg";
@@ -29,6 +29,11 @@ import CloudServiceIcon from "../../widgets/CloudServiceIcon";
 const Pools: React.FC = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const [selectedPool, setSelectedPool] = useState<any>(null);
+  const [accessModalOpen, setAccessModalOpen] = useState(false);
+  const [accessModalPool, setAccessModalPool] = useState<any>(null);
+  const [orgTeams, setOrgTeams] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [savingAccess, setSavingAccess] = useState(false);
   const { addNotification } = useNotification();
 
   const navigate = useNavigate();
@@ -65,6 +70,54 @@ const Pools: React.FC = () => {
 
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
+
+  // Load teams once for the org
+  useEffect(() => {
+    (async () => {
+      try {
+        const t = await teamsApi.listTeams();
+        setOrgTeams(t.teams.map((x: any) => ({ id: x.id, name: x.name })));
+      } catch (e) {
+        console.error("Failed to load teams", e);
+      }
+    })();
+  }, []);
+
+  const openManageAccess = async (pool: Pool) => {
+    setAccessModalPool(pool);
+    setAccessModalOpen(true);
+    try {
+      const poolKey = getPoolKey(pool);
+      const res = await nodePoolsAccessApi.getPoolAccess(poolKey);
+      setSelectedTeamIds(res.team_access.map((t) => t.team_id));
+    } catch (e) {
+      console.warn("No existing access or failed to fetch:", e);
+      setSelectedTeamIds([]);
+    }
+  };
+
+  const toggleTeam = (teamId: string) => {
+    setSelectedTeamIds((prev) =>
+      prev.includes(teamId) ? prev.filter((id) => id !== teamId) : [...prev, teamId]
+    );
+  };
+
+  const saveAccess = async () => {
+    if (!accessModalPool) return;
+    setSavingAccess(true);
+    try {
+      const poolKey = getPoolKey(accessModalPool);
+      await nodePoolsAccessApi.updatePoolAccess(poolKey, selectedTeamIds);
+      setAccessModalOpen(false);
+      setAccessModalPool(null);
+      // Revalidate pools list in case access preview changes later
+      mutate();
+    } catch (e) {
+      console.error("Failed to save pool access", e);
+    } finally {
+      setSavingAccess(false);
+    }
+  };
 
   // Check if Azure or RunPod configurations already exist
   const hasAzureConfig = nodePools.some(
@@ -360,6 +413,9 @@ const Pools: React.FC = () => {
                         minWidth: "fit-content",
                       }}
                     >
+                      <Button size="sm" variant="outlined" onClick={() => openManageAccess(pool)}>
+                        Manage Access
+                      </Button>
                       <Button
                         size="sm"
                         variant="outlined"
@@ -454,6 +510,45 @@ const Pools: React.FC = () => {
               </Button>
             </Stack>
             <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Manage Access Modal */}
+      <Modal open={accessModalOpen} onClose={() => setAccessModalOpen(false)}>
+        <ModalDialog sx={{ width: 520 }}>
+          <Typography level="h4">Manage Access</Typography>
+          <Typography level="body-sm" sx={{ mt: 0.5, mb: 1 }}>
+            Choose which teams can see and launch from this node pool.
+          </Typography>
+          <Divider sx={{ my: 1 }} />
+          <Stack spacing={1} sx={{ maxHeight: 360, overflow: "auto" }}>
+            {orgTeams.length === 0 ? (
+              <Alert color="neutral">No teams yet. Create teams first.</Alert>
+            ) : (
+              orgTeams.map((t) => {
+                const checked = selectedTeamIds.includes(t.id);
+                return (
+                  <Card key={t.id} variant={checked ? "soft" : "outlined"} sx={{ p: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <Typography level="body-md">{t.name}</Typography>
+                      <Button size="sm" variant={checked ? "solid" : "outlined"} onClick={() => toggleTeam(t.id)}>
+                        {checked ? "Allowed" : "Allow"}
+                      </Button>
+                    </Box>
+                  </Card>
+                );
+              })
+            )}
+          </Stack>
+          <Divider sx={{ my: 1 }} />
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Button variant="outlined" onClick={() => setAccessModalOpen(false)} disabled={savingAccess}>
+              Cancel
+            </Button>
+            <Button onClick={saveAccess} loading={savingAccess} disabled={orgTeams.length === 0}>
+              Save
+            </Button>
           </Stack>
         </ModalDialog>
       </Modal>

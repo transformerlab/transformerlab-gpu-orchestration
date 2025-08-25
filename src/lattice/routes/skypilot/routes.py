@@ -16,7 +16,7 @@ from pathlib import Path
 from config import UPLOADS_DIR
 from fastapi.responses import StreamingResponse
 from werkzeug.utils import secure_filename
-from lattice.models import (
+from models import (
     LaunchClusterRequest,
     LaunchClusterResponse,
     StatusResponse,
@@ -76,6 +76,8 @@ from .azure_utils import (
     get_current_azure_config,
 )
 from lattice.routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
+from config import get_db
+from db_models import NodePoolAccess, Team
 from lattice.utils.file_utils import (
     load_ssh_node_info,
     save_ssh_node_info,
@@ -94,11 +96,12 @@ from lattice.utils.cluster_utils import (
 from lattice.utils.cluster_resolver import (
     handle_cluster_name_param,
 )
-from ..auth.api_key_auth import get_user_or_api_key
 from ..auth.utils import get_current_user
+from ..auth.api_key_auth import get_user_or_api_key
 from ..reports.utils import record_usage
 from typing import Optional
 import asyncio
+from sqlalchemy.orm import Session
 
 # VSCode Tunnel Info Endpoint
 from .vscode_parser import get_vscode_tunnel_info
@@ -146,10 +149,31 @@ router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key
 async def list_node_pools(
     request: Request,
     response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """Get all node pools (Azure, RunPod, and SSH clusters)"""
     try:
         node_pools = []
+
+        # Helper: fetch access list for a given pool key in current user's org
+        def get_access_for_pool(pool_key: str):
+            try:
+                rows = (
+                    db.query(NodePoolAccess)
+                    .filter(
+                        NodePoolAccess.organization_id == user["organization_id"],
+                        NodePoolAccess.pool_key == pool_key,
+                    )
+                    .all()
+                )
+                if not rows:
+                    return ["Admin"]
+                team_ids = [r.team_id for r in rows]
+                teams = db.query(Team).filter(Team.id.in_(team_ids)).all()
+                return [t.name for t in teams]
+            except Exception:
+                return ["Admin"]
 
         # Get Azure configs - show each config as a separate entry
         try:
@@ -162,7 +186,7 @@ async def list_node_pools(
                             "platform": "azure",
                             "numberOfNodes": config.get("max_instances", 0),
                             "status": "enabled",
-                            "access": ["Admin"],  # Default access
+                            "access": get_access_for_pool(f"azure:{config_key}"),
                             "config": {
                                 "is_configured": azure_config_data.get(
                                     "is_configured", False
@@ -188,7 +212,7 @@ async def list_node_pools(
                             "platform": "runpod",
                             "numberOfNodes": config.get("max_instances", 0),
                             "status": "enabled",
-                            "access": ["Admin"],  # Default access
+                            "access": get_access_for_pool(f"runpod:{config_key}"),
                             "config": {
                                 "is_configured": runpod_config_data.get(
                                     "is_configured", False
@@ -219,7 +243,7 @@ async def list_node_pools(
                         "platform": "direct",
                         "numberOfNodes": hosts_count,
                         "status": "enabled",
-                        "access": ["Admin"],
+                        "access": get_access_for_pool(f"direct:{cluster_name}"),
                         "config": {"is_configured": True, "max_instances": hosts_count},
                     }
                 )
@@ -349,6 +373,74 @@ async def launch_skypilot_cluster(
     container_registry_id: Optional[str] = Form(None),
 ):
     try:
+        # Enforce node pool access if applicable
+        try:
+            user = await get_user_or_api_key(request, response)
+            from lattice.config import SessionLocal
+            from lattice.db_models import NodePoolAccess
+            from lattice.routes.quota.utils import get_user_team_id
+
+            db = SessionLocal()
+            try:
+                # Determine pool_key based on cloud and node_pool_name or default config
+                pool_key: Optional[str] = None
+                if cloud == "runpod":
+                    from .runpod_utils import load_runpod_config
+                    cfg_data = load_runpod_config()
+                    default_key = cfg_data.get("default_config")
+                    if default_key:
+                        pool_key = f"runpod:{default_key}"
+                elif cloud == "azure":
+                    from .azure_utils import load_azure_config
+                    cfg_data = load_azure_config()
+                    default_key = cfg_data.get("default_config")
+                    if default_key:
+                        pool_key = f"azure:{default_key}"
+                elif cloud == "ssh" and node_pool_name:
+                    pool_key = f"direct:{node_pool_name}"
+
+                if pool_key:
+                    # Admins always allowed
+                    role = user.get("role")
+                    is_admin = role == "admin" or (isinstance(role, dict) and (role.get("slug") == "admin" or role.get("name") == "admin"))
+                    if not is_admin:
+                        team_id = get_user_team_id(db, user["organization_id"], user["id"])  # type: ignore
+                        if not team_id:
+                            raise HTTPException(status_code=403, detail="You are not assigned to a team")
+                        # If there are no explicit assignments for this pool, allow by default
+                        any_assignment = (
+                            db.query(NodePoolAccess)
+                            .filter(
+                                NodePoolAccess.organization_id == user["organization_id"],
+                                NodePoolAccess.pool_key == pool_key,
+                            )
+                            .first()
+                        )
+                        if any_assignment is None:
+                            pass
+                        else:
+                            exists = (
+                                db.query(NodePoolAccess)
+                                .filter(
+                                    NodePoolAccess.organization_id == user["organization_id"],
+                                    NodePoolAccess.pool_key == pool_key,
+                                    NodePoolAccess.team_id == team_id,
+                                )
+                                .first()
+                            )
+                            if exists is None:
+                                raise HTTPException(status_code=403, detail="Your team does not have access to this node pool")
+            finally:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+        except HTTPException:
+            raise
+        except Exception as _access_err:
+            # If access check fails unexpectedly, block launch for safety
+            raise HTTPException(status_code=500, detail=f"Failed to validate access: {_access_err}")
+
         file_mounts = None
         workdir = None
         python_filename = None
@@ -913,7 +1005,6 @@ async def submit_job_to_cluster(
         workdir = None
         if python_file is not None and python_file.filename:
             import uuid
-            from config import UPLOADS_DIR
 
             python_filename = python_file.filename
             unique_filename = f"{uuid.uuid4()}_{python_filename}"

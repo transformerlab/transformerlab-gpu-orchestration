@@ -20,6 +20,15 @@ from lattice.routes.clusters.utils import (
     list_cluster_names_from_db,
     get_cluster_config_from_db,
 )
+from config import get_db
+from sqlalchemy.orm import Session
+from db_models import NodePoolAccess, Team
+from lattice.routes.quota.utils import get_user_team_id
+from lattice.models import (
+    NodePoolAccessListResponse,
+    NodePoolAccessEntry,
+    NodePoolAccessUpdateRequest,
+)
 
 router = APIRouter(prefix="/node-pools", dependencies=[Depends(get_user_or_api_key)])
 
@@ -146,11 +155,71 @@ async def get_node_pools(
         try:
             node_pools = []
 
+            # Helper: fetch access list for a given pool key
+            def get_access_for_pool(pool_key: str):
+                try:
+                    db = next(get_db())
+                    rows = (
+                        db.query(NodePoolAccess)
+                        .filter(
+                            NodePoolAccess.organization_id == user["organization_id"],
+                            NodePoolAccess.pool_key == pool_key,
+                        )
+                        .all()
+                    )
+                    if not rows:
+                        return ["Admin"]
+                    # map team names
+                    team_ids = [r.team_id for r in rows]
+                    teams = db.query(Team).filter(Team.id.in_(team_ids)).all()
+                    return [t.name for t in teams]
+                except Exception:
+                    return ["Admin"]
+
+            # Helper: determine if current user is allowed for a pool
+            def user_has_access(pool_key: str) -> bool:
+                try:
+                    # Admins can see all
+                    role = user.get("role")
+                    if role == "admin" or (isinstance(role, dict) and (role.get("slug") == "admin" or role.get("name") == "admin")):
+                        return True
+                    db = next(get_db())
+                    # If there are no explicit assignments for this pool, default to visible
+                    any_assignment = (
+                        db.query(NodePoolAccess)
+                        .filter(
+                            NodePoolAccess.organization_id == user["organization_id"],
+                            NodePoolAccess.pool_key == pool_key,
+                        )
+                        .first()
+                    )
+                    if any_assignment is None:
+                        return True
+                    # get user's team id
+                    team_id = get_user_team_id(db, user["organization_id"], user["id"])  # type: ignore
+                    if not team_id:
+                        return False
+                    exists = (
+                        db.query(NodePoolAccess)
+                        .filter(
+                            NodePoolAccess.organization_id == user["organization_id"],
+                            NodePoolAccess.pool_key == pool_key,
+                            NodePoolAccess.team_id == team_id,
+                        )
+                        .first()
+                    )
+                    # If no explicit rows exist for this pool at all, treat as admin-only (hidden)
+                    return exists is not None
+                except Exception:
+                    return False
+
             # Get Azure configs
             try:
                 azure_config_data = load_azure_config()
                 if azure_config_data.get("configs"):
                     for config_key, config in azure_config_data["configs"].items():
+                        pool_key = f"azure:{config_key}"
+                        access_list = get_access_for_pool(pool_key)
                         # Get current Azure instances for this config (filtered by user)
                         azure_instances = 0
                         for cluster in skyPilotStatus:
@@ -168,7 +237,7 @@ async def get_node_pools(
                                 ):
                                     azure_instances += 1
 
-                        node_pools.append(
+                        pool_entry = (
                             {
                                 "name": config.get("name", "Azure Pool"),
                                 "type": "cloud",
@@ -180,7 +249,7 @@ async def get_node_pools(
                                 "status": "enabled"
                                 if azure_config_data.get("is_configured", False)
                                 else "disabled",
-                                "access": ["Admin"],
+                                "access": access_list,
                                 "config": {
                                     "is_configured": azure_config_data.get(
                                         "is_configured", False
@@ -199,6 +268,8 @@ async def get_node_pools(
                                 },
                             }
                         )
+                        if user_has_access(pool_key):
+                            node_pools.append(pool_entry)
             except Exception as e:
                 print(f"Error loading Azure config: {e}")
 
@@ -207,6 +278,8 @@ async def get_node_pools(
                 runpod_config_data = load_runpod_config()
                 if runpod_config_data.get("configs"):
                     for config_key, config in runpod_config_data["configs"].items():
+                        pool_key = f"runpod:{config_key}"
+                        access_list = get_access_for_pool(pool_key)
                         # Get current RunPod instances for this config (filtered by user)
                         runpod_instances = 0
                         for cluster in skyPilotStatus:
@@ -224,7 +297,7 @@ async def get_node_pools(
                                 ):
                                     runpod_instances += 1
 
-                        node_pools.append(
+                        pool_entry = (
                             {
                                 "name": config.get("name", "RunPod Pool"),
                                 "type": "cloud",
@@ -236,7 +309,7 @@ async def get_node_pools(
                                 "status": "enabled"
                                 if runpod_config_data.get("is_configured", False)
                                 else "disabled",
-                                "access": ["Admin"],
+                                "access": access_list,
                                 "config": {
                                     "is_configured": runpod_config_data.get(
                                         "is_configured", False
@@ -252,6 +325,8 @@ async def get_node_pools(
                                 },
                             }
                         )
+                        if user_has_access(pool_key):
+                            node_pools.append(pool_entry)
             except Exception as e:
                 print(f"Error loading RunPod config: {e}")
 
@@ -260,6 +335,8 @@ async def get_node_pools(
                 for cluster_name in list_cluster_names_from_db():
                     cfg = get_cluster_config_from_db(cluster_name)
                     hosts_count = len(cfg.get("hosts", []))
+                    pool_key = f"direct:{cluster_name}"
+                    access_list = get_access_for_pool(pool_key)
 
                     # Find active clusters that use this node pool as platform
                     active_clusters = []
@@ -297,7 +374,7 @@ async def get_node_pools(
                                 )
                                 ssh_instances_for_user += 1
 
-                    node_pools.append(
+                    pool_entry = (
                         {
                             "name": cluster_name,
                             "type": "direct",
@@ -306,7 +383,7 @@ async def get_node_pools(
                             "current_instances": hosts_count,
                             "can_launch": True,
                             "status": "enabled",
-                            "access": ["Admin"],
+                            "access": access_list,
                             "config": {
                                 "is_configured": True,
                                 "hosts": cfg.get("hosts", []),
@@ -315,6 +392,8 @@ async def get_node_pools(
                             "user_instances": ssh_instances_for_user,
                         }
                     )
+                    if user_has_access(pool_key):
+                        node_pools.append(pool_entry)
             except Exception as e:
                 print(f"Error loading SSH clusters: {e}")
 
@@ -328,3 +407,94 @@ async def get_node_pools(
         raise HTTPException(
             status_code=500, detail=f"Failed to get node pools data: {str(e)}"
         )
+
+
+@router.get("/access/{pool_key}", response_model=NodePoolAccessListResponse)
+async def get_pool_access(
+    pool_key: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    """List team access for a given pool_key in user's organization."""
+    try:
+        org_id = user["organization_id"]
+        # Fetch access rows
+        rows = (
+            db.query(NodePoolAccess)
+            .filter(
+                NodePoolAccess.organization_id == org_id,
+                NodePoolAccess.pool_key == pool_key,
+            )
+            .all()
+        )
+        team_ids = [r.team_id for r in rows]
+        teams = db.query(Team).filter(Team.id.in_(team_ids)).all() if team_ids else []
+        team_map = {t.id: t for t in teams}
+        entries = [
+            NodePoolAccessEntry(team_id=r.team_id, team_name=team_map.get(r.team_id).name if team_map.get(r.team_id) else "Unknown")
+            for r in rows
+        ]
+        return NodePoolAccessListResponse(pool_key=pool_key, team_access=entries)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get pool access: {str(e)}")
+
+
+@router.put("/access/{pool_key}", response_model=NodePoolAccessListResponse)
+async def update_pool_access(
+    pool_key: str,
+    body: NodePoolAccessUpdateRequest,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    """Replace team access list for a pool_key within the user's organization."""
+    try:
+        org_id = user["organization_id"]
+        # Validate team IDs belong to org
+        if body.team_ids:
+            valid_team_ids = {
+                t.id for t in db.query(Team).filter(Team.organization_id == org_id, Team.id.in_(body.team_ids)).all()
+            }
+            if set(body.team_ids) - valid_team_ids:
+                raise HTTPException(status_code=400, detail="One or more team IDs are invalid for this organization")
+
+        # Delete existing for this pool/org
+        db.query(NodePoolAccess).filter(
+            NodePoolAccess.organization_id == org_id,
+            NodePoolAccess.pool_key == pool_key,
+        ).delete(synchronize_session=False)
+        # Insert new
+        for tid in body.team_ids:
+            db.add(
+                NodePoolAccess(
+                    organization_id=org_id,
+                    pool_key=pool_key,
+                    team_id=tid,
+                )
+            )
+        db.commit()
+
+        # Return updated list
+        rows = (
+            db.query(NodePoolAccess)
+            .filter(
+                NodePoolAccess.organization_id == org_id,
+                NodePoolAccess.pool_key == pool_key,
+            )
+            .all()
+        )
+        team_ids = [r.team_id for r in rows]
+        teams = db.query(Team).filter(Team.id.in_(team_ids)).all() if team_ids else []
+        team_map = {t.id: t for t in teams}
+        entries = [
+            NodePoolAccessEntry(team_id=r.team_id, team_name=team_map.get(r.team_id).name if team_map.get(r.team_id) else "Unknown")
+            for r in rows
+        ]
+        return NodePoolAccessListResponse(pool_key=pool_key, team_access=entries)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update pool access: {str(e)}")
