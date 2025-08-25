@@ -112,7 +112,7 @@ async def get_user_or_api_key(
         if session_user:
             session_user["auth_method"] = "session"
             return session_user
-    except:
+    except Exception:
         pass
 
     raise HTTPException(status_code=401, detail="Invalid authentication credentials")
