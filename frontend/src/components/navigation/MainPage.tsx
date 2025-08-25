@@ -30,7 +30,6 @@ import { useFakeData } from "../../context/FakeDataContext";
 import MyClusterDetails from "../pages/MyClusterDetails";
 import ClusterDetails from "../pages/ClusterDetails";
 
-import SkyPilotClusterLauncher from "../SkyPilotClusterLauncher";
 import Pools from "../pages/Admin/Pools";
 import AzureConfigPage from "../pages/Admin/AzureConfigPage";
 import RunPodConfigPage from "../pages/Admin/RunPodConfigPage";
@@ -89,10 +88,6 @@ const Dashboard: React.FC = () => {
           <Route path="/quota" element={<MyQuota />} />
 
           <Route path="/reports" element={<Reports />} />
-          <Route
-            path="/skypilot-tester"
-            element={<SkyPilotClusterLauncher />}
-          />
           {/* Admin routes */}
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/api-keys" element={<APIKeys />} />
@@ -103,7 +98,10 @@ const Dashboard: React.FC = () => {
           <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
-          <Route path="admin/container-registry" element={<PrivateContainerRegistry />} />
+          <Route
+            path="admin/container-registry"
+            element={<PrivateContainerRegistry />}
+          />
           <Route path="admin/volumes" element={<Volumes />} />
           <Route path="admin/quota" element={<OrgQuota />} />
 
