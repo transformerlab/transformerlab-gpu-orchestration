@@ -100,12 +100,6 @@ async def get_cluster_jobs(
             cluster_name, user["id"], user["organization_id"]
         )
 
-        if actual_cluster_name in [
-            "tailscale-final",
-            "newest-cluster",
-            "new-test-clust",
-        ]:
-            return JobQueueResponse(jobs=[])
         job_records = get_cluster_job_queue(actual_cluster_name)
         jobs = []
         for record in job_records:
@@ -174,44 +168,6 @@ async def cancel_cluster_job(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
-
-
-@router.post("/{cluster_name}/{job_id}/setup-port-forward")
-async def setup_job_port_forward(
-    cluster_name: str,
-    job_id: int,
-    request: Request,
-    response: Response,
-    job_type: str = Form(...),
-    jupyter_port: Optional[int] = Form(None),
-    vscode_port: Optional[int] = Form(None),
-):
-    """Setup port forwarding for a specific job (typically called when job starts running)."""
-    try:
-        from ..skypilot.port_forwarding import setup_port_forwarding_async
-
-        # Setup port forwarding asynchronously
-        result = await setup_port_forwarding_async(
-            cluster_name, job_type, jupyter_port, vscode_port
-        )
-        if result:
-            return {
-                "job_id": job_id,
-                "cluster_name": cluster_name,
-                "message": f"Port forwarding setup successfully for job {job_id}",
-                "port_forward_info": result,
-            }
-        else:
-            print(f"Failed to setup port forwarding for job {job_id}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to setup port forwarding for job {job_id}",
-            )
-    except Exception as e:
-        print(f"Failed to setup port forwarding: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to setup port forwarding: {str(e)}"
-        )
 
 
 @router.post("/{cluster_name}/submit")
