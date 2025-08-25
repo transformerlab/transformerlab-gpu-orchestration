@@ -278,13 +278,3 @@ def save_ssh_node_info(data):
 
 
 # Import cluster platform functions from the new database-based implementation
-from .cluster_utils import (
-    get_cluster_platforms_path,
-    load_cluster_platforms,
-    save_cluster_platforms,
-    set_cluster_platform,
-    get_cluster_platform,
-    get_cluster_user_info,
-    get_cluster_template,
-    remove_cluster_platform,
-)

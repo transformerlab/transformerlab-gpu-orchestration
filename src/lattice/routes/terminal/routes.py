@@ -281,7 +281,7 @@ async def terminal_websocket(
             print(f"WebSocket closed: {error_message}")
             try:
                 await websocket.send_text(error_message)  # Send decoded error message
-            except:
+            except Exception:
                 pass  # Ignore errors when sending after close
             await websocket.close(code=1011, reason="SSH connection failed")
             return
@@ -316,7 +316,7 @@ async def terminal_websocket(
                     await websocket.send_text(
                         error_message
                     )  # Send decoded error message
-                except:
+                except Exception:
                     pass  # Ignore errors when sending after close
 
         # Start reader task
@@ -338,7 +338,7 @@ async def terminal_websocket(
                         await websocket.send_text(
                             error_message
                         )  # Send decoded error message
-                    except:
+                    except Exception:
                         pass  # Ignore errors when sending after close
         except WebSocketDisconnect:
             print(f"WebSocket disconnected: Session ID {session_id}")
@@ -358,7 +358,7 @@ async def terminal_websocket(
         print(f"WebSocket error: {error_message}")
         try:
             await websocket.send_text(error_message)  # Send decoded error message
-        except:
+        except Exception:
             pass  # Ignore errors when sending after close
         try:
             await websocket.close(code=1011, reason="Connection error")

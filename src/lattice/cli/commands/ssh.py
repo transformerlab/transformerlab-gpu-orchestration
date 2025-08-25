@@ -1,11 +1,8 @@
 import os
 from pathlib import Path
-import time
 from lattice.cli.util.auth import api_request
 from rich.console import Console
-from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich import box
 
 
 def ssh_command(console: Console, instance_name: str):

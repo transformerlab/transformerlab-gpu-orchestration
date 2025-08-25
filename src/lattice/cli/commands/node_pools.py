@@ -38,7 +38,6 @@ def list_node_pools_command(console: Console):
                 return getattr(obj, "__dict__", {"value": str(obj)})
 
     # Normalize response into a list of items
-    import json
 
     # The data looks like this
 

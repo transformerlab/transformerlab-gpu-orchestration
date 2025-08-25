@@ -38,7 +38,7 @@ from utils.cluster_utils import (
     get_actual_cluster_name,
     get_display_name_from_actual,
 )
-from utils.file_utils import (
+from utils.cluster_utils import (
     get_cluster_user_info,
 )
 from utils.cluster_resolver import (
@@ -81,7 +81,6 @@ async def launch_instance(
 ):
     try:
         file_mounts = None
-        workdir = None
         python_filename = None
         disk_size = None
 
