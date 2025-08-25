@@ -9,20 +9,18 @@ from .utils import (
     generate_cost_report,
 )
 from .port_forwarding import port_forward_manager
-from lattice.utils.file_utils import (
+from routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
+from utils.cluster_utils import (
+    get_display_name_from_actual,
+    get_cluster_platform_info as get_cluster_platform_data,
     get_cluster_platform,
     load_cluster_platforms,
     get_cluster_template,
 )
-from lattice.routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
-from lattice.utils.cluster_utils import (
-    get_display_name_from_actual,
-    get_cluster_platform_info as get_cluster_platform_data,
-)
-from lattice.utils.cluster_resolver import (
+from utils.cluster_resolver import (
     handle_cluster_name_param,
 )
-from ..auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import get_user_or_api_key
 
 
 router = APIRouter(prefix="/skypilot", dependencies=[Depends(get_user_or_api_key)])
