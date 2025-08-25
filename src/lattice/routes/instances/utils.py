@@ -353,39 +353,6 @@ def launch_cluster_with_skypilot(
 
         # Note: Platform information is now handled by the calling route before launch
 
-        # Setup port forwarding for interactive development modes
-        if launch_mode in ["jupyter", "vscode"]:
-            import threading
-            from ..skypilot.port_forwarding import setup_port_forwarding_async
-
-            def setup_port_forward():
-                import asyncio
-
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    result = loop.run_until_complete(
-                        setup_port_forwarding_async(
-                            cluster_name, launch_mode, jupyter_port, vscode_port
-                        )
-                    )
-                    if result:
-                        print(f"Port forwarding setup successfully: {result}")
-                    else:
-                        print(
-                            f"Port forwarding setup failed for cluster {cluster_name}"
-                        )
-                except Exception as e:
-                    print(f"Error in port forwarding setup: {e}")
-                finally:
-                    loop.close()
-
-            # Start port forwarding in background thread
-            port_forward_thread = threading.Thread(
-                target=setup_port_forward, daemon=True
-            )
-            port_forward_thread.start()
-
         return request_id
     except Exception as e:
         print(f"Error launching cluster: {e}")

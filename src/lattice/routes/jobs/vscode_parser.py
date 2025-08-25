@@ -27,7 +27,6 @@ def parse_vscode_tunnel_logs(logs: str) -> Tuple[Optional[str], Optional[str]]:
                 match = re.search(r"use code (\w+-\w+)", line)
                 if match:
                     auth_code = match.group(1)
-                    logger.info(f"Found VSCode auth code: {auth_code}")
 
             # Parse tunnel URL: "https://vscode.dev/tunnel/maclan/..."
             if "vscode.dev/tunnel" in line and not tunnel_url:
@@ -35,13 +34,11 @@ def parse_vscode_tunnel_logs(logs: str) -> Tuple[Optional[str], Optional[str]]:
                 match = re.search(r"(https://vscode\.dev/tunnel/[^\s]+)", line)
                 if match:
                     tunnel_url = match.group(1)
-                    logger.info(f"Found VSCode tunnel URL: {tunnel_url}")
                 else:
                     # If no full URL, look for just the tunnel path
                     match = re.search(r"(vscode\.dev/tunnel/[^\s]+)", line)
                     if match:
                         tunnel_url = f"https://{match.group(1)}"
-                        logger.info(f"Found VSCode tunnel URL: {tunnel_url}")
 
         return auth_code, tunnel_url
 

@@ -63,14 +63,6 @@ interface JobRecord {
   log_path: string;
 }
 
-interface PortForward {
-  cluster_name: string;
-  local_port: number;
-  remote_port: number;
-  service_type: string;
-  access_url: string;
-}
-
 const fetcher = (url: string) =>
   apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
@@ -89,15 +81,7 @@ const SkyPilotClusterStatus: React.FC = () => {
   const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
-  const [portForwards, setPortForwards] = useState<PortForward[]>([]);
-  const [portForwardsLoading, setPortForwardsLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState<{
-    [key: string]: boolean;
-  }>({});
-  const [jobsWithPortForward, setJobsWithPortForward] = useState<Set<string>>(
-    new Set()
-  );
-  const [portForwardLoading, setPortForwardLoading] = useState<{
     [key: string]: boolean;
   }>({});
   const { addNotification } = useNotification();
@@ -180,41 +164,8 @@ const SkyPilotClusterStatus: React.FC = () => {
     // Check for jobs that just started running and need port forwarding
     currentJobs.forEach((job: any) => {
       const jobKey = `${expandedCluster}_${job.job_id}`;
-
-      if (
-        job.status === "JobStatus.RUNNING" &&
-        job.job_name &&
-        !jobsWithPortForward.has(jobKey)
-      ) {
-        // Check if this is a Jupyter job
-        if (job.job_name.includes("-jupyter-")) {
-          const portMatch = job.job_name.match(/port(\d+)/);
-          const port = portMatch ? parseInt(portMatch[1]) : 8888;
-          console.log(
-            `Setting up port forwarding for Jupyter job ${job.job_id} on port ${port}`
-          );
-          setupJobPortForward(expandedCluster, job.job_id, "jupyter", port);
-          setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
-        }
-        // Check if this is a VSCode job
-        else if (job.job_name.includes("-vscode-")) {
-          const portMatch = job.job_name.match(/port(\d+)/);
-          const port = portMatch ? parseInt(portMatch[1]) : 8888;
-          console.log(
-            `Setting up port forwarding for VSCode job ${job.job_id} on port ${port}`
-          );
-          setupJobPortForward(
-            expandedCluster,
-            job.job_id,
-            "vscode",
-            undefined,
-            port
-          );
-          setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
-        }
-      }
     });
-  }, [expandedCluster, jobsData, jobsWithPortForward]);
+  }, [expandedCluster, jobsData]);
 
   // Fetch logs for a job
   const fetchJobLogs = async (clusterName: string, jobId: number) => {
@@ -271,64 +222,6 @@ const SkyPilotClusterStatus: React.FC = () => {
       });
     } finally {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
-    }
-  };
-
-  // Setup port forwarding for a job
-  const setupJobPortForward = async (
-    clusterName: string,
-    jobId: number,
-    jobType: string,
-    jupyterPort?: number,
-    vscodePort?: number
-  ) => {
-    console.log(
-      `Setting up port forwarding for ${jobType} job ${jobId} on cluster ${clusterName}`
-    );
-    try {
-      const formData = new FormData();
-      formData.append("job_id", jobId.toString());
-      formData.append("job_type", jobType);
-      if (jupyterPort) {
-        formData.append("jupyter_port", jupyterPort.toString());
-      }
-      if (vscodePort) {
-        formData.append("vscode_port", vscodePort.toString());
-      }
-
-      const response = await apiFetch(
-        buildApiUrl(`skypilot/port-forward/${clusterName}/setup`),
-        {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Failed to setup port forwarding for job:", jobId);
-        console.error("Error details:", errorData);
-        throw new Error(
-          errorData.detail || "Failed to setup port forwarding for job"
-        );
-      }
-
-      const data = await response.json();
-      console.log("Port forwarding setup successfully:", data);
-      addNotification({
-        type: "success",
-        message: "Port forwarding setup successfully",
-      });
-
-      // Refresh port forwards list
-      fetchPortForwards();
-    } catch (err) {
-      console.error("Error setting up port forwarding for job:", err);
-      addNotification({
-        type: "danger",
-        message: "Error setting up port forwarding",
-      });
     }
   };
 
@@ -397,13 +290,10 @@ const SkyPilotClusterStatus: React.FC = () => {
   const handleStopCluster = async (clusterName: string) => {
     try {
       setOperationLoading((prev) => ({ ...prev, [clusterName]: true }));
-      const response = await apiFetch(
-        buildApiUrl(`instances/stop`),
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl(`instances/stop`), {
+        method: "POST",
+        credentials: "include",
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -429,13 +319,10 @@ const SkyPilotClusterStatus: React.FC = () => {
   const handleDownCluster = async (clusterName: string) => {
     try {
       setOperationLoading((prev) => ({ ...prev, [clusterName]: true }));
-      const response = await apiFetch(
-        buildApiUrl(`instances/down`),
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl(`instances/down`), {
+        method: "POST",
+        credentials: "include",
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -472,49 +359,6 @@ const SkyPilotClusterStatus: React.FC = () => {
   const handleToggleExpandCluster = (clusterName: string) => {
     setExpandedCluster((prev) => (prev === clusterName ? null : clusterName));
   };
-
-  // Port forwarding functions
-  const fetchPortForwards = async () => {
-    try {
-      setPortForwardsLoading(true);
-      const response = await apiFetch(buildApiUrl("skypilot/port-forwards"), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPortForwards(data.port_forwards || []);
-      }
-    } catch (err) {
-      console.error("Error fetching port forwards:", err);
-    } finally {
-      setPortForwardsLoading(false);
-    }
-  };
-
-  const stopPortForward = async (clusterName: string) => {
-    try {
-      const response = await apiFetch(
-        buildApiUrl(`skypilot/port-forwards/${clusterName}/stop`),
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-      if (response.ok) {
-        // Refresh port forwards
-        fetchPortForwards();
-      }
-    } catch (err) {
-      console.error("Error stopping port forward:", err);
-    }
-  };
-
-  // Fetch port forwards on component mount and periodically
-  useEffect(() => {
-    fetchPortForwards();
-    const interval = setInterval(fetchPortForwards, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <Box>
@@ -912,50 +756,6 @@ const SkyPilotClusterStatus: React.FC = () => {
                                                 Cancel
                                               </Button>
                                             )}
-                                            {/* Show port forward button for Jupyter jobs */}
-                                            {job.status ===
-                                              "JobStatus.RUNNING" &&
-                                              job.job_name &&
-                                              (job.job_name.includes(
-                                                "jupyter"
-                                              ) ||
-                                                job.job_name.includes(
-                                                  "vscode"
-                                                )) && (
-                                                <Button
-                                                  size="sm"
-                                                  variant="outlined"
-                                                  color="primary"
-                                                  onClick={() => {
-                                                    const portMatch =
-                                                      job.job_name.match(
-                                                        /port(\d+)/
-                                                      );
-                                                    const port = portMatch
-                                                      ? parseInt(portMatch[1])
-                                                      : 8888;
-                                                    const jobType =
-                                                      job.job_name.includes(
-                                                        "jupyter"
-                                                      )
-                                                        ? "jupyter"
-                                                        : "vscode";
-                                                    setupJobPortForward(
-                                                      cluster.cluster_name,
-                                                      job.job_id,
-                                                      jobType,
-                                                      jobType === "jupyter"
-                                                        ? port
-                                                        : undefined,
-                                                      jobType === "vscode"
-                                                        ? port
-                                                        : undefined
-                                                    );
-                                                  }}
-                                                >
-                                                  Setup Port Forward
-                                                </Button>
-                                              )}
                                           </Box>
                                           {selectedJobId === job.job_id && (
                                             <Box sx={{ mt: 2 }}>
@@ -1006,86 +806,6 @@ const SkyPilotClusterStatus: React.FC = () => {
           </Table>
         )}
       </Card>
-
-      {/* Port Forwarding Section */}
-      {portForwards.length > 0 && (
-        <Card sx={{ mt: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            <ExternalLink size={20} />
-            <Typography level="h4">Active Port Forwards</Typography>
-            {portForwardsLoading && <CircularProgress size="sm" />}
-          </Box>
-          <Table>
-            <thead>
-              <tr>
-                <th>Cluster</th>
-                <th>Service</th>
-                <th>Local Port</th>
-                <th>Remote Port</th>
-                <th>Access URL</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {portForwards.map((forward, index) => (
-                <tr key={index}>
-                  <td>
-                    <Typography level="body-sm">
-                      {forward.cluster_name}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Chip
-                      size="sm"
-                      color={
-                        forward.service_type === "jupyter"
-                          ? "primary"
-                          : "success"
-                      }
-                      variant="soft"
-                    >
-                      {forward.service_type === "jupyter"
-                        ? "Jupyter"
-                        : "VSCode"}
-                    </Chip>
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {forward.local_port}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {forward.remote_port}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="outlined"
-                      startDecorator={<ExternalLink size={14} />}
-                      onClick={() => window.open(forward.access_url, "_blank")}
-                    >
-                      Open
-                    </Button>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="outlined"
-                      color="danger"
-                      startDecorator={<X size={14} />}
-                      onClick={() => stopPortForward(forward.cluster_name)}
-                    >
-                      Stop
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
 
       {/* SubmitJobModal rendered at root level */}
       <SubmitJobModal

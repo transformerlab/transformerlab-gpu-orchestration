@@ -120,12 +120,6 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     [key: string]: boolean;
   }>({});
   const [error, setError] = useState<string | null>(null);
-  const [jobsWithPortForward, setJobsWithPortForward] = useState<Set<string>>(
-    new Set()
-  );
-  const [portForwardLoading, setPortForwardLoading] = useState<{
-    [key: string]: boolean;
-  }>({});
 
   // VSCode modal state
   const [vscodeModal, setVscodeModal] = useState<{
@@ -248,48 +242,6 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
               const data = await response.json();
               const currentJobs = data.jobs || [];
 
-              // Check for jobs that just started running and need port forwarding
-              currentJobs.forEach((job: any) => {
-                const jobKey = `${cluster.cluster_name}_${job.job_id}`;
-
-                if (
-                  job.status === "JobStatus.RUNNING" &&
-                  job.job_name &&
-                  !jobsWithPortForward.has(jobKey)
-                ) {
-                  // Check if this is a Jupyter job (multiple patterns)
-                  if (
-                    job.job_name.toLowerCase().includes("jupyter") ||
-                    job.job_name.startsWith("jupyter")
-                  ) {
-                    const portMatch = job.job_name.match(/port(\d+)/);
-                    const port = portMatch ? parseInt(portMatch[1]) : 8888;
-                    console.log(
-                      `Setting up port forwarding for Jupyter job ${job.job_id} on port ${port}`
-                    );
-                    setupJobPortForward(
-                      cluster.cluster_name,
-                      job.job_id,
-                      "jupyter",
-                      port
-                    );
-                    setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
-                  }
-                  // Check if this is a VSCode job
-                  else if (
-                    job.job_name.includes("-vscode-") ||
-                    job.job_name.toLowerCase().includes("vscode") ||
-                    job.job_name.startsWith("vscode")
-                  ) {
-                    console.log(
-                      `VSCode tunnel job ${job.job_id} is running - will show connection info`
-                    );
-                    // Don't set up port forwarding for VSCode tunnels
-                    // Instead, we'll show connection info from job logs
-                  }
-                }
-              });
-
               return {
                 ...cluster,
                 jobs: currentJobs,
@@ -310,7 +262,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     }, 5000); // Check every 5 seconds
 
     return () => clearInterval(interval);
-  }, [clustersWithJobs, jobsWithPortForward]);
+  }, [clustersWithJobs]);
 
   const fetchJobLogs = async (clusterName: string, jobId: number) => {
     setLogsLoading(true);
@@ -376,59 +328,6 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       setError(err instanceof Error ? err.message : "Failed to cancel job");
     } finally {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: false }));
-    }
-  };
-
-  // Setup port forwarding for a job
-  const setupJobPortForward = async (
-    clusterName: string,
-    jobId: number,
-    jobType: string,
-    jupyterPort?: number,
-    vscodePort?: number
-  ) => {
-    const jobKey = `${clusterName}_${jobId}`;
-    console.log(
-      `Setting up port forwarding for ${jobType} job ${jobId} on cluster ${clusterName}`
-    );
-
-    setPortForwardLoading((prev) => ({ ...prev, [jobKey]: true }));
-
-    try {
-      const formData = new FormData();
-      formData.append("job_type", jobType);
-      if (jupyterPort) formData.append("jupyter_port", jupyterPort.toString());
-      if (vscodePort) formData.append("vscode_port", vscodePort.toString());
-
-      const response = await apiFetch(
-        buildApiUrl(`jobs/${clusterName}/${jobId}/setup-port-forward`),
-        {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Port forwarding setup successfully:", data);
-        setError(null);
-        // Mark this job as having port forwarding set up
-        setJobsWithPortForward((prev) => new Set(prev).add(jobKey));
-      } else {
-        console.error("Failed to setup port forwarding for job:", jobId);
-        const errorData = await response.json();
-        setError(
-          `Failed to setup port forwarding: ${
-            errorData.detail || "Unknown error"
-          }`
-        );
-      }
-    } catch (err) {
-      console.error("Error setting up port forwarding for job:", err);
-      setError("Error setting up port forwarding");
-    } finally {
-      setPortForwardLoading((prev) => ({ ...prev, [jobKey]: false }));
     }
   };
 
@@ -637,58 +536,24 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                                   .includes("jupyter") ||
                                 job.job_name.startsWith("jupyter")
                               ) {
-                                const jobKey = `${cluster.cluster_name}_${job.job_id}`;
-                                const hasPortForward =
-                                  jobsWithPortForward.has(jobKey);
-                                const isLoading = portForwardLoading[jobKey];
-
-                                if (hasPortForward) {
-                                  const portMatch =
-                                    job.job_name.match(/port(\d+)/);
-                                  const port = portMatch
-                                    ? parseInt(portMatch[1])
-                                    : 8888;
-                                  const localhostUrl = `http://localhost:${port}`;
-
-                                  return (
-                                    <Button
-                                      size="sm"
-                                      variant="soft"
-                                      color="success"
-                                      onClick={() => {
-                                        window.open(localhostUrl, "_blank");
-                                      }}
-                                    >
-                                      ✅ Jupyter Access Active
-                                    </Button>
-                                  );
-                                } else {
-                                  return (
-                                    <Button
-                                      size="sm"
-                                      variant="outlined"
-                                      color="primary"
-                                      loading={isLoading}
-                                      disabled={isLoading}
-                                      onClick={() => {
-                                        const portMatch =
-                                          job.job_name.match(/port(\d+)/);
-                                        const port = portMatch
-                                          ? parseInt(portMatch[1])
-                                          : 8888;
-                                        setupJobPortForward(
-                                          cluster.cluster_name,
-                                          job.job_id,
-                                          "jupyter",
-                                          port,
-                                          undefined
-                                        );
-                                      }}
-                                    >
-                                      Access on Localhost
-                                    </Button>
-                                  );
-                                }
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={() => {
+                                      const portMatch =
+                                        job.job_name.match(/port(\d+)/);
+                                      const port = portMatch
+                                        ? parseInt(portMatch[1])
+                                        : 8888;
+                                      const localhostUrl = `http://localhost:${port}`;
+                                      window.open(localhostUrl, "_blank");
+                                    }}
+                                  >
+                                    Access Jupyter
+                                  </Button>
+                                );
                               }
 
                               // Check for VSCode jobs
