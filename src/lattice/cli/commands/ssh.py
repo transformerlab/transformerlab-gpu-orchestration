@@ -35,7 +35,7 @@ def ssh_command_listing(console: Console):
         resp = api_request("GET", "/instances/status", auth_needed=True)
 
     resp_json = resp.json()
-    clusters = resp_json.get("clusters", [])
+    clusters = resp_json.get("node-pools/ssh-node-pools", [])
     if not clusters:
         console.print("[yellow]No instances found.[/yellow]")
         return

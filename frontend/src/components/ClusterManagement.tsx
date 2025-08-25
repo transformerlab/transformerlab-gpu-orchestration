@@ -43,9 +43,12 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const fetchClusters = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(buildApiUrl("clusters"), {
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl("node-pools/ssh-node-pools"),
+        {
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setClusters(data.clusters);
@@ -62,9 +65,12 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
   const fetchClusterDetails = async (clusterName: string) => {
     try {
       setLoading(true);
-      const response = await apiFetch(buildApiUrl(`clusters/${clusterName}`), {
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl(`node-pools/ssh-node-pools/${clusterName}`),
+        {
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setSelectedCluster(data);

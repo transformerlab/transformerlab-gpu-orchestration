@@ -58,7 +58,7 @@ const Nodes: React.FC = () => {
 
   // Fetch comprehensive node pools data from the new endpoint
   const { data: nodePoolsData, isLoading } = useSWR(
-    buildApiUrl("node-pools"),
+    buildApiUrl("node-pools/"),
     fetcher,
     {
       refreshInterval: 2000,

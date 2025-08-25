@@ -49,9 +49,12 @@ const IdentityFileManager: React.FC = () => {
   const fetchIdentityFiles = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(buildApiUrl("clusters/identity-files"), {
-        credentials: "include",
-      });
+      const response = await apiFetch(
+        buildApiUrl("node-pools/ssh-node-pools/identity-files"),
+        {
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setIdentityFiles(data.identity_files);
@@ -74,11 +77,14 @@ const IdentityFileManager: React.FC = () => {
       formData.append("display_name", newDisplayName.trim());
       formData.append("identity_file", newIdentityFile);
 
-      const response = await apiFetch(buildApiUrl("clusters/identity-files"), {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const response = await apiFetch(
+        buildApiUrl("node-pools/ssh-node-pools/identity-files"),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
 
       if (response.ok) {
         setShowUploadModal(false);
@@ -107,7 +113,7 @@ const IdentityFileManager: React.FC = () => {
       setLoading(true);
       const encodedPath = encodeURIComponent(filePath);
       const response = await apiFetch(
-        buildApiUrl(`clusters/identity-files/${encodedPath}`),
+        buildApiUrl(`node-pools/ssh-node-pools/identity-files/${encodedPath}`),
         {
           method: "DELETE",
           credentials: "include",
@@ -137,7 +143,7 @@ const IdentityFileManager: React.FC = () => {
 
       const encodedPath = encodeURIComponent(selectedFile.path);
       const response = await apiFetch(
-        buildApiUrl(`clusters/identity-files/${encodedPath}`),
+        buildApiUrl(`node-pools/ssh-node-pools/identity-files/${encodedPath}`),
         {
           method: "PUT",
           credentials: "include",
