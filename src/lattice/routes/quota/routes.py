@@ -402,7 +402,7 @@ async def get_organization_user_quotas(
                         effective_quota_limit=effective_quota_limit,
                     )
                 )
-            except Exception as e:
+            except Exception:
                 # If we can't get user info, still include the quota
                 users.append(
                     UserQuotaResponse(

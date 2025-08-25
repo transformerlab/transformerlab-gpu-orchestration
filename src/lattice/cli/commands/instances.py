@@ -1,5 +1,4 @@
 import time
-import os
 from lattice.cli.util.auth import api_request
 
 from rich.console import Console

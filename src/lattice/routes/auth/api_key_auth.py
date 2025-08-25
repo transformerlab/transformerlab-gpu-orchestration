@@ -5,8 +5,7 @@ from sqlalchemy import and_
 from config import SessionLocal
 from db_models import APIKey
 from .utils import get_current_user
-from typing import Optional, Union
-from datetime import datetime
+from typing import Optional
 import json
 from .provider.work_os import provider as auth_provider
 
@@ -45,7 +44,7 @@ async def get_api_key_user(
         # Find the API key in the database
         api_key_record = (
             db.query(APIKey)
-            .filter(and_(APIKey.key_hash == key_hash, APIKey.is_active == True))
+            .filter(and_(APIKey.key_hash == key_hash, APIKey.is_active == True))  # noqa: E712
             .first()
         )
 
@@ -113,7 +112,7 @@ async def get_user_or_api_key(
         if session_user:
             session_user["auth_method"] = "session"
             return session_user
-    except:
+    except Exception:
         pass
 
     raise HTTPException(status_code=401, detail="Invalid authentication credentials")

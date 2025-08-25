@@ -368,7 +368,6 @@ def map_runpod_display_to_instance_type(display_string: str) -> str:
     """
     try:
         from sky.catalog.common import read_catalog
-        import pandas as pd
 
         # Read the RunPod catalog
         df = read_catalog("runpod/vms.csv")

@@ -453,7 +453,7 @@ def create_azure_sky_yaml(
     idle_minutes_to_autostop: int = None,
 ):
     """Create a SkyPilot YAML configuration for Azure cluster"""
-    config = load_azure_config()
+    load_azure_config()
 
     yaml_content = f"""# SkyPilot YAML for Azure cluster
 name: {cluster_name}

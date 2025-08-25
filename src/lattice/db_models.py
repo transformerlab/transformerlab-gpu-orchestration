@@ -15,8 +15,7 @@ from sqlalchemy.sql import func
 from lattice.config import Base
 import secrets
 import hashlib
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 
 class APIKey(Base):

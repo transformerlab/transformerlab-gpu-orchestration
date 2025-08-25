@@ -4,19 +4,6 @@ from fastapi.staticfiles import StaticFiles
 import os
 from config import AUTH_REDIRECT_URI
 
-
-# Create main app
-app = FastAPI(title="Lattice", version="1.0.0")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Import and include routers
 from routes.auth.routes import router as auth_router
 from routes.auth.cli import router as auth_cli_router
@@ -35,6 +22,19 @@ from routes.quota.routes import router as quota_router
 from routes.storage_buckets.routes import router as storage_buckets_router
 from routes.ssh_config.routes import router as ssh_config_router
 from routes.container_registries.routes import router as container_registries_router
+
+
+# Create main app
+app = FastAPI(title="Lattice", version="1.0.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 api_v1_prefix = "/api/v1"

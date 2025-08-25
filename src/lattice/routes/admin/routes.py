@@ -83,7 +83,7 @@ async def list_all_organizations(
                         object="organization",
                     )
                 )
-            except Exception as org_error:
+            except Exception:
                 pass
         response_data = {
             "organizations": org_list,
@@ -110,12 +110,12 @@ async def create_organization(
             if not user.get("id"):
                 raise Exception("User ID is missing")
 
-            membership = auth_provider.create_organization_membership(
+            auth_provider.create_organization_membership(
                 organization_id=organization.id,
                 user_id=user.get("id"),
                 role_slug="admin",
             )
-        except Exception as membership_error:
+        except Exception:
             pass
 
         response = OrganizationResponse(

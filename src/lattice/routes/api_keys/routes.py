@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from lattice.routes.auth.utils import get_current_user
 from typing import List, Optional
 from pydantic import BaseModel

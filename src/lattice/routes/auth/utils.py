@@ -1,4 +1,3 @@
-import datetime
 from fastapi import HTTPException, Request, Response, Depends, status
 from config import AUTH_COOKIE_PASSWORD
 from .provider.work_os import provider as auth_provider

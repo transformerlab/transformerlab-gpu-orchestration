@@ -1,13 +1,8 @@
-import os
-import json
-import subprocess
-from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
 from werkzeug.utils import secure_filename
 
-import asyncio
 from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
 
 
@@ -76,7 +71,7 @@ def launch_cluster_with_skypilot(
             # Validate that all identity files for nodes in the node pool still exist
             missing_files = validate_node_pool_identity_files(validation_name)
             if missing_files:
-                files_list = "\n".join(f"  - {file}" for file in missing_files)
+                # files_list = "\n".join(f"  - {file}" for file in missing_files)
                 raise HTTPException(
                     status_code=400,
                     detail=(
