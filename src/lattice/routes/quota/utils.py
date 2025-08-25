@@ -171,7 +171,7 @@ def get_user_quota_limit(
         .filter(
             OrganizationQuota.organization_id == organization_id,
             OrganizationQuota.user_id == user_id,
-            OrganizationQuota.custom_quota == True,
+            OrganizationQuota.custom_quota == True,  # noqa: E712
         )
         .first()
     )

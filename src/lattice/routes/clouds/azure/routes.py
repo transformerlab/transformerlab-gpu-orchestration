@@ -262,7 +262,7 @@ async def delete_azure_config_route(
 ):
     """Delete an Azure configuration"""
     try:
-        result = delete_azure_config(config_key)
+        delete_azure_config(config_key)
         return {"message": f"Azure config '{config_key}' deleted successfully"}
     except Exception as e:
         raise HTTPException(

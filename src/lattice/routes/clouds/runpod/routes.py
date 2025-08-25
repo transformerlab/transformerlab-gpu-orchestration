@@ -241,7 +241,7 @@ async def delete_runpod_config_route(
 ):
     """Delete a RunPod configuration"""
     try:
-        result = delete_runpod_config(config_key)
+        delete_runpod_config(config_key)
         return {"message": f"RunPod config '{config_key}' deleted successfully"}
     except Exception as e:
         raise HTTPException(

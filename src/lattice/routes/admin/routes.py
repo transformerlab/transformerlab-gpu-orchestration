@@ -110,7 +110,7 @@ async def create_organization(
             if not user.get("id"):
                 raise Exception("User ID is missing")
 
-            membership = auth_provider.create_organization_membership(
+            auth_provider.create_organization_membership(
                 organization_id=organization.id,
                 user_id=user.get("id"),
                 role_slug="admin",

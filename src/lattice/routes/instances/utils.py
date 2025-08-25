@@ -71,7 +71,7 @@ def launch_cluster_with_skypilot(
             # Validate that all identity files for nodes in the node pool still exist
             missing_files = validate_node_pool_identity_files(validation_name)
             if missing_files:
-                files_list = "\n".join(f"  - {file}" for file in missing_files)
+                # files_list = "\n".join(f"  - {file}" for file in missing_files)
                 raise HTTPException(
                     status_code=400,
                     detail=(

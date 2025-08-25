@@ -40,7 +40,7 @@ async def list_storage_buckets(
             db.query(StorageBucket)
             .filter(
                 StorageBucket.organization_id == organization_id,
-                StorageBucket.is_active is True,
+                StorageBucket.is_active == True,  # noqa: E712
             )
             .offset(skip)
             .limit(limit)
@@ -51,7 +51,7 @@ async def list_storage_buckets(
             db.query(StorageBucket)
             .filter(
                 StorageBucket.organization_id == organization_id,
-                StorageBucket.is_active is True,
+                StorageBucket.is_active == True,  # noqa: E712
             )
             .count()
         )
@@ -189,7 +189,7 @@ async def get_available_storage_buckets(
             db.query(StorageBucket)
             .filter(
                 StorageBucket.organization_id == organization_id,
-                StorageBucket.is_active is True,
+                StorageBucket.is_active == True,  # noqa: E712
             )
             .all()
         )
@@ -239,7 +239,7 @@ async def get_storage_bucket(
             .filter(
                 StorageBucket.id == bucket_id,
                 StorageBucket.organization_id == organization_id,
-                StorageBucket.is_active is True,
+                StorageBucket.is_active == True,  # noqa: E712
             )
             .first()
         )
@@ -287,7 +287,7 @@ async def update_storage_bucket(
             .filter(
                 StorageBucket.id == bucket_id,
                 StorageBucket.organization_id == organization_id,
-                StorageBucket.is_active is True,
+                StorageBucket.is_active == True,  # noqa: E712
             )
             .first()
         )
@@ -380,7 +380,7 @@ async def delete_storage_bucket(
             .filter(
                 StorageBucket.id == bucket_id,
                 StorageBucket.organization_id == organization_id,
-                StorageBucket.is_active is True,
+                StorageBucket.is_active == True,  # noqa: E712
             )
             .first()
         )

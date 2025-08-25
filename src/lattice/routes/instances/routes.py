@@ -81,7 +81,6 @@ async def launch_instance(
 ):
     try:
         file_mounts = None
-        workdir = None
         python_filename = None
         disk_size = None
 

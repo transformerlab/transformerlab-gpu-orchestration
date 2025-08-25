@@ -44,7 +44,7 @@ async def get_api_key_user(
         # Find the API key in the database
         api_key_record = (
             db.query(APIKey)
-            .filter(and_(APIKey.key_hash == key_hash, APIKey.is_active == True))
+            .filter(and_(APIKey.key_hash == key_hash, APIKey.is_active == True))  # noqa: E712
             .first()
         )
 

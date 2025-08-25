@@ -25,7 +25,7 @@ async def fetch_and_parse_gpu_resources(cluster_name: str):
     # code, out, err = await run_cmd(["sky", "ssh", "up", "--infra", cluster_name])
     request_id = sky.client.sdk.ssh_up(infra=cluster_name)
     try:
-        result = sky.get(request_id)
+        sky.get(request_id)
     except Exception as e:
         print(f"Error bringing up SSH cluster: {e}")
         raise Exception(f"Failed to bring up SSH cluster: {e}")
