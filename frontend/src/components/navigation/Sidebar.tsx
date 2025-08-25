@@ -152,7 +152,7 @@ export default function Sidebar() {
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
 
   const { data: instanceData } = useSWR(
-    buildApiUrl("skypilot/status"),
+    buildApiUrl("instances/status"),
     instanceFetcher,
     { refreshInterval: 5000 } // Refresh every 5 seconds
   );

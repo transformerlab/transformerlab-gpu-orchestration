@@ -1,22 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from lattice.routes.auth.api_key_auth import get_user_or_api_key
-from lattice.routes.skypilot.utils import get_skypilot_status
-from lattice.routes.clouds.runpod.utils import (
+from routes.auth.api_key_auth import get_user_or_api_key
+from routes.instances.utils import get_skypilot_status
+from routes.clouds.runpod.utils import (
     load_runpod_config,
     get_current_runpod_config,
 )
-from lattice.routes.clouds.azure.utils import (
+from routes.clouds.azure.utils import (
     load_azure_config,
     get_current_azure_config,
 )
-from lattice.utils.file_utils import (
+from utils.file_utils import (
     load_ssh_node_info,
 )
-from lattice.utils.cluster_utils import (
+from utils.cluster_utils import (
     get_cluster_platform_info,
     get_display_name_from_actual,
 )
-from lattice.routes.clusters.utils import (
+from routes.clusters.utils import (
     list_cluster_names_from_db,
     get_cluster_config_from_db,
 )
@@ -36,7 +36,7 @@ async def get_node_pools(
     - RunPod instances from /clouds/runpod/instances
     - Azure instances from /clouds/azure/instances
     - SSH node info from /skypilot/ssh-node-info
-    - SkyPilot status from /skypilot/status
+    - SkyPilot status from /instances/status
     """
     try:
         # Initialize response structure

@@ -143,7 +143,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
         ...prev,
         [`stop_${clusterName}`]: true,
       }));
-      const response = await apiFetch(buildApiUrl("skypilot/stop"), {
+      const response = await apiFetch(buildApiUrl("instances/stop"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -172,7 +172,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
         ...prev,
         [`down_${clusterName}`]: true,
       }));
-      const response = await apiFetch(buildApiUrl("skypilot/down"), {
+      const response = await apiFetch(buildApiUrl("instances/down"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

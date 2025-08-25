@@ -77,7 +77,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
         formData.append("zone", zone);
       }
 
-      const response = await apiFetch(buildApiUrl("skypilot/launch"), {
+      const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
         credentials: "include",
         body: formData,

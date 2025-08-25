@@ -140,7 +140,7 @@ const JobsPage: React.FC = () => {
   const skypilotFetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
   const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
-    buildApiUrl("skypilot/status"),
+    buildApiUrl("instances/status"),
     skypilotFetcher,
     { refreshInterval: 2000 }
   );
