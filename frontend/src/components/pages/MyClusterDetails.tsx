@@ -56,7 +56,13 @@ import {
   X,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import { buildApiUrl, apiFetch, jobApi } from "../../utils/api";
+import {
+  buildApiUrl,
+  apiFetch,
+  jobApi,
+  clusterInfoApi,
+  ClusterInfoResponse,
+} from "../../utils/api";
 import useSWR from "swr";
 import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
@@ -116,9 +122,6 @@ interface ClusterData {
 const MyClusterDetails: React.FC = () => {
   const { clusterName } = useParams<{ clusterName: string }>();
   const navigate = useNavigate();
-  const [clusterTypeInfo, setClusterTypeInfo] =
-    useState<ClusterTypeInfo | null>(null);
-  const [sshNodeInfo, setSshNodeInfo] = useState<SSHNodeInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState<{
@@ -165,95 +168,36 @@ const MyClusterDetails: React.FC = () => {
     jobId: null,
   });
 
-  // Fetch cluster status data
-  const { data: statusData, isLoading: statusLoading } = useSWR(
-    clusterName ? buildApiUrl("instances/status") : null,
-    (url) =>
-      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 5000 }
+  // Fetch consolidated cluster info data
+  const {
+    data: clusterInfoData,
+    isLoading: clusterInfoLoading,
+    mutate: refreshClusterInfo,
+  } = useSWR(
+    clusterName ? `cluster-info-${clusterName}` : null,
+    () => clusterInfoApi.getClusterInfo(clusterName!),
+    {
+      refreshInterval: 5000,
+      onError: (err) => {
+        console.error("Error fetching cluster info:", err);
+        setError("Failed to fetch cluster information");
+      },
+    }
   );
 
-  // Get current cluster data
-  const clusterData = statusData?.clusters?.find(
-    (c: ClusterData) => c.cluster_name === clusterName
-  );
-
-  // Fetch jobs for this cluster
-  const { data: jobsData, isLoading: jobsLoading } = useSWR(
-    clusterName ? buildApiUrl(`jobs/${clusterName}`) : null,
-    (url) =>
-      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 10000 }
-  );
-
-  const jobs = jobsData?.jobs || [];
-
-  // Fetch cluster platform information
-  const { data: clusterPlatforms } = useSWR(
-            clusterName ? buildApiUrl("instances/cluster-platforms") : null,
-    (url: string) =>
-      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 5000 }
-  );
-
-  // Fetch cluster template information
-  const { data: clusterTemplateData } = useSWR(
-    clusterName
-              ? buildApiUrl(`instances/cluster-template/${clusterName}`)
-      : null,
-    (url: string) =>
-      apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 5000 }
-  );
-
-  const platforms = clusterPlatforms?.platforms || {};
-  const clusterPlatform = platforms[clusterName || ""] || "unknown";
-  const clusterTemplate = clusterTemplateData?.template;
+  // Extract data from the consolidated response
+  const clusterData = clusterInfoData?.cluster;
+  const clusterTypeInfo = clusterInfoData?.cluster_type;
+  const sshNodeInfo = clusterInfoData?.ssh_node_info;
+  const jobs = clusterInfoData?.jobs || [];
+  const clusterPlatform = clusterInfoData?.platform?.platform || "unknown";
+  const clusterTemplate = clusterInfoData?.template;
 
   useEffect(() => {
     if (clusterName) {
-      fetchClusterInfo();
+      refreshClusterInfo();
     }
-  }, [clusterName]);
-
-  const fetchClusterInfo = async () => {
-    if (!clusterName) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Fetch cluster type information
-      const typeResponse = await apiFetch(
-        buildApiUrl(`instances/cluster-type/${clusterName}`),
-        { credentials: "include" }
-      );
-
-      let typeData = null;
-      if (typeResponse.ok) {
-        typeData = await typeResponse.json();
-        setClusterTypeInfo(typeData);
-      }
-
-      // If it's an SSH cluster, fetch SSH node information
-      if (typeData?.is_ssh) {
-        const sshResponse = await apiFetch(
-          buildApiUrl("clouds/ssh/ssh-node-info"),
-          { credentials: "include" }
-        );
-
-        if (sshResponse.ok) {
-          const sshData = await sshResponse.json();
-          setSshNodeInfo(sshData);
-        }
-      }
-    } catch (err) {
-      setError("Failed to fetch cluster information");
-      console.error("Error fetching cluster info:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [clusterName, refreshClusterInfo]);
 
   const handleDownCluster = async () => {
     if (!clusterName) return;
@@ -276,6 +220,9 @@ const MyClusterDetails: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Failed to terminate cluster:", errorData.detail);
+      } else {
+        // Refresh cluster info after successful operation
+        refreshClusterInfo();
       }
     } catch (err) {
       console.error("Error downing cluster:", err);
@@ -318,6 +265,9 @@ const MyClusterDetails: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Failed to stop cluster:", errorData.detail);
+      } else {
+        // Refresh cluster info after successful operation
+        refreshClusterInfo();
       }
     } catch (err) {
       console.error("Error stopping cluster:", err);
@@ -404,7 +354,8 @@ const MyClusterDetails: React.FC = () => {
       await jobApi.cancelJob(clusterName, jobId);
       console.log("Job cancelled successfully");
 
-      // The jobs will be refreshed automatically by the SWR hook
+      // Refresh cluster info to get updated job status
+      refreshClusterInfo();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel job");
     } finally {
@@ -515,7 +466,7 @@ const MyClusterDetails: React.FC = () => {
     );
   }
 
-  if (statusLoading || loading) {
+  if (clusterInfoLoading || loading) {
     return (
       <PageWithTitle
         title={clusterName}
@@ -676,7 +627,7 @@ const MyClusterDetails: React.FC = () => {
                   <Typography level="body-sm" color="neutral">
                     Status:
                   </Typography>
-                  <InstanceStatusChip status={clusterData.status} />
+                  <InstanceStatusChip status={clusterData.status as any} />
                 </Box>
 
                 {clusterData.resources_str && (
@@ -749,7 +700,7 @@ const MyClusterDetails: React.FC = () => {
               SSH Nodes
             </Typography>
             <List size="sm">
-              {Object.entries(sshNodeInfo).map(([ip, info]) => (
+              {Object.entries(sshNodeInfo as SSHNodeInfo).map(([ip, info]) => (
                 <ListItem key={ip}>
                   <ListItemContent>
                     <Box
@@ -767,7 +718,7 @@ const MyClusterDetails: React.FC = () => {
                           <Chip size="sm" variant="soft" color="success">
                             {info.gpu_resources.node_gpus
                               .map(
-                                (gpu) =>
+                                (gpu: any) =>
                                   `${gpu.gpu_count || 1}x ${
                                     gpu.gpu_type || "GPU"
                                   }`
@@ -797,7 +748,7 @@ const MyClusterDetails: React.FC = () => {
             Jobs ({jobs.length})
           </Typography>
 
-          {jobsLoading ? (
+          {clusterInfoLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
             </Box>

@@ -276,7 +276,6 @@ async def get_node_pools(
                 for cluster_name in list_cluster_names_from_db():
                     cfg = get_cluster_config_from_db(cluster_name)
                     hosts_count = len(cfg.get("hosts", []))
-                    print(f"cluster_name: {hosts_count}")
 
                     # Find active clusters that use this node pool as platform
                     active_clusters = []

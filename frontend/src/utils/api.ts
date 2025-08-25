@@ -8,6 +8,66 @@ export const buildApiUrl = (endpoint: string): string => {
   return `${API_BASE_URL}/${cleanEndpoint}`;
 };
 
+// Cluster Info Types
+export interface ClusterInfo {
+  cluster_name: string;
+  status: string;
+  launched_at?: number;
+  last_use?: string;
+  autostop?: number;
+  to_down?: boolean;
+  resources_str?: string;
+  user_info?: any;
+}
+
+export interface ClusterTypeInfo {
+  cluster_name: string;
+  cluster_type: string;
+  is_ssh: boolean;
+  available_operations: string[];
+  recommendations: {
+    stop: string;
+    down: string;
+  };
+}
+
+export interface JobRecord {
+  job_id: number;
+  job_name: string;
+  username: string;
+  submitted_at: number;
+  start_at?: number;
+  end_at?: number;
+  resources: string;
+  status: string;
+  log_path: string;
+}
+
+export interface ClusterInfoResponse {
+  cluster: ClusterInfo;
+  cluster_type: ClusterTypeInfo;
+  platform: any;
+  template: any;
+  jobs: JobRecord[];
+  ssh_node_info?: any;
+}
+
+// Consolidated cluster info API function
+export const clusterInfoApi = {
+  getClusterInfo: async (clusterName: string): Promise<ClusterInfoResponse> => {
+    const response = await apiFetch(
+      buildApiUrl(`instances/${clusterName}/info`),
+      {
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch cluster info");
+    }
+    return response.json();
+  },
+};
+
 export const authApi = {
   getOrganizations: async (): Promise<{
     organizations: Array<{ id: string; name: string; object: string }>;
