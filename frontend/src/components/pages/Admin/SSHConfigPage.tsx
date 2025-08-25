@@ -334,7 +334,7 @@ const SSHConfigPage: React.FC = () => {
       setSkyChecking(true);
       setSkyCheckResult(null);
 
-      const response = await apiFetch(buildApiUrl("skypilot/ssh/sky-check"), {
+      const response = await apiFetch(buildApiUrl("clouds/ssh/sky-check"), {
         credentials: "include",
       });
 
