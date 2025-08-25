@@ -331,7 +331,7 @@ export const jobApi = {
     result: any;
   }> => {
     const response = await apiFetch(
-      buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
+      buildApiUrl(`jobs/${clusterName}/${jobId}/cancel`),
       {
         method: "POST",
         credentials: "include",

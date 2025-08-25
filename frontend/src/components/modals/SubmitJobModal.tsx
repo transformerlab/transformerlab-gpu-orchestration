@@ -115,7 +115,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       if (jobName) formData.append("job_name", jobName);
 
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
+        buildApiUrl(`jobs/${clusterName}/submit`),
         {
           method: "POST",
           credentials: "include",

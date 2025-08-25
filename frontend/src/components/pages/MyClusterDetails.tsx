@@ -180,7 +180,7 @@ const MyClusterDetails: React.FC = () => {
 
   // Fetch jobs for this cluster
   const { data: jobsData, isLoading: jobsLoading } = useSWR(
-    clusterName ? buildApiUrl(`skypilot/jobs/${clusterName}`) : null,
+    clusterName ? buildApiUrl(`jobs/${clusterName}`) : null,
     (url) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 10000 }
@@ -368,7 +368,7 @@ const MyClusterDetails: React.FC = () => {
     setLogsLoading(true);
     try {
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/logs`),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/logs`),
         { credentials: "include" }
       );
 
