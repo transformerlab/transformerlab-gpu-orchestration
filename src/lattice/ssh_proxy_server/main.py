@@ -26,7 +26,7 @@
 # 1) Add your SSH public key via the web UI (User Profile -> SSH Keys)
 # 2) Create an instance in SkyPilot called "Home" (or change the hardcoded destination).
 # 3) Run the server using `python main.py` (add --log-level=DEBUG for verbose output).
-# 4) Connect using: ssh -p 2222 Home/bob@localhost
+# 4) Connect using: ssh -p 2222 Home@localhost
 #
 
 import socket
@@ -42,6 +42,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 # Import SSHKey model from models.py
+from lattice.db_models import ClusterPlatform
 from lattice.db_models import SSHKey
 
 # --- Configuration ---
@@ -51,6 +52,8 @@ PORT = 2222  # Port for the proxy service to listen on
 # --- Independent Database Setup ---
 # Database URL - by default, use the same SQLite database as the main application
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///lattice.db")
+
+NUMBER_OF_WAITING_CONNECTIONS = 10
 
 # Create database engine and session
 engine = create_engine(DATABASE_URL, echo=False)
@@ -64,7 +67,7 @@ def get_database_session() -> Session:
 
 # --- Database SSH Key Lookup ---
 # Optional hardening: require the proxy username segment to match the authenticated user ID
-ENFORCE_PROXY_USERNAME = os.getenv("ENFORCE_PROXY_USERNAME", "0") == "1"
+# ENFORCE_PROXY_USERNAME is no longer used
 
 
 def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
@@ -99,7 +102,10 @@ def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
         ssh_key.update_last_used()
         session.commit()
 
-        return ssh_key.user_id.value, ssh_key.name.value
+        # Return raw attributes (some deployments store strings, not Enum-like objects)
+        user_id = getattr(ssh_key.user_id, "value", ssh_key.user_id)
+        key_name = getattr(ssh_key.name, "value", ssh_key.name)
+        return str(user_id), str(key_name)
 
     except Exception as e:
         if session:
@@ -114,14 +120,35 @@ def lookup_user_by_ssh_key(public_key: str) -> tuple[str, str]:
 # --- Mock ACL for now ---
 # TODO: This should also be moved to database eventually
 # For now, we'll use a simple mapping based on user IDs
-def get_user_permissions(user_id: str) -> list[str]:
+def get_user_permissions(user_id: str) -> list[dict]:
     """
     Get list of nodes/clusters the user can access.
-    This is a simplified ACL - in production this should be database-driven.
+    Returns a list of dictionaries with keys: id, cluster_name, and display_name.
     """
-    # For now, all authenticated users can access "Home" cluster
-    # This can be expanded to include role-based access control
-    return ["Home", "node1", "node2"]
+    session = None
+    try:
+        session = get_database_session()
+        user_permissions = (
+            session.query(ClusterPlatform)
+            .filter(ClusterPlatform.user_id == user_id)
+            .all()
+        )
+        # List of all clusters with their id, cluster_name, and display_name as dictionaries:
+        cluster_permissions = [
+            {
+                "id": str(cp.id),
+                "cluster_name": str(cp.cluster_name),
+                "display_name": str(cp.display_name),
+            }
+            for cp in user_permissions
+        ]
+        return cluster_permissions
+    except Exception as e:
+        logging.error(f"Error fetching user permissions: {e}")
+        return []
+    finally:
+        if session:
+            session.close()
 
 
 # Generate or load server host key
@@ -164,48 +191,45 @@ class ProxySSHServer(paramiko.ServerInterface):
         """
         Authenticate by parsing the username for the target node
         and looking up the public key in the database.
-        Expected username format: '<target_node>/<proxy_user>'
+        Expected format: '<target_node>' (e.g., 'Home')
         """
         logging.info(f"Public key authentication attempt for username '{username}'")
         logging.debug(
             f"Key type: {key.get_name()}, Key fingerprint: {key.get_fingerprint().hex()}"
         )
 
-        # 1. Validate username as target node
-        if not (3 <= len(username) <= 256):
+        # Only use the username as the target node
+        target_node = username
+
+        # Basic validation on the target node segment
+        if not (3 <= len(target_node) <= 256):
             logging.error(
-                f"Invalid username length. Expected between 3 and 256 characters, got '{len(username)}'."
+                f"Invalid target_node length. Expected between 3 and 256, got '{len(target_node)}'."
             )
             return paramiko.AUTH_FAILED
+        logging.debug(f"Parsed target_node='{target_node}'")
 
-        target_node = username
-        logging.debug(f"Validated username as target_node: '{target_node}'")
-
-        # 2. Look up public key to identify the real user in database
+        # 2) Look up public key to identify the real user in database
         key_str = f"{key.get_name()} {key.get_base64()}"
         logging.debug(f"Looking up key in database: {key_str[:50]}...")
 
         try:
             user_id, key_name = lookup_user_by_ssh_key(key_str)
             logging.info(
-                f"Key accepted. Real user ID: '{user_id}', Key name: '{key_name}'."
+                f"Key found. Real user ID: '{user_id}', Key name: '{key_name}'."
             )
         except ValueError as e:
             logging.warning(f"Key rejected: {e}")
             return paramiko.AUTH_FAILED
 
-        # Optional: bind the proxy username to the authenticated user identity
-        if ENFORCE_PROXY_USERNAME and proxy_user != str(user_id):
-            logging.warning(
-                f"Proxy username mismatch: provided '{proxy_user}' does not match authenticated user_id '{user_id}'"
-            )
-            return paramiko.AUTH_FAILED
-
-        # 3. Authorize against the ACL
+        # 3) Authorize against the ACL
+        # MAJOR TODO: also check org ID
         user_permissions = get_user_permissions(user_id)
         logging.debug(f"User '{user_id}' has permissions for: {user_permissions}")
 
-        if target_node in user_permissions:
+        if any(
+            permission["display_name"] == target_node for permission in user_permissions
+        ):
             logging.info(
                 f"Authorization successful for user '{user_id}' to '{target_node}'."
             )
@@ -216,7 +240,7 @@ class ProxySSHServer(paramiko.ServerInterface):
             logging.warning(
                 f"Authorization FAILED for user '{user_id}' to '{target_node}'."
             )
-            logging.debug(f"User '{user_id}' ACL: {user_permissions}")
+            # logging.debug(f"User '{user_id}' ACL: {user_permissions}")
             return paramiko.AUTH_FAILED
 
     def check_channel_request(self, kind, chanid):
@@ -242,39 +266,39 @@ class ProxySSHServer(paramiko.ServerInterface):
         return True
 
 
-# (The bridge_connections function can be simplified, as we now use invoke_shell)
-def bridge_connections(client_channel, target_channel):
-    """Bridges I/O between two channels."""
-    logging.debug("Starting connection bridge")
-    bytes_transferred = {"client_to_target": 0, "target_to_client": 0}
+# # (The bridge_connections function can be simplified, as we now use invoke_shell)
+# def bridge_connections(client_channel, target_channel):
+#     """Bridges I/O between two channels."""
+#     logging.debug("Starting connection bridge")
+#     bytes_transferred = {"client_to_target": 0, "target_to_client": 0}
 
-    try:
-        while True:
-            r, w, e = select.select([client_channel, target_channel], [], [])
-            if client_channel in r:
-                data = client_channel.recv(1024)
-                if len(data) == 0:
-                    logging.debug("Client channel closed")
-                    break
-                target_channel.send(data)
-                bytes_transferred["client_to_target"] += len(data)
-                logging.debug(f"Forwarded {len(data)} bytes from client to target")
-            if target_channel in r:
-                data = target_channel.recv(1024)
-                if len(data) == 0:
-                    logging.debug("Target channel closed")
-                    break
-                client_channel.send(data)
-                bytes_transferred["target_to_client"] += len(data)
-                logging.debug(f"Forwarded {len(data)} bytes from target to client")
-    except Exception as e:
-        logging.error(f"Error in connection bridge: {e}")
-    finally:
-        logging.info(
-            f"Connection bridge closed. Bytes transferred - C->T: {bytes_transferred['client_to_target']}, T->C: {bytes_transferred['target_to_client']}"
-        )
-        client_channel.close()
-        target_channel.close()
+#     try:
+#         while True:
+#             r, w, e = select.select([client_channel, target_channel], [], [])
+#             if client_channel in r:
+#                 data = client_channel.recv(1024)
+#                 if len(data) == 0:
+#                     logging.debug("Client channel closed")
+#                     break
+#                 target_channel.send(data)
+#                 bytes_transferred["client_to_target"] += len(data)
+#                 logging.debug(f"Forwarded {len(data)} bytes from client to target")
+#             if target_channel in r:
+#                 data = target_channel.recv(1024)
+#                 if len(data) == 0:
+#                     logging.debug("Target channel closed")
+#                     break
+#                 client_channel.send(data)
+#                 bytes_transferred["target_to_client"] += len(data)
+#                 logging.debug(f"Forwarded {len(data)} bytes from target to client")
+#     except Exception as e:
+#         logging.error(f"Error in connection bridge: {e}")
+#     finally:
+#         logging.info(
+#             f"Connection bridge closed. Bytes transferred - C->T: {bytes_transferred['client_to_target']}, T->C: {bytes_transferred['target_to_client']}"
+#         )
+#         client_channel.close()
+#         target_channel.close()
 
 
 def launch_ssh_subprocess(destination=""):
@@ -400,6 +424,47 @@ def bridge_channel_and_pty(client_channel, master_fd):
             pass
 
 
+def get_cluster_name_from_db(display_name, user_id):
+    """
+    Retrieve the cluster name from the database based on the display name and user ID.
+
+    Args:
+        display_name (str): The display name of the cluster.
+        user_id (str): The ID of the user.
+
+    Returns:
+        str: The cluster name if found.
+
+    Raises:
+        ValueError: If no matching cluster is found or if multiple matches exist.
+    """
+    session = None
+    try:
+        session = get_database_session()
+        cluster = (
+            session.query(ClusterPlatform)
+            .filter(
+                ClusterPlatform.display_name == display_name,
+                ClusterPlatform.user_id == user_id,
+            )
+            .one_or_none()
+        )
+
+        if not cluster:
+            raise ValueError(
+                f"No cluster found for display_name='{display_name}' and user_id='{user_id}'"
+            )
+
+        return cluster.cluster_name
+
+    except Exception as e:
+        logging.error(f"Error in get_cluster_name_from_db: {e}")
+        raise ValueError(f"Failed to retrieve cluster name: {str(e)}")
+    finally:
+        if session:
+            session.close()
+
+
 def handle_client_connection(client_socket):
     client_addr = client_socket.getpeername()
     logging.info(f"Handling connection from {client_addr}")
@@ -422,6 +487,20 @@ def handle_client_connection(client_socket):
 
         logging.info(
             f"Establishing proxy connection for {server.authenticated_user} to {server.target_node}"
+        )
+
+        # First look up server.target_node in the db table cluster_platforms and find out the cluster_name
+        # searching by the display_name AND id = server.authenticated_user
+        cluster_name = "None"
+        try:
+            cluster_name = get_cluster_name_from_db(
+                display_name=server.target_node, user_id=server.authenticated_user
+            )
+        except Exception as e:
+            logging.error(f"Error looking up cluster name: {e}")
+
+        logging.info(
+            f"Cluster name found for {server.authenticated_user}: {cluster_name}"
         )
 
         # --- Wait for shell or exec request ---
@@ -451,7 +530,7 @@ def handle_client_connection(client_socket):
 
         # Launch OpenSSH subprocess with PTY
         ssh_proc, master_fd = launch_ssh_subprocess_with_pty(
-            destination=server.target_node
+            destination=str(cluster_name)
         )
 
         # Do a test to see if the SSH process is running
@@ -540,9 +619,11 @@ def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((HOST, PORT))
-    server_socket.listen(5)
+    server_socket.listen(NUMBER_OF_WAITING_CONNECTIONS)
     logging.info(f"Lighthouse SSH proxy (username-based) listening on {HOST}:{PORT}")
-    logging.debug("Server socket bound and listening with backlog of 5")
+    logging.debug(
+        f"Server socket bound and listening with backlog of {NUMBER_OF_WAITING_CONNECTIONS}"
+    )
 
     try:
         while True:
