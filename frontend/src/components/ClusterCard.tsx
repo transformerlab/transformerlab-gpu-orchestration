@@ -262,9 +262,6 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                 </Chip>
               </Stack>
             </Box>
-            <div>
-              <ChevronRightIcon />
-            </div>
           </Button>
         </Box>
 
