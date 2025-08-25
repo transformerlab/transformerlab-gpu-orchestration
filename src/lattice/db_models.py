@@ -12,7 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.sql import func
-from config import Base
+from lattice.config import Base
 import secrets
 import hashlib
 from datetime import datetime, timedelta
@@ -248,7 +248,9 @@ class TeamMembership(Base):
 
     # A user can only be in one team per organization (not globally)
     __table_args__ = (
-        UniqueConstraint("organization_id", "user_id", name="uq_team_memberships_org_user"),
+        UniqueConstraint(
+            "organization_id", "user_id", name="uq_team_memberships_org_user"
+        ),
     )
 
 
@@ -266,7 +268,8 @@ class TeamQuota(Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "team_id", name="uq_team_quotas_org_team"),
     )
-    
+
+
 class ContainerRegistry(Base):
     __tablename__ = "container_registries"
 
@@ -275,7 +278,9 @@ class ContainerRegistry(Base):
     docker_username = Column(String, nullable=False)  # Docker registry username
     docker_password = Column(Text, nullable=False)  # Docker registry password/token
     docker_server = Column(String, nullable=False)  # Docker registry server URL
-    organization_id = Column(String, nullable=False)  # Organization that owns this registry
+    organization_id = Column(
+        String, nullable=False
+    )  # Organization that owns this registry
     user_id = Column(String, nullable=False)  # User who created this registry
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -283,7 +288,9 @@ class ContainerRegistry(Base):
 
     # Registry name must be unique within an organization
     __table_args__ = (
-        UniqueConstraint("organization_id", "name", name="uq_container_registries_org_name"),
+        UniqueConstraint(
+            "organization_id", "name", name="uq_container_registries_org_name"
+        ),
     )
 
 
@@ -310,5 +317,10 @@ class ClusterPlatform(Base):
 
     # Display name must be unique within user+organization scope
     __table_args__ = (
-        UniqueConstraint("user_id", "organization_id", "display_name", name="uq_cluster_platforms_user_org_display"),
+        UniqueConstraint(
+            "user_id",
+            "organization_id",
+            "display_name",
+            name="uq_cluster_platforms_user_org_display",
+        ),
     )

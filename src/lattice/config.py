@@ -6,6 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+# from lattice.db_models import *
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -43,8 +45,6 @@ def get_db():
     finally:
         db.close()
 
-
-from db_models import *
 
 AUTH_API_KEY = os.getenv("AUTH_API_KEY")
 AUTH_CLIENT_ID = os.getenv("AUTH_CLIENT_ID")
