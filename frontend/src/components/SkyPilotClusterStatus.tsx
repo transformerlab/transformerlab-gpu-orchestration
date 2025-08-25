@@ -113,7 +113,7 @@ const SkyPilotClusterStatus: React.FC = () => {
 
   // SWR for job monitoring when a cluster is expanded
   const { data: jobsData, mutate: mutateJobs } = useSWR(
-    expandedCluster ? buildApiUrl(`skypilot/jobs/${expandedCluster}`) : null,
+    expandedCluster ? buildApiUrl(`jobs/${expandedCluster}`) : null,
     fetcher,
     { refreshInterval: 5000 }
   );
@@ -222,9 +222,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     setSelectedJobId(jobId);
     try {
       const response = await apiFetch(
-        buildApiUrl(
-          `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
-        ),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/logs?tail_lines=100`),
         { credentials: "include" }
       );
       if (!response.ok) {
@@ -247,7 +245,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     try {
       setCancelLoading((prev) => ({ ...prev, [cancelKey]: true }));
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/cancel`),
         {
           method: "POST",
           credentials: "include",
@@ -918,8 +916,12 @@ const SkyPilotClusterStatus: React.FC = () => {
                                             {job.status ===
                                               "JobStatus.RUNNING" &&
                                               job.job_name &&
-                                              (job.job_name.includes("jupyter") ||
-                                                job.job_name.includes("vscode")) && (
+                                              (job.job_name.includes(
+                                                "jupyter"
+                                              ) ||
+                                                job.job_name.includes(
+                                                  "vscode"
+                                                )) && (
                                                 <Button
                                                   size="sm"
                                                   variant="outlined"
@@ -932,15 +934,22 @@ const SkyPilotClusterStatus: React.FC = () => {
                                                     const port = portMatch
                                                       ? parseInt(portMatch[1])
                                                       : 8888;
-                                                    const jobType = job.job_name.includes("jupyter")
-                                                      ? "jupyter"
-                                                      : "vscode";
+                                                    const jobType =
+                                                      job.job_name.includes(
+                                                        "jupyter"
+                                                      )
+                                                        ? "jupyter"
+                                                        : "vscode";
                                                     setupJobPortForward(
                                                       cluster.cluster_name,
                                                       job.job_id,
                                                       jobType,
-                                                      jobType === "jupyter" ? port : undefined,
-                                                      jobType === "vscode" ? port : undefined
+                                                      jobType === "jupyter"
+                                                        ? port
+                                                        : undefined,
+                                                      jobType === "vscode"
+                                                        ? port
+                                                        : undefined
                                                     );
                                                   }}
                                                 >
@@ -1093,9 +1102,9 @@ const SkyPilotClusterStatus: React.FC = () => {
         }
         isSshCluster={!!clusterTypes[jobModalCluster]?.is_ssh}
         availableResources={
-          clusters
-            .find((c: ClusterStatus) => c.cluster_name === jobModalCluster)
-            ?.resources_str || ""
+          clusters.find(
+            (c: ClusterStatus) => c.cluster_name === jobModalCluster
+          )?.resources_str || ""
         }
       />
     </Box>

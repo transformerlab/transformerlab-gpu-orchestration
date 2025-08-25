@@ -44,7 +44,7 @@ const VSCodeInfoModal: React.FC<VSCodeInfoModalProps> = ({
   const fetchTunnelInfo = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/vscode-info`),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/vscode-info`),
         {
           credentials: "include",
         }

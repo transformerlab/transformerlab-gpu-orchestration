@@ -157,7 +157,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
 
         try {
           const response = await apiFetch(
-            buildApiUrl(`skypilot/jobs/${cluster.cluster_name}`),
+            buildApiUrl(`jobs/${cluster.cluster_name}`),
             { credentials: "include" }
           );
 
@@ -186,7 +186,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const fetchPastJobs = async () => {
     setPastJobsLoading(true);
     try {
-      const response = await apiFetch(buildApiUrl("skypilot/past-jobs"), {
+      const response = await apiFetch(buildApiUrl("jobs/past-jobs"), {
         credentials: "include",
       });
 
@@ -208,7 +208,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     setLogsLoading(true);
     try {
       const response = await apiFetch(
-        buildApiUrl(`skypilot/past-jobs/${clusterName}/${jobId}/logs`),
+        buildApiUrl(`jobs/past-jobs/${clusterName}/${jobId}/logs`),
         { credentials: "include" }
       );
 
@@ -240,7 +240,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
         clustersWithJobs.map(async (cluster) => {
           try {
             const response = await apiFetch(
-              buildApiUrl(`skypilot/jobs/${cluster.cluster_name}`),
+              buildApiUrl(`jobs/${cluster.cluster_name}`),
               { credentials: "include" }
             );
 
@@ -318,9 +318,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     setSelectedClusterName(clusterName);
     try {
       const response = await apiFetch(
-        buildApiUrl(
-          `skypilot/jobs/${clusterName}/${jobId}/logs?tail_lines=100`
-        ),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/logs?tail_lines=100`),
         { credentials: "include" }
       );
 
@@ -345,7 +343,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       setError(null);
 
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/cancel`),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/cancel`),
         {
           method: "POST",
           credentials: "include",
@@ -403,7 +401,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       if (vscodePort) formData.append("vscode_port", vscodePort.toString());
 
       const response = await apiFetch(
-        buildApiUrl(`skypilot/jobs/${clusterName}/${jobId}/setup-port-forward`),
+        buildApiUrl(`jobs/${clusterName}/${jobId}/setup-port-forward`),
         {
           method: "POST",
           credentials: "include",

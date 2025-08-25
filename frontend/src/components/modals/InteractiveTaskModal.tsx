@@ -102,7 +102,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
         formData.append("job_type", "vscode");
 
         const response = await apiFetch(
-          buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
+          buildApiUrl(`jobs/${clusterName}/submit`),
           {
             method: "POST",
             credentials: "include",
@@ -160,7 +160,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
         formData.append("jupyter_port", jupyterPort);
 
         const response = await apiFetch(
-          buildApiUrl(`skypilot/jobs/${clusterName}/submit`),
+          buildApiUrl(`jobs/${clusterName}/submit`),
           {
             method: "POST",
             credentials: "include",
