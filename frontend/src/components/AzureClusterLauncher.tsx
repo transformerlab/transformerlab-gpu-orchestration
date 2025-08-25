@@ -157,7 +157,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const fetchAzureConfig = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/config"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -224,7 +224,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const fetchAvailableInstanceTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/azure/instance-types"),
+        buildApiUrl("clouds/azure/instance-types"),
         {
           credentials: "include",
         }
@@ -281,7 +281,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const fetchAvailableRegions = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("skypilot/azure/regions"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/regions"), {
         credentials: "include",
       });
       if (response.ok) {

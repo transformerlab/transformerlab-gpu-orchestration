@@ -108,8 +108,8 @@ const Pools: React.FC = () => {
     try {
       const endpoint =
         platform === "azure"
-          ? buildApiUrl(`skypilot/azure/config/${configKey}/set-default`)
-          : buildApiUrl(`skypilot/runpod/config/${configKey}/set-default`);
+          ? buildApiUrl(`clouds/azure/config/${configKey}/set-default`)
+          : buildApiUrl(`clouds/runpod/config/${configKey}/set-default`);
 
       const response = await apiFetch(endpoint, {
         method: "POST",
@@ -161,8 +161,8 @@ const Pools: React.FC = () => {
     try {
       const endpoint =
         platform === "azure"
-          ? buildApiUrl(`skypilot/azure/config/${configKey}`)
-          : buildApiUrl(`skypilot/runpod/config/${configKey}`);
+          ? buildApiUrl(`clouds/azure/config/${configKey}`)
+          : buildApiUrl(`clouds/runpod/config/${configKey}`);
 
       const response = await apiFetch(endpoint, {
         method: "DELETE",

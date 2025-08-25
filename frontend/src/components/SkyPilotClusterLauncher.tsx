@@ -235,7 +235,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
       // Check if RunPod is configured
       const configResponse = await apiFetch(
-        buildApiUrl("skypilot/runpod/config"),
+        buildApiUrl("clouds/runpod/config"),
         {
           credentials: "include",
         }
@@ -246,7 +246,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         if (config.is_configured) {
           // Run the setup endpoint which will create config.toml and run sky check
           const setupResponse = await apiFetch(
-            buildApiUrl("skypilot/runpod/setup"),
+            buildApiUrl("clouds/runpod/setup"),
             {
               credentials: "include",
             }
@@ -261,7 +261,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
             // Fetch display options for the UI
             try {
               const displayResponse = await apiFetch(
-                buildApiUrl("skypilot/runpod/display-options"),
+                buildApiUrl("clouds/runpod/display-options"),
                 {
                   credentials: "include",
                 }
@@ -319,7 +319,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
       // Check if Azure is configured
       const configResponse = await apiFetch(
-        buildApiUrl("skypilot/azure/config"),
+        buildApiUrl("clouds/azure/config"),
         {
           credentials: "include",
         }
@@ -330,7 +330,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         if (config.is_configured) {
           // Run the setup endpoint which will create config.toml and run sky check
           const setupResponse = await apiFetch(
-            buildApiUrl("skypilot/azure/setup"),
+            buildApiUrl("clouds/azure/setup"),
             {
               credentials: "include",
             }
