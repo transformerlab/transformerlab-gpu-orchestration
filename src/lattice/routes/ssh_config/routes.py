@@ -58,6 +58,7 @@ async def create_ssh_key(
         # Create new SSH key
         ssh_key = SSHKey(
             user_id=user["id"],
+            organization_id=user["organization_id"],
             name=request.name,
             public_key=cleaned_key,
             fingerprint=fingerprint,
@@ -74,6 +75,7 @@ async def create_ssh_key(
             public_key=ssh_key.public_key,
             fingerprint=ssh_key.fingerprint,
             key_type=ssh_key.key_type,
+            organization_id=ssh_key.organization_id,
             created_at=ssh_key.created_at.isoformat(),
             updated_at=ssh_key.updated_at.isoformat(),
             last_used_at=ssh_key.last_used_at.isoformat()
@@ -86,10 +88,10 @@ async def create_ssh_key(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except IntegrityError as e:
         session.rollback()
-        if "uq_ssh_keys_user_name" in str(e):
+        if "uq_ssh_keys_org_user_name" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You already have an SSH key with this name",
+                detail="You already have an SSH key with this name in this organization",
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,7 +107,10 @@ async def list_ssh_keys(
     """List all SSH keys for the current user."""
     ssh_keys = (
         session.query(SSHKey)
-        .filter(SSHKey.user_id == user["id"])
+        .filter(
+            SSHKey.user_id == user["id"],
+            SSHKey.organization_id == user["organization_id"],
+        )
         .order_by(SSHKey.created_at.desc())
         .all()
     )
@@ -117,6 +122,7 @@ async def list_ssh_keys(
             public_key=key.public_key,
             fingerprint=key.fingerprint,
             key_type=key.key_type,
+            organization_id=key.organization_id,
             created_at=key.created_at.isoformat(),
             updated_at=key.updated_at.isoformat(),
             last_used_at=key.last_used_at.isoformat() if key.last_used_at else None,
@@ -139,7 +145,11 @@ async def get_ssh_key(
     """Get a specific SSH key by ID."""
     ssh_key = (
         session.query(SSHKey)
-        .filter(SSHKey.id == key_id, SSHKey.user_id == user["id"])
+        .filter(
+            SSHKey.id == key_id,
+            SSHKey.user_id == user["id"],
+            SSHKey.organization_id == user["organization_id"],
+        )
         .first()
     )
 
@@ -154,6 +164,7 @@ async def get_ssh_key(
         public_key=ssh_key.public_key,
         fingerprint=ssh_key.fingerprint,
         key_type=ssh_key.key_type,
+        organization_id=ssh_key.organization_id,
         created_at=ssh_key.created_at.isoformat(),
         updated_at=ssh_key.updated_at.isoformat(),
         last_used_at=ssh_key.last_used_at.isoformat() if ssh_key.last_used_at else None,
@@ -171,7 +182,11 @@ async def update_ssh_key(
     """Update an SSH key."""
     ssh_key = (
         session.query(SSHKey)
-        .filter(SSHKey.id == key_id, SSHKey.user_id == user["id"])
+        .filter(
+            SSHKey.id == key_id,
+            SSHKey.user_id == user["id"],
+            SSHKey.organization_id == user["organization_id"],
+        )
         .first()
     )
 
@@ -198,6 +213,7 @@ async def update_ssh_key(
             public_key=ssh_key.public_key,
             fingerprint=ssh_key.fingerprint,
             key_type=ssh_key.key_type,
+            organization_id=ssh_key.organization_id,
             created_at=ssh_key.created_at.isoformat(),
             updated_at=ssh_key.updated_at.isoformat(),
             last_used_at=ssh_key.last_used_at.isoformat()
@@ -208,10 +224,10 @@ async def update_ssh_key(
 
     except IntegrityError as e:
         session.rollback()
-        if "uq_ssh_keys_user_name" in str(e):
+        if "uq_ssh_keys_org_user_name" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You already have an SSH key with this name",
+                detail="You already have an SSH key with this name in this organization",
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -228,7 +244,11 @@ async def delete_ssh_key(
     """Delete an SSH key."""
     ssh_key = (
         session.query(SSHKey)
-        .filter(SSHKey.id == key_id, SSHKey.user_id == user["id"])
+        .filter(
+            SSHKey.id == key_id,
+            SSHKey.user_id == user["id"],
+            SSHKey.organization_id == user["organization_id"],
+        )
         .first()
     )
 
