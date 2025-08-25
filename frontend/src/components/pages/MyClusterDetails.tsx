@@ -190,7 +190,7 @@ const MyClusterDetails: React.FC = () => {
 
   // Fetch cluster platform information
   const { data: clusterPlatforms } = useSWR(
-    clusterName ? buildApiUrl("skypilot/cluster-platforms") : null,
+            clusterName ? buildApiUrl("instances/cluster-platforms") : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 5000 }
@@ -199,7 +199,7 @@ const MyClusterDetails: React.FC = () => {
   // Fetch cluster template information
   const { data: clusterTemplateData } = useSWR(
     clusterName
-      ? buildApiUrl(`skypilot/cluster-template/${clusterName}`)
+              ? buildApiUrl(`instances/cluster-template/${clusterName}`)
       : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
@@ -225,7 +225,7 @@ const MyClusterDetails: React.FC = () => {
     try {
       // Fetch cluster type information
       const typeResponse = await apiFetch(
-        buildApiUrl(`skypilot/cluster-type/${clusterName}`),
+        buildApiUrl(`instances/cluster-type/${clusterName}`),
         { credentials: "include" }
       );
 

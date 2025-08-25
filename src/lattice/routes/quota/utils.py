@@ -9,7 +9,7 @@ from db_models import (
     TeamMembership,
     TeamQuota,
 )
-from routes.skypilot.utils import generate_cost_report
+from routes.instances.utils import generate_cost_report
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from utils.cluster_utils import get_cluster_platform_info
