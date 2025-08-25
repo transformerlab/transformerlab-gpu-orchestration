@@ -36,7 +36,6 @@ import RunPodConfigPage from "../pages/Admin/RunPodConfigPage";
 import SSHConfigPage from "../pages/Admin/SSHConfigPage";
 import { Volume } from "lucide-react";
 import Volumes from "../pages/Admin/Volumes";
-import Quota from "../pages/Admin/Quota";
 import UserQuota from "../pages/Admin/MyQuota";
 import OrgQuota from "../pages/Admin/OrgQuota";
 import Costs from "../pages/Costs";

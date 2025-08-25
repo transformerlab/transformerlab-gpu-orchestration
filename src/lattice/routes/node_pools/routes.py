@@ -33,8 +33,8 @@ async def get_node_pools(
     """
     Get comprehensive node pools data combining:
     - Clusters from /clusters endpoint
-    - RunPod instances from /skypilot/runpod/instances
-    - Azure instances from /skypilot/azure/instances
+    - RunPod instances from /clouds/runpod/instances
+    - Azure instances from /clouds/azure/instances
     - SSH node info from /skypilot/ssh-node-info
     - SkyPilot status from /skypilot/status
     """

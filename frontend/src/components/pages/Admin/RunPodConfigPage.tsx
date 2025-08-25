@@ -84,7 +84,7 @@ const RunPodConfigPage: React.FC = () => {
 
   const fetchExistingConfigs = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
+      const response = await apiFetch(buildApiUrl("clouds/runpod/config"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -99,7 +99,7 @@ const RunPodConfigPage: React.FC = () => {
   const fetchRunPodConfig = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
+      const response = await apiFetch(buildApiUrl("clouds/runpod/config"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -150,7 +150,7 @@ const RunPodConfigPage: React.FC = () => {
   const fetchAvailableGpuTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/runpod/display-options-with-pricing"),
+        buildApiUrl("clouds/runpod/display-options-with-pricing"),
         {
           credentials: "include",
         }
@@ -232,7 +232,7 @@ const RunPodConfigPage: React.FC = () => {
         requestBody.config_key = configKey;
       }
 
-      const response = await apiFetch(buildApiUrl("skypilot/runpod/config"), {
+      const response = await apiFetch(buildApiUrl("clouds/runpod/config"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -308,7 +308,7 @@ const RunPodConfigPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await apiFetch(buildApiUrl("skypilot/runpod/test"), {
+      const response = await apiFetch(buildApiUrl("clouds/runpod/test"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -347,12 +347,9 @@ const RunPodConfigPage: React.FC = () => {
       setSkyChecking(true);
       setSkyCheckResult(null);
 
-      const response = await apiFetch(
-        buildApiUrl("skypilot/runpod/sky-check"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/runpod/sky-check"), {
+        credentials: "include",
+      });
 
       if (response.ok) {
         const data = await response.json();

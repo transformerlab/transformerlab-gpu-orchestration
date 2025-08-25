@@ -98,7 +98,7 @@ const AzureConfigPage: React.FC = () => {
 
   const fetchExistingConfigs = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/config"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -115,9 +115,9 @@ const AzureConfigPage: React.FC = () => {
       setLoading(true);
 
       // If we're configuring a specific config, get the actual credentials
-      let endpoint = "skypilot/azure/config";
+      let endpoint = "clouds/azure/config";
       if (configKey) {
-        endpoint = `skypilot/azure/credentials?config_key=${encodeURIComponent(
+        endpoint = `clouds/azure/credentials?config_key=${encodeURIComponent(
           configKey
         )}`;
       }
@@ -199,7 +199,7 @@ const AzureConfigPage: React.FC = () => {
   const fetchAvailableInstanceTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/azure/instance-types"),
+        buildApiUrl("clouds/azure/instance-types"),
         {
           credentials: "include",
         }
@@ -257,7 +257,7 @@ const AzureConfigPage: React.FC = () => {
 
   const fetchAvailableRegions = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("skypilot/azure/regions"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/regions"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -273,12 +273,9 @@ const AzureConfigPage: React.FC = () => {
 
   const fetchActualCredentials = async () => {
     try {
-      const response = await apiFetch(
-        buildApiUrl("skypilot/azure/credentials"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/azure/credentials"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         setActualCredentials(data);
@@ -311,7 +308,7 @@ const AzureConfigPage: React.FC = () => {
         requestBody.config_key = configKey;
       }
 
-      const response = await apiFetch(buildApiUrl("skypilot/azure/config"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/config"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -392,7 +389,7 @@ const AzureConfigPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await apiFetch(buildApiUrl("skypilot/azure/test"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/test"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -434,7 +431,7 @@ const AzureConfigPage: React.FC = () => {
       setSkyChecking(true);
       setSkyCheckResult(null);
 
-      const response = await apiFetch(buildApiUrl("skypilot/azure/sky-check"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/sky-check"), {
         credentials: "include",
       });
 

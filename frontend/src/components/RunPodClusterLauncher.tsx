@@ -108,7 +108,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setIsLoadingGpuTypes(true);
     try {
       const response = await apiFetch(
-        buildApiUrl("skypilot/runpod/display-options-with-pricing"),
+        buildApiUrl("clouds/runpod/display-options-with-pricing"),
         {
           credentials: "include",
         }

@@ -91,12 +91,12 @@ const ClusterDetails: React.FC = () => {
         clusterName === "azure-cluster";
 
       const configEndpoint = isRunPod
-        ? "skypilot/runpod/config"
-        : "skypilot/azure/config";
+        ? "clouds/runpod/config"
+        : "clouds/azure/config";
 
       const instancesEndpoint = isRunPod
-        ? "skypilot/runpod/instances"
-        : "skypilot/azure/instances";
+        ? "clouds/runpod/instances"
+        : "clouds/azure/instances";
 
       Promise.all([
         apiFetch(buildApiUrl(configEndpoint), { credentials: "include" }),

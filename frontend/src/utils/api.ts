@@ -288,7 +288,7 @@ export const teamsQuotaApi = {
 // RunPod API functions
 export const runpodApi = {
   setup: async (): Promise<{ message: string }> => {
-    const response = await apiFetch(buildApiUrl("skypilot/runpod/setup"), {
+    const response = await apiFetch(buildApiUrl("clouds/runpod/setup"), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -298,7 +298,7 @@ export const runpodApi = {
   },
 
   verify: async (): Promise<{ valid: boolean }> => {
-    const response = await apiFetch(buildApiUrl("skypilot/runpod/verify"), {
+    const response = await apiFetch(buildApiUrl("clouds/runpod/verify"), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -308,7 +308,7 @@ export const runpodApi = {
   },
 
   getGpuTypes: async (): Promise<{ gpu_types: string[] }> => {
-    const response = await apiFetch(buildApiUrl("skypilot/runpod/gpu-types"), {
+    const response = await apiFetch(buildApiUrl("clouds/runpod/gpu-types"), {
       credentials: "include",
     });
     if (!response.ok) {
