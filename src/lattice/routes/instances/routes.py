@@ -26,10 +26,10 @@ from .utils import (
     down_cluster_with_skypilot,
 )
 from routes.clouds.azure.utils import (
-    setup_azure_config,
+    az_setup_config,
 )
 from routes.clouds.runpod.utils import (
-    setup_runpod_config,
+    rp_setup_config,
     map_runpod_display_to_instance_type,
 )
 from routes.clusters.utils import is_ssh_cluster, is_down_only_cluster
@@ -111,7 +111,7 @@ async def launch_instance(
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
-                setup_runpod_config()
+                rp_setup_config()
                 # Map display string to instance type if accelerators is provided
                 if accelerators:
                     mapped_instance_type = map_runpod_display_to_instance_type(
@@ -132,7 +132,7 @@ async def launch_instance(
         # Setup Azure if cloud is azure
         if cloud == "azure":
             try:
-                setup_azure_config()
+                az_setup_config()
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"

@@ -224,7 +224,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const fetchAvailableInstanceTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("clouds/azure/instance-types"),
+        buildApiUrl("clouds/azure/info"),
         {
           credentials: "include",
         }
@@ -281,7 +281,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const fetchAvailableRegions = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("clouds/azure/regions"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
         credentials: "include",
       });
       if (response.ok) {

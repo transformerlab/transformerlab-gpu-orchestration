@@ -261,7 +261,7 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
             // Fetch display options for the UI
             try {
               const displayResponse = await apiFetch(
-                buildApiUrl("clouds/runpod/display-options"),
+                buildApiUrl("clouds/runpod/info"),
                 {
                   credentials: "include",
                 }

@@ -35,7 +35,8 @@ const Pools: React.FC = () => {
 
   // Define pool type
   interface Pool {
-    platform: string;
+    platform?: string;
+    provider?: string;
     name?: string;
     numberOfNodes?: number;
     max_instances?: number;
@@ -59,30 +60,29 @@ const Pools: React.FC = () => {
   };
 
   // Use SWR for data fetching
-  const { data, error, mutate } = useSWR(
-    buildApiUrl("node-pools"),
-    fetcher
-  );
+  const { data, error, mutate } = useSWR(buildApiUrl("node-pools"), fetcher);
 
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
 
   // Check if Azure or RunPod configurations already exist
   const hasAzureConfig = nodePools.some(
-    (pool: Pool) => pool.platform === "azure"
+    (pool: Pool) => pool.provider === "azure"
   );
   const hasRunPodConfig = nodePools.some(
-    (pool: Pool) => pool.platform === "runpod"
+    (pool: Pool) => pool.provider === "runpod"
   );
 
   const handleConfigurePool = (pool: Pool) => {
     setSelectedPool(pool);
     // Open the appropriate configuration page in a new tab based on platform
     const baseUrl = window.location.origin;
-    const poolName = encodeURIComponent(pool.name || pool.platform);
+    const poolName = encodeURIComponent(
+      pool.name || pool.provider || "unknown"
+    );
     const configKey = pool.config?.config_key;
 
-    switch (pool.platform) {
+    switch (pool.provider) {
       case "azure":
         navigate(
           `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`
@@ -204,7 +204,7 @@ const Pools: React.FC = () => {
   };
 
   const handleDeletePool = async (pool: Pool) => {
-    if (pool.platform !== "direct") {
+    if (pool.provider !== "direct") {
       return; // Only allow deletion of direct platform pools
     }
 
@@ -281,9 +281,9 @@ const Pools: React.FC = () => {
               {nodePools.map((pool: Pool) => (
                 <tr
                   key={
-                    pool.platform === "direct"
+                    pool.provider === "direct"
                       ? pool.name
-                      : `${pool.platform}-${pool.config?.config_key}`
+                      : `${pool.provider}-${pool.config?.config_key}`
                   }
                 >
                   <td>
@@ -299,11 +299,11 @@ const Pools: React.FC = () => {
                       variant="soft"
                       startDecorator={
                         <CloudServiceIcon
-                          platform={pool.platform || "unknown"}
+                          platform={pool.provider || "unknown"}
                         />
                       }
                     >
-                      {pool.platform || "unknown"}
+                      {pool.provider || "unknown"}
                     </Chip>
                   </td>
                   <td>
@@ -368,7 +368,7 @@ const Pools: React.FC = () => {
                       >
                         Configure
                       </Button>
-                      {pool.platform === "direct" && (
+                      {pool.provider === "direct" && (
                         <IconButton
                           size="sm"
                           color="danger"

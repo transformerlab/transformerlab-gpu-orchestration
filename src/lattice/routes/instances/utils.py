@@ -139,13 +139,13 @@ def launch_cluster_with_skypilot(
         # Handle RunPod setup
         if cloud and cloud.lower() == "runpod":
             from routes.clouds.runpod.utils import (
-                setup_runpod_config,
-                verify_runpod_setup,
+                rp_setup_config,
+                rp_verify_setup,
             )
 
             try:
-                setup_runpod_config()
-                if not verify_runpod_setup():
+                rp_setup_config()
+                if not rp_verify_setup():
                     raise HTTPException(
                         status_code=500,
                         detail="RunPod setup verification failed. Please check your RUNPOD_API_KEY.",

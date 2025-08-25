@@ -117,7 +117,7 @@ const AzureAdmin: React.FC = () => {
   const fetchAvailableInstanceTypes = async () => {
     try {
       const response = await apiFetch(
-        buildApiUrl("clouds/azure/instance-types"),
+        buildApiUrl("clouds/azure/info"),
         {
           credentials: "include",
         }
@@ -187,7 +187,7 @@ const AzureAdmin: React.FC = () => {
 
   const fetchAvailableRegions = async () => {
     try {
-      const response = await apiFetch(buildApiUrl("clouds/azure/regions"), {
+      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
         credentials: "include",
       });
       if (response.ok) {

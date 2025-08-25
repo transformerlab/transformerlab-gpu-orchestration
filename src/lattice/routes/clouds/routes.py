@@ -1,15 +1,417 @@
-from fastapi import APIRouter, Depends
-from ..auth.api_key_auth import get_user_or_api_key
+from fastapi import APIRouter, Depends, HTTPException, Path
+from pydantic import BaseModel
 
-# Import sub-routers
-from .azure.routes import router as azure_router
-from .runpod.routes import router as runpod_router
-from .ssh.routes import router as ssh_router
+from ..auth.api_key_auth import get_user_or_api_key
+from .azure.utils import (
+    az_verify_setup,
+    az_get_instance_types,
+    az_get_regions,
+    az_setup_config,
+    az_save_config_with_setup,
+    az_get_config_for_display,
+    az_test_connection,
+    load_azure_config,
+    az_run_sky_check,
+    az_set_default_config,
+    az_delete_config,
+    az_get_current_config,
+)
+from .runpod.utils import (
+    rp_verify_setup,
+    rp_get_display_options,
+    rp_get_display_options_with_pricing,
+    rp_setup_config,
+    rp_save_config_with_setup,
+    rp_get_config_for_display,
+    rp_test_connection,
+    rp_run_sky_check,
+    rp_set_default_config,
+    rp_delete_config,
+    rp_get_current_config,
+)
+from routes.instances.utils import get_skypilot_status
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_data,
+)
+from routes.clouds.ssh.routes import router as ssh_router
+
+
+# Configuration models
+class AzureConfigRequest(BaseModel):
+    name: str
+    subscription_id: str
+    tenant_id: str
+    client_id: str
+    client_secret: str
+    allowed_instance_types: list[str]
+    allowed_regions: list[str]
+    max_instances: int = 0
+    config_key: str = None
+
+
+class RunPodConfigRequest(BaseModel):
+    name: str
+    api_key: str
+    allowed_gpu_types: list[str]
+    allowed_display_options: list[str] = None
+    max_instances: int = 0
+    config_key: str = None
+
+
+class AzureTestRequest(BaseModel):
+    subscription_id: str
+    tenant_id: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    auth_mode: str = "service_principal"
+
+
+class RunPodTestRequest(BaseModel):
+    api_key: str
+
 
 # Create main clouds router
 router = APIRouter(prefix="/clouds", dependencies=[Depends(get_user_or_api_key)])
 
-# Include sub-routers
-router.include_router(azure_router, prefix="/azure")
-router.include_router(runpod_router, prefix="/runpod")
+# Include SSH router
+
 router.include_router(ssh_router, prefix="/ssh")
+
+
+@router.get("/{cloud}/setup")
+async def setup_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
+    """Setup cloud configuration"""
+    try:
+        if cloud == "azure":
+            az_setup_config()
+            return {"message": f"{cloud.title()} configuration setup successfully"}
+        elif cloud == "runpod":
+            rp_setup_config()
+            try:
+                is_valid, output = rp_run_sky_check()
+                return {
+                    "message": f"{cloud.title()} configuration setup successfully",
+                    "sky_check_valid": is_valid,
+                    "sky_check_output": output,
+                }
+            except Exception as e:
+                return {
+                    "message": f"{cloud.title()} configuration setup successfully",
+                    "sky_check_valid": False,
+                    "sky_check_output": str(e),
+                }
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to setup {cloud}: {str(e)}"
+        )
+
+
+@router.get("/{cloud}/verify")
+async def verify_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
+    """Verify cloud setup"""
+    try:
+        if cloud == "azure":
+            is_valid = az_verify_setup()
+        elif cloud == "runpod":
+            is_valid = rp_verify_setup()
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        return {"valid": is_valid}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to verify {cloud} setup: {str(e)}"
+        )
+
+
+@router.get("/{cloud}/config")
+async def get_cloud_config(cloud: str = Path(..., regex="^(azure|runpod)$")):
+    """Get current cloud configuration"""
+    try:
+        if cloud == "azure":
+            config = az_get_config_for_display()
+        elif cloud == "runpod":
+            config = rp_get_config_for_display()
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        return config
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load {cloud} configuration: {str(e)}"
+        )
+
+
+@router.get("/{cloud}/credentials")
+async def get_cloud_credentials(
+    cloud: str = Path(..., regex="^(azure|runpod)$"), config_key: str = None
+):
+    """Get cloud configuration with actual credentials (Azure only)"""
+    if cloud != "azure":
+        raise HTTPException(
+            status_code=400, detail="Credentials endpoint only available for Azure"
+        )
+
+    try:
+        config_data = load_azure_config()
+
+        if config_key:
+            if config_key in config_data.get("configs", {}):
+                return config_data["configs"][config_key]
+            else:
+                raise HTTPException(
+                    status_code=404, detail=f"Azure config '{config_key}' not found"
+                )
+        else:
+            config = az_get_current_config()
+            if config:
+                return config
+            else:
+                raise HTTPException(
+                    status_code=404, detail="No Azure configuration found"
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load Azure credentials: {str(e)}"
+        )
+
+
+@router.post("/{cloud}/config")
+async def save_cloud_config(
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    config_request: AzureConfigRequest | RunPodConfigRequest = None,
+):
+    """Save cloud configuration"""
+    try:
+        if cloud == "azure":
+            if not isinstance(config_request, AzureConfigRequest):
+                raise HTTPException(
+                    status_code=400, detail="Invalid config request for Azure"
+                )
+
+            result = az_save_config_with_setup(
+                config_request.name,
+                config_request.subscription_id,
+                config_request.tenant_id,
+                config_request.client_id,
+                config_request.client_secret,
+                config_request.allowed_instance_types,
+                config_request.allowed_regions,
+                config_request.max_instances,
+                config_request.config_key,
+            )
+
+            return result
+
+        elif cloud == "runpod":
+            if not isinstance(config_request, RunPodConfigRequest):
+                raise HTTPException(
+                    status_code=400, detail="Invalid config request for RunPod"
+                )
+
+            result = rp_save_config_with_setup(
+                config_request.name,
+                config_request.api_key,
+                config_request.allowed_gpu_types,
+                config_request.max_instances,
+                config_request.config_key,
+                config_request.allowed_display_options,
+            )
+
+            return result
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save {cloud} configuration: {str(e)}"
+        )
+
+
+@router.post("/{cloud}/config/{config_key}/set-default")
+async def set_cloud_default_config(
+    cloud: str = Path(..., regex="^(azure|runpod)$"), config_key: str = None
+):
+    """Set a specific cloud config as default"""
+    try:
+        if cloud == "azure":
+            result = az_set_default_config(config_key)
+        elif cloud == "runpod":
+            result = rp_set_default_config(config_key)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to set {cloud} default config: {str(e)}"
+        )
+
+
+@router.delete("/{cloud}/config/{config_key}")
+async def delete_cloud_config(
+    cloud: str = Path(..., regex="^(azure|runpod)$"), config_key: str = None
+):
+    """Delete a cloud configuration"""
+    try:
+        if cloud == "azure":
+            az_delete_config(config_key)
+        elif cloud == "runpod":
+            rp_delete_config(config_key)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        return {
+            "message": f"{cloud.title()} config '{config_key}' deleted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete {cloud} config: {str(e)}"
+        )
+
+
+@router.post("/{cloud}/test")
+async def test_cloud_connection(
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    test_request: AzureTestRequest | RunPodTestRequest = None,
+):
+    """Test cloud API connection"""
+    try:
+        if cloud == "azure":
+            if not isinstance(test_request, AzureTestRequest):
+                raise HTTPException(
+                    status_code=400, detail="Invalid test request for Azure"
+                )
+
+            is_valid = az_test_connection(
+                test_request.subscription_id,
+                test_request.tenant_id or "",
+                test_request.client_id or "",
+                test_request.client_secret or "",
+                test_request.auth_mode,
+            )
+        elif cloud == "runpod":
+            if not isinstance(test_request, RunPodTestRequest):
+                raise HTTPException(
+                    status_code=400, detail="Invalid test request for RunPod"
+                )
+
+            is_valid = rp_test_connection(test_request.api_key)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        if is_valid:
+            return {"message": f"{cloud.title()} connection test successful"}
+        else:
+            raise HTTPException(
+                status_code=400, detail=f"{cloud.title()} connection test failed"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to test {cloud} connection: {str(e)}"
+        )
+
+
+@router.get("/{cloud}/sky-check")
+async def run_cloud_sky_check(cloud: str = Path(..., regex="^(azure|runpod)$")):
+    """Run 'sky check' to validate the cloud setup"""
+    try:
+        if cloud == "azure":
+            is_valid, output = az_run_sky_check()
+        elif cloud == "runpod":
+            is_valid, output = rp_run_sky_check()
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        return {
+            "valid": is_valid,
+            "output": output,
+            "message": f"Sky check {cloud} completed successfully"
+            if is_valid
+            else f"Sky check {cloud} failed",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to run sky check {cloud}: {str(e)}"
+        )
+
+
+@router.get("/{cloud}/instances")
+async def get_cloud_instances(
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    user: dict = Depends(get_user_or_api_key),
+):
+    """Get current cloud instance count and limits"""
+    try:
+        if cloud == "azure":
+            config = az_get_current_config()
+        elif cloud == "runpod":
+            config = rp_get_current_config()
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        skyPilotStatus = get_skypilot_status()
+
+        user_cloud_clusters = []
+        for cluster in skyPilotStatus:
+            cluster_name = cluster.get("name", "")
+            platform_info = get_cluster_platform_data(cluster_name)
+
+            if (
+                platform_info
+                and platform_info.get("platform") == cloud
+                and platform_info.get("user_id") == user["id"]
+                and platform_info.get("organization_id") == user["organization_id"]
+            ):
+                user_cloud_clusters.append(cluster)
+
+        current_count = len(user_cloud_clusters)
+        max_instances = config.get("max_instances", 0) if config else 0
+
+        return {
+            "current_count": current_count,
+            "max_instances": max_instances,
+            "can_launch": max_instances == 0 or current_count < max_instances,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get {cloud} instance count: {str(e)}"
+        )
+
+
+@router.get("/{cloud}/info")
+async def get_cloud_info(cloud: str = Path(..., regex="^(azure|runpod)$")):
+    """Get cloud-specific information (instance types, regions, GPU types, display options, etc.)"""
+    try:
+        if cloud == "azure":
+            # Get Azure-specific information
+            instance_types = az_get_instance_types()
+            regions = az_get_regions()
+
+            return {
+                "instance_types": instance_types,
+                "regions": regions,
+            }
+        elif cloud == "runpod":
+            # Get RunPod-specific information
+            display_options = rp_get_display_options()
+            display_options_with_pricing = rp_get_display_options_with_pricing()
+
+            return {
+                "display_options": display_options,
+                "display_options_with_pricing": display_options_with_pricing,
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get {cloud} info: {str(e)}"
+        )
