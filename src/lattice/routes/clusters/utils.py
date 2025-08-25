@@ -8,7 +8,7 @@ from utils.file_utils import (
 from models import SSHNode
 import threading
 import os
-from ..skypilot.utils import fetch_and_parse_gpu_resources
+from ..instances.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
 from db_models import SSHNodePool as SSHNodePoolDB, SSHNodeEntry as SSHNodeDB
 

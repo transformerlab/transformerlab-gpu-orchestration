@@ -82,7 +82,7 @@ const Reports: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(buildApiUrl("skypilot/cost-report"), {
+      const response = await fetch(buildApiUrl("instances/cost-report"), {
         credentials: "include",
       });
       if (!response.ok) {

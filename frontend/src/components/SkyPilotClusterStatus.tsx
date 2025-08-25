@@ -129,7 +129,7 @@ const SkyPilotClusterStatus: React.FC = () => {
       const typePromises = clusters.map(async (cluster: any) => {
         try {
           const typeResponse = await apiFetch(
-            buildApiUrl(`skypilot/cluster-type/${cluster.cluster_name}`),
+            buildApiUrl(`instances/cluster-type/${cluster.cluster_name}`),
             { credentials: "include" }
           );
           if (typeResponse.ok) {
@@ -398,7 +398,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     try {
       setOperationLoading((prev) => ({ ...prev, [clusterName]: true }));
       const response = await apiFetch(
-        buildApiUrl(`skypilot/clusters/${clusterName}/stop`),
+        buildApiUrl(`instances/stop`),
         {
           method: "POST",
           credentials: "include",
@@ -430,7 +430,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     try {
       setOperationLoading((prev) => ({ ...prev, [clusterName]: true }));
       const response = await apiFetch(
-        buildApiUrl(`skypilot/clusters/${clusterName}/down`),
+        buildApiUrl(`instances/down`),
         {
           method: "POST",
           credentials: "include",

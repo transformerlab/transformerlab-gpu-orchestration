@@ -53,7 +53,7 @@ const ClusterDetails: React.FC = () => {
 
   // Fetch cluster platform information
   const { data: clusterPlatforms } = useSWR(
-    clusterName ? buildApiUrl("skypilot/cluster-platforms") : null,
+            clusterName ? buildApiUrl("instances/cluster-platforms") : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
     { refreshInterval: 5000 }
