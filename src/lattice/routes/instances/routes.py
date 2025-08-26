@@ -61,12 +61,20 @@ from routes.jobs.utils import get_cluster_job_queue
 # Removed load_ssh_node_info import as we now use database-based approach
 from typing import Optional
 from .utils import generate_cost_report
+from concurrent.futures import ThreadPoolExecutor
+
+
+# Global thread pool executor for GPU resource updates
+_gpu_update_executor = ThreadPoolExecutor(
+    max_workers=4,  # Limit concurrent GPU update operations
+    thread_name_prefix="gpu-update",
+)
 
 
 def update_gpu_resources_background(node_pool_name: str):
     """
     Background task to update GPU resources for a node pool.
-    This function is designed to be run in a separate thread.
+    Uses a thread pool executor to limit concurrent operations.
     """
     import asyncio
 
@@ -88,12 +96,8 @@ def update_gpu_resources_background(node_pool_name: str):
         finally:
             loop.close()
 
-    # Start the update in a separate thread
-    import threading
-
-    thread = threading.Thread(target=run_async_update)
-    thread.daemon = True  # Make it a daemon thread so it doesn't block shutdown
-    thread.start()
+    # Submit the task to the thread pool executor
+    _gpu_update_executor.submit(run_async_update)
 
 
 router = APIRouter(

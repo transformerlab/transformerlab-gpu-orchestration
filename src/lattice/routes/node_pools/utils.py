@@ -73,7 +73,6 @@ def get_cached_gpu_resources(node_pool_name: str) -> dict:
             )
             if pool and pool.other_data and pool.other_data.get("gpu_resources"):
                 cached_data = pool.other_data["gpu_resources"]
-                print(f"Retrieved cached GPU resources for {node_pool_name}")
                 return cached_data
             print(f"No cached GPU resources found for {node_pool_name}")
             return {}
