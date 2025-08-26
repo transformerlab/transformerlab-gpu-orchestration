@@ -40,7 +40,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
 }) => {
   const [command, setCommand] = useState("");
   const [setup, setSetup] = useState("");
-  const [pythonFile, setPythonFile] = useState<File | null>(null);
+  const [dirFiles, setDirFiles] = useState<FileList | null>(null);
   const [cpus, setCpus] = useState("");
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
@@ -53,7 +53,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const resetForm = () => {
     setCommand("");
     setSetup("");
-    setPythonFile(null);
+    setDirFiles(null);
     setCpus("");
     setMemory("");
     setAccelerators("");
@@ -95,6 +95,17 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     return true;
   };
 
+  const deriveDirName = (files: FileList | null): string | null => {
+    if (!files || files.length === 0) return null;
+    const first: any = files[0];
+    const path: string | undefined = first.webkitRelativePath;
+    if (path && path.includes("/")) {
+      const base = path.split("/")[0];
+      return base || null;
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -108,11 +119,22 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
 
       formData.append("command", command);
       if (setup) formData.append("setup", setup);
-      if (pythonFile) formData.append("python_file", pythonFile);
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
       if (jobName) formData.append("job_name", jobName);
+
+      // Append directory files with their relative paths to preserve structure
+      if (dirFiles && dirFiles.length > 0) {
+        const dirName = deriveDirName(dirFiles);
+        if (dirName) {
+          formData.append("dir_name", dirName);
+        }
+        for (const file of Array.from(dirFiles)) {
+          const relativePath = (file as any).webkitRelativePath || file.name;
+          formData.append("dir_files", file, relativePath);
+        }
+      }
 
       const response = await apiFetch(
         buildApiUrl(`jobs/${clusterName}/submit`),
@@ -228,23 +250,23 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Attach Python file (optional)</FormLabel>
+                <FormLabel>Attach project directory (optional)</FormLabel>
                 <input
                   type="file"
-                  accept=".py"
+                  // @ts-ignore - webkitdirectory is widely supported in Chromium/WebKit
+                  webkitdirectory=""
+                  // @ts-ignore - allow directory selection
+                  directory=""
+                  multiple
                   onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setPythonFile(e.target.files[0]);
-                    } else {
-                      setPythonFile(null);
-                    }
+                    setDirFiles(e.target.files);
                   }}
                   style={{ marginTop: 8 }}
                   disabled={isClusterLaunching}
                 />
-                {pythonFile && (
+                {dirFiles && dirFiles.length > 0 && (
                   <Typography level="body-xs" color="primary">
-                    Selected: {pythonFile.name}
+                    Selected files: {dirFiles.length}
                   </Typography>
                 )}
               </FormControl>
