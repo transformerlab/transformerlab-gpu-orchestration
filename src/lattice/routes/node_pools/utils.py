@@ -3,7 +3,6 @@ from utils.file_utils import (
     load_ssh_node_pools,
     save_ssh_node_pools,
     load_ssh_node_info,
-    save_ssh_node_info,
 )
 from models import SSHNode
 import threading
@@ -180,9 +179,8 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
 
         try:
             gpu_info = asyncio.run(fetch_and_parse_gpu_resources(cluster_name))
-            node_info = load_ssh_node_info()
-            node_info[node.ip] = {"gpu_resources": gpu_info}
-            save_ssh_node_info(node_info)
+            # Update the database with the new GPU resources instead of saving to file
+            asyncio.run(update_node_pool_gpu_resources_background(cluster_name))
         except Exception as e:
             print(f"Warning: Failed to fetch/store GPU info for node {node.ip}: {e}")
 
