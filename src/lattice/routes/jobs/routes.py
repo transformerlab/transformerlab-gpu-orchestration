@@ -32,6 +32,12 @@ from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
 from typing import Optional
 from pathlib import Path
+import typing as _typing
+
+try:
+    import sky  # type: ignore
+except Exception:  # pragma: no cover
+    sky = None  # Fallback if SkyPilot is not available at import time
 
 
 router = APIRouter(prefix="/jobs", dependencies=[Depends(get_user_or_api_key)])
@@ -252,6 +258,114 @@ async def submit_job_to_cluster(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to submit job: {str(e)}")
+
+
+@router.post("/managed/launch")
+async def launch_managed_job(
+    request: Request,
+    response: Response,
+    command: str = Form(...),
+    setup: Optional[str] = Form(None),
+    cpus: Optional[str] = Form(None),
+    memory: Optional[str] = Form(None),
+    accelerators: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    zone: Optional[str] = Form(None),
+    job_name: Optional[str] = Form(None),
+    pool_name: Optional[str] = Form(None),
+    python_file: Optional[UploadFile] = File(None),
+    user: dict = Depends(get_user_or_api_key),
+):
+    """Launch a managed job using SkyPilot managed jobs (sky.jobs.launch).
+
+    This does not target an existing cluster; SkyPilot will provision as needed.
+    """
+    if sky is None:
+        raise HTTPException(
+            status_code=500, detail="SkyPilot is not installed on the server"
+        )
+
+    try:
+        file_mounts = None
+        python_filename = None
+
+        if python_file is not None and python_file.filename:
+            python_filename = python_file.filename
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            file_mounts = {f"/root/{python_filename}": str(file_path)}
+
+        # Normalize command newlines
+        command = command.replace("\r", "")
+
+        secure_job_name = None
+        if job_name:
+            secure_job_name = secure_filename(job_name)
+
+        # Build SkyPilot task
+        task_kwargs: _typing.Dict[str, _typing.Any] = {}
+        if setup:
+            task_kwargs["setup"] = setup
+        task = sky.Task(run=command, **task_kwargs)
+
+        # Optional file mounts / workdir
+        if file_mounts:
+            task.set_file_mounts(file_mounts)
+
+        # Optional resources
+        resources_kwargs: _typing.Dict[str, _typing.Any] = {}
+        if accelerators:
+            resources_kwargs["accelerators"] = accelerators
+        if cpus:
+            resources_kwargs["cpus"] = cpus
+        if memory:
+            resources_kwargs["memory"] = memory
+        if region:
+            resources_kwargs["region"] = region
+        if zone:
+            resources_kwargs["zone"] = zone
+        if resources_kwargs:
+            task.set_resources(sky.Resources(**resources_kwargs))
+
+        # Launch managed job (asynchronous; returns a request ID)
+        try:
+            if secure_job_name:
+                request_id = sky.jobs.launch(
+                    task, name=secure_job_name, pool_name=pool_name
+                )
+            else:
+                request_id = sky.jobs.launch(task)
+        except TypeError:
+            # Fallback if "name" is not supported in this SkyPilot version
+            request_id = sky.jobs.launch(task)
+
+        # Record usage
+        try:
+            user_info = get_current_user(request, response)
+            user_id = user_info["id"]
+            record_usage(
+                user_id=user_id,
+                cluster_name=None,
+                usage_type="managed_job_launch",
+                job_id=request_id,
+                duration_minutes=None,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to record usage event: {e}")
+
+        return {
+            "request_id": request_id,
+            "message": "Managed job submitted",
+            "job_name": secure_job_name,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to launch managed job: {str(e)}"
+        )
 
 
 @router.get("/{cluster_name}/{job_id}/vscode-info")
