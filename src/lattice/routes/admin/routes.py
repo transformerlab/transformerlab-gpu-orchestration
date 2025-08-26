@@ -40,7 +40,7 @@ class UpdateMemberRoleRequest(BaseModel):
     role: str  # "admin" or "member"
 
 
-router = APIRouter(prefix="/admin/orgs")
+router = APIRouter(prefix="/admin/orgs", tags=["admin"])
 
 
 def is_user_admin(role) -> bool:

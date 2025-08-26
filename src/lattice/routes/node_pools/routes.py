@@ -37,7 +37,11 @@ from .utils import (
     list_cluster_names_from_db,
 )
 
-router = APIRouter(prefix="/node-pools", dependencies=[Depends(get_user_or_api_key)])
+router = APIRouter(
+    prefix="/node-pools",
+    dependencies=[Depends(get_user_or_api_key)],
+    tags=["node-pools"],
+)
 
 
 @router.get("/")

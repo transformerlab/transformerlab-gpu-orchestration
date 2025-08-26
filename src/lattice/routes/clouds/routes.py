@@ -71,7 +71,9 @@ class RunPodTestRequest(BaseModel):
 
 
 # Create main clouds router
-router = APIRouter(prefix="/clouds", dependencies=[Depends(get_user_or_api_key)])
+router = APIRouter(
+    prefix="/clouds", dependencies=[Depends(get_user_or_api_key)], tags=["clouds"]
+)
 
 # Include SSH router
 

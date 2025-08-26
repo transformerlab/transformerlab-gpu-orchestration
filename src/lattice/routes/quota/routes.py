@@ -36,7 +36,7 @@ from lattice.routes.quota.utils import (
 )
 from lattice.routes.quota.team_quota_routes import router as team_quota_router
 
-router = APIRouter(prefix="/quota")
+router = APIRouter(prefix="/quota", tags=["quota"])
 
 # Include team quota routes
 router.include_router(team_quota_router)

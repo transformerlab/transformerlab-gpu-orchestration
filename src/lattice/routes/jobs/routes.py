@@ -35,7 +35,9 @@ from typing import Optional, List
 from pathlib import Path
 
 
-router = APIRouter(prefix="/jobs", dependencies=[Depends(get_user_or_api_key)])
+router = APIRouter(
+    prefix="/jobs", dependencies=[Depends(get_user_or_api_key)], tags=["jobs"]
+)
 
 
 @router.get("/past-jobs")
