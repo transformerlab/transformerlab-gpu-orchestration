@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime
 
 from fastapi import (
     APIRouter,
@@ -133,12 +134,9 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading instances data: {e}")
 
-        # 4. Get SSH node info and trigger background GPU resource updates
+        # 4. Get SSH node info with synchronous GPU resource updates
         try:
-            # Trigger background GPU resource updates for all SSH node pools
-            trigger_gpu_resource_updates_for_user(user["id"], user["organization_id"])
-
-            # Build comprehensive SSH node info from database with cached GPU data
+            # Build comprehensive SSH node info from database with fresh GPU data
             ssh_node_info = {}
             # Get SSH node pools that belong to the user's organization
             user_ssh_pools = (
@@ -150,12 +148,34 @@ async def get_node_pools(
             for pool in user_ssh_pools:
                 cluster_name = pool.name
                 cfg = get_cluster_config_from_db(cluster_name)
-                cached_gpu_resources = get_cached_gpu_resources(cluster_name)
 
-                ssh_node_info[cluster_name] = {
-                    "hosts": cfg.get("hosts", []),
-                    "gpu_resources": cached_gpu_resources,
-                }
+                # Fetch and update GPU resources synchronously
+                try:
+                    gpu_resources = await fetch_and_parse_gpu_resources(cluster_name)
+
+                    # Update the database with fresh GPU resources
+                    current_other_data = pool.other_data or {}
+                    current_other_data.update(
+                        {
+                            "gpu_resources": gpu_resources,
+                            "last_updated": datetime.utcnow().isoformat(),
+                        }
+                    )
+                    pool.other_data = current_other_data
+                    db.commit()
+
+                    ssh_node_info[cluster_name] = {
+                        "hosts": cfg.get("hosts", []),
+                        "gpu_resources": gpu_resources,
+                    }
+                except Exception as e:
+                    print(f"Error updating GPU resources for {cluster_name}: {e}")
+                    # Fallback to cached data if fresh fetch fails
+                    cached_gpu_resources = get_cached_gpu_resources(cluster_name)
+                    ssh_node_info[cluster_name] = {
+                        "hosts": cfg.get("hosts", []),
+                        "gpu_resources": cached_gpu_resources,
+                    }
 
             response_data["ssh_node_info"] = ssh_node_info
         except Exception as e:
