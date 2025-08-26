@@ -26,7 +26,7 @@ from .teams_service import (
 )
 
 
-router = APIRouter(prefix="/admin/teams", tags=["admin-teams"])
+router = APIRouter(prefix="/admin/teams", tags=["admin"])
 
 
 @router.get("/", response_model=TeamListResponse)
