@@ -26,24 +26,23 @@ import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch, teamsQuotaApi } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 
-interface OrganizationQuota {
-  organization_id: string;
-  monthly_gpu_hours_per_user: number;
-  current_period_start: string;
-  current_period_end: string;
-  gpu_hours_used: number;
-  gpu_hours_remaining: number;
-  usage_percentage: number;
-}
-
-interface UserUsageBreakdown {
-  user_id: string;
-  user_email?: string;
-  user_name?: string;
-  gpu_hours_used: number;
-  gpu_hours_limit: number;
-  gpu_hours_remaining: number;
-  usage_percentage: number;
+interface OrganizationQuotaData {
+  organization_quota: {
+    id: string;
+    organization_id: string;
+    monthly_credits_per_user: number;
+    created_at: string;
+    updated_at: string;
+  };
+  usage: {
+    current_period_limit: number;
+    current_period_used: number;
+    current_period_remaining: number;
+    usage_percentage: number;
+    period_start: string;
+    period_end: string;
+    total_usage_this_period: number;
+  };
 }
 
 interface OrganizationUserUsage {
@@ -53,7 +52,36 @@ interface OrganizationUserUsage {
   quota_per_user: number;
   total_users: number;
   total_organization_usage: number;
-  user_breakdown: UserUsageBreakdown[];
+  user_breakdown: Array<{
+    user_id: string;
+    user_email?: string;
+    user_name?: string;
+    credits_used: number;
+    credits_limit: number;
+    credits_remaining: number;
+    usage_percentage: number;
+  }>;
+}
+
+interface UserQuotaData {
+  user_id: string;
+  user_email?: string;
+  user_name?: string;
+  organization_id: string;
+  monthly_credits_per_user: number;
+  custom_quota: boolean;
+  created_at: string;
+  updated_at: string;
+  effective_quota_source: string;
+}
+
+interface TeamQuotaData {
+  team_id: string;
+  team_name: string;
+  organization_id: string;
+  monthly_credits_per_user: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface GPUUsageLog {
@@ -75,7 +103,7 @@ interface GPUUsageLog {
 }
 
 interface QuotaUsageResponse {
-  organization_quota: OrganizationQuota;
+  organization_quota: OrganizationQuotaData;
   recent_usage: GPUUsageLog[];
   total_usage_this_period: number;
 }
@@ -86,7 +114,7 @@ interface UserQuota {
   user_email?: string;
   user_name?: string;
   organization_id: string;
-  monthly_gpu_hours_per_user: number;
+  monthly_credits_per_user: number;
   custom_quota: boolean;
   created_at: string;
   updated_at: string;
@@ -105,7 +133,7 @@ type TeamQuotaItem = {
   team_id: string;
   team_name: string;
   organization_id: string;
-  monthly_gpu_hours_per_user: number;
+  monthly_credits_per_user: number;
   created_at: string;
   updated_at: string;
 };
@@ -242,9 +270,9 @@ const OrgQuota: React.FC = () => {
 
   // Initialize newQuotaHours when quotaData changes
   useEffect(() => {
-    if (quotaData?.organization_quota?.monthly_gpu_hours_per_user) {
+    if (quotaData?.organization_quota?.monthly_credits_per_user) {
       setNewQuotaHours(
-        quotaData.organization_quota.monthly_gpu_hours_per_user.toString()
+        quotaData.organization_quota.monthly_credits_per_user.toString()
       );
     }
   }, [quotaData]);
@@ -315,7 +343,7 @@ const OrgQuota: React.FC = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            monthly_gpu_hours_per_user: parseFloat(newQuotaHours),
+            monthly_credits_per_user: parseFloat(newQuotaHours),
           }),
           credentials: "include",
         }
@@ -383,7 +411,7 @@ const OrgQuota: React.FC = () => {
 
   const handleEditUserQuota = (user: UserQuota) => {
     setSelectedUser(user);
-    setNewUserQuotaHours(user.monthly_gpu_hours_per_user.toString());
+    setNewUserQuotaHours(user.monthly_credits_per_user.toString());
     setOpenUserQuotaModal(true);
   };
 
@@ -403,7 +431,7 @@ const OrgQuota: React.FC = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            monthly_gpu_hours_per_user: parseFloat(newUserQuotaHours),
+            monthly_credits_per_user: parseFloat(newUserQuotaHours),
           }),
           credentials: "include",
         }
@@ -553,7 +581,7 @@ const OrgQuota: React.FC = () => {
                 gap={2}
               >
                 <Chip size="sm" color="primary">
-                  {formatHours(organization_quota.monthly_gpu_hours_per_user)}{" "}
+                  {formatHours(organization_quota.monthly_credits_per_user)}{" "}
                   credits
                 </Chip>
                 <Button onClick={handleEditOrg}>Edit</Button>
@@ -605,7 +633,7 @@ const OrgQuota: React.FC = () => {
             (() => {
               const overrides = teamQuotas.teams.filter(
                 (t) =>
-                  t.monthly_gpu_hours_per_user !==
+                  t.monthly_credits_per_user !==
                   teamQuotas.default_quota_per_user
               );
               if (overrides.length === 0) {
@@ -632,8 +660,7 @@ const OrgQuota: React.FC = () => {
                           <td>{t.team_name}</td>
                           <td>
                             <Chip size="sm" color="primary">
-                              {formatHours(t.monthly_gpu_hours_per_user)}{" "}
-                              credits
+                              {formatHours(t.monthly_credits_per_user)} credits
                             </Chip>
                           </td>
                           <td style={{ textAlign: "right" }}>
@@ -648,7 +675,7 @@ const OrgQuota: React.FC = () => {
                                 onClick={() => {
                                   setSelectedTeam(t);
                                   setNewTeamQuotaHours(
-                                    String(t.monthly_gpu_hours_per_user)
+                                    String(t.monthly_credits_per_user)
                                   );
                                   setOpenTeamQuotaModal(true);
                                 }}
@@ -765,7 +792,7 @@ const OrgQuota: React.FC = () => {
                         </td>
                         <td>
                           <Chip color="primary" size="sm">
-                            {formatHours(userQuota.monthly_gpu_hours_per_user)}{" "}
+                            {formatHours(userQuota.monthly_credits_per_user)}{" "}
                             credits
                           </Chip>
                         </td>
@@ -862,7 +889,7 @@ const OrgQuota: React.FC = () => {
           </Typography>
           <Stack gap={2}>
             <Input
-              placeholder="Monthly GPU Hours Per User"
+              placeholder="Monthly Credits Per User"
               value={newQuotaHours}
               onChange={(e) => setNewQuotaHours(e.target.value)}
               slotProps={{
@@ -1079,7 +1106,7 @@ const OrgQuota: React.FC = () => {
                   {teamQuotas?.teams
                     .filter(
                       (t) =>
-                        t.monthly_gpu_hours_per_user ===
+                        t.monthly_credits_per_user ===
                         teamQuotas.default_quota_per_user
                     )
                     .filter((t) =>
@@ -1103,7 +1130,7 @@ const OrgQuota: React.FC = () => {
                     teamQuotas.teams
                       .filter(
                         (t) =>
-                          t.monthly_gpu_hours_per_user ===
+                          t.monthly_credits_per_user ===
                           teamQuotas.default_quota_per_user
                       )
                       .filter((t) =>
@@ -1282,7 +1309,7 @@ const OrgQuota: React.FC = () => {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          monthly_gpu_hours_per_user: parsed,
+                          monthly_credits_per_user: parsed,
                         }),
                         credentials: "include",
                       }

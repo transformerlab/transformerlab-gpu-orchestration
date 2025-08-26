@@ -69,7 +69,7 @@ const Reports: React.FC = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      setQuotaLimit(data.monthly_gpu_hours_per_user || 100);
+      setQuotaLimit(data.monthly_credits_per_user || 100);
     } catch (err) {
       console.error("Failed to fetch quota data:", err);
       // Keep the default 100 if quota fetch fails

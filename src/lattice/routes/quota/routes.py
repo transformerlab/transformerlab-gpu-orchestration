@@ -56,11 +56,11 @@ async def get_organization_quota(
 
         return OrganizationQuotaResponse(
             organization_id=organization_id,
-            monthly_gpu_hours_per_user=quota_info["effective_quota_limit"],
+            monthly_credits_per_user=quota_info["effective_quota_limit"],
             current_period_start=period_start.isoformat(),
             current_period_end=period_end.isoformat(),
-            gpu_hours_used=quota_info["current_period_used"],
-            gpu_hours_remaining=quota_info["current_period_remaining"],
+            credits_used=quota_info["current_period_used"],
+            credits_remaining=quota_info["current_period_remaining"],
             usage_percentage=min(100, quota_info["usage_percentage"]),
         )
     except Exception as e:
@@ -80,14 +80,14 @@ async def update_organization_quota(
         org_quota = get_or_create_organization_quota(db, organization_id)
 
         # Update the quota per user
-        org_quota.monthly_gpu_hours_per_user = request.monthly_gpu_hours_per_user
+        org_quota.monthly_credits_per_user = request.monthly_credits_per_user
         org_quota.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(org_quota)
 
         # Update current period limit for the current user
         current_period = get_or_create_quota_period(db, organization_id, user["id"])
-        current_period.gpu_hours_limit = request.monthly_gpu_hours_per_user
+        current_period.credits_limit = request.monthly_credits_per_user
         current_period.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(current_period)
@@ -97,9 +97,7 @@ async def update_organization_quota(
 
         for user_quota in user_quotas:
             if not user_quota.custom_quota:
-                user_quota.monthly_gpu_hours_per_user = (
-                    request.monthly_gpu_hours_per_user
-                )
+                user_quota.monthly_credits_per_user = request.monthly_credits_per_user
                 user_quota.custom_quota = False
                 user_quota.updated_at = datetime.utcnow()
         db.commit()
@@ -109,19 +107,19 @@ async def update_organization_quota(
 
         # Calculate usage percentage
         usage_percentage = (
-            (current_period.gpu_hours_used / current_period.gpu_hours_limit) * 100
-            if current_period.gpu_hours_limit > 0
+            (current_period.credits_used / current_period.credits_limit) * 100
+            if current_period.credits_limit > 0
             else 0
         )
 
         return OrganizationQuotaResponse(
             organization_id=organization_id,
-            monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+            monthly_credits_per_user=org_quota.monthly_credits_per_user,
             current_period_start=current_period.period_start.isoformat(),
             current_period_end=current_period.period_end.isoformat(),
-            gpu_hours_used=current_period.gpu_hours_used,
-            gpu_hours_remaining=max(
-                0, current_period.gpu_hours_limit - current_period.gpu_hours_used
+            credits_used=current_period.credits_used,
+            credits_remaining=max(
+                0, current_period.credits_limit - current_period.credits_used
             ),
             usage_percentage=min(100, usage_percentage),
         )
@@ -178,7 +176,7 @@ async def get_organization_usage(
                     gpu_count=log.gpu_count,
                     start_time=log.start_time.isoformat(),
                     end_time=log.end_time.isoformat() if log.end_time else None,
-                    duration_hours=log.duration_hours,
+                    duration_seconds=log.duration_seconds,
                     instance_type=log.instance_type,
                     cloud_provider=log.cloud_provider,
                     region=log.region,
@@ -189,7 +187,7 @@ async def get_organization_usage(
         return QuotaUsageResponse(
             organization_quota=quota_response,
             recent_usage=recent_usage,
-            total_usage_this_period=quota_response.gpu_hours_used,
+            total_usage_this_period=quota_response.credits_used,
         )
     except Exception as e:
         print(f"Failed to get usage: {str(e)}")
@@ -209,14 +207,14 @@ async def check_quota_availability(
         quota_response = await get_organization_quota(organization_id, user, db)
 
         required_hours = estimated_hours * gpu_count
-        has_quota = quota_response.gpu_hours_remaining >= required_hours
+        has_quota = quota_response.credits_remaining >= required_hours
 
         return {
             "has_quota": has_quota,
             "required_hours": required_hours,
-            "available_hours": quota_response.gpu_hours_remaining,
-            "current_usage": quota_response.gpu_hours_used,
-            "quota_limit": quota_response.monthly_gpu_hours_per_user,
+            "available_hours": quota_response.credits_remaining,
+            "current_usage": quota_response.credits_used,
+            "quota_limit": quota_response.monthly_credits_per_user,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to check quota: {str(e)}")
@@ -291,9 +289,11 @@ async def get_all_organization_usage(
                 >= datetime.combine(period_start, datetime.min.time()),
                 GPUUsageLog.start_time
                 <= datetime.combine(period_end, datetime.max.time()),
-                GPUUsageLog.duration_hours.isnot(None),
+                GPUUsageLog.duration_seconds.isnot(None),
             )
-            .with_entities(func.sum(GPUUsageLog.duration_hours * GPUUsageLog.gpu_count))
+            .with_entities(
+                func.sum((GPUUsageLog.duration_seconds / 3600) * GPUUsageLog.gpu_count)
+            )
             .scalar()
             or 0.0
         )
@@ -301,11 +301,11 @@ async def get_all_organization_usage(
         # Create a mock quota response for organization view
         quota_response = OrganizationQuotaResponse(
             organization_id=organization_id,
-            monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+            monthly_credits_per_user=org_quota.monthly_credits_per_user,
             current_period_start=period_start.isoformat(),
             current_period_end=period_end.isoformat(),
-            gpu_hours_used=total_org_usage,
-            gpu_hours_remaining=0.0,  # Not applicable for org-wide view
+            credits_used=total_org_usage,
+            credits_remaining=0.0,  # Not applicable for org-wide view
             usage_percentage=0.0,  # Not applicable for org-wide view
         )
 
@@ -343,7 +343,7 @@ async def get_all_organization_usage(
                     gpu_count=log.gpu_count,
                     start_time=log.start_time.isoformat(),
                     end_time=log.end_time.isoformat() if log.end_time else None,
-                    duration_hours=log.duration_hours,
+                    duration_seconds=log.duration_seconds,
                     instance_type=log.instance_type,
                     cloud_provider=log.cloud_provider,
                     region=log.region,
@@ -396,7 +396,7 @@ async def get_organization_user_quotas(
                         user_email=user_info.email,
                         user_name=f"{user_info.first_name or ''} {user_info.last_name or ''}".strip(),
                         organization_id=user_quota.organization_id,
-                        monthly_gpu_hours_per_user=user_quota.monthly_gpu_hours_per_user,
+                        monthly_credits_per_user=user_quota.monthly_credits_per_user,
                         custom_quota=user_quota.custom_quota,
                         created_at=user_quota.created_at.isoformat(),
                         updated_at=user_quota.updated_at.isoformat(),
@@ -412,7 +412,7 @@ async def get_organization_user_quotas(
                         user_email=None,
                         user_name=None,
                         organization_id=user_quota.organization_id,
-                        monthly_gpu_hours_per_user=user_quota.monthly_gpu_hours_per_user,
+                        monthly_credits_per_user=user_quota.monthly_credits_per_user,
                         custom_quota=user_quota.custom_quota,
                         created_at=user_quota.created_at.isoformat(),
                         updated_at=user_quota.updated_at.isoformat(),
@@ -424,7 +424,7 @@ async def get_organization_user_quotas(
         return UserQuotaListResponse(
             organization_id=organization_id,
             users=users,
-            default_quota_per_user=org_quota.monthly_gpu_hours_per_user,
+            default_quota_per_user=org_quota.monthly_credits_per_user,
         )
     except Exception as e:
         raise HTTPException(
@@ -469,7 +469,7 @@ async def get_user_quota(
             user_email=user_email,
             user_name=user_name,
             organization_id=user_quota.organization_id,
-            monthly_gpu_hours_per_user=user_quota.monthly_gpu_hours_per_user,
+            monthly_credits_per_user=user_quota.monthly_credits_per_user,
             custom_quota=user_quota.custom_quota,
             created_at=user_quota.created_at.isoformat(),
             updated_at=user_quota.updated_at.isoformat(),
@@ -496,7 +496,7 @@ async def update_user_quota_endpoint(
     """Update quota for a specific user"""
     try:
         updated_quota = update_user_quota(
-            db, organization_id, user_id, request.monthly_gpu_hours_per_user
+            db, organization_id, user_id, request.monthly_credits_per_user
         )
 
         # Refresh the user's quota period to reflect the new limit
@@ -525,7 +525,7 @@ async def update_user_quota_endpoint(
             user_email=user_email,
             user_name=user_name,
             organization_id=updated_quota.organization_id,
-            monthly_gpu_hours_per_user=updated_quota.monthly_gpu_hours_per_user,
+            monthly_credits_per_user=updated_quota.monthly_credits_per_user,
             custom_quota=updated_quota.custom_quota,
             created_at=updated_quota.created_at.isoformat(),
             updated_at=updated_quota.updated_at.isoformat(),
@@ -596,7 +596,7 @@ async def create_user_quota_endpoint(
         new_quota = OrganizationQuota(
             organization_id=organization_id,
             user_id=user_id,
-            monthly_gpu_hours_per_user=request.monthly_gpu_hours_per_user,
+            monthly_credits_per_user=request.monthly_credits_per_user,
             custom_quota=True,
         )
         db.add(new_quota)
@@ -629,7 +629,7 @@ async def create_user_quota_endpoint(
             user_email=user_email,
             user_name=user_name,
             organization_id=new_quota.organization_id,
-            monthly_gpu_hours_per_user=new_quota.monthly_gpu_hours_per_user,
+            monthly_credits_per_user=new_quota.monthly_credits_per_user,
             custom_quota=new_quota.custom_quota,
             created_at=new_quota.created_at.isoformat(),
             updated_at=new_quota.updated_at.isoformat(),

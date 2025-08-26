@@ -13,9 +13,9 @@ interface UserUsageData {
   user_id: string;
   user_email?: string;
   user_name?: string;
-  gpu_hours_used: number;
-  gpu_hours_limit: number;
-  gpu_hours_remaining: number;
+  credits_used: number;
+  credits_limit: number;
+  credits_remaining: number;
   usage_percentage: number;
 }
 
@@ -40,7 +40,7 @@ const UserUsagePieChart: React.FC<UserUsagePieChartProps> = ({ data }) => {
   // Transform data for pie chart
   const pieData = data.map((user, index) => ({
     name: user.user_name || user.user_email || user.user_id,
-    value: user.gpu_hours_used,
+    value: user.credits_used,
     color: COLORS[index % COLORS.length],
     user_id: user.user_id,
     usage_percentage: user.usage_percentage,

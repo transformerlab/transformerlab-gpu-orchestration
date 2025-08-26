@@ -102,9 +102,9 @@ class OrganizationQuota(Base):
     user_id = Column(
         String, nullable=True
     )  # NULL for org-wide default, user_id for per-user quota
-    monthly_gpu_hours_per_user = Column(
+    monthly_credits_per_user = Column(
         Float, nullable=False, default=100.0
-    )  # GPU hours per month per user
+    )  # Credits per month per user
     custom_quota = Column(Boolean, default=False)  # True if this is a custom user quota
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -125,8 +125,8 @@ class QuotaPeriod(Base):
     )  # NULL for org-wide periods, user_id for per-user periods
     period_start = Column(Date, nullable=False)  # First day of the billing period
     period_end = Column(Date, nullable=False)  # Last day of the billing period
-    gpu_hours_used = Column(Float, default=0.0)  # Total GPU hours used in this period
-    gpu_hours_limit = Column(Float, nullable=False)  # Quota limit for this period
+    credits_used = Column(Float, default=0.0)  # Total credits used in this period
+    credits_limit = Column(Float, nullable=False)  # Quota limit for this period
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -142,7 +142,7 @@ class GPUUsageLog(Base):
     gpu_count = Column(Integer, nullable=False, default=1)  # Number of GPUs used
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=True)  # NULL if still running
-    duration_hours = Column(Float, nullable=True)  # Calculated duration in hours
+    duration_seconds = Column(Float, nullable=True)  # Calculated duration in seconds
     instance_type = Column(String, nullable=True)  # e.g., "g4dn.xlarge", "V100"
     cloud_provider = Column(String, nullable=True)  # e.g., "aws", "azure", "gcp"
     region = Column(String, nullable=True)  # e.g., "us-east-1", "CA", "westus2"
@@ -263,7 +263,7 @@ class TeamQuota(Base):
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     organization_id = Column(String, nullable=False)
     team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
-    monthly_gpu_hours_per_user = Column(Float, nullable=False, default=100.0)
+    monthly_credits_per_user = Column(Float, nullable=False, default=100.0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

@@ -19,11 +19,11 @@ import { useAuth } from "../../../context/AuthContext";
 
 interface OrganizationQuota {
   organization_id: string;
-  monthly_gpu_hours_per_user: number;
+  monthly_credits_per_user: number;
   current_period_start: string;
   current_period_end: string;
-  gpu_hours_used: number;
-  gpu_hours_remaining: number;
+  credits_used: number;
+  credits_remaining: number;
   usage_percentage: number;
 }
 
@@ -265,8 +265,8 @@ const MyQuota: React.FC = () => {
                 Monthly Limit
               </Typography>
               <Typography level="h3">
-                {formatHours(organization_quota.monthly_gpu_hours_per_user)}{" "}
-                hours per user
+                {formatHours(organization_quota.monthly_credits_per_user)}{" "}
+                credits per user
               </Typography>
             </Grid>
             <Grid xs={12} md={3}>
@@ -274,7 +274,7 @@ const MyQuota: React.FC = () => {
                 Used This Month
               </Typography>
               <Typography level="h3" color="primary">
-                {formatHours(organization_quota.gpu_hours_used)} hours
+                {formatHours(organization_quota.credits_used)} credits
               </Typography>
             </Grid>
             <Grid xs={12} md={3}>
@@ -282,7 +282,7 @@ const MyQuota: React.FC = () => {
                 Remaining
               </Typography>
               <Typography level="h3" color="success">
-                {formatHours(organization_quota.gpu_hours_remaining)} hours
+                {formatHours(organization_quota.credits_remaining)} credits
               </Typography>
             </Grid>
             <Grid xs={12} md={3}>

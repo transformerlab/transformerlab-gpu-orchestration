@@ -216,25 +216,25 @@ class ReportsResponse(BaseModel):
 # Quota Management Models
 class OrganizationQuotaResponse(BaseModel):
     organization_id: str
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
     current_period_start: str
     current_period_end: str
-    gpu_hours_used: float
-    gpu_hours_remaining: float
+    credits_used: float
+    credits_remaining: float
     usage_percentage: float
 
 
 class UpdateQuotaRequest(BaseModel):
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
 
 
 class UserUsageBreakdown(BaseModel):
     user_id: str
     user_email: Optional[str] = None
     user_name: Optional[str] = None
-    gpu_hours_used: float
-    gpu_hours_limit: float
-    gpu_hours_remaining: float
+    credits_used: float
+    credits_limit: float
+    credits_remaining: float
     usage_percentage: float
 
 
@@ -259,7 +259,7 @@ class GPUUsageLogResponse(BaseModel):
     gpu_count: int
     start_time: str
     end_time: Optional[str] = None
-    duration_hours: Optional[float] = None
+    duration_seconds: Optional[float] = None
     instance_type: Optional[str] = None
     cloud_provider: Optional[str] = None
     region: Optional[str] = None
@@ -278,7 +278,7 @@ class UserQuotaResponse(BaseModel):
     user_email: Optional[str] = None
     user_name: Optional[str] = None
     organization_id: str
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
     custom_quota: bool
     created_at: str
     updated_at: str
@@ -288,7 +288,7 @@ class UserQuotaResponse(BaseModel):
 
 
 class UpdateUserQuotaRequest(BaseModel):
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
 
 
 class UserQuotaListResponse(BaseModel):
@@ -299,19 +299,19 @@ class UserQuotaListResponse(BaseModel):
 
 class CreateUserQuotaRequest(BaseModel):
     user_id: str
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
 
 
 # Team Quota Management Models
 class TeamQuotaRequest(BaseModel):
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
 
 
 class TeamQuotaResponse(BaseModel):
     team_id: str
     team_name: str
     organization_id: str
-    monthly_gpu_hours_per_user: float
+    monthly_credits_per_user: float
     created_at: str
     updated_at: str
 
@@ -320,6 +320,15 @@ class TeamQuotaListResponse(BaseModel):
     organization_id: str
     teams: List[TeamQuotaResponse]
     default_quota_per_user: float  # Organization-wide default
+
+
+class CreateTeamQuotaRequest(BaseModel):
+    team_id: str
+    monthly_credits_per_user: float
+
+
+class UpdateTeamQuotaRequest(BaseModel):
+    monthly_credits_per_user: float
 
 
 # Storage Bucket Models
