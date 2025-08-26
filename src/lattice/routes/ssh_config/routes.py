@@ -257,46 +257,48 @@ async def delete_ssh_key(
     session.commit()
 
 
-# Utility endpoint for SSH proxy server to lookup keys
-@router.get("/ssh-keys/lookup/by-key", response_model=dict)
-async def lookup_user_by_ssh_key(
-    public_key: str,
-    session: Session = Depends(get_db),
-):
-    """
-    Internal endpoint for SSH proxy server to lookup user by SSH public key.
-    This endpoint is intended for use by the SSH proxy server only.
-    """
-    try:
-        # Generate fingerprint for the provided key
-        fingerprint = SSHKey.generate_fingerprint(public_key)
+# # Utility endpoint for SSH proxy server to lookup keys
+# We hide this as it is a security issue to make it public
+# The SSH proxy accesses the DB directly so this is not needed
+# @router.get("/ssh-keys/lookup/by-key", response_model=dict)
+# async def lookup_user_by_ssh_key(
+#     public_key: str,
+#     session: Session = Depends(get_db),
+# ):
+#     """
+#     Internal endpoint for SSH proxy server to lookup user by SSH public key.
+#     This endpoint is intended for use by the SSH proxy server only.
+#     """
+#     try:
+#         # Generate fingerprint for the provided key
+#         fingerprint = SSHKey.generate_fingerprint(public_key)
 
-        # Look up the key in the database
-        ssh_key = (
-            session.query(SSHKey)
-            .filter(SSHKey.fingerprint == fingerprint, SSHKey.is_active)
-            .first()
-        )
+#         # Look up the key in the database
+#         ssh_key = (
+#             session.query(SSHKey)
+#             .filter(SSHKey.fingerprint == fingerprint, SSHKey.is_active)
+#             .first()
+#         )
 
-        if not ssh_key:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="SSH key not found or inactive",
-            )
+#         if not ssh_key:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="SSH key not found or inactive",
+#             )
 
-        # Update last_used_at
-        ssh_key.update_last_used()
-        session.commit()
+#         # Update last_used_at
+#         ssh_key.update_last_used()
+#         session.commit()
 
-        return {
-            "user_id": ssh_key.user_id,
-            "key_name": ssh_key.name,
-            "key_type": ssh_key.key_type,
-            "last_used_at": ssh_key.last_used_at.isoformat(),
-        }
+#         return {
+#             "user_id": ssh_key.user_id,
+#             "key_name": ssh_key.name,
+#             "key_type": ssh_key.key_type,
+#             "last_used_at": ssh_key.last_used_at.isoformat(),
+#         }
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid SSH key format: {str(e)}",
-        )
+#     except ValueError as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Invalid SSH key format: {str(e)}",
+#         )
