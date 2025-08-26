@@ -66,6 +66,9 @@ class SSHNodePool(Base):
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     # Cluster/pool name used by SkyPilot (must be unique)
     name = Column(String, nullable=False, unique=True)
+    # User and organization ownership
+    user_id = Column(String, nullable=True)
+    organization_id = Column(String, nullable=True)
     # Optional defaults applied to nodes in this pool
     default_user = Column(String, nullable=True)
     identity_file_path = Column(Text, nullable=True)
@@ -73,6 +76,10 @@ class SSHNodePool(Base):
     password = Column(Text, nullable=True)
     # Resource specifications for nodes in this pool (JSON format)
     resources = Column(JSON, nullable=True)  # e.g., {"vcpus": "4", "memory_gb": "16"}
+    # Additional data including GPU resources and other cached information
+    other_data = Column(
+        JSON, nullable=True
+    )  # e.g., {"gpu_resources": {...}, "last_updated": "..."}
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

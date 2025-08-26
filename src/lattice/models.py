@@ -265,6 +265,29 @@ class GPUUsageLogResponse(BaseModel):
     cost_estimate: Optional[float] = None
 
 
+class GPUResourceResponse(BaseModel):
+    gpu: str
+    requestable_qty_per_node: str
+    utilization: str
+    free: str
+    total: str
+
+
+class NodeGPUResourceResponse(BaseModel):
+    node_pool: str
+    node: str
+    gpu: str
+    utilization: str
+    free: str
+    total: str
+
+
+class NodePoolGPUResourcesResponse(BaseModel):
+    gpus: List[GPUResourceResponse]
+    node_gpus: List[NodeGPUResourceResponse]
+    message: Optional[str] = None
+
+
 class QuotaUsageResponse(BaseModel):
     organization_quota: OrganizationQuotaResponse
     recent_usage: List[GPUUsageLogResponse]

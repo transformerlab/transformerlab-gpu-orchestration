@@ -15,7 +15,7 @@ from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import az_get_current_config, load_azure_config
 from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
-from routes.instances.utils import get_skypilot_status
+from routes.instances.utils import get_skypilot_status, fetch_and_parse_gpu_resources
 from routes.reports.utils import record_availability
 from utils.cluster_utils import get_cluster_platform_info, get_display_name_from_actual
 from utils.file_utils import (
@@ -26,6 +26,8 @@ from utils.file_utils import (
     save_identity_file,
     save_named_identity_file,
 )
+
+from models import NodePoolGPUResourcesResponse
 from werkzeug.utils import secure_filename
 
 from .utils import (
@@ -35,7 +37,12 @@ from .utils import (
     remove_node_from_cluster,
     get_cluster_config_from_db,
     list_cluster_names_from_db,
+    trigger_gpu_resource_updates_for_user,
+    get_cached_gpu_resources,
 )
+from config import get_db
+from db_models import SSHNodePool as SSHNodePoolDB
+from sqlalchemy.orm import Session
 
 router = APIRouter(
     prefix="/node-pools",
@@ -49,6 +56,7 @@ async def get_node_pools(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """
     Get comprehensive node pools data combining:
@@ -127,12 +135,40 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading instances data: {e}")
 
-        # 4. Get SSH node info
+        # 4. Get SSH node info and trigger background GPU resource updates
         try:
-            node_info = load_ssh_node_info()
-            response_data["ssh_node_info"] = node_info
+            # Trigger background GPU resource updates for all SSH node pools
+            trigger_gpu_resource_updates_for_user(user["id"], user["organization_id"])
+
+            # Build comprehensive SSH node info from database with cached GPU data
+            ssh_node_info = {}
+            # Get SSH node pools that belong to the user's organization
+            user_ssh_pools = (
+                db.query(SSHNodePoolDB)
+                .filter(SSHNodePoolDB.organization_id == user["organization_id"])
+                .all()
+            )
+
+            for pool in user_ssh_pools:
+                cluster_name = pool.name
+                cfg = get_cluster_config_from_db(cluster_name)
+                cached_gpu_resources = get_cached_gpu_resources(cluster_name)
+
+                ssh_node_info[cluster_name] = {
+                    "hosts": cfg.get("hosts", []),
+                    "gpu_resources": cached_gpu_resources,
+                }
+
+            response_data["ssh_node_info"] = ssh_node_info
         except Exception as e:
             print(f"Error loading SSH node info: {e}")
+            response_data["ssh_node_info"] = {}
+            # try:
+            #     node_info = load_ssh_node_info()
+            #     response_data["ssh_node_info"] = node_info
+            # except Exception as fallback_e:
+            #     print(f"Error loading fallback SSH node info: {fallback_e}")
+            #     response_data["ssh_node_info"] = {}
 
         # 5. Get SkyPilot status (filtered by user and with display names)
         try:
@@ -277,7 +313,15 @@ async def get_node_pools(
 
             # Get SSH clusters
             try:
-                for cluster_name in list_cluster_names_from_db():
+                # Get SSH node pools that belong to the user's organization
+                user_ssh_pools = (
+                    db.query(SSHNodePoolDB)
+                    .filter(SSHNodePoolDB.organization_id == user["organization_id"])
+                    .all()
+                )
+
+                for pool in user_ssh_pools:
+                    cluster_name = pool.name
                     cfg = get_cluster_config_from_db(cluster_name)
                     hosts_count = len(cfg.get("hosts", []))
 
@@ -351,10 +395,14 @@ async def get_node_pools(
 
 
 @router.get("/ssh-node-pools", response_model=ClustersListResponse)
-async def list_clusters(request: Request, response: Response):
-    from lattice.routes.node_pools.utils import list_cluster_names_from_db
+async def list_clusters(
+    request: Request, response: Response, user: dict = Depends(get_user_or_api_key)
+):
+    from routes.node_pools.utils import list_cluster_names_from_db_by_org
 
-    return ClustersListResponse(clusters=list_cluster_names_from_db())
+    return ClustersListResponse(
+        clusters=list_cluster_names_from_db_by_org(user["organization_id"])
+    )
 
 
 @router.post("/ssh-node-pools", response_model=ClusterResponse)
@@ -368,6 +416,7 @@ async def create_cluster(
     identity_file_path: Optional[str] = Form(None),
     vcpus: Optional[str] = Form(None),
     memory_gb: Optional[str] = Form(None),
+    logged_user: dict = Depends(get_user_or_api_key),
 ):
     identity_file_path_final = None
     if identity_file and identity_file.filename:
@@ -395,6 +444,8 @@ async def create_cluster(
         identity_file_path_final,
         password,
         resources,
+        logged_user["id"],
+        logged_user["organization_id"],
     )
     return ClusterResponse(cluster_name=cluster_name, nodes=[])
 
@@ -479,8 +530,30 @@ async def rename_identity_file_route(
 
 
 @router.get("/ssh-node-pools/{cluster_name}", response_model=ClusterResponse)
-async def get_cluster(cluster_name: str, request: Request, response: Response):
+async def get_cluster(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
     from lattice.routes.node_pools.utils import get_cluster_config_from_db
+
+    # Check if user has access to this node pool
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == user["organization_id"],
+        )
+        .first()
+    )
+
+    if not pool:
+        raise HTTPException(
+            status_code=404,
+            detail=f"SSH node pool '{cluster_name}' not found or access denied",
+        )
 
     cfg = get_cluster_config_from_db(cluster_name)
     nodes = [
@@ -493,7 +566,24 @@ async def get_cluster(cluster_name: str, request: Request, response: Response):
         )
         for host in cfg.get("hosts", [])
     ]
-    return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
+
+    # Get cached GPU resources for this node pool
+    cached_gpu_resources = get_cached_gpu_resources(cluster_name)
+
+    # Create response with additional GPU data
+    response = ClusterResponse(cluster_name=cluster_name, nodes=nodes)
+
+    # Add GPU resources to response if available
+    if cached_gpu_resources:
+        # Since ClusterResponse doesn't have a field for GPU data,
+        # we'll need to return a custom response
+        return {
+            "cluster_name": cluster_name,
+            "nodes": [node.dict() for node in nodes],
+            "gpu_resources": cached_gpu_resources,
+        }
+
+    return response
 
 
 @router.post("/ssh-node-pools/{cluster_name}/nodes")
@@ -509,7 +599,24 @@ async def add_node(
     identity_file_path: Optional[str] = Form(None),
     vcpus: Optional[str] = Form(None),
     memory_gb: Optional[str] = Form(None),
+    current_user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
+    # Check if user has access to this node pool
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == current_user["organization_id"],
+        )
+        .first()
+    )
+
+    if not pool:
+        raise HTTPException(
+            status_code=404,
+            detail=f"SSH node pool '{cluster_name}' not found or access denied",
+        )
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
@@ -568,17 +675,112 @@ async def add_node(
     return ClusterResponse(cluster_name=cluster_name, nodes=nodes)
 
 
-@router.delete("/{cluster_name}")
-async def delete_cluster(cluster_name: str, request: Request, response: Response):
+@router.delete("/ssh-node-pools/{cluster_name}")
+async def delete_cluster(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    # Check if user has access to this node pool
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == user["organization_id"],
+        )
+        .first()
+    )
+
+    if not pool:
+        raise HTTPException(
+            status_code=404,
+            detail=f"SSH node pool '{cluster_name}' not found or access denied",
+        )
+
     delete_cluster_in_pools(cluster_name)
     return {"message": f"Cluster '{cluster_name}' deleted successfully"}
 
 
-@router.delete("/{cluster_name}/nodes/{node_ip}")
+@router.delete("/ssh-node-pools/{cluster_name}/nodes/{node_ip}")
 async def remove_node(
-    cluster_name: str, node_ip: str, request: Request, response: Response
+    cluster_name: str,
+    node_ip: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
+    # Check if user has access to this node pool
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == user["organization_id"],
+        )
+        .first()
+    )
+
+    if not pool:
+        raise HTTPException(
+            status_code=404,
+            detail=f"SSH node pool '{cluster_name}' not found or access denied",
+        )
+
     remove_node_from_cluster(cluster_name, node_ip)
     return {
         "message": f"Node with IP '{node_ip}' removed from cluster '{cluster_name}' successfully"
     }
+
+
+@router.get(
+    "/ssh-node-pools/{cluster_name}/gpu-resources",
+    response_model=NodePoolGPUResourcesResponse,
+)
+async def get_node_pool_gpu_resources(
+    node_pool_name: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Fetch and parse GPU resources for a given node pool name.
+    This endpoint is specifically for SSH node pools.
+    """
+    try:
+        # Check if user has access to this node pool
+        pool = (
+            db.query(SSHNodePoolDB)
+            .filter(
+                SSHNodePoolDB.name == node_pool_name,
+                SSHNodePoolDB.organization_id == current_user["organization_id"],
+            )
+            .first()
+        )
+
+        if not pool:
+            raise HTTPException(
+                status_code=404,
+                detail=f"SSH node pool '{node_pool_name}' not found or access denied",
+            )
+
+        # Validate that the node pool exists
+        from routes.node_pools.utils import is_ssh_cluster
+
+        if not is_ssh_cluster(node_pool_name):
+            raise HTTPException(
+                status_code=404, detail=f"SSH node pool '{node_pool_name}' not found"
+            )
+
+        # Fetch GPU resources using the existing utility function
+        gpu_resources = await fetch_and_parse_gpu_resources(node_pool_name)
+
+        return gpu_resources
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching GPU resources for node pool {node_pool_name}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch GPU resources: {str(e)}"
+        )
