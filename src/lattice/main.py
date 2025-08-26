@@ -65,7 +65,7 @@ if os.path.exists(frontend_build_path):
     from fastapi.responses import FileResponse
     from fastapi import HTTPException
 
-    @app.get("/{path:path}")
+    @app.get("/{path:path}", include_in_schema=False)
     async def serve_frontend(path: str):
         if path.startswith(("api", "docs", "openapi.json", "redoc")):
             raise HTTPException(status_code=404, detail="API endpoint not found")

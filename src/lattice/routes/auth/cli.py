@@ -11,7 +11,7 @@ from .api_key_auth import get_db
 # Store CLI authorization sessions
 CLI_AUTH_SESSIONS: Dict[str, Dict[str, Any]] = {}
 
-router = APIRouter(prefix="/auth/cli")
+router = APIRouter(prefix="/auth/cli", tags=["auth"])
 
 
 @router.post("/start")

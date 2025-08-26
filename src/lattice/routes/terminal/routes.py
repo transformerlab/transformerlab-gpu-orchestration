@@ -22,7 +22,7 @@ from lattice.utils.cluster_resolver import handle_cluster_name_param
 import pty
 
 
-router = APIRouter()  # Add prefix to all routes
+router = APIRouter(include_in_schema=False)  # Hide all routes in this router from docs
 
 # Store active connections
 active_sessions = {}
