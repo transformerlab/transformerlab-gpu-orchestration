@@ -31,6 +31,8 @@ from utils.cluster_resolver import (
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
+from routes.clouds.azure.utils import load_azure_config
+from routes.clouds.runpod.utils import load_runpod_config
 from typing import Optional, List
 from pathlib import Path
 import typing as _typing
@@ -39,6 +41,23 @@ try:
     import sky  # type: ignore
 except Exception:  # pragma: no cover
     sky = None  # Fallback if SkyPilot is not available at import time
+
+
+def get_configured_clouds():
+    """Get list of configured clouds"""
+    configured_clouds = []
+
+    # Check Azure configuration
+    azure_config = load_azure_config()
+    if azure_config.get("is_configured", False):
+        configured_clouds.append("azure")
+
+    # Check RunPod configuration
+    runpod_config = load_runpod_config()
+    if runpod_config.get("is_configured", False):
+        configured_clouds.append("runpod")
+
+    return configured_clouds
 
 
 router = APIRouter(
@@ -310,13 +329,13 @@ async def launch_managed_job(
         file_mounts = None
         python_filename = None
 
-        if python_file is not None and python_file.filename:
-            python_filename = python_file.filename
-            unique_filename = f"{uuid.uuid4()}_{python_filename}"
-            file_path = UPLOADS_DIR / unique_filename
-            with open(file_path, "wb") as f:
-                f.write(await python_file.read())
-            file_mounts = {f"/root/{python_filename}": str(file_path)}
+        # if python_file is not None and python_file.filename:
+        #     python_filename = python_file.filename
+        #     unique_filename = f"{uuid.uuid4()}_{python_filename}"
+        #     file_path = UPLOADS_DIR / unique_filename
+        #     with open(file_path, "wb") as f:
+        #         f.write(await python_file.read())
+        #     file_mounts = {f"/root/{python_filename}": str(file_path)}
 
         # Normalize command newlines
         command = command.replace("\r", "")
@@ -335,20 +354,64 @@ async def launch_managed_job(
         if file_mounts:
             task.set_file_mounts(file_mounts)
 
-        # Optional resources
-        resources_kwargs: _typing.Dict[str, _typing.Any] = {}
-        if accelerators:
-            resources_kwargs["accelerators"] = accelerators
-        if cpus:
-            resources_kwargs["cpus"] = cpus
-        if memory:
-            resources_kwargs["memory"] = memory
-        if region:
-            resources_kwargs["region"] = region
-        if zone:
-            resources_kwargs["zone"] = zone
-        if resources_kwargs:
-            task.set_resources(sky.Resources(**resources_kwargs))
+        # Check for configured clouds and set resources accordingly
+        configured_clouds = get_configured_clouds()
+
+        if configured_clouds:
+            # Multiple clouds configured - create resources for each
+            resources_list = []
+            for cloud in configured_clouds:
+                cloud_resources_kwargs: _typing.Dict[str, _typing.Any] = {}
+
+                # Set cloud-specific infrastructure
+                if cloud == "runpod":
+                    cloud_resources_kwargs["infra"] = "runpod"
+                elif cloud == "azure":
+                    cloud_resources_kwargs["infra"] = "azure"
+
+                # Apply user-specified resource requirements
+                if accelerators:
+                    cloud_resources_kwargs["accelerators"] = accelerators
+                if cpus:
+                    cloud_resources_kwargs["cpus"] = str(
+                        int(cpus) / len(configured_clouds)
+                    )
+                    cloud_resources_kwargs["disk_size"] = str(
+                        int((int(cpus) * 5) / len(configured_clouds))
+                    )
+                else:
+                    # Smallest machine accepts this disk size
+                    cloud_resources_kwargs["disk_size"] = str(
+                        10 / len(configured_clouds)
+                    )
+                if memory:
+                    cloud_resources_kwargs["memory"] = str(
+                        int(memory) / len(configured_clouds)
+                    )
+                if region:
+                    cloud_resources_kwargs["region"] = region
+                if zone:
+                    cloud_resources_kwargs["zone"] = zone
+
+                resources_list.append(sky.Resources(**cloud_resources_kwargs))
+
+            print("TASK RESOURCES", resources_list)
+            task.set_resources(resources_list)
+        else:
+            # No clouds configured - use default behavior
+            resources_kwargs: _typing.Dict[str, _typing.Any] = {}
+            if accelerators:
+                resources_kwargs["accelerators"] = accelerators
+            if cpus:
+                resources_kwargs["cpus"] = cpus
+            if memory:
+                resources_kwargs["memory"] = memory
+            if region:
+                resources_kwargs["region"] = region
+            if zone:
+                resources_kwargs["zone"] = zone
+            if resources_kwargs:
+                task.set_resources(sky.Resources(**resources_kwargs))
 
         # Launch managed job (asynchronous; returns a request ID)
         try:
@@ -384,6 +447,7 @@ async def launch_managed_job(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Failed to launch managed job: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to launch managed job: {str(e)}"
         )
