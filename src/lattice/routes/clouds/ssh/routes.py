@@ -52,7 +52,6 @@ async def get_ssh_node_info(
         )
         from routes.instances.utils import fetch_and_parse_gpu_resources
         from datetime import datetime
-        import asyncio
 
         # Build comprehensive SSH node info from database with fresh GPU data
         ssh_node_info = {}
