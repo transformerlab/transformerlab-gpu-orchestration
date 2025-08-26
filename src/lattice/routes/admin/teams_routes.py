@@ -26,11 +26,13 @@ from .teams_service import (
 )
 
 
-router = APIRouter(prefix="/admin/teams")
+router = APIRouter(prefix="/admin/teams", tags=["admin-teams"])
 
 
 @router.get("/", response_model=TeamListResponse)
-async def list_teams(request: Request, response: Response, db: Session = Depends(get_db)):
+async def list_teams(
+    request: Request, response: Response, db: Session = Depends(get_db)
+):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
     if not org_id:
@@ -41,7 +43,10 @@ async def list_teams(request: Request, response: Response, db: Session = Depends
 
 @router.post("/", response_model=TeamResponse)
 async def create_team(
-    team_req: CreateTeamRequest, request: Request, response: Response, db: Session = Depends(get_db)
+    team_req: CreateTeamRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
 ):
     user_info = get_current_user(request, response)
     user_id = user_info.get("id")
@@ -54,7 +59,11 @@ async def create_team(
 
 @router.put("/{team_id}", response_model=TeamResponse)
 async def update_team(
-    team_id: str, team_req: UpdateTeamRequest, request: Request, response: Response, db: Session = Depends(get_db)
+    team_id: str,
+    team_req: UpdateTeamRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
 ):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
@@ -65,7 +74,9 @@ async def update_team(
 
 
 @router.delete("/{team_id}")
-async def delete_team(team_id: str, request: Request, response: Response, db: Session = Depends(get_db)):
+async def delete_team(
+    team_id: str, request: Request, response: Response, db: Session = Depends(get_db)
+):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
     if not org_id:
@@ -76,7 +87,9 @@ async def delete_team(team_id: str, request: Request, response: Response, db: Se
 
 
 @router.get("/{team_id}/members", response_model=List[TeamMemberResponse])
-async def list_team_members(team_id: str, request: Request, response: Response, db: Session = Depends(get_db)):
+async def list_team_members(
+    team_id: str, request: Request, response: Response, db: Session = Depends(get_db)
+):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
     if not org_id:
@@ -151,7 +164,9 @@ async def remove_team_member(
 
 
 @router.get("/available-users", response_model=AvailableUsersResponse)
-async def list_available_users(request: Request, response: Response, db: Session = Depends(get_db)):
+async def list_available_users(
+    request: Request, response: Response, db: Session = Depends(get_db)
+):
     """List users in the current organization to add to teams.
     Uses the auth provider's organization memberships to identify users.
     """
