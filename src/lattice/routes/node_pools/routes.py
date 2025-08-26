@@ -1,5 +1,4 @@
 from typing import Optional
-from datetime import datetime
 
 from fastapi import (
     APIRouter,
@@ -16,7 +15,7 @@ from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import az_get_current_config, load_azure_config
 from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
-from routes.instances.utils import get_skypilot_status, fetch_and_parse_gpu_resources
+from routes.instances.utils import get_skypilot_status
 from routes.reports.utils import record_availability
 from utils.cluster_utils import get_cluster_platform_info, get_display_name_from_actual
 from utils.file_utils import (
@@ -133,9 +132,9 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading instances data: {e}")
 
-        # 4. Get SSH node info with synchronous GPU resource updates
+        # 4. Get SSH node info with cached GPU data
         try:
-            # Build comprehensive SSH node info from database with fresh GPU data
+            # Build comprehensive SSH node info from database with cached GPU data
             ssh_node_info = {}
             # Get SSH node pools that belong to the user's organization
             user_ssh_pools = (
@@ -148,33 +147,13 @@ async def get_node_pools(
                 cluster_name = pool.name
                 cfg = get_cluster_config_from_db(cluster_name)
 
-                # Fetch and update GPU resources synchronously
-                try:
-                    gpu_resources = await fetch_and_parse_gpu_resources(cluster_name)
+                # Get cached GPU resources (fast response)
+                cached_gpu_resources = get_cached_gpu_resources(cluster_name)
 
-                    # Update the database with fresh GPU resources
-                    current_other_data = pool.other_data or {}
-                    current_other_data.update(
-                        {
-                            "gpu_resources": gpu_resources,
-                            "last_updated": datetime.utcnow().isoformat(),
-                        }
-                    )
-                    pool.other_data = current_other_data
-                    db.commit()
-
-                    ssh_node_info[cluster_name] = {
-                        "hosts": cfg.get("hosts", []),
-                        "gpu_resources": gpu_resources,
-                    }
-                except Exception as e:
-                    print(f"Error updating GPU resources for {cluster_name}: {e}")
-                    # Fallback to cached data if fresh fetch fails
-                    cached_gpu_resources = get_cached_gpu_resources(cluster_name)
-                    ssh_node_info[cluster_name] = {
-                        "hosts": cfg.get("hosts", []),
-                        "gpu_resources": cached_gpu_resources,
-                    }
+                ssh_node_info[cluster_name] = {
+                    "hosts": cfg.get("hosts", []),
+                    "gpu_resources": cached_gpu_resources,
+                }
 
             response_data["ssh_node_info"] = ssh_node_info
         except Exception as e:
@@ -755,8 +734,8 @@ async def get_node_pool_gpu_resources(
     db: Session = Depends(get_db),
 ):
     """
-    Fetch and parse GPU resources for a given node pool name.
-    This endpoint is specifically for SSH node pools.
+    Get cached GPU resources for a given node pool name.
+    This endpoint returns cached data from the database.
     """
     try:
         # Check if user has access to this node pool
@@ -783,15 +762,15 @@ async def get_node_pool_gpu_resources(
                 status_code=404, detail=f"SSH node pool '{node_pool_name}' not found"
             )
 
-        # Fetch GPU resources using the existing utility function
-        gpu_resources = await fetch_and_parse_gpu_resources(node_pool_name)
+        # Get cached GPU resources
+        cached_gpu_resources = get_cached_gpu_resources(node_pool_name)
 
-        return gpu_resources
+        return cached_gpu_resources
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching GPU resources for node pool {node_pool_name}: {e}")
+        print(f"Error getting GPU resources for node pool {node_pool_name}: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to fetch GPU resources: {str(e)}"
+            status_code=500, detail=f"Failed to get GPU resources: {str(e)}"
         )

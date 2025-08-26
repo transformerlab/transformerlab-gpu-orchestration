@@ -32,12 +32,17 @@ from routes.clouds.runpod.utils import (
     rp_setup_config,
     map_runpod_display_to_instance_type,
 )
-from routes.node_pools.utils import is_ssh_cluster, is_down_only_cluster
+from routes.node_pools.utils import (
+    is_ssh_cluster,
+    is_down_only_cluster,
+    update_gpu_resources_for_node_pool,
+)
 from utils.cluster_utils import (
     create_cluster_platform_entry,
     get_actual_cluster_name,
     get_display_name_from_actual,
     get_cluster_platform_info as get_cluster_platform_data,
+    get_cluster_platform_info as get_cluster_platform_info_util,
     get_cluster_platform,
     load_cluster_platforms,
     get_cluster_template,
@@ -56,6 +61,43 @@ from routes.jobs.utils import get_cluster_job_queue
 # Removed load_ssh_node_info import as we now use database-based approach
 from typing import Optional
 from .utils import generate_cost_report
+from concurrent.futures import ThreadPoolExecutor
+
+
+# Global thread pool executor for GPU resource updates
+_gpu_update_executor = ThreadPoolExecutor(
+    max_workers=4,  # Limit concurrent GPU update operations
+    thread_name_prefix="gpu-update",
+)
+
+
+def update_gpu_resources_background(node_pool_name: str):
+    """
+    Background task to update GPU resources for a node pool.
+    Uses a thread pool executor to limit concurrent operations.
+    """
+    import asyncio
+
+    def run_async_update():
+        try:
+            # Create a new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Run the async update function
+            loop.run_until_complete(update_gpu_resources_for_node_pool(node_pool_name))
+            print(
+                f"Background thread: Successfully updated GPU resources for {node_pool_name}"
+            )
+        except Exception as e:
+            print(
+                f"Background thread: Failed to update GPU resources for {node_pool_name}: {e}"
+            )
+        finally:
+            loop.close()
+
+    # Submit the task to the thread pool executor
+    _gpu_update_executor.submit(run_async_update)
 
 
 router = APIRouter(
@@ -208,6 +250,10 @@ async def launch_instance(
         except Exception as e:
             print(f"Warning: Failed to record usage event for cluster launch: {e}")
 
+        # Update GPU resources for SSH node pools when launching clusters (background thread)
+        if node_pool_name and is_ssh_cluster(node_pool_name):
+            update_gpu_resources_background(node_pool_name)
+
         return LaunchClusterResponse(
             request_id=request_id,
             cluster_name=cluster_name,  # Return display name to user
@@ -267,6 +313,21 @@ async def down_instance(
         )
 
         request_id = down_cluster_with_skypilot(actual_cluster_name, display_name)
+
+        # Check if this cluster uses an SSH node pool as its platform (background thread)
+        try:
+            platform_info = get_cluster_platform_info_util(actual_cluster_name)
+            if (
+                platform_info
+                and platform_info.get("platform")
+                and is_ssh_cluster(platform_info["platform"])
+            ):
+                node_pool_name = platform_info["platform"]
+                update_gpu_resources_background(node_pool_name)
+        except Exception as e:
+            print(
+                f"Warning: Failed to get platform info for cluster {actual_cluster_name}: {e}"
+            )
 
         return DownClusterResponse(
             request_id=request_id,
