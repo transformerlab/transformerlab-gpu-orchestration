@@ -145,6 +145,7 @@ class GPUUsageLog(Base):
     duration_hours = Column(Float, nullable=True)  # Calculated duration in hours
     instance_type = Column(String, nullable=True)  # e.g., "g4dn.xlarge", "V100"
     cloud_provider = Column(String, nullable=True)  # e.g., "aws", "azure", "gcp"
+    region = Column(String, nullable=True)  # e.g., "us-east-1", "CA", "westus2"
     cost_estimate = Column(Float, nullable=True)  # Estimated cost in USD
     created_at = Column(DateTime, default=func.now())
 

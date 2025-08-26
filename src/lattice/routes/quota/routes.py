@@ -181,6 +181,7 @@ async def get_organization_usage(
                     duration_hours=log.duration_hours,
                     instance_type=log.instance_type,
                     cloud_provider=log.cloud_provider,
+                    region=log.region,
                     cost_estimate=log.cost_estimate,
                 )
             )
@@ -345,6 +346,7 @@ async def get_all_organization_usage(
                     duration_hours=log.duration_hours,
                     instance_type=log.instance_type,
                     cloud_provider=log.cloud_provider,
+                    region=log.region,
                     cost_estimate=log.cost_estimate,
                 )
             )
