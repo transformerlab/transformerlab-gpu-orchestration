@@ -173,21 +173,7 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
         except Exception:
             pass
 
-    def update_gpu_info_thread():
-        import asyncio
-
-        try:
-            # Update the database with the new GPU resources instead of saving to file
-            asyncio.run(update_node_pool_gpu_resources_background(cluster_name))
-        except Exception as e:
-            print(f"Warning: Failed to fetch/store GPU info for node {node.ip}: {e}")
-
-    if background_tasks is not None:
-        background_tasks.add_task(
-            lambda: threading.Thread(target=update_gpu_info_thread).start()
-        )
-    else:
-        threading.Thread(target=update_gpu_info_thread).start()
+    # Note: GPU resources will be updated synchronously when /node-pools endpoint is called
 
     return pools[cluster_name]
 
@@ -405,6 +391,7 @@ async def update_node_pool_gpu_resources_background(node_pool_name: str):
 
         # Fetch GPU resources using the existing function
         gpu_resources = await fetch_and_parse_gpu_resources(node_pool_name)
+        print(f"Fetched GPU resources: {gpu_resources}")
 
         # Update the database with the new GPU resources
         db = SessionLocal()
@@ -415,6 +402,7 @@ async def update_node_pool_gpu_resources_background(node_pool_name: str):
                 .first()
             )
             if pool:
+                print(f"Found pool: {pool.name}, current other_data: {pool.other_data}")
                 # Update other_data with GPU resources and timestamp
                 current_other_data = pool.other_data or {}
                 current_other_data.update(
@@ -424,7 +412,14 @@ async def update_node_pool_gpu_resources_background(node_pool_name: str):
                     }
                 )
                 pool.other_data = current_other_data
-                db.commit()
+                print(f"About to commit new other_data: {pool.other_data}")
+                try:
+                    db.commit()
+                    print(f"Commit successful for {node_pool_name}")
+                except Exception as commit_error:
+                    print(f"Commit failed for {node_pool_name}: {commit_error}")
+                    db.rollback()
+                    raise
                 print(
                     f"Successfully updated GPU resources for node pool: {node_pool_name}"
                 )
@@ -494,7 +489,12 @@ def get_cached_gpu_resources(node_pool_name: str) -> dict:
                 .first()
             )
             if pool and pool.other_data and pool.other_data.get("gpu_resources"):
-                return pool.other_data["gpu_resources"]
+                cached_data = pool.other_data["gpu_resources"]
+                print(
+                    f"Retrieved cached GPU resources for {node_pool_name}: {cached_data}"
+                )
+                return cached_data
+            print(f"No cached GPU resources found for {node_pool_name}")
             return {}
         finally:
             db.close()
