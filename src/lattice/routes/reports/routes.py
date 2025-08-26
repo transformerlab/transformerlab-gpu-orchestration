@@ -4,7 +4,9 @@ from lattice.routes.auth.utils import get_current_user
 from lattice.routes.reports.utils import get_reports_summary
 from lattice.models import ReportsResponse
 
-router = APIRouter(prefix="/reports", dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/reports", dependencies=[Depends(get_current_user)], tags=["reports"]
+)
 
 
 @router.get("", response_model=ReportsResponse)

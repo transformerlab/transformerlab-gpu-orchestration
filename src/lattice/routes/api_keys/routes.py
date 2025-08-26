@@ -37,7 +37,7 @@ class UpdateAPIKeyRequest(BaseModel):
     scopes: Optional[List[str]] = None
 
 
-router = APIRouter(prefix="/api-keys")
+router = APIRouter(prefix="/api-keys", tags=["auth"])
 
 
 @router.post("", response_model=CreateAPIKeyResponse)

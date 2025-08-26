@@ -15,7 +15,9 @@ from lattice.routes.auth.api_key_auth import get_user_or_api_key
 from lattice.routes.auth.utils import get_current_user
 
 router = APIRouter(
-    prefix="/storage-buckets", dependencies=[Depends(get_user_or_api_key)]
+    prefix="/storage-buckets",
+    dependencies=[Depends(get_user_or_api_key)],
+    tags=["storage-buckets"],
 )
 
 
