@@ -21,7 +21,6 @@ from utils.cluster_utils import get_cluster_platform_info, get_display_name_from
 from utils.file_utils import (
     delete_named_identity_file,
     get_available_identity_files,
-    load_ssh_node_info,
     rename_identity_file,
     save_identity_file,
     save_named_identity_file,
@@ -163,12 +162,6 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading SSH node info: {e}")
             response_data["ssh_node_info"] = {}
-            # try:
-            #     node_info = load_ssh_node_info()
-            #     response_data["ssh_node_info"] = node_info
-            # except Exception as fallback_e:
-            #     print(f"Error loading fallback SSH node info: {fallback_e}")
-            #     response_data["ssh_node_info"] = {}
 
         # 5. Get SkyPilot status (filtered by user and with display names)
         try:

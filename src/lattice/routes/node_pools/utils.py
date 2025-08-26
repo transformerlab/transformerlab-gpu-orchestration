@@ -2,7 +2,6 @@ from fastapi import HTTPException
 from utils.file_utils import (
     load_ssh_node_pools,
     save_ssh_node_pools,
-    load_ssh_node_info,
 )
 from models import SSHNode
 import threading
