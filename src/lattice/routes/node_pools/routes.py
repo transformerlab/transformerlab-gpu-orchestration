@@ -1,5 +1,4 @@
 from typing import Optional
-from datetime import datetime
 
 from fastapi import (
     APIRouter,
@@ -16,7 +15,7 @@ from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import az_get_current_config, load_azure_config
 from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
-from routes.instances.utils import get_skypilot_status, fetch_and_parse_gpu_resources
+from routes.instances.utils import get_skypilot_status
 from routes.reports.utils import record_availability
 from utils.cluster_utils import get_cluster_platform_info, get_display_name_from_actual
 from utils.file_utils import (

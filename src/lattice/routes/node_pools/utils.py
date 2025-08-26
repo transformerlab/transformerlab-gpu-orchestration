@@ -4,9 +4,7 @@ from utils.file_utils import (
     save_ssh_node_pools,
 )
 from models import SSHNode
-import threading
 import os
-import asyncio
 from datetime import datetime
 from ..instances.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
