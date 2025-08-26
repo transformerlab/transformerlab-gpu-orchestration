@@ -1,5 +1,4 @@
 import subprocess
-from fastapi import HTTPException
 
 
 def run_sky_check_ssh():

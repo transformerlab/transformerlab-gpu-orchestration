@@ -177,7 +177,6 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
         import asyncio
 
         try:
-            gpu_info = asyncio.run(fetch_and_parse_gpu_resources(cluster_name))
             # Update the database with the new GPU resources instead of saving to file
             asyncio.run(update_node_pool_gpu_resources_background(cluster_name))
         except Exception as e:

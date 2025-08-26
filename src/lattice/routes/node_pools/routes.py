@@ -35,7 +35,6 @@ from .utils import (
     delete_cluster_in_pools,
     remove_node_from_cluster,
     get_cluster_config_from_db,
-    list_cluster_names_from_db,
     trigger_gpu_resource_updates_for_user,
     get_cached_gpu_resources,
 )
