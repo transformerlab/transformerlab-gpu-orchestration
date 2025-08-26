@@ -63,7 +63,7 @@ def submit_job_to_existing_cluster(
 ):
     try:
         # Create job name with metadata if it's a special job type
-        final_job_name = job_name if job_name else f"lattice-job-{cluster_name}"
+        final_job_name = job_name if job_name else "lattice-job"
         if job_type and job_type != "custom":
             final_job_name = f"{final_job_name}-{job_type}"
             if job_type == "jupyter" and jupyter_port:
@@ -94,9 +94,8 @@ def submit_job_to_existing_cluster(
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
 
-        request_id = sky.exec(
-            task,
-            cluster_name=cluster_name,
+        request_id = sky.launch(
+            task, cluster_name=cluster_name, fast=True, no_setup=True
         )
 
         # Note: Port forwarding for Jupyter jobs is handled separately
@@ -113,8 +112,6 @@ def submit_job_to_existing_cluster(
 def cancel_job_with_skypilot(cluster_name: str, job_id: int):
     """Cancel a job on a SkyPilot cluster using the SkyPilot SDK."""
     try:
-        import sky
-
         # Use sky.cancel to cancel the job
         # The job_id should be passed as a string to match the expected format
         request_id = sky.cancel(cluster_name=cluster_name, job_ids=[str(job_id)])
