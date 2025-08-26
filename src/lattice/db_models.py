@@ -12,7 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.sql import func
-from lattice.config import Base
+from lattice.db.base import Base
 import secrets
 import hashlib
 from datetime import datetime
