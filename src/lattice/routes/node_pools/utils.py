@@ -13,6 +13,77 @@ from config import SessionLocal
 from db_models import SSHNodePool as SSHNodePoolDB, SSHNodeEntry as SSHNodeDB
 
 
+async def update_gpu_resources_for_node_pool(node_pool_name: str):
+    """
+    Update GPU resources for a specific node pool.
+    This should be called when launching or stopping clusters.
+    """
+    try:
+        # Fetch fresh GPU resources
+        gpu_resources = await fetch_and_parse_gpu_resources(node_pool_name)
+
+        # Update the database
+        db = SessionLocal()
+        try:
+            pool = (
+                db.query(SSHNodePoolDB)
+                .filter(SSHNodePoolDB.name == node_pool_name)
+                .first()
+            )
+            if pool:
+                current_other_data = pool.other_data or {}
+                current_other_data.update(
+                    {
+                        "gpu_resources": gpu_resources,
+                        "last_updated": datetime.utcnow().isoformat(),
+                    }
+                )
+                pool.other_data = current_other_data
+
+                # Explicitly mark the field as modified so SQLAlchemy detects the change
+                from sqlalchemy.orm.attributes import flag_modified
+
+                flag_modified(pool, "other_data")
+
+                db.commit()
+                print(f"Successfully updated GPU resources for {node_pool_name}")
+            else:
+                print(f"Node pool not found: {node_pool_name}")
+        except Exception as e:
+            print(f"Error updating GPU resources for {node_pool_name}: {e}")
+            db.rollback()
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"Error in update_gpu_resources_for_node_pool for {node_pool_name}: {e}")
+
+
+def get_cached_gpu_resources(node_pool_name: str) -> dict:
+    """
+    Get cached GPU resources for a node pool from the database.
+    Returns empty dict if no cached data is available.
+    """
+    try:
+        db = SessionLocal()
+        try:
+            pool = (
+                db.query(SSHNodePoolDB)
+                .filter(SSHNodePoolDB.name == node_pool_name)
+                .first()
+            )
+            if pool and pool.other_data and pool.other_data.get("gpu_resources"):
+                cached_data = pool.other_data["gpu_resources"]
+                print(f"Retrieved cached GPU resources for {node_pool_name}")
+                return cached_data
+            print(f"No cached GPU resources found for {node_pool_name}")
+            return {}
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"Error getting cached GPU resources for {node_pool_name}: {e}")
+        return {}
+
+
 def create_cluster_in_pools(
     cluster_name: str,
     user: str = None,
@@ -377,120 +448,3 @@ def get_cluster_config_from_db(cluster_name: str) -> dict:
         return cfg
     finally:
         db.close()
-
-
-async def update_node_pool_gpu_resources_background(node_pool_name: str):
-    """
-    Background task to update GPU resources for a node pool.
-    This function runs asynchronously and updates the other_data column.
-    """
-    try:
-        print(
-            f"Starting background GPU resource update for node pool: {node_pool_name}"
-        )
-
-        # Fetch GPU resources using the existing function
-        gpu_resources = await fetch_and_parse_gpu_resources(node_pool_name)
-
-        # Update the database with the new GPU resources
-        db = SessionLocal()
-        try:
-            pool = (
-                db.query(SSHNodePoolDB)
-                .filter(SSHNodePoolDB.name == node_pool_name)
-                .first()
-            )
-            if pool:
-                # Update other_data with GPU resources and timestamp
-                current_other_data = pool.other_data or {}
-                current_other_data.update(
-                    {
-                        "gpu_resources": gpu_resources,
-                        "last_updated": datetime.utcnow().isoformat(),
-                    }
-                )
-                pool.other_data = current_other_data
-                try:
-                    db.commit()
-                except Exception as commit_error:
-                    print(f"Commit failed for {node_pool_name}: {commit_error}")
-                    db.rollback()
-                    raise
-            else:
-                print(f"Node pool not found: {node_pool_name}")
-        except Exception as e:
-            print(f"Error updating GPU resources in database for {node_pool_name}: {e}")
-            db.rollback()
-        finally:
-            db.close()
-
-    except Exception as e:
-        print(f"Error in background GPU resource update for {node_pool_name}: {e}")
-
-
-def trigger_gpu_resource_updates_for_user(user_id: str, organization_id: str):
-    """
-    Trigger background GPU resource updates for all SSH node pools accessible to a user.
-    This function starts background tasks for each node pool that belongs to the user's organization.
-    """
-    try:
-        db = SessionLocal()
-        try:
-            # Get SSH node pools that belong to the user's organization
-            pools = (
-                db.query(SSHNodePoolDB)
-                .filter(SSHNodePoolDB.organization_id == organization_id)
-                .all()
-            )
-
-            for pool in pools:
-                # Start background task for each pool
-                # Note: In a real implementation, you'd use a proper task queue like Celery
-                # For now, we'll use threading to simulate background execution
-                def run_update(pool_name):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        loop.run_until_complete(
-                            update_node_pool_gpu_resources_background(pool_name)
-                        )
-                    finally:
-                        loop.close()
-
-                thread = threading.Thread(target=run_update, args=(pool.name,))
-                thread.daemon = True
-                thread.start()
-
-        finally:
-            db.close()
-
-    except Exception as e:
-        print(f"Error triggering GPU resource updates: {e}")
-
-
-def get_cached_gpu_resources(node_pool_name: str) -> dict:
-    """
-    Get cached GPU resources for a node pool from the database.
-    Returns empty dict if no cached data is available.
-    """
-    try:
-        db = SessionLocal()
-        try:
-            pool = (
-                db.query(SSHNodePoolDB)
-                .filter(SSHNodePoolDB.name == node_pool_name)
-                .first()
-            )
-            if pool and pool.other_data and pool.other_data.get("gpu_resources"):
-                cached_data = pool.other_data["gpu_resources"]
-                print(
-                    f"Retrieved cached GPU resources for {node_pool_name}: {cached_data}"
-                )
-                return cached_data
-            print(f"No cached GPU resources found for {node_pool_name}")
-            return {}
-        finally:
-            db.close()
-    except Exception as e:
-        print(f"Error getting cached GPU resources for {node_pool_name}: {e}")
-        return {}

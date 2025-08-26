@@ -32,12 +32,17 @@ from routes.clouds.runpod.utils import (
     rp_setup_config,
     map_runpod_display_to_instance_type,
 )
-from routes.node_pools.utils import is_ssh_cluster, is_down_only_cluster
+from routes.node_pools.utils import (
+    is_ssh_cluster,
+    is_down_only_cluster,
+    update_gpu_resources_for_node_pool,
+)
 from utils.cluster_utils import (
     create_cluster_platform_entry,
     get_actual_cluster_name,
     get_display_name_from_actual,
     get_cluster_platform_info as get_cluster_platform_data,
+    get_cluster_platform_info as get_cluster_platform_info_util,
     get_cluster_platform,
     load_cluster_platforms,
     get_cluster_template,
@@ -208,6 +213,15 @@ async def launch_instance(
         except Exception as e:
             print(f"Warning: Failed to record usage event for cluster launch: {e}")
 
+        # Update GPU resources for SSH node pools when launching clusters
+        if node_pool_name and is_ssh_cluster(node_pool_name):
+            try:
+                await update_gpu_resources_for_node_pool(node_pool_name)
+            except Exception as e:
+                print(
+                    f"Warning: Failed to update GPU resources for {node_pool_name}: {e}"
+                )
+
         return LaunchClusterResponse(
             request_id=request_id,
             cluster_name=cluster_name,  # Return display name to user
@@ -267,6 +281,21 @@ async def down_instance(
         )
 
         request_id = down_cluster_with_skypilot(actual_cluster_name, display_name)
+
+        # Check if this cluster uses an SSH node pool as its platform
+        try:
+            platform_info = get_cluster_platform_info_util(actual_cluster_name)
+            if (
+                platform_info
+                and platform_info.get("platform")
+                and is_ssh_cluster(platform_info["platform"])
+            ):
+                node_pool_name = platform_info["platform"]
+                await update_gpu_resources_for_node_pool(node_pool_name)
+        except Exception as e:
+            print(
+                f"Warning: Failed to update GPU resources for cluster {actual_cluster_name}: {e}"
+            )
 
         return DownClusterResponse(
             request_id=request_id,
