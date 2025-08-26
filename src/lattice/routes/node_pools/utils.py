@@ -391,7 +391,6 @@ async def update_node_pool_gpu_resources_background(node_pool_name: str):
 
         # Fetch GPU resources using the existing function
         gpu_resources = await fetch_and_parse_gpu_resources(node_pool_name)
-        print(f"Fetched GPU resources: {gpu_resources}")
 
         # Update the database with the new GPU resources
         db = SessionLocal()
@@ -402,7 +401,6 @@ async def update_node_pool_gpu_resources_background(node_pool_name: str):
                 .first()
             )
             if pool:
-                print(f"Found pool: {pool.name}, current other_data: {pool.other_data}")
                 # Update other_data with GPU resources and timestamp
                 current_other_data = pool.other_data or {}
                 current_other_data.update(
@@ -412,17 +410,12 @@ async def update_node_pool_gpu_resources_background(node_pool_name: str):
                     }
                 )
                 pool.other_data = current_other_data
-                print(f"About to commit new other_data: {pool.other_data}")
                 try:
                     db.commit()
-                    print(f"Commit successful for {node_pool_name}")
                 except Exception as commit_error:
                     print(f"Commit failed for {node_pool_name}: {commit_error}")
                     db.rollback()
                     raise
-                print(
-                    f"Successfully updated GPU resources for node pool: {node_pool_name}"
-                )
             else:
                 print(f"Node pool not found: {node_pool_name}")
         except Exception as e:
