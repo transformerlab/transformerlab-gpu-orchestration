@@ -41,6 +41,7 @@ interface GPUUsageLog {
   duration_hours?: number;
   instance_type?: string;
   cloud_provider?: string;
+  region?: string;
   cost_estimate?: number;
 }
 

@@ -565,6 +565,7 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                 existing_log.cloud_provider = cluster_data.get(
                     "cloud", existing_log.cloud_provider
                 )
+                existing_log.region = cluster_data.get("region", existing_log.region)
 
                 # Calculate duration from cost report
                 duration_hours = (
@@ -609,6 +610,7 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                     duration_hours=duration_hours,
                     instance_type=gpu_type,
                     cloud_provider=cluster_data.get("cloud"),
+                    region=cluster_data.get("region"),
                     cost_estimate=cluster_data.get("total_cost"),
                 )
 

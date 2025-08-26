@@ -262,6 +262,7 @@ class GPUUsageLogResponse(BaseModel):
     duration_hours: Optional[float] = None
     instance_type: Optional[str] = None
     cloud_provider: Optional[str] = None
+    region: Optional[str] = None
     cost_estimate: Optional[float] = None
 
 
