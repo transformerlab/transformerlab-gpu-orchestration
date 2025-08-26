@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 
-router = APIRouter(prefix="/ssh-config", tags=["SSH Config"])
+router = APIRouter(prefix="/ssh-config", tags=["ssh-config"])
 
 
 @router.post(

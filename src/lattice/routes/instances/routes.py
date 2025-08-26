@@ -57,7 +57,9 @@ from typing import Optional
 from .utils import generate_cost_report
 
 
-router = APIRouter(prefix="/instances", dependencies=[Depends(get_user_or_api_key)])
+router = APIRouter(
+    prefix="/instances", dependencies=[Depends(get_user_or_api_key)], tags=["instances"]
+)
 
 
 @router.post("/launch", response_model=LaunchClusterResponse)

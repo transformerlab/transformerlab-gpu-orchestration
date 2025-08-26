@@ -7,7 +7,7 @@ from .provider.work_os import provider as auth_provider
 from .api_key_auth import get_user_or_api_key
 
 
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/login-url")
@@ -185,9 +185,13 @@ async def check_auth(
                     )
                     # If this was a session user, prefer the refreshed role/org
                     if user.get("auth_method") == "session":
-                        user["role"] = getattr(refreshed_session, "role", user.get("role"))
+                        user["role"] = getattr(
+                            refreshed_session, "role", user.get("role")
+                        )
                         user["organization_id"] = getattr(
-                            refreshed_session, "organization_id", user.get("organization_id")
+                            refreshed_session,
+                            "organization_id",
+                            user.get("organization_id"),
                         )
         except Exception:
             pass

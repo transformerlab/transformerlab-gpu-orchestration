@@ -9,6 +9,7 @@ from fastapi import (
     Response,
 )
 import uuid
+import os
 from config import UPLOADS_DIR
 from werkzeug.utils import secure_filename
 from lattice.models import (
@@ -30,7 +31,7 @@ from utils.cluster_resolver import (
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 import typing as _typing
 
@@ -40,7 +41,9 @@ except Exception:  # pragma: no cover
     sky = None  # Fallback if SkyPilot is not available at import time
 
 
-router = APIRouter(prefix="/jobs", dependencies=[Depends(get_user_or_api_key)])
+router = APIRouter(
+    prefix="/jobs", dependencies=[Depends(get_user_or_api_key)], tags=["jobs"]
+)
 
 
 @router.get("/past-jobs")
@@ -189,7 +192,8 @@ async def submit_job_to_cluster(
     region: Optional[str] = Form(None),
     zone: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
-    python_file: Optional[UploadFile] = File(None),
+    dir_name: Optional[str] = Form(None),
+    dir_files: Optional[List[UploadFile]] = File(None),
     job_type: Optional[str] = Form(None),
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
@@ -197,16 +201,33 @@ async def submit_job_to_cluster(
 ):
     try:
         file_mounts = None
-        python_filename = None
         workdir = None
-        if python_file is not None and python_file.filename:
-            python_filename = python_file.filename
-            unique_filename = f"{uuid.uuid4()}_{python_filename}"
-            file_path = UPLOADS_DIR / unique_filename
-            with open(file_path, "wb") as f:
-                f.write(await python_file.read())
-            file_mounts = {f"/root/{python_filename}": str(file_path)}
-            workdir = "/root"
+
+        # If a directory was uploaded, reconstruct it under a unique folder
+        if dir_files:
+            # Sanitize provided dir_name, or derive from files
+            base_name = dir_name or "project"
+            base_name = os.path.basename(base_name.strip())
+            base_name = secure_filename(base_name) or "project"
+
+            unique_dir = UPLOADS_DIR / f"{uuid.uuid4()}_{base_name}"
+            unique_dir.mkdir(parents=True, exist_ok=True)
+
+            for up_file in dir_files:
+                # Filename includes relative path as sent by frontend
+                raw_rel = up_file.filename or ""
+                # Normalize path, remove leading separators and traversal
+                norm_rel = os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
+                parts = [p for p in norm_rel.split("/") if p not in ("..", "")]
+                safe_rel = Path(*[secure_filename(p) for p in parts])
+                target_path = unique_dir / safe_rel
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(target_path, "wb") as f:
+                    f.write(await up_file.read())
+
+            # Mount the entire directory at ~/<base_name>
+            file_mounts = {f"~/{base_name}": str(unique_dir)}
+            workdir = f"~/{base_name}"
 
         # For VSCode, we need to remove the carriage return
         command = command.replace("\r", "")
