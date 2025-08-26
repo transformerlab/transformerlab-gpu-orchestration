@@ -52,7 +52,8 @@ from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
 from routes.jobs.utils import get_cluster_job_queue
-from routes.clouds.ssh.utils import load_ssh_node_info
+
+# Removed load_ssh_node_info import as we now use database-based approach
 from typing import Optional
 from .utils import generate_cost_report
 
@@ -611,7 +612,14 @@ async def get_cluster_info(
         ssh_node_info = None
         if is_ssh:
             try:
-                ssh_node_info = load_ssh_node_info()
+                # Get cached GPU resources from database instead of file
+                from routes.node_pools.utils import get_cached_gpu_resources
+
+                cached_gpu_resources = get_cached_gpu_resources(actual_cluster_name)
+                if cached_gpu_resources:
+                    ssh_node_info = {
+                        actual_cluster_name: {"gpu_resources": cached_gpu_resources}
+                    }
             except Exception as e:
                 print(
                     f"Warning: Failed to get SSH node info for cluster {cluster_name}: {e}"

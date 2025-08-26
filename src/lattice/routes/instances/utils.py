@@ -36,7 +36,9 @@ async def fetch_and_parse_gpu_resources(cluster_name: str):
     # if code != 0:
     #     raise Exception(f"Failed to bring up SSH cluster: {err or out}")
     # 3. sky show-gpus --infra ssh
-    code, out, err = await run_cmd(["sky", "show-gpus", "--infra", "ssh"])
+    code, out, err = await run_cmd(
+        ["sky", "show-gpus", "--infra", f"ssh/{cluster_name}"]
+    )
     # 4. sky ssh down (cleanup)
     # await run_cmd(["sky", "ssh", "down", "--infra", cluster_name], capture_output=False)
 
@@ -71,6 +73,8 @@ async def fetch_and_parse_gpu_resources(cluster_name: str):
                             "gpu": parts[0],
                             "requestable_qty_per_node": parts[1],
                             "utilization": parts[2],
+                            "free": parts[2].split("of")[0].strip(),
+                            "total": parts[2].split("of")[1].split("free")[0].strip(),
                         }
                     )
             elif per_node_section:
@@ -84,6 +88,8 @@ async def fetch_and_parse_gpu_resources(cluster_name: str):
                             "node": parts[1],
                             "gpu": parts[2],
                             "utilization": parts[3],
+                            "free": parts[3].split("of")[0].strip(),
+                            "total": parts[3].split("of")[1].split("free")[0].strip(),
                         }
                     )
         if gpus or node_gpus:

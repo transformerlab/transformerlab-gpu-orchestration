@@ -1,5 +1,4 @@
 import subprocess
-from fastapi import HTTPException
 
 
 def run_sky_check_ssh():
@@ -29,13 +28,4 @@ def run_sky_check_ssh():
         return False, f"Error: {str(e)}"
 
 
-def load_ssh_node_info():
-    """Load SSH node information from the SSH configuration"""
-    try:
-        from lattice.utils.file_utils import load_ssh_node_info as load_ssh_info
-
-        return load_ssh_info()
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to load SSH node info: {str(e)}"
-        )
+# File-based SSH node info function removed - now using database-based approach
