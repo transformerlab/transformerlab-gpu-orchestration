@@ -94,13 +94,13 @@ def submit_job_to_existing_cluster(
             resources = sky.Resources(**resources_kwargs)
             task.set_resources(resources)
 
-        request_id = sky.launch(
-            task, cluster_name=cluster_name, fast=True, no_setup=True
-        )
-
-        # Note: Port forwarding for Jupyter jobs is handled separately
-        # when the job actually starts running, not at submission time
-        # since jobs may be queued and not start immediately
+        # Only do sky.launch for file_mounts otherwise skypilot wont honour it
+        if file_mounts is not None:
+            request_id = sky.launch(
+                task, cluster_name=cluster_name, fast=True, no_setup=True
+            )
+        else:
+            request_id = sky.exec(task, cluster_name=cluster_name)
 
         return request_id
     except Exception as e:
