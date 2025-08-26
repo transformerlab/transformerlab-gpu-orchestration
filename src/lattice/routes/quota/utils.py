@@ -131,7 +131,7 @@ def get_or_create_user_quota(
             user_quota = OrganizationQuota(
                 organization_id=organization_id,
                 user_id=user_id,
-                monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+                monthly_credits_per_user=org_quota.monthly_credits_per_user,
                 custom_quota=False,  # Initially not custom
             )
             db.add(user_quota)
@@ -177,18 +177,18 @@ def get_user_quota_limit(
     )
 
     if user_quota:
-        return user_quota.monthly_gpu_hours_per_user, "user"
+        return user_quota.monthly_credits_per_user, "user"
 
     # Check if user has a team quota
     team_id = get_user_team_id(db, organization_id, user_id)
     if team_id:
         team_quota = get_team_quota(db, organization_id, team_id)
         if team_quota:
-            return team_quota.monthly_gpu_hours_per_user, "team"
+            return team_quota.monthly_credits_per_user, "team"
 
     # Fall back to organization default
     org_quota = get_or_create_organization_quota(db, organization_id)
-    return org_quota.monthly_gpu_hours_per_user, "org"
+    return org_quota.monthly_credits_per_user, "org"
 
 
 def get_user_team_id(db: Session, organization_id: str, user_id: str) -> Optional[str]:
@@ -242,7 +242,7 @@ def get_current_user_quota_info(
     if team_id:
         team_quota = get_team_quota(db, organization_id, team_id)
         if team_quota:
-            team_quota_limit = team_quota.monthly_gpu_hours_per_user
+            team_quota_limit = team_quota.monthly_credits_per_user
 
             # Get team name via lazy import to avoid circular import
             try:
@@ -254,32 +254,32 @@ def get_current_user_quota_info(
                 team_name = "Unknown Team"
 
     return {
-        "user_quota_limit": user_quota.monthly_gpu_hours_per_user,
+        "user_quota_limit": user_quota.monthly_credits_per_user,
         "is_custom_quota": user_quota.custom_quota,
-        "organization_default": org_quota.monthly_gpu_hours_per_user,
+        "organization_default": org_quota.monthly_credits_per_user,
         "team_quota_limit": team_quota_limit,
         "team_name": team_name,
         "effective_quota_limit": quota_limit,
         "effective_quota_source": quota_source,
-        "current_period_limit": current_period.gpu_hours_limit,
-        "current_period_used": current_period.gpu_hours_used,
+        "current_period_limit": current_period.credits_limit,
+        "current_period_used": current_period.credits_used,
         "current_period_remaining": max(
-            0, current_period.gpu_hours_limit - current_period.gpu_hours_used
+            0, current_period.credits_limit - current_period.credits_used
         ),
         "usage_percentage": (
-            current_period.gpu_hours_used / current_period.gpu_hours_limit * 100
+            current_period.credits_used / current_period.credits_limit * 100
         )
-        if current_period.gpu_hours_limit > 0
+        if current_period.credits_limit > 0
         else 0,
     }
 
 
 def update_user_quota(
-    db: Session, organization_id: str, user_id: str, monthly_gpu_hours_limit: float
+    db: Session, organization_id: str, user_id: str, monthly_credits_limit: float
 ) -> OrganizationQuota:
     """Update or create a user quota record"""
     user_quota = get_or_create_user_quota(db, organization_id, user_id)
-    user_quota.monthly_gpu_hours_per_user = monthly_gpu_hours_limit
+    user_quota.monthly_credits_per_user = monthly_credits_limit
     user_quota.custom_quota = True  # Mark as custom when updated
     user_quota.updated_at = datetime.utcnow()
     db.commit()
@@ -287,8 +287,8 @@ def update_user_quota(
 
     # Update current quota period with new limit
     current_period = get_or_create_quota_period(db, organization_id, user_id)
-    if current_period.gpu_hours_limit != monthly_gpu_hours_limit:
-        current_period.gpu_hours_limit = monthly_gpu_hours_limit
+    if current_period.credits_limit != monthly_credits_limit:
+        current_period.credits_limit = monthly_credits_limit
         current_period.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(current_period)
@@ -349,7 +349,7 @@ def get_organization_default_quota(
             org_quota = OrganizationQuota(
                 organization_id=organization_id,
                 user_id=None,  # Organization-wide default
-                monthly_gpu_hours_per_user=100.0,
+                monthly_credits_per_user=100.0,
                 custom_quota=False,
             )
             db.add(org_quota)
@@ -438,7 +438,7 @@ def populate_user_quotas_for_organization(
                 user_quota = OrganizationQuota(
                     organization_id=organization_id,
                     user_id=membership.user_id,
-                    monthly_gpu_hours_per_user=org_quota.monthly_gpu_hours_per_user,
+                    monthly_credits_per_user=org_quota.monthly_credits_per_user,
                     custom_quota=False,
                 )
                 db.add(user_quota)
@@ -478,15 +478,15 @@ def get_or_create_quota_period(
             quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)
         else:
             org_quota = get_or_create_organization_quota(db, organization_id)
-            quota_limit = org_quota.monthly_gpu_hours_per_user
+            quota_limit = org_quota.monthly_credits_per_user
 
         period = QuotaPeriod(
             organization_id=organization_id,
             user_id=user_id,
             period_start=period_start,
             period_end=period_end,
-            gpu_hours_used=0.0,
-            gpu_hours_limit=quota_limit,
+            credits_used=0.0,
+            credits_limit=quota_limit,
         )
         db.add(period)
         db.commit()
@@ -495,13 +495,13 @@ def get_or_create_quota_period(
         # Update existing period with current user quota limit if it's different
         if user_id:
             current_quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)
-            if period.gpu_hours_limit != current_quota_limit:
-                period.gpu_hours_limit = current_quota_limit
+            if period.credits_limit != current_quota_limit:
+                period.credits_limit = current_quota_limit
                 period.updated_at = datetime.utcnow()
                 db.commit()
                 db.refresh(period)
-            if period.gpu_hours_limit != current_quota_limit:
-                period.gpu_hours_limit = current_quota_limit
+            if period.credits_limit != current_quota_limit:
+                period.credits_limit = current_quota_limit
                 period.updated_at = datetime.utcnow()
                 db.commit()
                 db.refresh(period)
@@ -568,16 +568,16 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                 existing_log.region = cluster_data.get("region", existing_log.region)
 
                 # Calculate duration from cost report
-                duration_hours = (
-                    cluster_data.get("duration", 0) / 3600
-                )  # Convert seconds to hours
+                duration_seconds = cluster_data.get(
+                    "duration", 0
+                )  # Duration is already in seconds
 
                 # If the cluster is still running, update duration
                 if (
-                    existing_log.duration_hours is None
-                    or existing_log.duration_hours != duration_hours
+                    existing_log.duration_seconds is None
+                    or existing_log.duration_seconds != duration_seconds
                 ):
-                    existing_log.duration_hours = duration_hours
+                    existing_log.duration_seconds = duration_seconds
 
                 db.commit()
                 updated_clusters += 1
@@ -591,12 +591,12 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                     else datetime.utcnow()
                 )
 
-                duration_hours = (
-                    cluster_data.get("duration", 0) / 3600
-                )  # Convert seconds to hours
+                duration_seconds = cluster_data.get(
+                    "duration", 0
+                )  # Duration is already in seconds
                 end_time = (
-                    start_time + timedelta(hours=duration_hours)
-                    if duration_hours > 0
+                    start_time + timedelta(seconds=duration_seconds)
+                    if duration_seconds > 0
                     else None
                 )
 
@@ -607,7 +607,7 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                     gpu_count=gpu_count,
                     start_time=start_time,
                     end_time=end_time,
-                    duration_hours=duration_hours,
+                    duration_seconds=duration_seconds,
                     instance_type=gpu_type,
                     cloud_provider=cluster_data.get("cloud"),
                     region=cluster_data.get("region"),
@@ -649,18 +649,19 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                                 <= datetime.combine(
                                     current_period.period_end, datetime.max.time()
                                 ),
-                                GPUUsageLog.duration_hours.isnot(None),
+                                GPUUsageLog.duration_seconds.isnot(None),
                             )
                             .with_entities(
                                 func.sum(
-                                    GPUUsageLog.duration_hours * GPUUsageLog.gpu_count
+                                    (GPUUsageLog.duration_seconds / 3600)
+                                    * GPUUsageLog.gpu_count
                                 )
                             )
                             .scalar()
                             or 0.0
                         )
 
-                        current_period.gpu_hours_used = total_usage
+                        current_period.credits_used = total_usage
                         current_period.updated_at = datetime.utcnow()
                         db.commit()
                 except Exception as e:
@@ -706,7 +707,7 @@ def get_gpu_usage_summary(
         usage_logs = usage_query.all()
 
         # Calculate summary
-        total_gpu_hours = sum(log.duration_hours or 0 for log in usage_logs)
+        total_credits = sum((log.duration_seconds or 0) / 3600 for log in usage_logs)
         active_clusters = len([log for log in usage_logs if log.end_time is None])
         completed_sessions = len(
             [log for log in usage_logs if log.end_time is not None]
@@ -718,7 +719,7 @@ def get_gpu_usage_summary(
             gpu_type = log.instance_type or "Unknown"
             if gpu_type not in gpu_type_usage:
                 gpu_type_usage[gpu_type] = {"hours": 0, "sessions": 0}
-            gpu_type_usage[gpu_type]["hours"] += log.duration_hours or 0
+            gpu_type_usage[gpu_type]["hours"] += (log.duration_seconds or 0) / 3600
             gpu_type_usage[gpu_type]["sessions"] += 1
 
         return {
@@ -726,17 +727,17 @@ def get_gpu_usage_summary(
             "user_id": user_id,
             "period_start": current_period.period_start.isoformat(),
             "period_end": current_period.period_end.isoformat(),
-            "quota_limit": current_period.gpu_hours_limit,
-            "quota_used": current_period.gpu_hours_used,
+            "quota_limit": current_period.credits_limit,
+            "quota_used": current_period.credits_used,
             "quota_remaining": max(
-                0, current_period.gpu_hours_limit - current_period.gpu_hours_used
+                0, current_period.credits_limit - current_period.credits_used
             ),
             "usage_percentage": (
-                current_period.gpu_hours_used / current_period.gpu_hours_limit * 100
+                current_period.credits_used / current_period.credits_limit * 100
             )
-            if current_period.gpu_hours_limit > 0
+            if current_period.credits_limit > 0
             else 0,
-            "total_gpu_hours": total_gpu_hours,
+            "total_credits": total_credits,
             "active_clusters": active_clusters,
             "completed_sessions": completed_sessions,
             "gpu_type_breakdown": gpu_type_usage,
@@ -764,9 +765,9 @@ def get_organization_user_usage_summary(
         user_usage = (
             db.query(
                 GPUUsageLog.user_id,
-                func.sum(GPUUsageLog.duration_hours * GPUUsageLog.gpu_count).label(
-                    "total_hours"
-                ),
+                func.sum(
+                    (GPUUsageLog.duration_seconds / 3600) * GPUUsageLog.gpu_count
+                ).label("total_hours"),
             )
             .filter(
                 GPUUsageLog.organization_id == organization_id,
@@ -774,7 +775,7 @@ def get_organization_user_usage_summary(
                 >= datetime.combine(period_start, datetime.min.time()),
                 GPUUsageLog.start_time
                 <= datetime.combine(period_end, datetime.max.time()),
-                GPUUsageLog.duration_hours.isnot(None),
+                GPUUsageLog.duration_seconds.isnot(None),
             )
             .group_by(GPUUsageLog.user_id)
             .all()
@@ -808,9 +809,9 @@ def get_organization_user_usage_summary(
                     "user_id": user_id,
                     "user_email": user_info.get("email"),
                     "user_name": user_info.get("name"),
-                    "gpu_hours_used": total_hours,
-                    "gpu_hours_limit": user_quota_limit,
-                    "gpu_hours_remaining": max(0, user_quota_limit - total_hours),
+                    "credits_used": total_hours,
+                    "credits_limit": user_quota_limit,
+                    "credits_remaining": max(0, user_quota_limit - total_hours),
                     "usage_percentage": (total_hours / user_quota_limit * 100)
                     if user_quota_limit > 0
                     else 0,
@@ -821,7 +822,7 @@ def get_organization_user_usage_summary(
             "organization_id": organization_id,
             "period_start": period_start.isoformat(),
             "period_end": period_end.isoformat(),
-            "quota_per_user": org_quota.monthly_gpu_hours_per_user,
+            "quota_per_user": org_quota.monthly_credits_per_user,
             "total_users": len(user_breakdown),
             "total_organization_usage": total_org_usage,
             "user_breakdown": user_breakdown,

@@ -270,7 +270,7 @@ export const teamsQuotaApi = {
       team_id: string;
       team_name: string;
       organization_id: string;
-      monthly_gpu_hours_per_user: number;
+      monthly_credits_per_user: number;
       created_at: string;
       updated_at: string;
     }>;
@@ -291,7 +291,7 @@ export const teamsQuotaApi = {
     team_id: string;
     team_name: string;
     organization_id: string;
-    monthly_gpu_hours_per_user: number;
+    monthly_credits_per_user: number;
     created_at: string;
     updated_at: string;
   }> => {
@@ -306,12 +306,12 @@ export const teamsQuotaApi = {
   updateTeamQuota: async (
     organizationId: string,
     teamId: string,
-    monthlyGpuHoursPerUser: number
+    monthlyCreditsPerUser: number
   ): Promise<{
     team_id: string;
     team_name: string;
     organization_id: string;
-    monthly_gpu_hours_per_user: number;
+    monthly_credits_per_user: number;
     created_at: string;
     updated_at: string;
   }> => {
@@ -322,7 +322,7 @@ export const teamsQuotaApi = {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          monthly_gpu_hours_per_user: monthlyGpuHoursPerUser,
+          monthly_credits_per_user: monthlyCreditsPerUser,
         }),
       }
     );
@@ -411,7 +411,7 @@ export const quotaApi = {
     organization_quota: {
       id: string;
       organization_id: string;
-      monthly_gpu_hours_per_user: number;
+      monthly_credits_per_user: number;
       created_at: string;
       updated_at: string;
     };
@@ -437,7 +437,7 @@ export const quotaApi = {
 
   updateOrganizationQuota: async (
     organizationId: string,
-    monthlyGpuHoursPerUser: number
+    monthlyCreditsPerUser: number
   ): Promise<any> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}`),
@@ -446,7 +446,7 @@ export const quotaApi = {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          monthly_gpu_hours_per_user: monthlyGpuHoursPerUser,
+          monthly_credits_per_user: monthlyCreditsPerUser,
         }),
       }
     );
@@ -462,7 +462,7 @@ export const quotaApi = {
     user_email?: string;
     user_name?: string;
     organization_id: string;
-    monthly_gpu_hours_per_user: number;
+    monthly_credits_per_user: number;
     custom_quota: boolean;
     created_at: string;
     updated_at: string;
@@ -485,7 +485,7 @@ export const quotaApi = {
       user_email?: string;
       user_name?: string;
       organization_id: string;
-      monthly_gpu_hours_per_user: number;
+      monthly_credits_per_user: number;
       custom_quota: boolean;
       created_at: string;
       updated_at: string;
@@ -504,7 +504,7 @@ export const quotaApi = {
   updateUserQuota: async (
     organizationId: string,
     userId: string,
-    monthlyGpuHoursPerUser: number
+    monthlyCreditsPerUser: number
   ): Promise<any> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
@@ -513,7 +513,7 @@ export const quotaApi = {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          monthly_gpu_hours_per_user: monthlyGpuHoursPerUser,
+          monthly_credits_per_user: monthlyCreditsPerUser,
         }),
       }
     );
