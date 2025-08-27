@@ -143,6 +143,8 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
           marginTop: 6,
           paddingBottom: 2,
           opacity: 0.8,
+          height: 26,
+          alignContent: "center",
         }}
       >
         {gpuSlots.length === 0 ? (
