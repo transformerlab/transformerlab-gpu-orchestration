@@ -20,13 +20,20 @@ def generate_unique_cluster_name(display_name: str) -> str:
         display_name: The name specified by the user
 
     Returns:
-        Unique cluster name with format: {nanoid}-{display_name}
+        Unique cluster name with format: {nanoid}
     """
     # Generate an 8-character nanoid for uniqueness
-    nanoid = generate(size=8)
-    # Nanoid should not start with a number as Runpod doesn't allow it
-    if nanoid[0].isdigit():
+    # Use only alphanumeric characters to avoid invalid chars like underscore
+    nanoid = generate(
+        size=8,
+        alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.",
+    )
+
+    # Ensure it starts with a letter (not a number) as required by the regex
+    if not nanoid[0].isalpha():
         nanoid = "t" + nanoid
+    if not nanoid[-1].isalpha():
+        nanoid = nanoid + "t"
 
     return nanoid
 
