@@ -389,16 +389,12 @@ async def get_vscode_tunnel_info_endpoint(
 ):
     """Get VSCode tunnel information from job logs."""
     try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
-        )
         # Get job logs
         logs = get_job_logs(
-            actual_cluster_name,
+            cluster_name,
             job_id,
-            user["id"],
-            user["organization_id"],
+            user_id=user["id"],
+            organization_id=user["organization_id"],
         )
 
         # Parse VSCode tunnel info from logs
@@ -407,6 +403,7 @@ async def get_vscode_tunnel_info_endpoint(
         return tunnel_info
 
     except Exception as e:
+        print(f"Failed to get VSCode tunnel info: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get VSCode tunnel info: {str(e)}"
         )

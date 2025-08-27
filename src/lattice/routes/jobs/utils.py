@@ -41,8 +41,11 @@ def get_job_logs(
         print(f"Actual cluster name: {actual_cluster_name}")
 
         log_paths = sky.download_logs(actual_cluster_name, [str(job_id)])
+        print(f"Log paths: {log_paths}")
         log_path = log_paths.get(str(job_id))
+        print(f"Log path: {log_path}")
         log_path = os.path.expanduser(log_path)
+        print(f"Expanded log path: {log_path}")
         if not log_path or (
             not os.path.exists(log_path) and not os.path.isdir(log_path)
         ):
@@ -50,6 +53,8 @@ def get_job_logs(
         # If log_path is a directory, look for run.log inside
         if os.path.isdir(log_path):
             run_log_path = os.path.join(log_path, "run.log")
+            print(f"Run log path: {run_log_path}")
+            print("TAIL LINES", tail_lines)
             if os.path.exists(run_log_path):
                 log_path = run_log_path
             else:
