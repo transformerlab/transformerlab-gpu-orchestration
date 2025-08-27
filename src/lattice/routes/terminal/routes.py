@@ -85,52 +85,12 @@ async def terminal_connect(
         "connection": None,
     }
 
-    # Render the xterm.js terminal
-    return f"""
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>SSH Terminal</title>
-            <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
-            <style>
-                body {{ font-family: Arial, sans-serif; padding: 20px; }}
-                #terminal {{ height: 400px; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; }}
-                button {{ padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }}
-                button:hover {{ background-color: #45a049; }}
-            </style>
-        </head>
-        <body>
-            <div id="terminal"></div>
-            <script>
-                const term = new Terminal();
-                term.open(document.getElementById('terminal'));
-
-                const socket = new WebSocket(`ws://localhost:8000/api/v1/terminal/ws/{session_id}`);
-
-                socket.onopen = () => {{
-                    term.writeln('Connected to {cluster_name}');
-                    term.onData(data => {{
-                        socket.send(btoa(data)); // Encode input as Base64
-                    }});
-                }};
-
-                socket.onmessage = (event) => {{
-                    const decodedData = atob(event.data); // Decode Base64 data
-                    term.write(decodedData);
-                }};
-
-                socket.onclose = () => {{
-                    term.writeln('Connection closed');
-                }};
-
-                socket.onerror = (error) => {{
-                    term.writeln('WebSocket error: ' + JSON.stringify(error));
-                }};
-            </script>
-        </body>
-    </html>
-    """
+    # Return terminal.html but replace placeholders with actual values
+    with open("src/lattice/routes/terminal/terminal.html", "r") as f:
+        html_content = f.read()
+        html_content = html_content.replace("{{ session_id }}", session_id)
+        html_content = html_content.replace("{{ cluster_name }}", actual_cluster_name)
+    return HTMLResponse(content=html_content, status_code=200)
 
 
 @router.websocket("/terminal/ws/{session_id}")
