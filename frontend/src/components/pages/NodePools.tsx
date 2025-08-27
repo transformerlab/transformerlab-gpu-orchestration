@@ -105,12 +105,38 @@ const Nodes: React.FC = () => {
         .forEach((pool: any) => {
           const hosts = pool?.config?.hosts || [];
           const gpuResources = pool?.gpu_resources || {};
-          const gpus = gpuResources?.gpus || [];
+          const nodeGpus = gpuResources?.node_gpus || [];
+
+          // Create a map of node IPs to their GPU resources
+          const nodeGpuMap: Record<string, any[]> = {};
+          nodeGpus.forEach((nodeGpu: any) => {
+            const nodeIp = nodeGpu.node;
+            if (nodeIp) {
+              if (!nodeGpuMap[nodeIp]) {
+                nodeGpuMap[nodeIp] = [];
+              }
+              nodeGpuMap[nodeIp].push({
+                gpu: nodeGpu.gpu,
+                utilization: nodeGpu.utilization,
+                free: nodeGpu.free,
+                total: nodeGpu.total,
+                requestable_qty_per_node: nodeGpu.requestable_qty_per_node,
+              });
+            }
+          });
+
           hosts.forEach((host: any) => {
             const ip = host.ip || host.hostname;
             if (!ip) return;
-            // Provide a shape compatible with existing consumers: { gpu_resources: { gpus: [...] } }
-            ipToGpuInfo[ip] = { gpu_resources: { gpus } };
+
+            // Only assign GPU resources if this node actually has GPUs
+            const nodeGpus = nodeGpuMap[ip] || [];
+            if (nodeGpus.length > 0) {
+              ipToGpuInfo[ip] = { gpu_resources: { gpus: nodeGpus } };
+            } else {
+              // Node has no GPUs, so don't assign any GPU resources
+              ipToGpuInfo[ip] = { gpu_resources: { gpus: [] } };
+            }
           });
         });
     } catch (e) {
