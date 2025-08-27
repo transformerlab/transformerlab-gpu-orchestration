@@ -334,3 +334,24 @@ class ClusterPlatform(Base):
             name="uq_cluster_platforms_user_org_display",
         ),
     )
+
+
+class SkyPilotRequest(Base):
+    __tablename__ = "skypilot_requests"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    user_id = Column(String, nullable=False)
+    organization_id = Column(String, nullable=False)
+    task_type = Column(String, nullable=False)  # launch, stop, down, status, etc.
+    request_id = Column(String, nullable=False)  # SkyPilot request ID
+    cluster_name = Column(String, nullable=True)  # Associated cluster name if applicable
+    status = Column(String, default="pending")  # pending, completed, failed, cancelled
+    result = Column(JSON, nullable=True)  # Store the result/response from SkyPilot
+    error_message = Column(Text, nullable=True)  # Error message if failed
+    created_at = Column(DateTime, default=func.now())
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Index for efficient querying
+    __table_args__ = (
+        UniqueConstraint("request_id", name="uq_skypilot_requests_request_id"),
+    )
