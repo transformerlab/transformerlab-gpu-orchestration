@@ -311,7 +311,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                   })()}
                   %
                   {nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0
-                    ? " GPU in Use"
+                    ? " GPU Capacity in Use"
                     : " Total Capacity In Use"}
                 </Chip>
               </Stack>
