@@ -258,8 +258,61 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                   {assignedToYouCount} Nodes Assigned To You
                 </Chip>
                 <Chip size="sm" color="success" variant="soft">
-                  {Math.round((activeCount / processedNodes.length) * 100)}%
-                  Total Capacity In Use
+                  {(() => {
+                    // Calculate GPU usage if nodeGpuInfo is available
+                    if (nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0) {
+                      let totalGpus = 0;
+                      let usedGpus = 0;
+
+                      // Helper to parse strings like "1 of 2 free"
+                      const parseUtilization = (
+                        s?: string
+                      ): { free?: number; total?: number } => {
+                        if (!s) return {};
+                        const m = s.match(/(\d+)\s*of\s*(\d+)/i);
+                        if (!m) return {};
+                        return {
+                          free: Number.parseInt(m[1], 10),
+                          total: Number.parseInt(m[2], 10),
+                        };
+                      };
+
+                      // Calculate GPU usage across all nodes
+                      Object.entries(nodeGpuInfo).forEach(([ip, gpuInfo]) => {
+                        const entries = gpuInfo?.gpu_resources?.gpus ?? [];
+                        entries.forEach((e: any) => {
+                          const util = parseUtilization(e.utilization);
+                          const totalParsed = Number.parseInt(
+                            e.total ?? "",
+                            10
+                          );
+                          const freeParsed = Number.parseInt(e.free ?? "", 10);
+                          const total = Number.isFinite(totalParsed)
+                            ? totalParsed
+                            : util.total ?? 0;
+                          const free = Number.isFinite(freeParsed)
+                            ? freeParsed
+                            : util.free ?? 0;
+
+                          totalGpus += total;
+                          usedGpus += Math.max(0, total - free);
+                        });
+                      });
+
+                      return totalGpus > 0
+                        ? Math.round((usedGpus / totalGpus) * 100)
+                        : 0;
+                    } else {
+                      // Fall back to capacity calculation for non-SSH clusters
+                      return Math.round(
+                        (activeCount / processedNodes.length) * 100
+                      );
+                    }
+                  })()}
+                  %
+                  {nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0
+                    ? " GPU in Use"
+                    : " Total Capacity In Use"}
                 </Chip>
               </Stack>
             </Box>
