@@ -143,7 +143,13 @@ async def get_cluster_job_logs(
             cluster_name, user["id"], user["organization_id"]
         )
 
-        logs = get_job_logs(actual_cluster_name, job_id, tail_lines)
+        logs = get_job_logs(
+            actual_cluster_name,
+            job_id,
+            tail_lines,
+            user["id"],
+            user["organization_id"],
+        )
         return JobLogsResponse(job_id=job_id, logs=logs)
     except Exception as e:
         print(f"Failed to get job logs: {str(e)}")
@@ -388,7 +394,12 @@ async def get_vscode_tunnel_info_endpoint(
             cluster_name, user["id"], user["organization_id"]
         )
         # Get job logs
-        logs = get_job_logs(actual_cluster_name, job_id)
+        logs = get_job_logs(
+            actual_cluster_name,
+            job_id,
+            user["id"],
+            user["organization_id"],
+        )
 
         # Parse VSCode tunnel info from logs
         tunnel_info = get_vscode_tunnel_info(logs)

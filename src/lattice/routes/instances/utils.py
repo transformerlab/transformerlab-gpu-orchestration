@@ -432,15 +432,19 @@ def down_cluster_with_skypilot(
                 jobs = job_records.jobs
                 if jobs:
                     if display_name:
-                        save_cluster_jobs(display_name, jobs)
+                        save_cluster_jobs(display_name, jobs, user_id, organization_id)
                     else:
-                        save_cluster_jobs(cluster_name, jobs)
+                        save_cluster_jobs(cluster_name, jobs, user_id, organization_id)
             elif isinstance(job_records, list):
                 # If it's already a list of jobs
                 if display_name:
-                    save_cluster_jobs(display_name, job_records)
+                    save_cluster_jobs(
+                        display_name, job_records, user_id, organization_id
+                    )
                 else:
-                    save_cluster_jobs(cluster_name, job_records)
+                    save_cluster_jobs(
+                        cluster_name, job_records, user_id, organization_id
+                    )
         except Exception as e:
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
