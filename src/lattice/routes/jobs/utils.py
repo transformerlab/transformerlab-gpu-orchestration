@@ -34,7 +34,7 @@ def get_job_logs(
                 actual_cluster_name = handle_cluster_name_param(
                     cluster_name, user_id, organization_id
                 )
-            except Exception as e:
+            except Exception:
                 # If mapping fails, use the original cluster_name (might be actual name already)
                 actual_cluster_name = cluster_name
 
