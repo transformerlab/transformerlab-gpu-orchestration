@@ -72,7 +72,6 @@ async def get_node_pools(
                 "max_instances": 0,
                 "can_launch": True,
             },
-            "ssh_node_info": {},
             "sky_pilot_status": [],
         }
 
@@ -132,33 +131,7 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading instances data: {e}")
 
-        # 4. Get SSH node info with cached GPU data
-        try:
-            # Build comprehensive SSH node info from database with cached GPU data
-            ssh_node_info = {}
-            # Get SSH node pools that belong to the user's organization
-            user_ssh_pools = (
-                db.query(SSHNodePoolDB)
-                .filter(SSHNodePoolDB.organization_id == user["organization_id"])
-                .all()
-            )
-
-            for pool in user_ssh_pools:
-                cluster_name = pool.name
-                cfg = get_cluster_config_from_db(cluster_name)
-
-                # Get cached GPU resources (fast response)
-                cached_gpu_resources = get_cached_gpu_resources(cluster_name)
-
-                ssh_node_info[cluster_name] = {
-                    "hosts": cfg.get("hosts", []),
-                    "gpu_resources": cached_gpu_resources,
-                }
-
-            response_data["ssh_node_info"] = ssh_node_info
-        except Exception as e:
-            print(f"Error loading SSH node info: {e}")
-            response_data["ssh_node_info"] = {}
+        # 4. SSH node info is now embedded per node pool entry
 
         # 5. Get SkyPilot status (filtered by user and with display names)
         try:
@@ -314,6 +287,8 @@ async def get_node_pools(
                     cluster_name = pool.name
                     cfg = get_cluster_config_from_db(cluster_name)
                     hosts_count = len(cfg.get("hosts", []))
+                    # Get cached GPU resources (fast response) for this pool
+                    cached_gpu_resources = get_cached_gpu_resources(cluster_name)
 
                     # Find active clusters that use this node pool as platform
                     active_clusters = []
@@ -365,6 +340,7 @@ async def get_node_pools(
                                 "is_configured": True,
                                 "hosts": cfg.get("hosts", []),
                             },
+                            "gpu_resources": cached_gpu_resources,
                             "active_clusters": active_clusters,
                             "user_instances": ssh_instances_for_user,
                         }
@@ -569,7 +545,7 @@ async def get_cluster(
         # we'll need to return a custom response
         return {
             "cluster_name": cluster_name,
-            "nodes": [node.dict() for node in nodes],
+            "nodes": [node.model_dump() for node in nodes],
             "gpu_resources": cached_gpu_resources,
         }
 
