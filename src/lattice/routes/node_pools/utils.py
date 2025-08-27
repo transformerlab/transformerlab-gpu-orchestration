@@ -1,4 +1,6 @@
 from fastapi import HTTPException
+from concurrent.futures import ThreadPoolExecutor
+import threading
 from utils.file_utils import (
     load_ssh_node_pools,
     save_ssh_node_pools,
@@ -54,6 +56,53 @@ async def update_gpu_resources_for_node_pool(node_pool_name: str):
             db.close()
     except Exception as e:
         print(f"Error in update_gpu_resources_for_node_pool for {node_pool_name}: {e}")
+
+
+_gpu_update_executor = ThreadPoolExecutor(
+    max_workers=4, thread_name_prefix="gpu-update"
+)
+_inflight_updates_lock = threading.Lock()
+_inflight_updates: set[str] = set()
+
+
+def _schedule_gpu_resources_update(node_pool_name: str):
+    """Schedule async GPU resources update using a thread pool and avoid duplicates per pool."""
+    try:
+        import asyncio
+
+        with _inflight_updates_lock:
+            if node_pool_name in _inflight_updates:
+                return
+            _inflight_updates.add(node_pool_name)
+
+        def run_async_update():
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(
+                    update_gpu_resources_for_node_pool(node_pool_name)
+                )
+            except Exception as e:
+                print(
+                    f"Background thread: Failed to update GPU resources for {node_pool_name}: {e}"
+                )
+            finally:
+                try:
+                    loop.close()
+                except Exception:
+                    pass
+                finally:
+                    with _inflight_updates_lock:
+                        _inflight_updates.discard(node_pool_name)
+
+        _gpu_update_executor.submit(run_async_update)
+    except Exception as e:
+        print(f"Failed to schedule GPU resources update for {node_pool_name}: {e}")
+
+
+def schedule_gpu_resources_update(node_pool_name: str):
+    """Public helper to schedule GPU resources update in background."""
+    _schedule_gpu_resources_update(node_pool_name)
 
 
 def get_cached_gpu_resources(node_pool_name: str) -> dict:
@@ -178,7 +227,7 @@ def update_pool_resources(pool: SSHNodePoolDB, db):
     print(f"Updated pool {pool.name} resources: {pool.resources}")
 
 
-def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None):
+def add_node_to_cluster(cluster_name: str, node: SSHNode):
     pools = load_ssh_node_pools()
     if cluster_name not in pools:
         raise HTTPException(
@@ -241,7 +290,8 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode, background_tasks=None)
         except Exception:
             pass
 
-    # Note: GPU resources will be updated synchronously when /node-pools endpoint is called
+    # Trigger a background GPU resources update for this node pool
+    _schedule_gpu_resources_update(cluster_name)
 
     return pools[cluster_name]
 
