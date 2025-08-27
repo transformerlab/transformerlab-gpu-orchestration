@@ -853,65 +853,6 @@ async def get_request_status(
         )
 
 
-@router.get("/requests/{request_id}/live-status")
-async def get_live_request_status(
-    request_id: str,
-    user: dict = Depends(get_user_or_api_key),
-):
-    """
-    Get live status of a SkyPilot request by checking with SkyPilot API
-    """
-    try:
-        request = skypilot_tracker.get_request_by_id(request_id)
-
-        if not request:
-            raise HTTPException(status_code=404, detail="Request not found")
-
-        # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
-            raise HTTPException(status_code=403, detail="Access denied")
-
-        # Check the actual status with SkyPilot API
-
-        try:
-            # Get the current status from SkyPilot
-            status_result = sky.api_status([request_id])
-            if status_result:
-                # Update our database with the latest status
-                latest_status = status_result[0].get("status", "unknown")
-                if latest_status != request.status:
-                    skypilot_tracker.update_request_status(
-                        request_id=request_id, status=latest_status
-                    )
-                    request.status = latest_status
-
-        except Exception as e:
-            # If we can't get live status, return the cached status
-            print(f"Warning: Could not get live status for {request_id}: {e}")
-
-        return {
-            "request_id": request.request_id,
-            "status": request.status,
-            "task_type": request.task_type,
-            "cluster_name": request.cluster_name,
-            "created_at": request.created_at.isoformat()
-            if request.created_at
-            else None,
-            "completed_at": request.completed_at.isoformat()
-            if request.completed_at
-            else None,
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get live request status: {str(e)}"
-        )
-
-
 @router.get("/requests/{request_id}/logs")
 async def stream_request_logs(
     request_id: str,

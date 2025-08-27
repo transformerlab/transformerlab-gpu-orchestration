@@ -28,6 +28,7 @@ import {
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import useSWR from "swr";
+import StreamingLogViewer from "../widgets/StreamingLogViewer";
 
 interface SkyPilotRequest {
   id: string;
@@ -325,7 +326,15 @@ const Logs: React.FC = () => {
 
       {/* Logs Modal */}
       <Modal open={logsModalOpen} onClose={closeLogs}>
-        <ModalDialog size="lg" sx={{ maxWidth: "90vw", maxHeight: "90vh" }}>
+        <ModalDialog
+          size="lg"
+          sx={{
+            maxWidth: "95vw",
+            maxHeight: "95vh",
+            width: "90vw",
+            height: "85vh",
+          }}
+        >
           <ModalClose />
           <DialogTitle>
             <Stack direction="row" spacing={2} alignItems="center">
@@ -337,35 +346,8 @@ const Logs: React.FC = () => {
             </Stack>
           </DialogTitle>
           <DialogContent>
-            <Box
-              sx={{
-                backgroundColor: "background.level1",
-                borderRadius: "sm",
-                p: 2,
-                height: "60vh",
-                overflow: "auto",
-                fontFamily: "monospace",
-                fontSize: "0.875rem",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {logs.length === 0 && !logsLoading ? (
-                <Typography level="body-sm" color="neutral">
-                  No logs available
-                </Typography>
-              ) : (
-                logs.map((log, index) => (
-                  <Box key={index} sx={{ mb: 0.5 }}>
-                    {log}
-                  </Box>
-                ))
-              )}
-              {logsLoading && logs.length === 0 && (
-                <Typography level="body-sm" color="neutral">
-                  Loading logs...
-                </Typography>
-              )}
+            <Box sx={{ height: "70vh" }}>
+              <StreamingLogViewer logs={logs} isLoading={logsLoading} />
             </Box>
           </DialogContent>
         </ModalDialog>
