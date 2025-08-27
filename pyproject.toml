@@ -50,7 +50,7 @@ dependencies = [
     "msrestazure==0.6.4.post1",
     "openapi-client>=1.1.7",
     "nanoid==2.0.0",
-    "skypilot[all] @ git+https://github.com/transformerlab/skypilot.git@prod",
+    "skypilot[all] @ git+https://github.com/transformerlab/skypilot.git@prod-copy",
 ]
 
 [project.scripts]

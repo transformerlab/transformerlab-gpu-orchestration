@@ -140,6 +140,7 @@ def launch_cluster_with_skypilot(
     node_pool_name: Optional[str] = None,
     docker_image: Optional[str] = None,
     container_registry_id: Optional[str] = None,
+    credentials: Optional[dict] = None,
 ):
     try:
         # Handle RunPod setup
@@ -354,6 +355,7 @@ def launch_cluster_with_skypilot(
             task,
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
+            credentials=credentials,
         )
         print(f"REQUEST ID: {request_id}")
 

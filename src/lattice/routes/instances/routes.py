@@ -26,7 +26,7 @@ from .utils import (
     down_cluster_with_skypilot,
 )
 from routes.clouds.azure.utils import (
-    az_setup_config,
+    az_get_config_for_display,
 )
 from routes.clouds.runpod.utils import (
     rp_setup_config,
@@ -179,11 +179,24 @@ async def launch_instance(
         # Setup Azure if cloud is azure
         if cloud == "azure":
             try:
-                az_setup_config()
+                # az_setup_config()
+                az_config = az_get_config_for_display()
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
+        # print(f"az_config: {az_config}")
+        # raise Exception("test")
+        credentials = {
+            "azure": {
+                "service_principal": {
+                    "tenant_id": "fake",
+                    "client_id": "fake",
+                    "client_secret": "fake",
+                    "subscription_id": "fake",
+                }
+            }
+        }
         # Get user info first for cluster creation
         user_info = get_current_user(request, response)
         user_id = user_info["id"]
@@ -237,6 +250,7 @@ async def launch_instance(
             node_pool_name=node_pool_name,
             docker_image=docker_image,
             container_registry_id=container_registry_id,
+            credentials=credentials,
         )
 
         # Record usage event for cluster launch
