@@ -157,16 +157,32 @@ const ClusterDetails: React.FC = () => {
           return res.json();
         })
         .then((data) => {
-          console.log("Cluster data:", data);
-          // Transform the data to match our interface
+          // Build a quick lookup from node IP to GPU info from backend gpu_resources
+          const nodeGpuMap = new Map<string, string>();
+          const nodeGpus = data?.gpu_resources?.node_gpus || [];
+          nodeGpus.forEach((ng: any) => {
+            // Prefer a concise description like "RTX3090 (1/2 free)"
+            const gpu = ng?.gpu ?? "-";
+            const free = ng?.free ?? "-";
+            const total = ng?.total ?? "-";
+            const desc = `${gpu} (${free}/${total} free)`;
+            if (ng?.node) nodeGpuMap.set(ng.node, desc);
+          });
+
+          // Transform the data to match our interface, enriching gpu_info per node
           const transformedNodes = (data.nodes || []).map(
-            (node: any, index: number) => ({
-              id: node.id || `node-${index}`,
-              ip: node.ip || node.hostname || `10.0.0.${index + 1}`,
-              identity_file: node.identity_file || node.ssh_key || "-",
-              gpu_info: node.gpu_info || node.gpu_type || "-",
-              status: node.status || "active",
-            })
+            (node: any, index: number) => {
+              const ip = node.ip || node.hostname || `10.0.0.${index + 1}`;
+              const gpuInfoFromBackend = nodeGpuMap.get(ip);
+              return {
+                id: node.id || `node-${index}`,
+                ip,
+                identity_file: node.identity_file || node.ssh_key || "-",
+                gpu_info:
+                  gpuInfoFromBackend || node.gpu_info || node.gpu_type || "-",
+                status: node.status || "active",
+              } as Node;
+            }
           );
           setNodes(transformedNodes);
         })

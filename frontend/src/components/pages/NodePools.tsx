@@ -55,16 +55,12 @@ const Nodes: React.FC = () => {
   // --- Node Pools/Clouds Section ---
   const fetcher = async (url: string) => {
     try {
-      console.log("[NodePools] fetching:", url);
       const res = await apiFetch(url, { credentials: "include" });
-      console.log("[NodePools] response:", res.status, res.statusText);
       const text = await res.text();
       try {
         const json = text ? JSON.parse(text) : null;
-        console.log("[NodePools] parsed JSON:", json);
         return json;
       } catch (e) {
-        console.error("[NodePools] JSON parse error. Raw text:", text);
         throw e;
       }
     } catch (e) {
