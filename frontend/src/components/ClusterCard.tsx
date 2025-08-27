@@ -8,6 +8,7 @@ import NodeSquare from "./widgets/NodeSquare";
 import { getStatusOrder } from "./utils/clusterUtils";
 import ReserveNodeModal from "./modals/ReserveNodeModal";
 import CloudServiceIcon from "./widgets/CloudServiceIcon";
+import MachineWithGPUSprite from "./widgets/MachineWithGPUSprite";
 
 export interface Node {
   id: string;
@@ -265,94 +266,80 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
           </Button>
         </Box>
 
-        {/* Show nodes */}
-        <Box sx={{ mb: 2 }}>
+        {/* Show Nodes in detail for SSH Node Pools*/}
+        {nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0 && (
           <Box
             sx={{
               display: "flex",
-              gap: 3,
               flexWrap: "wrap",
-              alignItems: "flex-start",
+              gap: 1,
+              justifyContent: "flex-start",
+              alignItems: "center",
+              mb: 2,
             }}
           >
-            {clusterType === "fake" ? (
-              // For fake data, show in single column
-              <Box
-                sx={{
-                  flex: "1 1 0",
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  mb: 3,
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "1px",
-                    p: 2,
-                    backgroundColor: "background.level1",
-                    borderRadius: "md",
-                    maxHeight: 1000,
-                    overflow: "auto",
-                  }}
-                >
-                  {nodesToShow.map((node) => (
-                    <NodeSquare
-                      key={node.id}
-                      node={node}
-                      variant="mock"
-                      clusterName={clusterId}
-                      currentUser={currentUser}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            ) : (
-              // For cloud and regular clusters, show in two columns
-              ["dedicated", "on-demand"].map((nodeType) => {
-                const nodesOfType = nodesToShow.filter(
-                  (node) => node.type === nodeType
-                );
-                if (nodesOfType.length === 0) return null;
+            {Object.entries(nodeGpuInfo).map(([host, gpuInfo]) => (
+              <MachineWithGPUSprite key={host} host={{ [host]: gpuInfo }} />
+            ))}
+          </Box>
+        )}
+        {/* Show nodes as dots for others */}
+        {(!nodeGpuInfo || Object.keys(nodeGpuInfo).length === 0) && (
+          <Box sx={{ mb: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 3,
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+              }}
+            >
+              {
+                // For cloud and regular clusters, show in two columns
+                ["dedicated", "on-demand"].map((nodeType) => {
+                  const nodesOfType = nodesToShow.filter(
+                    (node) => node.type === nodeType
+                  );
+                  if (nodesOfType.length === 0) return null;
 
-                return (
-                  <Box
-                    key={nodeType}
-                    sx={{
-                      flex: "1 1 0",
-                      minWidth: 0,
-                      mb: 3,
-                    }}
-                  >
+                  return (
                     <Box
+                      key={nodeType}
                       sx={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "1px",
-                        p: 2,
-                        backgroundColor: "background.level1",
-                        borderRadius: "md",
-                        maxHeight: 1000,
-                        overflow: "auto",
+                        flex: "1 1 0",
+                        minWidth: 0,
+                        mb: 3,
                       }}
                     >
-                      {nodesOfType.map((node) => (
-                        <NodeSquare
-                          key={node.id}
-                          node={node}
-                          variant="mock"
-                          clusterName={clusterId}
-                          currentUser={currentUser}
-                        />
-                      ))}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "1px",
+                          p: 2,
+                          backgroundColor: "background.level1",
+                          borderRadius: "md",
+                          maxHeight: 1000,
+                          overflow: "auto",
+                        }}
+                      >
+                        {nodesOfType.map((node) => (
+                          <NodeSquare
+                            key={node.id}
+                            node={node}
+                            variant="mock"
+                            clusterName={clusterId}
+                            currentUser={currentUser}
+                          />
+                        ))}
+                      </Box>
                     </Box>
-                  </Box>
-                );
-              })
-            )}
+                  );
+                })
+              }
+            </Box>
           </Box>
-        </Box>
+        )}
 
         <Stack direction="row" spacing={1}>
           <Button
