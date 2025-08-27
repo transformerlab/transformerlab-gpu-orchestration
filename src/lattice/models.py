@@ -52,6 +52,7 @@ class AddNodeRequest(BaseModel):
 class ClusterResponse(BaseModel):
     cluster_name: str
     nodes: List[SSHNode]
+    gpu_resources: Optional[Dict[str, Any]] = None
 
 
 class ClustersListResponse(BaseModel):

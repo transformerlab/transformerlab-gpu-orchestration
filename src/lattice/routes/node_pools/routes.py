@@ -539,20 +539,12 @@ async def get_cluster(
     # Get cached GPU resources for this node pool
     cached_gpu_resources = get_cached_gpu_resources(cluster_name)
 
-    # Create response with additional GPU data
-    response = ClusterResponse(cluster_name=cluster_name, nodes=nodes)
-
-    # Add GPU resources to response if available
-    if cached_gpu_resources:
-        # Since ClusterResponse doesn't have a field for GPU data,
-        # we'll need to return a custom response
-        return {
-            "cluster_name": cluster_name,
-            "nodes": [node.model_dump() for node in nodes],
-            "gpu_resources": cached_gpu_resources,
-        }
-
-    return response
+    # Create response including optional GPU data
+    return ClusterResponse(
+        cluster_name=cluster_name,
+        nodes=nodes,
+        gpu_resources=cached_gpu_resources if cached_gpu_resources else None,
+    )
 
 
 @router.post("/ssh-node-pools/{cluster_name}/nodes")

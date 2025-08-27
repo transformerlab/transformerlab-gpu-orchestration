@@ -53,27 +53,39 @@ const Nodes: React.FC = () => {
   });
 
   // --- Node Pools/Clouds Section ---
-  const fetcher = (url: string) =>
-    apiFetch(url, { credentials: "include" }).then((res) => res.json());
+  const fetcher = async (url: string) => {
+    try {
+      const res = await apiFetch(url, { credentials: "include" });
+      const text = await res.text();
+      try {
+        const json = text ? JSON.parse(text) : null;
+        return json;
+      } catch (e) {
+        throw e;
+      }
+    } catch (e) {
+      console.error("[NodePools] fetch error:", e);
+      throw e;
+    }
+  };
 
   // Fetch comprehensive node pools data from the new endpoint
-  const { data: nodePoolsData, isLoading } = useSWR(
-    buildApiUrl("node-pools/"),
-    fetcher,
-    {
-      refreshInterval: 2000,
-      fallbackData: {
-        node_pools: [],
-        instances: {
-          current_count: 0,
-          max_instances: 0,
-          can_launch: true,
-        },
-        ssh_node_info: {},
-        sky_pilot_status: [],
+  const {
+    data: nodePoolsData,
+    isLoading,
+    error: nodePoolsError,
+  } = useSWR(buildApiUrl("node-pools/"), fetcher, {
+    refreshInterval: 2000,
+    fallbackData: {
+      node_pools: [],
+      instances: {
+        current_count: 0,
+        max_instances: 0,
+        can_launch: true,
       },
-    }
-  );
+      sky_pilot_status: [],
+    },
+  });
 
   // Extract data from the comprehensive response
   const instances = nodePoolsData?.instances || {
@@ -82,8 +94,30 @@ const Nodes: React.FC = () => {
     can_launch: true,
   };
   const skyPilotStatus = nodePoolsData?.sky_pilot_status || [];
-  const nodeGpuInfo = nodePoolsData?.ssh_node_info || {};
   const nodePools = nodePoolsData?.node_pools || [];
+
+  // Build per-node GPU info map from node_pools (since ssh_node_info was removed)
+  const nodeGpuInfo = React.useMemo(() => {
+    const ipToGpuInfo: Record<string, any> = {};
+    try {
+      (nodePools || [])
+        .filter((pool: any) => pool.provider === "direct")
+        .forEach((pool: any) => {
+          const hosts = pool?.config?.hosts || [];
+          const gpuResources = pool?.gpu_resources || {};
+          const gpus = gpuResources?.gpus || [];
+          hosts.forEach((host: any) => {
+            const ip = host.ip || host.hostname;
+            if (!ip) return;
+            // Provide a shape compatible with existing consumers: { gpu_resources: { gpus: [...] } }
+            ipToGpuInfo[ip] = { gpu_resources: { gpus } };
+          });
+        });
+    } catch (e) {
+      // noop — default empty map
+    }
+    return ipToGpuInfo;
+  }, [nodePools]);
 
   // Extract configurations from node_pools response
   useEffect(() => {
