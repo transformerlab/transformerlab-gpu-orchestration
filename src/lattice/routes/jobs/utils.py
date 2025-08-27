@@ -35,17 +35,12 @@ def get_job_logs(
                     cluster_name, user_id, organization_id
                 )
             except Exception as e:
-                print(f"Failed to resolve cluster name: {str(e)}")
                 # If mapping fails, use the original cluster_name (might be actual name already)
                 actual_cluster_name = cluster_name
-        print(f"Actual cluster name: {actual_cluster_name}")
 
         log_paths = sky.download_logs(actual_cluster_name, [str(job_id)])
-        print(f"Log paths: {log_paths}")
         log_path = log_paths.get(str(job_id))
-        print(f"Log path: {log_path}")
         log_path = os.path.expanduser(log_path)
-        print(f"Expanded log path: {log_path}")
         if not log_path or (
             not os.path.exists(log_path) and not os.path.isdir(log_path)
         ):
@@ -53,8 +48,6 @@ def get_job_logs(
         # If log_path is a directory, look for run.log inside
         if os.path.isdir(log_path):
             run_log_path = os.path.join(log_path, "run.log")
-            print(f"Run log path: {run_log_path}")
-            print("TAIL LINES", tail_lines)
             if os.path.exists(run_log_path):
                 log_path = run_log_path
             else:
