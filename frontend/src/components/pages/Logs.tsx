@@ -29,6 +29,7 @@ import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import useSWR from "swr";
 import StreamingLogViewer from "../widgets/StreamingLogViewer";
+import PageWithTitle from "./templates/PageWithTitle";
 
 interface SkyPilotRequest {
   id: string;
@@ -211,16 +212,9 @@ const Logs: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
-        }}
-      >
-        <Typography level="h2">SkyPilot Request Logs</Typography>
+    <PageWithTitle
+      title="Request Logs"
+      button={
         <Button
           startDecorator={<RefreshCw size={16} />}
           onClick={() => mutate()}
@@ -228,8 +222,8 @@ const Logs: React.FC = () => {
         >
           Refresh
         </Button>
-      </Box>
-
+      }
+    >
       {error && (
         <Alert color="danger" sx={{ mb: 3 }}>
           {error}
@@ -352,7 +346,7 @@ const Logs: React.FC = () => {
           </DialogContent>
         </ModalDialog>
       </Modal>
-    </Box>
+    </PageWithTitle>
   );
 };
 
