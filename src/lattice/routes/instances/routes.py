@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 # Removed load_ssh_node_info import as we now use database-based approach
 from typing import Optional
 
-import sky
 from config import UPLOADS_DIR
 from fastapi import (
     APIRouter,
@@ -881,7 +880,6 @@ async def stream_request_logs(
             try:
                 import queue
                 import threading
-                import time
 
                 # Create a queue to pass log lines from the stream to the generator
                 log_queue = queue.Queue()
@@ -905,7 +903,7 @@ async def stream_request_logs(
                 # Start the SkyPilot log streaming in a separate thread
                 def stream_logs():
                     try:
-                        result = skypilot_tracker.get_request_logs(
+                        skypilot_tracker.get_request_logs(
                             request_id=request_id,
                             tail=tail,
                             follow=follow,

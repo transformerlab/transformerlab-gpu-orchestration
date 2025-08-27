@@ -3,10 +3,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from config import get_db
 from db_models import SkyPilotRequest
-import asyncio
-import threading
 from concurrent.futures import ThreadPoolExecutor
-import json
 
 
 class SkyPilotTracker:
