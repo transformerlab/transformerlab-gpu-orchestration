@@ -12,6 +12,7 @@ import { X } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useFakeData } from "../../../context/FakeDataContext";
 import VSCodeInfoModal from "../../modals/VSCodeInfoModal";
+import StreamingLogViewer from "../../widgets/StreamingLogViewer";
 
 interface Job {
   job_id: number;
@@ -112,10 +113,11 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const [pastJobsLoading, setPastJobsLoading] = useState(false);
   const [showPastJobs, setShowPastJobs] = useState(false);
   const { showFakeData } = useFakeData();
-  const [selectedJobLogs, setSelectedJobLogs] = useState<string>("");
+  const [selectedJobLogs, setSelectedJobLogs] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [selectedClusterName, setSelectedClusterName] = useState<string>("");
   const [logsLoading, setLogsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [cancelLoading, setCancelLoading] = useState<{
     [key: string]: boolean;
   }>({});
@@ -200,6 +202,9 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   // Fetch logs for past jobs
   const fetchPastJobLogs = async (clusterName: string, jobId: number) => {
     setLogsLoading(true);
+    setSelectedJobId(jobId);
+    setSelectedClusterName(clusterName);
+    setSelectedJobLogs([]);
     try {
       const response = await apiFetch(
         buildApiUrl(`jobs/past-jobs/${clusterName}/${jobId}/logs`),
@@ -208,18 +213,16 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setSelectedJobLogs(data.logs || "No logs available");
-        setSelectedJobId(jobId);
-        setSelectedClusterName(clusterName);
+        // Split the logs string into an array of lines and filter out empty lines
+        const logLines = (data.logs || "No logs available")
+          .split("\n")
+          .filter((line: string) => line.trim() !== "");
+        setSelectedJobLogs(logLines);
       } else {
-        setSelectedJobLogs("Failed to fetch logs");
-        setSelectedJobId(jobId);
-        setSelectedClusterName(clusterName);
+        setSelectedJobLogs(["Failed to fetch logs"]);
       }
     } catch (err) {
-      setSelectedJobLogs("Failed to fetch logs");
-      setSelectedJobId(jobId);
-      setSelectedClusterName(clusterName);
+      setSelectedJobLogs(["Failed to fetch logs"]);
     } finally {
       setLogsLoading(false);
     }
@@ -266,24 +269,61 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
 
   const fetchJobLogs = async (clusterName: string, jobId: number) => {
     setLogsLoading(true);
+    setIsStreaming(true);
     setSelectedJobId(jobId);
     setSelectedClusterName(clusterName);
+    setSelectedJobLogs([]);
+
     try {
-      const response = await apiFetch(
-        buildApiUrl(`jobs/${clusterName}/${jobId}/logs?tail_lines=100`),
-        { credentials: "include" }
+      // Create EventSource for Server-Sent Events
+      const eventSource = new EventSource(
+        buildApiUrl(
+          `jobs/${clusterName}/${jobId}/logs/stream?tail=1000&follow=true`
+        ),
+        { withCredentials: true }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedJobLogs(data.logs || "");
-      } else {
-        setSelectedJobLogs("Failed to fetch logs");
-      }
+      eventSource.onopen = () => {
+        setLogsLoading(false);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.log_line) {
+            setSelectedJobLogs((prev) => [...prev, data.log_line]);
+          } else if (data.status === "completed") {
+            setIsStreaming(false);
+            eventSource.close();
+          } else if (data.error) {
+            setSelectedJobLogs((prev) => [...prev, `ERROR: ${data.error}`]);
+            setIsStreaming(false);
+            eventSource.close();
+          }
+        } catch (parseError) {
+          console.error("Failed to parse SSE data:", parseError);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("EventSource error:", error);
+        setSelectedJobLogs((prev) => [
+          ...prev,
+          "ERROR: Failed to connect to log stream",
+        ]);
+        setLogsLoading(false);
+        setIsStreaming(false);
+        eventSource.close();
+      };
     } catch (err) {
-      setSelectedJobLogs("Error fetching logs");
-    } finally {
+      setSelectedJobLogs([
+        `ERROR: ${
+          err instanceof Error ? err.message : "Failed to start log streaming"
+        }`,
+      ]);
       setLogsLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -603,13 +643,12 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                     <CircularProgress />
                   </Box>
                 ) : (
-                  <Textarea
-                    value={selectedJobLogs}
-                    readOnly
-                    minRows={5}
-                    maxRows={10}
-                    sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}
-                  />
+                  <Box sx={{ height: 400 }}>
+                    <StreamingLogViewer
+                      logs={selectedJobLogs}
+                      isLoading={logsLoading}
+                    />
+                  </Box>
                 )}
               </Box>
             )}
@@ -762,16 +801,12 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                             <CircularProgress />
                           </Box>
                         ) : (
-                          <Textarea
-                            value={selectedJobLogs}
-                            readOnly
-                            minRows={5}
-                            maxRows={10}
-                            sx={{
-                              fontFamily: "monospace",
-                              fontSize: "0.875rem",
-                            }}
-                          />
+                          <Box sx={{ height: 400 }}>
+                            <StreamingLogViewer
+                              logs={selectedJobLogs}
+                              isLoading={logsLoading}
+                            />
+                          </Box>
                         )}
                       </Box>
                     )}
