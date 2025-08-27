@@ -20,17 +20,14 @@ const UserDropdown: React.FC = () => {
   const { user, logout } = useAuth();
   const [settingsModalOpen, setSettingsModalOpen] = React.useState(false);
   const [quotaLoading, setQuotaLoading] = React.useState(false);
-  const [quota, setQuota] = React.useState<
-    | {
-        limit: number;
-        used: number;
-        remaining: number;
-        percentage: number;
-        period_start?: string;
-        period_end?: string;
-      }
-    | null
-  >(null);
+  const [quota, setQuota] = React.useState<{
+    limit: number;
+    used: number;
+    remaining: number;
+    percentage: number;
+    period_start?: string;
+    period_end?: string;
+  } | null>(null);
   const navigate = useNavigate();
 
   if (!user) return null;
@@ -53,7 +50,10 @@ const UserDropdown: React.FC = () => {
         if (!cancelled && summary) {
           const limit = Number(summary.quota_limit || 0);
           const used = Number(summary.quota_used || 0);
-          const remaining = Math.max(0, Number(summary.quota_remaining || Math.max(0, limit - used)));
+          const remaining = Math.max(
+            0,
+            Number(summary.quota_remaining || Math.max(0, limit - used))
+          );
           const percentage = limit > 0 ? (used / limit) * 100 : 0;
 
           setQuota({
@@ -149,23 +149,58 @@ const UserDropdown: React.FC = () => {
                 }}
               >
                 <Typography level="title-sm">Quota Usage</Typography>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>Used</Typography>
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                    }}
+                  >
+                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>
+                      Used
+                    </Typography>
                     <Typography level="title-sm">
-                      {new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quota.used)}
+                      {new Intl.NumberFormat(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(quota.used)}
                     </Typography>
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>Remaining</Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                    }}
+                  >
+                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>
+                      Remaining
+                    </Typography>
                     <Typography level="title-sm">
-                      {new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.max(0, quota.remaining))}
+                      {new Intl.NumberFormat(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(Math.max(0, quota.remaining))}
                     </Typography>
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>Limit</Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                    }}
+                  >
+                    <Typography level="body-sm" sx={{ color: "text.tertiary" }}>
+                      Limit
+                    </Typography>
                     <Typography level="title-sm">
-                      {new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quota.limit)}
+                      {new Intl.NumberFormat(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(quota.limit)}
                     </Typography>
                   </Box>
                 </Box>
@@ -177,7 +212,8 @@ const UserDropdown: React.FC = () => {
                 />
                 {quota.period_start && quota.period_end && (
                   <Typography level="body-xs" sx={{ color: "text.secondary" }}>
-                    {new Date(quota.period_start).toLocaleDateString()} - {new Date(quota.period_end).toLocaleDateString()}
+                    {new Date(quota.period_start).toLocaleDateString()} -{" "}
+                    {new Date(quota.period_end).toLocaleDateString()}
                   </Typography>
                 )}
               </Box>
@@ -200,6 +236,9 @@ const UserDropdown: React.FC = () => {
           </MenuItem> */}
           <MenuItem onClick={() => setSettingsModalOpen(true)}>
             <Typography level="title-sm">Settings</Typography>
+          </MenuItem>
+          <MenuItem onClick={() => navigate("/dashboard/logs")}>
+            <Typography level="title-sm">Show Logs</Typography>
           </MenuItem>
           <ListDivider />
           <MenuItem onClick={logout} color="danger">

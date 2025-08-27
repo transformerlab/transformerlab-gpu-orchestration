@@ -19,6 +19,7 @@ import {
   BoltIcon,
   ClockIcon,
   LoaderCircleIcon,
+  FileTextIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 
@@ -70,6 +71,11 @@ const sidebarItems = [
     icon: <StretchHorizontalIcon />,
     content: "My Jobs",
     path: "/dashboard/jobs",
+  },
+  {
+    icon: <FileTextIcon />,
+    content: "Logs",
+    path: "/dashboard/logs",
   },
   {
     icon: <LoaderCircleIcon />,

@@ -1,71 +1,71 @@
+import json
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+
+# Removed load_ssh_node_info import as we now use database-based approach
+from typing import Optional
+
+import sky
+from config import UPLOADS_DIR
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    Form,
-    UploadFile,
     File,
+    Form,
+    HTTPException,
     Request,
     Response,
+    UploadFile,
 )
 from fastapi.responses import StreamingResponse
-import json
-import uuid
-from config import UPLOADS_DIR
 from models import (
+    ClusterStatusResponse,
+    DownClusterRequest,
+    DownClusterResponse,
     LaunchClusterResponse,
     StatusResponse,
     StopClusterRequest,
     StopClusterResponse,
-    DownClusterRequest,
-    DownClusterResponse,
-    ClusterStatusResponse,
-)
-from .utils import (
-    launch_cluster_with_skypilot,
-    get_skypilot_status,
-    stop_cluster_with_skypilot,
-    down_cluster_with_skypilot,
-)
-from routes.clouds.azure.utils import (
-    az_setup_config,
-)
-from routes.clouds.runpod.utils import (
-    rp_setup_config,
-    map_runpod_display_to_instance_type,
-)
-from routes.node_pools.utils import (
-    is_ssh_cluster,
-    is_down_only_cluster,
-    update_gpu_resources_for_node_pool,
-)
-from utils.cluster_utils import (
-    create_cluster_platform_entry,
-    get_actual_cluster_name,
-    get_display_name_from_actual,
-    get_cluster_platform_info as get_cluster_platform_data,
-    get_cluster_platform_info as get_cluster_platform_info_util,
-    get_cluster_platform,
-    load_cluster_platforms,
-    get_cluster_template,
-)
-from utils.cluster_utils import (
-    get_cluster_user_info,
-)
-from utils.cluster_resolver import (
-    handle_cluster_name_param,
 )
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
-from routes.reports.utils import record_usage
+from routes.clouds.azure.utils import az_setup_config
+from routes.clouds.runpod.utils import (
+    map_runpod_display_to_instance_type,
+    rp_setup_config,
+)
 from routes.jobs.utils import get_cluster_job_queue
+from routes.node_pools.utils import (
+    is_down_only_cluster,
+    is_ssh_cluster,
+    update_gpu_resources_for_node_pool,
+)
+from routes.reports.utils import record_usage
+from utils.cluster_resolver import handle_cluster_name_param
+from utils.cluster_utils import (
+    create_cluster_platform_entry,
+    get_actual_cluster_name,
+    get_cluster_platform,
+)
+from utils.cluster_utils import get_cluster_platform_info as get_cluster_platform_data
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_info_util,
+)
+from utils.cluster_utils import (
+    get_cluster_template,
+    get_cluster_user_info,
+    get_display_name_from_actual,
+    load_cluster_platforms,
+)
 from utils.skypilot_tracker import skypilot_tracker
 
-# Removed load_ssh_node_info import as we now use database-based approach
-from typing import Optional
-from .utils import generate_cost_report
-from concurrent.futures import ThreadPoolExecutor
-
+from .utils import (
+    down_cluster_with_skypilot,
+    generate_cost_report,
+    get_skypilot_status,
+    launch_cluster_with_skypilot,
+    stop_cluster_with_skypilot,
+)
 
 # Global thread pool executor for GPU resource updates
 _gpu_update_executor = ThreadPoolExecutor(
@@ -851,6 +851,65 @@ async def get_request_status(
         )
 
 
+@router.get("/requests/{request_id}/live-status")
+async def get_live_request_status(
+    request_id: str,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get live status of a SkyPilot request by checking with SkyPilot API
+    """
+    try:
+        request = skypilot_tracker.get_request_by_id(request_id)
+
+        if not request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # Check if user has access to this request
+        if (
+            request.user_id != user["id"]
+            or request.organization_id != user["organization_id"]
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Check the actual status with SkyPilot API
+
+        try:
+            # Get the current status from SkyPilot
+            status_result = sky.api_status([request_id])
+            if status_result:
+                # Update our database with the latest status
+                latest_status = status_result[0].get("status", "unknown")
+                if latest_status != request.status:
+                    skypilot_tracker.update_request_status(
+                        request_id=request_id, status=latest_status
+                    )
+                    request.status = latest_status
+
+        except Exception as e:
+            # If we can't get live status, return the cached status
+            print(f"Warning: Could not get live status for {request_id}: {e}")
+
+        return {
+            "request_id": request.request_id,
+            "status": request.status,
+            "task_type": request.task_type,
+            "cluster_name": request.cluster_name,
+            "created_at": request.created_at.isoformat()
+            if request.created_at
+            else None,
+            "completed_at": request.completed_at.isoformat()
+            if request.completed_at
+            else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get live request status: {str(e)}"
+        )
+
+
 @router.get("/requests/{request_id}/logs")
 async def stream_request_logs(
     request_id: str,
@@ -877,40 +936,63 @@ async def stream_request_logs(
 
         def generate_logs():
             try:
-                import io
+                import queue
+                import threading
+                import time
 
-                # Create a custom output stream that captures logs
-                log_lines = []
+                # Create a queue to pass log lines from the stream to the generator
+                log_queue = queue.Queue()
+                streaming_complete = threading.Event()
 
                 class LogCaptureStream:
-                    def __init__(self, lines_list):
-                        self.lines = lines_list
+                    def __init__(self, log_queue):
+                        self.log_queue = log_queue
 
                     def write(self, text):
                         if text.strip():
-                            self.lines.append(text.strip())
+                            # Put the log line in the queue for immediate streaming
+                            self.log_queue.put(text.strip())
 
                     def flush(self):
                         pass
 
                 # Create the capture stream
-                capture_stream = LogCaptureStream(log_lines)
+                capture_stream = LogCaptureStream(log_queue)
 
-                # Use the skypilot_tracker to get logs with our capture stream
-                result = skypilot_tracker.get_request_logs(
-                    request_id=request_id,
-                    tail=tail,
-                    follow=follow,
-                    output_stream=capture_stream,
-                )
+                # Start the SkyPilot log streaming in a separate thread
+                def stream_logs():
+                    try:
+                        result = skypilot_tracker.get_request_logs(
+                            request_id=request_id,
+                            tail=tail,
+                            follow=follow,
+                            output_stream=capture_stream,
+                        )
+                        # Signal that streaming is complete
+                        streaming_complete.set()
+                    except Exception as e:
+                        # Put error in queue
+                        log_queue.put(f"ERROR: {str(e)}")
+                        streaming_complete.set()
 
-                # Send captured log lines as server-sent events
-                for log_line in log_lines:
-                    yield f"data: {json.dumps({'log_line': str(log_line)})}\n\n"
+                # Start streaming in background thread
+                stream_thread = threading.Thread(target=stream_logs)
+                stream_thread.daemon = True
+                stream_thread.start()
 
-                # Update the request status to completed
+                # Yield log lines as they come in
+                while not streaming_complete.is_set() or not log_queue.empty():
+                    try:
+                        # Get log line with timeout to allow checking completion
+                        log_line = log_queue.get(timeout=0.1)
+                        yield f"data: {json.dumps({'log_line': str(log_line)})}\n\n"
+                    except queue.Empty:
+                        # No log line available, continue checking
+                        continue
+
+                # Update the request status to completed (don't store logs in DB)
                 skypilot_tracker.update_request_status(
-                    request_id=request_id, status="completed", result=result
+                    request_id=request_id, status="completed"
                 )
                 yield f"data: {json.dumps({'status': 'completed'})}\n\n"
 

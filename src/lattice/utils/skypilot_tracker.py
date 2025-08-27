@@ -174,7 +174,7 @@ class SkyPilotTracker:
             output_stream: Output stream for logs (defaults to print)
         """
         # Store the request first
-        db_record_id = self.store_request(
+        self.store_request(
             user_id=user_id,
             organization_id=organization_id,
             task_type=task_type,
