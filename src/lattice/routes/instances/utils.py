@@ -454,7 +454,7 @@ def down_cluster_with_skypilot(
                 skypilot_tracker.store_request(
                     user_id=user_id,
                     organization_id=organization_id,
-                    task_type="down",
+                    task_type="terminate",
                     request_id=request_id,
                     cluster_name=cluster_name_to_store,
                 )
