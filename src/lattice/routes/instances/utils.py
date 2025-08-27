@@ -143,6 +143,7 @@ def launch_cluster_with_skypilot(
     container_registry_id: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
+    display_name: Optional[str] = None,
 ):
     try:
         # Handle RunPod setup
@@ -239,9 +240,7 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
-        parts = secure_filename(cluster_name).split("-")
-        prefix = "-".join(parts[:-1]) if len(parts) > 1 else parts[0]
-        name = f"lattice-task-setup-{prefix}"
+        name = f"lattice-task-setup-{cluster_name}"
 
         task = sky.Task(
             name=name,
@@ -363,12 +362,14 @@ def launch_cluster_with_skypilot(
         # Store the request in the database if user info is provided
         if user_id and organization_id:
             try:
+                # Use display_name if provided, otherwise fall back to cluster_name
+                cluster_name_to_store = display_name if display_name else cluster_name
                 skypilot_tracker.store_request(
                     user_id=user_id,
                     organization_id=organization_id,
                     task_type="launch",
                     request_id=request_id,
-                    cluster_name=cluster_name,
+                    cluster_name=cluster_name_to_store,
                 )
                 print(f"Stored SkyPilot request {request_id} in database")
             except Exception as e:
@@ -388,6 +389,7 @@ def stop_cluster_with_skypilot(
     cluster_name: str,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
+    display_name: Optional[str] = None,
 ):
     try:
         request_id = sky.stop(cluster_name=cluster_name)
@@ -395,12 +397,14 @@ def stop_cluster_with_skypilot(
         # Store the request in the database if user info is provided
         if user_id and organization_id:
             try:
+                # Use display_name if provided, otherwise fall back to cluster_name
+                cluster_name_to_store = display_name if display_name else cluster_name
                 skypilot_tracker.store_request(
                     user_id=user_id,
                     organization_id=organization_id,
                     task_type="stop",
                     request_id=request_id,
-                    cluster_name=cluster_name,
+                    cluster_name=cluster_name_to_store,
                 )
                 print(f"Stored SkyPilot stop request {request_id} in database")
             except Exception as e:
@@ -415,7 +419,7 @@ def stop_cluster_with_skypilot(
 
 def down_cluster_with_skypilot(
     cluster_name: str,
-    display_name: str = None,
+    display_name: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
 ):
@@ -445,12 +449,14 @@ def down_cluster_with_skypilot(
         # Store the request in the database if user info is provided
         if user_id and organization_id:
             try:
+                # Use display_name if provided, otherwise fall back to cluster_name
+                cluster_name_to_store = display_name if display_name else cluster_name
                 skypilot_tracker.store_request(
                     user_id=user_id,
                     organization_id=organization_id,
                     task_type="down",
                     request_id=request_id,
-                    cluster_name=cluster_name,
+                    cluster_name=cluster_name_to_store,
                 )
                 print(f"Stored SkyPilot down request {request_id} in database")
             except Exception as e:

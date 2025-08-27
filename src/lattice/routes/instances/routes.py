@@ -242,6 +242,7 @@ async def launch_instance(
             container_registry_id=container_registry_id,
             user_id=user_id,
             organization_id=organization_id,
+            display_name=cluster_name,  # Pass the display name for database storage
         )
 
         # Record usage event for cluster launch
@@ -295,6 +296,7 @@ async def stop_instance(
             actual_cluster_name,
             user_id=user["id"],
             organization_id=user["organization_id"],
+            display_name=display_name,  # Pass the display name for database storage
         )
         return StopClusterResponse(
             request_id=request_id,
