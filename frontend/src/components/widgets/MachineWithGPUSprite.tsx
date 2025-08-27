@@ -92,7 +92,8 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
         borderRadius: 8,
         background: bg,
         filter: "sepia(8%)",
-        border: `3px solid ${onStroke}`,
+        // border: `3px solid ${onStroke}`,
+        border: `2px solid color-mix(in srgb, var(--joy-palette-background-level2), white 20%)`,
         color: text,
         fontFamily:
           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
