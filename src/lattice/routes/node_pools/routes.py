@@ -2,7 +2,6 @@ from typing import Optional
 
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     Form,
     HTTPException,
@@ -36,6 +35,7 @@ from .utils import (
     remove_node_from_cluster,
     get_cluster_config_from_db,
     get_cached_gpu_resources,
+    schedule_gpu_resources_update,
 )
 from config import get_db
 from db_models import SSHNodePool as SSHNodePoolDB
@@ -131,9 +131,7 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading instances data: {e}")
 
-        # 4. SSH node info is now embedded per node pool entry
-
-        # 5. Get SkyPilot status (filtered by user and with display names)
+        # 4. Get SkyPilot status (filtered by user and with display names)
         try:
             cluster_records = get_skypilot_status()
             filtered_status = []
@@ -161,7 +159,7 @@ async def get_node_pools(
         except Exception as e:
             print(f"Error loading SkyPilot status: {e}")
 
-        # 6. Get comprehensive node pools (combining all platforms)
+        # 5. Get comprehensive node pools (combining all platforms)
         try:
             node_pools = []
 
@@ -287,6 +285,11 @@ async def get_node_pools(
                     cluster_name = pool.name
                     cfg = get_cluster_config_from_db(cluster_name)
                     hosts_count = len(cfg.get("hosts", []))
+                    # Trigger background refresh of GPU resources for this pool
+                    try:
+                        schedule_gpu_resources_update(cluster_name)
+                    except Exception as e:
+                        print(f"Failed to schedule GPU refresh for {cluster_name}: {e}")
                     # Get cached GPU resources (fast response) for this pool
                     cached_gpu_resources = get_cached_gpu_resources(cluster_name)
 
@@ -556,7 +559,6 @@ async def get_cluster(
 async def add_node(
     request: Request,
     response: Response,
-    background_tasks: BackgroundTasks,
     cluster_name: str,
     ip: str = Form(...),
     user: str = Form(...),
@@ -609,7 +611,7 @@ async def add_node(
         password=password,
         resources=resources,
     )
-    cluster_config = add_node_to_cluster(cluster_name, node, background_tasks)
+    cluster_config = add_node_to_cluster(cluster_name, node)
 
     # Record availability event
     try:
