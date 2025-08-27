@@ -223,8 +223,8 @@ const MyClusterDetails: React.FC = () => {
         const errorData = await response.json();
         console.error("Failed to terminate cluster:", errorData.detail);
       } else {
-        // Refresh cluster info after successful operation
-        refreshClusterInfo();
+        // Navigate back to instances list after successful termination
+        navigate("/dashboard/my-instances");
       }
     } catch (err) {
       console.error("Error downing cluster:", err);
