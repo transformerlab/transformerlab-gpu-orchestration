@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
+from utils.cluster_resolver import handle_cluster_name_param
 
 
 def get_cluster_job_queue(cluster_name: str):
@@ -17,11 +18,27 @@ def get_cluster_job_queue(cluster_name: str):
         )
 
 
-def get_job_logs(cluster_name: str, job_id: int, tail_lines: int = 50):
+def get_job_logs(
+    cluster_name: str,
+    job_id: int,
+    tail_lines: int = 50,
+    user_id: str = None,
+    organization_id: str = None,
+):
     try:
-        import os
+        # If user context is provided, try to resolve display name to actual cluster name
+        actual_cluster_name = cluster_name
 
-        log_paths = sky.download_logs(cluster_name, [str(job_id)])
+        if user_id and organization_id:
+            try:
+                actual_cluster_name = handle_cluster_name_param(
+                    cluster_name, user_id, organization_id
+                )
+            except Exception:
+                # If mapping fails, use the original cluster_name (might be actual name already)
+                actual_cluster_name = cluster_name
+
+        log_paths = sky.download_logs(actual_cluster_name, [str(job_id)])
         log_path = log_paths.get(str(job_id))
         log_path = os.path.expanduser(log_path)
         if not log_path or (
@@ -128,7 +145,9 @@ def cancel_job_with_skypilot(cluster_name: str, job_id: int):
         raise Exception(f"Failed to cancel job {job_id}: {str(e)}")
 
 
-def save_cluster_jobs(cluster_name: str, jobs: list):
+def save_cluster_jobs(
+    cluster_name: str, jobs: list, user_id: str, organization_id: str
+):
     """Save jobs from a cluster to a local file before tearing down."""
     try:
         # Create the lattice directory in ~/.sky if it doesn't exist
@@ -189,7 +208,13 @@ def save_cluster_jobs(cluster_name: str, jobs: list):
                 if job_id is not None:
                     try:
                         # Use get_job_logs to download logs for this job
-                        logs = get_job_logs(cluster_name, job_id, tail_lines=1000)
+                        logs = get_job_logs(
+                            cluster_name,
+                            job_id,
+                            tail_lines=1000,
+                            user_id=user_id,
+                            organization_id=organization_id,
+                        )
                         log_filename = f"{cluster_name}_{job_id}_{timestamp}.log"
                         log_filepath = logs_dir / log_filename
                         with open(log_filepath, "w") as f:
