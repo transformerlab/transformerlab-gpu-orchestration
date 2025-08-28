@@ -155,15 +155,15 @@ async def launch_instance(
             except Exception as e:
                 print(f"Warning: Failed to parse storage bucket IDs: {e}")
 
-        # if python_file is not None and python_file.filename:
-        #     # Save the uploaded file to a persistent uploads directory
-        #     python_filename = python_file.filename
-        #     unique_filename = f"{uuid.uuid4()}_{python_filename}"
-        #     file_path = UPLOADS_DIR / unique_filename
-        #     with open(file_path, "wb") as f:
-        #         f.write(await python_file.read())
-        #     # Mount the file to workspace/<filename> in the cluster
-        #     file_mounts = {f"workspace/{python_filename}": str(file_path)}
+        if python_file is not None and python_file.filename:
+            # Save the uploaded file to a persistent uploads directory
+            python_filename = python_file.filename
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            # Mount the file to workspace/<filename> in the cluster
+            file_mounts = {f"workspace/{python_filename}": str(file_path)}
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
