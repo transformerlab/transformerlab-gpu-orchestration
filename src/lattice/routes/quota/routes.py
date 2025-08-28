@@ -15,7 +15,7 @@ from lattice.models import (
     UserQuotaListResponse,
     CreateUserQuotaRequest,
 )
-from db_models import GPUUsageLog, OrganizationQuota
+from db.db_models import GPUUsageLog, OrganizationQuota
 from lattice.utils.cluster_utils import get_display_name_from_actual
 from lattice.routes.quota.utils import (
     get_or_create_organization_quota,

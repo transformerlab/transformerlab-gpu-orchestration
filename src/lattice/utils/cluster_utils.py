@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from config import SessionLocal
-from db_models import ClusterPlatform, validate_relationships_before_save, validate_relationships_before_delete
+from db.db_models import ClusterPlatform, validate_relationships_before_save, validate_relationships_before_delete
 
 
 def generate_unique_cluster_name(display_name: str) -> str:

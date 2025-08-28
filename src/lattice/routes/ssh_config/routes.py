@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from config import get_db
-from db_models import SSHKey
+from db.db_models import SSHKey
 from fastapi import APIRouter, Depends, HTTPException, status
 from models import (
     CreateSSHKeyRequest,

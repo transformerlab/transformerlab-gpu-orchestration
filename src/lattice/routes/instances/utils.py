@@ -211,7 +211,7 @@ def launch_cluster_with_skypilot(
         # Set Docker authentication environment variables if registry is provided
         if docker_image and container_registry_id:
             from config import get_db
-            from db_models import ContainerRegistry
+            from db.db_models import ContainerRegistry
 
             # Get database session
             db = next(get_db())
@@ -252,7 +252,7 @@ def launch_cluster_with_skypilot(
         # Process storage buckets if provided
         if storage_bucket_ids:
             from config import get_db
-            from db_models import StorageBucket
+            from db.db_models import StorageBucket
 
             # Get database session
             db = next(get_db())
