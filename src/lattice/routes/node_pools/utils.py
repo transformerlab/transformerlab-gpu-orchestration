@@ -235,6 +235,8 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
             status_code=404, detail=f"Cluster '{cluster_name}' not found"
         )
     node_dict = {"ip": node.ip, "user": node.user}
+    if node.name:
+        node_dict["name"] = node.name
     if node.identity_file:
         node_dict["identity_file"] = node.identity_file
     if node.password:
@@ -274,6 +276,8 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
         else:
             # Append new node dict, using identity_file key for JSON
             new_node = {"ip": node.ip, "user": node.user}
+            if node.name:
+                new_node["name"] = node.name
             if node.identity_file:
                 new_node["identity_file"] = node.identity_file
             if node.password:
@@ -492,6 +496,8 @@ def get_cluster_config_from_db(cluster_name: str) -> dict:
             host = {"ip": n.get("ip")}
             if n.get("user"):
                 host["user"] = n.get("user")
+            if n.get("name"):
+                host["name"] = n.get("name")
             if n.get("identity_file"):
                 host["identity_file"] = n.get("identity_file")
             if n.get("password"):

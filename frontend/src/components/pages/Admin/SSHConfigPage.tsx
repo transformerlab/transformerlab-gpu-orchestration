@@ -29,6 +29,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 interface SSHNode {
   ip: string;
   user: string;
+  name?: string; // Optional name for frontend display
   identity_file?: string;
   password?: string;
   resources?: {
@@ -81,6 +82,7 @@ const SSHConfigPage: React.FC = () => {
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
+  const [newNodeName, setNewNodeName] = useState(""); // Node name for frontend display
   const [newNodeIdentityFile, setNewNodeIdentityFile] = useState<string>("");
   const [newNodePassword, setNewNodePassword] = useState("");
   const [newNodeVcpus, setNewNodeVcpus] = useState("");
@@ -226,6 +228,7 @@ const SSHConfigPage: React.FC = () => {
       const formData = new FormData();
       formData.append("ip", newNodeIp);
       formData.append("user", newNodeUser);
+      if (newNodeName) formData.append("name", newNodeName);
       if (newNodePassword) formData.append("password", newNodePassword);
       if (newNodeIdentityFile)
         formData.append("identity_file_path", newNodeIdentityFile);
@@ -251,6 +254,7 @@ const SSHConfigPage: React.FC = () => {
         setShowAddNodeModal(false);
         setNewNodeIp("");
         setNewNodeUser("");
+        setNewNodeName("");
         setNewNodeIdentityFile("");
         setNewNodePassword("");
         setNewNodeVcpus("");
@@ -527,6 +531,7 @@ const SSHConfigPage: React.FC = () => {
                 <Table size="sm">
                   <thead>
                     <tr>
+                      <th>Name</th>
                       <th>IP Address</th>
                       <th>User</th>
                       <th>Auth Method</th>
@@ -537,6 +542,7 @@ const SSHConfigPage: React.FC = () => {
                   <tbody>
                     {selectedCluster.nodes.map((node) => (
                       <tr key={node.ip}>
+                        <td>{node.name || "-"}</td>
                         <td>{node.ip}</td>
                         <td>{node.user}</td>
                         <td>
@@ -638,6 +644,14 @@ const SSHConfigPage: React.FC = () => {
               Add Node to {selectedCluster?.cluster_name}
             </Typography>
             <Stack spacing={2}>
+              <FormControl required>
+                <FormLabel>Node Name</FormLabel>
+                <Input
+                  value={newNodeName}
+                  onChange={(e) => setNewNodeName(e.target.value)}
+                  placeholder="e.g., GPU Server 1, Compute Node A"
+                />
+              </FormControl>
               <FormControl required>
                 <FormLabel>IP Address</FormLabel>
                 <Input

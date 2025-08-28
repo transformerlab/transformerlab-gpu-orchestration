@@ -93,6 +93,11 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
           <Typography level="body-sm">
             <b>User:</b> {node.user || "Unassigned"}
           </Typography>
+          {node.name && (
+            <Typography level="body-sm">
+              <b>Name:</b> {node.name}
+            </Typography>
+          )}
           {node.identity_file && (
             <Typography level="body-sm">
               <b>Identity File:</b> {node.identity_file}

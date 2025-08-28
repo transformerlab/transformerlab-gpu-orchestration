@@ -529,6 +529,7 @@ async def get_cluster(
         SSHNode(
             ip=host["ip"],
             user=host.get("user"),
+            name=host.get("name"),
             identity_file=host.get("identity_file"),
             password=host.get("password"),
             resources=host.get("resources"),
@@ -554,6 +555,7 @@ async def add_node(
     cluster_name: str,
     ip: str = Form(...),
     user: str = Form(...),
+    name: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
     identity_file_path: Optional[str] = Form(None),
@@ -599,6 +601,7 @@ async def add_node(
     node = SSHNode(
         ip=ip,
         user=user,
+        name=name,
         identity_file=identity_file_path_final,
         password=password,
         resources=resources,
@@ -627,6 +630,7 @@ async def add_node(
         node_obj = SSHNode(
             ip=host["ip"],
             user=host["user"],
+            name=host.get("name"),
             identity_file=host.get("identity_file"),
             password=host.get("password"),
             resources=host.get("resources"),
