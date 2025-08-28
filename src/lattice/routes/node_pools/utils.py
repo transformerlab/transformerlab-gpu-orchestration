@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from ..instances.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
-from db_models import SSHNodePool as SSHNodePoolDB, SSHNodeEntry as SSHNodeDB
+from db_models import SSHNodePool as SSHNodePoolDB
 
 
 async def update_gpu_resources_for_node_pool(node_pool_name: str):
@@ -198,17 +198,18 @@ def update_pool_resources(pool: SSHNodePoolDB, db):
     if not pool:
         return
 
-    # Get all nodes in this pool
-    nodes = db.query(SSHNodeDB).filter(SSHNodeDB.pool_id == pool.id).all()
+    # Get all nodes from JSON field
+    nodes = pool.nodes or []
 
     total_vcpus = 0
     total_memory = 0
 
     # Calculate total resources from all nodes
     for node in nodes:
-        if node.resources:
-            vcpus = int(node.resources.get("vcpus", "0") or "0")
-            memory = int(node.resources.get("memory_gb", "0") or "0")
+        resources = node.get("resources") if isinstance(node, dict) else None
+        if resources:
+            vcpus = int(resources.get("vcpus", "0") or "0")
+            memory = int(resources.get("memory_gb", "0") or "0")
             total_vcpus += vcpus
             total_memory += memory
 
@@ -258,32 +259,40 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
             db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
         )
         if pool is None:
-            pool = SSHNodePoolDB(name=cluster_name)
+            pool = SSHNodePoolDB(name=cluster_name, nodes=[])
             db.add(pool)
             db.commit()
             db.refresh(pool)
-        existing_node = (
-            db.query(SSHNodeDB)
-            .filter(SSHNodeDB.pool_id == pool.id, SSHNodeDB.ip == node.ip)
-            .first()
-        )
-        if existing_node is None:
-            db.add(
-                SSHNodeDB(
-                    pool_id=pool.id,
-                    ip=node.ip,
-                    user=node.user,
-                    identity_file_path=node.identity_file,
-                    password=node.password,
-                    resources=node.resources,
-                )
-            )
+
+        # Ensure nodes list exists
+        current_nodes = list(pool.nodes or [])
+        # Prevent duplicates by IP
+        for existing in current_nodes:
+            if isinstance(existing, dict) and existing.get("ip") == node.ip:
+                # Already exists in DB representation
+                break
+        else:
+            # Append new node dict, using identity_file key for JSON
+            new_node = {"ip": node.ip, "user": node.user}
+            if node.identity_file:
+                new_node["identity_file"] = node.identity_file
+            if node.password:
+                new_node["password"] = node.password
+            if node.resources:
+                new_node["resources"] = node.resources
+            current_nodes.append(new_node)
+
+            # Assign back and flag as modified
+            pool.nodes = current_nodes
+            from sqlalchemy.orm.attributes import flag_modified
+
+            flag_modified(pool, "nodes")
             db.commit()
 
             # Update pool resources to reflect the maximum available resources
             update_pool_resources(pool, db)
     except Exception as e:
-        print(f"Warning: Failed to persist SSH node to DB: {e}")
+        print(f"Warning: Failed to persist SSH node to DB (JSON): {e}")
     finally:
         try:
             db.close()
@@ -380,19 +389,23 @@ def remove_node_from_cluster(cluster_name: str, node_ip: str):
             db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
         )
         if pool is not None:
-            node_rec = (
-                db.query(SSHNodeDB)
-                .filter(SSHNodeDB.pool_id == pool.id, SSHNodeDB.ip == node_ip)
-                .first()
-            )
-            if node_rec is not None:
-                db.delete(node_rec)
+            current_nodes = list(pool.nodes or [])
+            new_nodes = [
+                n
+                for n in current_nodes
+                if not (isinstance(n, dict) and n.get("ip") == node_ip)
+            ]
+            if len(new_nodes) != len(current_nodes):
+                pool.nodes = new_nodes
+                from sqlalchemy.orm.attributes import flag_modified
+
+                flag_modified(pool, "nodes")
                 db.commit()
 
                 # Update pool resources after removing the node
                 update_pool_resources(pool, db)
     except Exception as e:
-        print(f"Warning: Failed to delete SSH node from DB: {e}")
+        print(f"Warning: Failed to delete SSH node from DB (JSON): {e}")
     finally:
         try:
             db.close()
@@ -449,11 +462,13 @@ def validate_node_pool_identity_files(node_pool_name: str) -> list[str]:
         if pool.identity_file_path and not os.path.exists(pool.identity_file_path):
             missing_files.append(pool.identity_file_path)
 
-        # Check each node's identity file
-        nodes = db.query(SSHNodeDB).filter(SSHNodeDB.pool_id == pool.id).all()
-        for node in nodes:
-            if node.identity_file_path and not os.path.exists(node.identity_file_path):
-                missing_files.append(node.identity_file_path)
+        # Check each node's identity file from JSON
+        for node in pool.nodes or []:
+            if not isinstance(node, dict):
+                continue
+            identity_file_path = node.get("identity_file")
+            if identity_file_path and not os.path.exists(identity_file_path):
+                missing_files.append(identity_file_path)
 
         return missing_files
     finally:
@@ -470,18 +485,19 @@ def get_cluster_config_from_db(cluster_name: str) -> dict:
             raise HTTPException(
                 status_code=404, detail=f"Cluster '{cluster_name}' not found"
             )
-        nodes = db.query(SSHNodeDB).filter(SSHNodeDB.pool_id == pool.id).all()
         hosts = []
-        for n in nodes:
-            host = {"ip": n.ip}
-            if n.user:
-                host["user"] = n.user
-            if n.identity_file_path:
-                host["identity_file"] = n.identity_file_path
-            if n.password:
-                host["password"] = n.password
-            if n.resources:
-                host["resources"] = n.resources
+        for n in pool.nodes or []:
+            if not isinstance(n, dict):
+                continue
+            host = {"ip": n.get("ip")}
+            if n.get("user"):
+                host["user"] = n.get("user")
+            if n.get("identity_file"):
+                host["identity_file"] = n.get("identity_file")
+            if n.get("password"):
+                host["password"] = n.get("password")
+            if n.get("resources"):
+                host["resources"] = n.get("resources")
             hosts.append(host)
         cfg: dict = {"hosts": hosts}
         if pool.default_user:

@@ -80,25 +80,11 @@ class SSHNodePool(Base):
     other_data = Column(
         JSON, nullable=True
     )  # e.g., {"gpu_resources": {...}, "last_updated": "..."}
+    # Store SSH nodes inline as a list of dictionaries
+    # Example item: {"ip": "1.2.3.4", "user": "ubuntu", "identity_file": "/path", "password": null, "resources": {"vcpus": "4", "memory_gb": "16"}}
+    nodes = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-
-class SSHNodeEntry(Base):
-    __tablename__ = "ssh_nodes"
-
-    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
-    pool_id = Column(
-        String, ForeignKey("ssh_node_pools.id", ondelete="CASCADE"), nullable=False
-    )
-    ip = Column(String, nullable=False)
-    user = Column(String, nullable=True)
-    identity_file_path = Column(Text, nullable=True)
-    # Note: storing passwords in plaintext is discouraged; prefer key-based auth
-    password = Column(Text, nullable=True)
-    # Resource specifications for this specific node (JSON format)
-    resources = Column(JSON, nullable=True)  # e.g., {"vcpus": "4", "memory_gb": "16"}
-    created_at = Column(DateTime, default=func.now())
 
 
 class OrganizationQuota(Base):
@@ -344,13 +330,15 @@ class SkyPilotRequest(Base):
     organization_id = Column(String, nullable=False)
     task_type = Column(String, nullable=False)  # launch, stop, down, status, etc.
     request_id = Column(String, nullable=False)  # SkyPilot request ID
-    cluster_name = Column(String, nullable=True)  # Associated cluster name if applicable
+    cluster_name = Column(
+        String, nullable=True
+    )  # Associated cluster name if applicable
     status = Column(String, default="pending")  # pending, completed, failed, cancelled
     result = Column(JSON, nullable=True)  # Store the result/response from SkyPilot
     error_message = Column(Text, nullable=True)  # Error message if failed
     created_at = Column(DateTime, default=func.now())
     completed_at = Column(DateTime, nullable=True)
-    
+
     # Index for efficient querying
     __table_args__ = (
         UniqueConstraint("request_id", name="uq_skypilot_requests_request_id"),
