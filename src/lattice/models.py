@@ -505,3 +505,31 @@ class AvailableUser(BaseModel):
 
 class AvailableUsersResponse(BaseModel):
     users: List[AvailableUser]
+
+class OrganizationResponse(BaseModel):
+    id: str
+    name: str
+    domains: Optional[List[str]] = None
+    object: str = "organization"
+
+class CreateOrganizationRequest(BaseModel):
+    name: str
+    domains: Optional[List[str]] = None
+
+class UpdateOrganizationRequest(BaseModel):
+    name: Optional[str] = None
+    domains: Optional[List[str]] = None
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+    role: Optional[str] = "member"
+
+class SendInvitationRequest(BaseModel):
+    email: str
+    organization_id: Optional[str] = None
+    expires_in_days: Optional[int] = None
+    inviter_user_id: Optional[str] = None
+    role_slug: Optional[str] = None
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: str
