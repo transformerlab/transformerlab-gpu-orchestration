@@ -84,7 +84,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   });
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+
   const [dockerImage, setDockerImage] = useState("");
   const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -223,12 +223,9 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const fetchAvailableInstanceTypes = async () => {
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/azure/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         const instanceTypes = (data.instance_types || []).map(
@@ -302,7 +299,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setSelectedRegion("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
-    setSelectedTemplate("");
+
     setDockerImage("");
     setSelectedRegistryId("");
   };
@@ -351,7 +348,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       if (idleMinutesToAutostop) {
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
       }
-      if (selectedTemplate) formData.append("template", selectedTemplate);
+
       if (dockerImage) formData.append("docker_image", dockerImage);
       if (selectedRegistryId)
         formData.append("container_registry_id", selectedRegistryId);
@@ -469,26 +466,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                       placeholder="pip install -r requirements.txt"
                       minRows={2}
                     />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel>Select a Template</FormLabel>
-                    <Select
-                      value={selectedTemplate}
-                      onChange={(_, value) => setSelectedTemplate(value || "")}
-                      placeholder="Choose a template"
-                    >
-                      <Option value="transformer-lab">Transformer Lab</Option>
-                      <Option value="jupyter">Jupyter</Option>
-                      <Option value="vscode">VSCode</Option>
-                    </Select>
-                    <Typography
-                      level="body-xs"
-                      sx={{ mt: 0.5, color: "text.secondary" }}
-                    >
-                      Choose a template for your node (functionality coming
-                      soon)
-                    </Typography>
                   </FormControl>
 
                   <FormControl>

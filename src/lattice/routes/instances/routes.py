@@ -51,7 +51,8 @@ from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
 from utils.cluster_utils import (
-    get_cluster_template,
+    get_cluster_state,
+    update_cluster_state,
     get_cluster_user_info,
     get_display_name_from_actual,
     load_cluster_platforms,
@@ -127,7 +128,7 @@ async def launch_instance(
     launch_mode: Optional[str] = Form(None),
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
-    template: Optional[str] = Form(None),
+
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image: Optional[str] = Form(None),
@@ -212,7 +213,6 @@ async def launch_instance(
             user_id=user_id,
             organization_id=organization_id,
             user_info=cluster_user_info,
-            template=template,
         )
 
         # Launch cluster using the actual cluster name
@@ -322,6 +322,9 @@ async def down_instance(
             display_name, user["id"], user["organization_id"]
         )
 
+        # Update cluster state to terminating
+        update_cluster_state(actual_cluster_name, "terminating")
+        
         request_id = down_cluster_with_skypilot(
             actual_cluster_name,
             display_name,
@@ -400,10 +403,14 @@ async def get_instance_status(
             if not display_name:
                 display_name = record["name"]  # Fallback to actual name
 
+            # Get cluster state
+            state = get_cluster_state(record["name"])
+
             clusters.append(
                 ClusterStatusResponse(
                     cluster_name=display_name,  # Return display name to user
                     status=str(record["status"]),
+                    state=state,
                     launched_at=record.get("launched_at"),
                     last_use=record.get("last_use"),
                     autostop=record.get("autostop"),
@@ -490,26 +497,7 @@ async def get_all_cluster_platforms(request: Request, response: Response):
         )
 
 
-@router.get("/cluster-template/{cluster_name}")
-async def get_cluster_template_info(
-    cluster_name: str,
-    request: Request,
-    response: Response,
-    user: dict = Depends(get_user_or_api_key),
-):
-    """Get template information for a specific cluster."""
-    try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
-        )
 
-        template = get_cluster_template(actual_cluster_name)
-        return {"template": template}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get cluster template info: {str(e)}"
-        )
 
 
 @router.get("/cost-report")
@@ -659,8 +647,8 @@ async def get_cluster_info(
         # Get platform information
         platform_info = get_cluster_platform(actual_cluster_name)
 
-        # Get template information
-        template = get_cluster_template(actual_cluster_name)
+        # Get cluster state
+        state = get_cluster_state(actual_cluster_name)
 
         # Get jobs for this cluster
         try:
@@ -705,7 +693,7 @@ async def get_cluster_info(
             "cluster": cluster_data,
             "cluster_type": cluster_type_info,
             "platform": platform_info,
-            "template": template,
+            "state": state,
             "jobs": jobs,
             "ssh_node_info": ssh_node_info,
         }

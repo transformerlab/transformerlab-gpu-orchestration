@@ -157,7 +157,6 @@ def create_cluster_platform_entry(
     user_id: str,
     organization_id: str,
     user_info: Optional[Dict[str, Any]] = None,
-    template: Optional[str] = None,
     db: Optional[Session] = None,
 ) -> str:
     """
@@ -169,7 +168,6 @@ def create_cluster_platform_entry(
         user_id: User ID
         organization_id: Organization ID
         user_info: Optional user info dictionary
-        template: Optional template name
         db: Optional database session
 
     Returns:
@@ -205,7 +203,6 @@ def create_cluster_platform_entry(
             cluster_name=cluster_name,
             display_name=unique_display_name,
             platform=platform,
-            template=template,
             user_id=user_id,
             organization_id=organization_id,
             user_info=user_info or {},
@@ -262,7 +259,7 @@ def get_cluster_platform_info(
         return {
             "platform": cluster.platform,
             "user_info": cluster.user_info or {},
-            "template": cluster.template,
+            "state": cluster.state,
             "display_name": cluster.display_name,
             "user_id": cluster.user_id,
             "organization_id": cluster.organization_id,
@@ -305,7 +302,7 @@ def get_user_clusters(
                 "cluster_name": cluster.cluster_name,
                 "display_name": cluster.display_name,
                 "platform": cluster.platform,
-                "template": cluster.template,
+                "state": cluster.state,
                 "user_info": cluster.user_info or {},
                 "created_at": cluster.created_at.isoformat()
                 if cluster.created_at
@@ -380,7 +377,7 @@ def save_cluster_platforms(platforms_data):
 
 
 def set_cluster_platform(
-    cluster_name: str, platform: str, user_info: dict = None, template: str = None
+    cluster_name: str, platform: str, user_info: dict = None
 ):
     """
     Legacy function updated to use database storage.
@@ -397,7 +394,6 @@ def set_cluster_platform(
         if cluster:
             cluster.platform = platform
             cluster.user_info = user_info or {}
-            cluster.template = template
             db.commit()
     except Exception as e:
         print(f"Warning: Failed to update cluster platform for {cluster_name}: {e}")
@@ -417,10 +413,50 @@ def get_cluster_user_info(cluster_name: str) -> dict:
     return info["user_info"] if info else {}
 
 
-def get_cluster_template(cluster_name: str) -> str:
-    """Legacy function updated to use database storage."""
+def get_cluster_state(cluster_name: str) -> str:
+    """Get cluster state from database storage."""
     info = get_cluster_platform_info(cluster_name)
-    return info["template"] if info else ""
+    return info["state"] if info else "active"
+
+
+def update_cluster_state(cluster_name: str, state: str, db: Optional[Session] = None) -> bool:
+    """
+    Update cluster state in the database.
+    
+    Args:
+        cluster_name: The actual cluster name
+        state: The new state (e.g., 'active', 'terminating')
+        db: Optional database session
+        
+    Returns:
+        True if updated successfully, False if cluster not found
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        )
+
+        if not cluster:
+            return False
+
+        cluster.state = state
+        db.commit()
+        return True
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update cluster state: {str(e)}"
+        )
+    finally:
+        if should_close_db:
+            db.close()
 
 
 def remove_cluster_platform(cluster_name: str):
