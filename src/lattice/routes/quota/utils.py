@@ -8,6 +8,8 @@ from db_models import (
     QuotaPeriod,
     TeamMembership,
     TeamQuota,
+    validate_relationships_before_save,
+    validate_relationships_before_delete,
 )
 from routes.instances.utils import generate_cost_report
 from sqlalchemy import func
@@ -134,6 +136,10 @@ def get_or_create_user_quota(
                 monthly_credits_per_user=org_quota.monthly_credits_per_user,
                 custom_quota=False,  # Initially not custom
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(user_quota, db)
+            
             db.add(user_quota)
             db.commit()
             db.refresh(user_quota)
@@ -308,6 +314,9 @@ def delete_user_quota(db: Session, organization_id: str, user_id: str) -> bool:
     )
 
     if user_quota:
+        # Validate relationships before deleting
+        validate_relationships_before_delete(user_quota, db)
+        
         db.delete(user_quota)
         db.commit()
         return True
@@ -352,6 +361,10 @@ def get_organization_default_quota(
                 monthly_credits_per_user=100.0,
                 custom_quota=False,
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(org_quota, db)
+            
             db.add(org_quota)
             db.commit()
             db.refresh(org_quota)

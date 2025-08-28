@@ -2,7 +2,7 @@ import sky
 from typing import Optional, Dict, Any
 from datetime import datetime
 from config import get_db
-from db_models import SkyPilotRequest
+from db_models import SkyPilotRequest, validate_relationships_before_save
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -45,6 +45,10 @@ class SkyPilotTracker:
                 cluster_name=cluster_name,
                 status="pending",
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(skypilot_request, db)
+            
             db.add(skypilot_request)
             db.commit()
             db.refresh(skypilot_request)

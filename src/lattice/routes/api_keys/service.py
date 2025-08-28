@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
-from db_models import APIKey
+from db_models import APIKey, validate_relationships_before_save, validate_relationships_before_delete
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 from config import SessionLocal
@@ -62,6 +62,9 @@ class APIKeyService:
                 expires_at=expires_at,
                 scopes=scopes_json,
             )
+
+            # Validate relationships before saving
+            validate_relationships_before_save(api_key_record, db)
 
             db.add(api_key_record)
             db.commit()
@@ -192,6 +195,9 @@ class APIKeyService:
 
         try:
             api_key = cls.get_api_key(key_id, user_id, db)
+
+            # Validate relationships before deleting
+            validate_relationships_before_delete(api_key, db)
 
             db.delete(api_key)
             db.commit()
