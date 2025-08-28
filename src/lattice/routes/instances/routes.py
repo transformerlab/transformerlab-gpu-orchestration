@@ -1,22 +1,31 @@
+import json
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+
+# Removed load_ssh_node_info import as we now use database-based approach
+from typing import Optional
+
+from config import UPLOADS_DIR
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    Form,
-    UploadFile,
     File,
+    Form,
+    HTTPException,
     Request,
     Response,
+    UploadFile,
 )
-import uuid
-from config import UPLOADS_DIR
+from fastapi.responses import StreamingResponse
 from models import (
+    ClusterStatusResponse,
+    DownClusterRequest,
+    DownClusterResponse,
     LaunchClusterResponse,
     StatusResponse,
     StopClusterRequest,
     StopClusterResponse,
     DownClusterRequest,
-    DownClusterResponse,
     ClusterStatusResponse,
 )
 from .utils import (
@@ -24,6 +33,7 @@ from .utils import (
     get_skypilot_status,
     stop_cluster_with_skypilot,
     down_cluster_with_skypilot,
+    generate_cost_report,
 )
 from routes.clouds.azure.utils import (
     az_get_config_for_display,
@@ -55,14 +65,12 @@ from utils.cluster_resolver import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
-from routes.reports.utils import record_usage
+
 from routes.jobs.utils import get_cluster_job_queue
 
-# Removed load_ssh_node_info import as we now use database-based approach
-from typing import Optional
-from .utils import generate_cost_report
-from concurrent.futures import ThreadPoolExecutor
+from routes.reports.utils import record_usage
 
+from utils.skypilot_tracker import skypilot_tracker
 
 # Global thread pool executor for GPU resource updates
 _gpu_update_executor = ThreadPoolExecutor(
@@ -250,6 +258,9 @@ async def launch_instance(
             node_pool_name=node_pool_name,
             docker_image=docker_image,
             container_registry_id=container_registry_id,
+            user_id=user_id,
+            organization_id=organization_id,
+            display_name=cluster_name,
             credentials=credentials,
         )
 
@@ -300,7 +311,12 @@ async def stop_instance(
                 status_code=400,
                 detail=f"{cluster_type} cluster '{display_name}' cannot be stopped. Use down operation instead.",
             )
-        request_id = stop_cluster_with_skypilot(actual_cluster_name)
+        request_id = stop_cluster_with_skypilot(
+            actual_cluster_name,
+            user_id=user["id"],
+            organization_id=user["organization_id"],
+            display_name=display_name,  # Pass the display name for database storage
+        )
         return StopClusterResponse(
             request_id=request_id,
             cluster_name=display_name,  # Return display name to user
@@ -326,7 +342,12 @@ async def down_instance(
             display_name, user["id"], user["organization_id"]
         )
 
-        request_id = down_cluster_with_skypilot(actual_cluster_name, display_name)
+        request_id = down_cluster_with_skypilot(
+            actual_cluster_name,
+            display_name,
+            user_id=user["id"],
+            organization_id=user["organization_id"],
+        )
 
         # Check if this cluster uses an SSH node pool as its platform (background thread)
         try:
@@ -715,4 +736,289 @@ async def get_cluster_info(
         print(f"Error getting cluster info: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster info: {str(e)}"
+        )
+
+
+# SkyPilot Request Tracking Endpoints
+@router.get("/requests")
+async def get_user_requests(
+    task_type: Optional[str] = None,
+    limit: int = 50,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get SkyPilot requests for the current user
+    """
+    try:
+        requests = skypilot_tracker.get_user_requests(
+            user_id=user["id"],
+            organization_id=user["organization_id"],
+            task_type=task_type,
+            limit=limit,
+        )
+
+        # Convert to dict for JSON serialization
+        result = []
+        for req in requests:
+            result.append(
+                {
+                    "id": req.id,
+                    "user_id": req.user_id,
+                    "organization_id": req.organization_id,
+                    "task_type": req.task_type,
+                    "request_id": req.request_id,
+                    "cluster_name": req.cluster_name,
+                    "status": req.status,
+                    "result": req.result,
+                    "error_message": req.error_message,
+                    "created_at": req.created_at.isoformat()
+                    if req.created_at
+                    else None,
+                    "completed_at": req.completed_at.isoformat()
+                    if req.completed_at
+                    else None,
+                }
+            )
+
+        return {"requests": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get requests: {str(e)}")
+
+
+@router.get("/requests/{request_id}")
+async def get_request_details(
+    request_id: str,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get details of a specific SkyPilot request
+    """
+    try:
+        request = skypilot_tracker.get_request_by_id(request_id)
+
+        if not request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # Check if user has access to this request
+        if (
+            request.user_id != user["id"]
+            or request.organization_id != user["organization_id"]
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        return {
+            "id": request.id,
+            "user_id": request.user_id,
+            "organization_id": request.organization_id,
+            "task_type": request.task_type,
+            "request_id": request.request_id,
+            "cluster_name": request.cluster_name,
+            "status": request.status,
+            "result": request.result,
+            "error_message": request.error_message,
+            "created_at": request.created_at.isoformat()
+            if request.created_at
+            else None,
+            "completed_at": request.completed_at.isoformat()
+            if request.completed_at
+            else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get request details: {str(e)}"
+        )
+
+
+@router.get("/requests/{request_id}/status")
+async def get_request_status(
+    request_id: str,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get the current status of a SkyPilot request (lightweight endpoint)
+    """
+    try:
+        request = skypilot_tracker.get_request_by_id(request_id)
+
+        if not request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # Check if user has access to this request
+        if (
+            request.user_id != user["id"]
+            or request.organization_id != user["organization_id"]
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        return {
+            "request_id": request.request_id,
+            "status": request.status,
+            "task_type": request.task_type,
+            "cluster_name": request.cluster_name,
+            "created_at": request.created_at.isoformat()
+            if request.created_at
+            else None,
+            "completed_at": request.completed_at.isoformat()
+            if request.completed_at
+            else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get request status: {str(e)}"
+        )
+
+
+@router.get("/requests/{request_id}/logs")
+async def stream_request_logs(
+    request_id: str,
+    tail: Optional[int] = None,
+    follow: bool = True,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Stream logs for a specific SkyPilot request in real-time
+    """
+    try:
+        # First check if the request exists and user has access
+        request = skypilot_tracker.get_request_by_id(request_id)
+
+        if not request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # Check if user has access to this request
+        if (
+            request.user_id != user["id"]
+            or request.organization_id != user["organization_id"]
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        def generate_logs():
+            try:
+                import queue
+                import threading
+
+                # Create a queue to pass log lines from the stream to the generator
+                log_queue = queue.Queue()
+                streaming_complete = threading.Event()
+
+                class LogCaptureStream:
+                    def __init__(self, log_queue):
+                        self.log_queue = log_queue
+
+                    def write(self, text):
+                        if text.strip():
+                            # Put the log line in the queue for immediate streaming
+                            self.log_queue.put(text.strip())
+
+                    def flush(self):
+                        pass
+
+                # Create the capture stream
+                capture_stream = LogCaptureStream(log_queue)
+
+                # Start the SkyPilot log streaming in a separate thread
+                def stream_logs():
+                    try:
+                        skypilot_tracker.get_request_logs(
+                            request_id=request_id,
+                            tail=tail,
+                            follow=follow,
+                            output_stream=capture_stream,
+                        )
+                        # Signal that streaming is complete
+                        streaming_complete.set()
+                    except Exception as e:
+                        # Put error in queue
+                        log_queue.put(f"ERROR: {str(e)}")
+                        streaming_complete.set()
+
+                # Start streaming in background thread
+                stream_thread = threading.Thread(target=stream_logs)
+                stream_thread.daemon = True
+                stream_thread.start()
+
+                # Yield log lines as they come in
+                while not streaming_complete.is_set() or not log_queue.empty():
+                    try:
+                        # Get log line with timeout to allow checking completion
+                        log_line = log_queue.get(timeout=0.1)
+                        yield f"data: {json.dumps({'log_line': str(log_line)})}\n\n"
+                    except queue.Empty:
+                        # No log line available, continue checking
+                        continue
+
+                # Update the request status to completed (don't store logs in DB)
+                skypilot_tracker.update_request_status(
+                    request_id=request_id, status="completed"
+                )
+                yield f"data: {json.dumps({'status': 'completed'})}\n\n"
+
+            except Exception as e:
+                # Update the request status if it failed
+                skypilot_tracker.update_request_status(
+                    request_id=request_id, status="failed", error_message=str(e)
+                )
+                yield f"data: {json.dumps({'error': str(e), 'status': 'failed'})}\n\n"
+
+        return StreamingResponse(
+            generate_logs(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stream logs: {str(e)}")
+
+
+@router.post("/requests/{request_id}/cancel")
+async def cancel_request(
+    request_id: str,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Cancel a SkyPilot request
+    """
+    try:
+        # First check if the request exists and user has access
+        request = skypilot_tracker.get_request_by_id(request_id)
+
+        if not request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # Check if user has access to this request
+        if (
+            request.user_id != user["id"]
+            or request.organization_id != user["organization_id"]
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Check if request can be cancelled
+        if request.status in ["completed", "failed", "cancelled"]:
+            raise HTTPException(
+                status_code=400, detail=f"Request is already {request.status}"
+            )
+
+        # Cancel the request
+        success = skypilot_tracker.cancel_request(request_id)
+
+        if success:
+            return {"message": f"Request {request_id} cancelled successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to cancel request")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to cancel request: {str(e)}"
         )

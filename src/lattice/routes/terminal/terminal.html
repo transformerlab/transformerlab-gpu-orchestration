@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SSH Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css"
+    />
+    <style>
+      html,
+      body {
+        height: 100%; /* Make sure both html and body take up full height */
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        display: flex; /* Use flexbox to manage layout */
+        flex-direction: column; /* Arrange children in a column */
+      }
+
+      #terminal {
+        height: 100%; /* This is already correct, but we'll use flex-grow for better behavior */
+        flex-grow: 1; /* Allow the terminal to grow and fill available space */
+        overflow: hidden; /* This is crucial to prevent the xterm viewport from overflowing its container */
+      }
+      button {
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="terminal"></div>
+    <script>
+      document.addEventListener("DOMContentLoaded", (event) => {
+        const term = new Terminal();
+        fitAddon = new FitAddon.FitAddon();
+
+        term.loadAddon(fitAddon);
+
+        const containerElement = document.getElementById("terminal");
+        term.open(containerElement);
+
+        fitAddon.fit();
+
+        // This is the new part to add
+        window.addEventListener("resize", () => {
+          fitAddon.fit();
+        });
+
+        const socket = new WebSocket(
+          `ws://localhost:8000/api/v1/terminal/ws/{{ session_id }}`
+        );
+
+        socket.onopen = () => {
+          term.writeln("Connected to {{ cluster_name }}");
+          term.onData((data) => {
+            socket.send(btoa(data)); // Encode input as Base64
+          });
+        };
+
+        socket.onmessage = (event) => {
+          const decodedData = atob(event.data); // Decode Base64 data
+          term.write(decodedData);
+        };
+
+        socket.onclose = () => {
+          term.writeln("Connection closed");
+        };
+
+        socket.onerror = (error) => {
+          term.writeln("WebSocket error: " + JSON.stringify(error));
+        };
+      });
+    </script>
+  </body>
+</html>

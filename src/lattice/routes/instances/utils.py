@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 import asyncio
 
 from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
+from utils.skypilot_tracker import skypilot_tracker
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -140,7 +141,13 @@ def launch_cluster_with_skypilot(
     node_pool_name: Optional[str] = None,
     docker_image: Optional[str] = None,
     container_registry_id: Optional[str] = None,
+<<<<<<< HEAD
     credentials: Optional[dict] = None,
+=======
+    user_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    display_name: Optional[str] = None,
+>>>>>>> 7ccd876725c63d245267f9e673781573efbe8273
 ):
     try:
         # Handle RunPod setup
@@ -237,9 +244,7 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
-        parts = secure_filename(cluster_name).split("-")
-        prefix = "-".join(parts[:-1]) if len(parts) > 1 else parts[0]
-        name = f"lattice-task-setup-{prefix}"
+        name = f"lattice-task-setup-{cluster_name}"
 
         task = sky.Task(
             name=name,
@@ -359,6 +364,22 @@ def launch_cluster_with_skypilot(
         )
         print(f"REQUEST ID: {request_id}")
 
+        # Store the request in the database if user info is provided
+        if user_id and organization_id:
+            try:
+                # Use display_name if provided, otherwise fall back to cluster_name
+                cluster_name_to_store = display_name if display_name else cluster_name
+                skypilot_tracker.store_request(
+                    user_id=user_id,
+                    organization_id=organization_id,
+                    task_type="launch",
+                    request_id=request_id,
+                    cluster_name=cluster_name_to_store,
+                )
+                print(f"Stored SkyPilot request {request_id} in database")
+            except Exception as e:
+                print(f"Warning: Failed to store SkyPilot request in database: {e}")
+
         # Note: Platform information is now handled by the calling route before launch
 
         return request_id
@@ -369,15 +390,44 @@ def launch_cluster_with_skypilot(
         )
 
 
-def stop_cluster_with_skypilot(cluster_name: str):
+def stop_cluster_with_skypilot(
+    cluster_name: str,
+    user_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    display_name: Optional[str] = None,
+):
     try:
         request_id = sky.stop(cluster_name=cluster_name)
+
+        # Store the request in the database if user info is provided
+        if user_id and organization_id:
+            try:
+                # Use display_name if provided, otherwise fall back to cluster_name
+                cluster_name_to_store = display_name if display_name else cluster_name
+                skypilot_tracker.store_request(
+                    user_id=user_id,
+                    organization_id=organization_id,
+                    task_type="stop",
+                    request_id=request_id,
+                    cluster_name=cluster_name_to_store,
+                )
+                print(f"Stored SkyPilot stop request {request_id} in database")
+            except Exception as e:
+                print(
+                    f"Warning: Failed to store SkyPilot stop request in database: {e}"
+                )
+
         return request_id
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to stop cluster: {str(e)}")
 
 
-def down_cluster_with_skypilot(cluster_name: str, display_name: str = None):
+def down_cluster_with_skypilot(
+    cluster_name: str,
+    display_name: Optional[str] = None,
+    user_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+):
     try:
         # First, get all jobs from the cluster before tearing down
         try:
@@ -387,19 +437,41 @@ def down_cluster_with_skypilot(cluster_name: str, display_name: str = None):
                 jobs = job_records.jobs
                 if jobs:
                     if display_name:
-                        save_cluster_jobs(display_name, jobs)
+                        save_cluster_jobs(display_name, jobs, user_id, organization_id)
                     else:
-                        save_cluster_jobs(cluster_name, jobs)
+                        save_cluster_jobs(cluster_name, jobs, user_id, organization_id)
             elif isinstance(job_records, list):
                 # If it's already a list of jobs
                 if display_name:
-                    save_cluster_jobs(display_name, job_records)
+                    save_cluster_jobs(
+                        display_name, job_records, user_id, organization_id
+                    )
                 else:
-                    save_cluster_jobs(cluster_name, job_records)
+                    save_cluster_jobs(
+                        cluster_name, job_records, user_id, organization_id
+                    )
         except Exception as e:
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
         request_id = sky.down(cluster_name=cluster_name)
+
+        # Store the request in the database if user info is provided
+        if user_id and organization_id:
+            try:
+                # Use display_name if provided, otherwise fall back to cluster_name
+                cluster_name_to_store = display_name if display_name else cluster_name
+                skypilot_tracker.store_request(
+                    user_id=user_id,
+                    organization_id=organization_id,
+                    task_type="terminate",
+                    request_id=request_id,
+                    cluster_name=cluster_name_to_store,
+                )
+                print(f"Stored SkyPilot down request {request_id} in database")
+            except Exception as e:
+                print(
+                    f"Warning: Failed to store SkyPilot down request in database: {e}"
+                )
 
         return request_id
     except Exception as e:

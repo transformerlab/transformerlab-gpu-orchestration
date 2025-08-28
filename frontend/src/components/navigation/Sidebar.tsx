@@ -15,9 +15,7 @@ import {
   GripHorizontalIcon,
   CircleDotIcon,
   ChartNoAxesColumnIncreasingIcon,
-  CircleIcon,
   BoltIcon,
-  ClockIcon,
   LoaderCircleIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -71,6 +69,7 @@ const sidebarItems = [
     content: "My Jobs",
     path: "/dashboard/jobs",
   },
+
   {
     icon: <LoaderCircleIcon />,
     content: "Quota Report",
@@ -103,7 +102,7 @@ const adminSubItemsGroup2 = [
     path: "/dashboard/admin/object-storage",
   },
   {
-    content: "Private Container Registry",
+    content: "Container Registry",
     path: "/dashboard/admin/container-registry",
   },
   {

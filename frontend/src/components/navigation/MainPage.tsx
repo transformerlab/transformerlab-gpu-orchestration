@@ -29,6 +29,7 @@ import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
 import MyClusterDetails from "../pages/MyClusterDetails";
 import ClusterDetails from "../pages/ClusterDetails";
+import Logs from "../pages/Logs";
 
 import Pools from "../pages/Admin/Pools";
 import AzureConfigPage from "../pages/Admin/AzureConfigPage";
@@ -85,6 +86,7 @@ const Dashboard: React.FC = () => {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/costs" element={<Costs />} />
           <Route path="/quota" element={<MyQuota />} />
+          <Route path="/logs" element={<Logs />} />
 
           <Route path="/reports" element={<Reports />} />
           {/* Admin routes */}

@@ -8,8 +8,12 @@ from fastapi import (
     Request,
     Response,
 )
+from fastapi.responses import StreamingResponse
 import uuid
 import os
+import json
+import queue
+import threading
 from config import UPLOADS_DIR
 from werkzeug.utils import secure_filename
 from lattice.models import (
@@ -139,11 +143,111 @@ async def get_cluster_job_logs(
             cluster_name, user["id"], user["organization_id"]
         )
 
-        logs = get_job_logs(actual_cluster_name, job_id, tail_lines)
+        logs = get_job_logs(
+            actual_cluster_name,
+            job_id,
+            tail_lines,
+            user["id"],
+            user["organization_id"],
+        )
         return JobLogsResponse(job_id=job_id, logs=logs)
     except Exception as e:
         print(f"Failed to get job logs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
+
+
+@router.get("/{cluster_name}/{job_id}/logs/stream")
+async def stream_job_logs(
+    cluster_name: str,
+    job_id: int,
+    tail: Optional[int] = 1000,
+    follow: bool = True,
+    request: Request = None,
+    response: Response = None,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Stream logs for a specific job in real-time using sky.tail_logs
+    """
+    try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        def generate_logs():
+            try:
+                import sky
+
+                # Create a queue to pass log lines from the stream to the generator
+                log_queue = queue.Queue()
+                streaming_complete = threading.Event()
+
+                class LogCaptureStream:
+                    def __init__(self, log_queue):
+                        self.log_queue = log_queue
+
+                    def write(self, text):
+                        if text.strip():
+                            # Put the log line in the queue for immediate streaming
+                            self.log_queue.put(text.strip())
+
+                    def flush(self):
+                        pass
+
+                # Create the capture stream
+                capture_stream = LogCaptureStream(log_queue)
+
+                # Start the SkyPilot log streaming in a separate thread
+                def stream_logs():
+                    try:
+                        # Use sky.tail_logs to stream job logs
+                        sky.tail_logs(
+                            cluster_name=actual_cluster_name,
+                            job_id=str(job_id),
+                            tail=tail,
+                            follow=follow,
+                            output_stream=capture_stream,
+                        )
+                        # Signal that streaming is complete
+                        streaming_complete.set()
+                    except Exception as e:
+                        # Put error in queue
+                        log_queue.put(f"ERROR: {str(e)}")
+                        streaming_complete.set()
+
+                # Start streaming in background thread
+                stream_thread = threading.Thread(target=stream_logs)
+                stream_thread.daemon = True
+                stream_thread.start()
+
+                # Yield log lines as they come in
+                while not streaming_complete.is_set() or not log_queue.empty():
+                    try:
+                        # Get log line with timeout to allow checking completion
+                        log_line = log_queue.get(timeout=0.1)
+                        yield f"data: {json.dumps({'log_line': str(log_line)})}\n\n"
+                    except queue.Empty:
+                        # No log line available, continue checking
+                        continue
+
+                yield f"data: {json.dumps({'status': 'completed'})}\n\n"
+
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e), 'status': 'failed'})}\n\n"
+
+        return StreamingResponse(
+            generate_logs(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream",
+            },
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stream logs: {str(e)}")
 
 
 @router.post("/{cluster_name}/{job_id}/cancel")
@@ -285,12 +389,13 @@ async def get_vscode_tunnel_info_endpoint(
 ):
     """Get VSCode tunnel information from job logs."""
     try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
-        )
         # Get job logs
-        logs = get_job_logs(actual_cluster_name, job_id)
+        logs = get_job_logs(
+            cluster_name,
+            job_id,
+            user_id=user["id"],
+            organization_id=user["organization_id"],
+        )
 
         # Parse VSCode tunnel info from logs
         tunnel_info = get_vscode_tunnel_info(logs)
@@ -298,6 +403,7 @@ async def get_vscode_tunnel_info_endpoint(
         return tunnel_info
 
     except Exception as e:
+        print(f"Failed to get VSCode tunnel info: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get VSCode tunnel info: {str(e)}"
         )

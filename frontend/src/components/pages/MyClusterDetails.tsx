@@ -67,6 +67,7 @@ import useSWR from "swr";
 import PageWithTitle from "./templates/PageWithTitle";
 import FakeCharts from "../widgets/FakeCharts";
 import LogViewer from "../widgets/LogViewer";
+import StreamingLogViewer from "../widgets/StreamingLogViewer";
 import InstanceStatusChip from "../widgets/InstanceStatusChip";
 import InteractiveTaskModal from "../modals/InteractiveTaskModal";
 import SubmitJobModal from "../modals/SubmitJobModal";
@@ -130,9 +131,10 @@ const MyClusterDetails: React.FC = () => {
   const [selectedJobLogs, setSelectedJobLogs] = useState<{
     jobId: number;
     jobName: string;
-    logs: string;
+    logs: string[];
   } | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [interactiveTaskModal, setInteractiveTaskModal] = useState<{
     open: boolean;
     clusterName: string;
@@ -221,8 +223,8 @@ const MyClusterDetails: React.FC = () => {
         const errorData = await response.json();
         console.error("Failed to terminate cluster:", errorData.detail);
       } else {
-        // Refresh cluster info after successful operation
-        refreshClusterInfo();
+        // Navigate back to instances list after successful termination
+        navigate("/dashboard/my-instances");
       }
     } catch (err) {
       console.error("Error downing cluster:", err);
@@ -316,26 +318,81 @@ const MyClusterDetails: React.FC = () => {
     if (!clusterName) return;
 
     setLogsLoading(true);
+    setIsStreaming(true);
+    setSelectedJobLogs({ jobId, jobName, logs: [] });
+
     try {
-      const response = await apiFetch(
-        buildApiUrl(`jobs/${clusterName}/${jobId}/logs`),
-        { credentials: "include" }
+      // Create EventSource for Server-Sent Events
+      const eventSource = new EventSource(
+        buildApiUrl(
+          `jobs/${clusterName}/${jobId}/logs/stream?tail=1000&follow=true`
+        ),
+        { withCredentials: true }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedJobLogs({
-          jobId,
-          jobName,
-          logs: data.logs,
-        });
-      } else {
-        console.error("Failed to fetch job logs");
-      }
+      eventSource.onopen = () => {
+        setLogsLoading(false);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.log_line) {
+            setSelectedJobLogs((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    logs: [...prev.logs, data.log_line],
+                  }
+                : null
+            );
+          } else if (data.status === "completed") {
+            setIsStreaming(false);
+            eventSource.close();
+          } else if (data.error) {
+            setSelectedJobLogs((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    logs: [...prev.logs, `ERROR: ${data.error}`],
+                  }
+                : null
+            );
+            setIsStreaming(false);
+            eventSource.close();
+          }
+        } catch (parseError) {
+          console.error("Failed to parse SSE data:", parseError);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("EventSource error:", error);
+        setSelectedJobLogs((prev) =>
+          prev
+            ? {
+                ...prev,
+                logs: [...prev.logs, "ERROR: Failed to connect to log stream"],
+              }
+            : null
+        );
+        setLogsLoading(false);
+        setIsStreaming(false);
+        eventSource.close();
+      };
     } catch (err) {
-      console.error("Error fetching job logs:", err);
-    } finally {
+      setSelectedJobLogs({
+        jobId,
+        jobName,
+        logs: [
+          `ERROR: ${
+            err instanceof Error ? err.message : "Failed to start log streaming"
+          }`,
+        ],
+      });
       setLogsLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -892,7 +949,10 @@ const MyClusterDetails: React.FC = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <LogViewer log={selectedJobLogs?.logs} />
+            <StreamingLogViewer
+              logs={selectedJobLogs?.logs || []}
+              isLoading={logsLoading}
+            />
           )}
         </ModalDialog>
       </Modal>

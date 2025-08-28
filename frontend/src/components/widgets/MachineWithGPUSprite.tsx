@@ -34,7 +34,7 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
   const onFill = "#83937a"; // Circley active fill
   const onStroke = "#bcccb3"; // Circley active stroke
   const offFill = "#edeade"; // Circley inactive fill
-  const offStroke = "#9e9887ff"; // Circley inactive stroke
+  const offStroke = "#cdcbc5ff"; // Circley inactive stroke
   const shadowCol = "#b3b3b127"; // subtle shadow
   const bg =
     "color-mix(in srgb, var(--joy-palette-background-level1), white 2%)"; // lighter background
@@ -92,7 +92,8 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
         borderRadius: 8,
         background: bg,
         filter: "sepia(8%)",
-        border: `3px solid ${onStroke}`,
+        // border: `3px solid ${onStroke}`,
+        border: `2px solid color-mix(in srgb, var(--joy-palette-background-level2), white 20%)`,
         color: text,
         fontFamily:
           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
@@ -111,9 +112,9 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
       >
         <div
           style={{
-            width: 14,
-            height: 14,
-            borderRadius: 3,
+            width: 18,
+            height: 18,
+            borderRadius: "50%", // Changed to make it a circle
             background: onFill,
             border: `2px solid ${onStroke}`,
           }}
@@ -138,10 +139,13 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
       <div
         style={{
           display: "flex",
-          gap: 6,
+          gap: 4,
           flexWrap: "wrap",
           marginTop: 6,
           paddingBottom: 2,
+          opacity: 0.8,
+          height: 26,
+          alignContent: "center",
         }}
       >
         {gpuSlots.length === 0 ? (
@@ -151,10 +155,10 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
             <div
               key={idx}
               style={{
-                width: 22,
-                height: 14,
+                width: 10,
+                height: 22,
                 borderRadius: 3,
-                border: `1px solid ${isUsed ? onStroke : offStroke}`,
+                border: `2px solid ${isUsed ? onStroke : offStroke}`,
                 background: isUsed ? onFill : offFill,
               }}
               title={isUsed ? "Occupied" : "Free"}
