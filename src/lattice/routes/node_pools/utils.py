@@ -235,8 +235,6 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
             status_code=404, detail=f"Cluster '{cluster_name}' not found"
         )
     node_dict = {"ip": node.ip, "user": node.user}
-    if node.name:
-        node_dict["name"] = node.name
     if node.identity_file:
         node_dict["identity_file"] = node.identity_file
     if node.password:
