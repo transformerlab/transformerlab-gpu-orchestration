@@ -141,13 +141,10 @@ def launch_cluster_with_skypilot(
     node_pool_name: Optional[str] = None,
     docker_image: Optional[str] = None,
     container_registry_id: Optional[str] = None,
-<<<<<<< HEAD
-    credentials: Optional[dict] = None,
-=======
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
->>>>>>> 7ccd876725c63d245267f9e673781573efbe8273
+    credentials: Optional[dict] = None,
 ):
     try:
         # Handle RunPod setup
