@@ -1,15 +1,19 @@
-from fastapi import HTTPException
-import sky
-from typing import Optional
-from werkzeug.utils import secure_filename
 import asyncio
 import json
-import tempfile
 import os
 import sys
+import tempfile
+from typing import Optional
 
-from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
+import sky
+from fastapi import HTTPException
+from routes.clouds.azure.utils import az_get_config_for_display
+from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_info_util,
+)
 from utils.skypilot_tracker import skypilot_tracker
+from werkzeug.utils import secure_filename
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -153,10 +157,7 @@ def launch_cluster_with_skypilot(
     try:
         # Handle RunPod setup
         if cloud and cloud.lower() == "runpod":
-            from routes.clouds.runpod.utils import (
-                rp_setup_config,
-                rp_verify_setup,
-            )
+            from routes.clouds.runpod.utils import rp_setup_config, rp_verify_setup
 
             try:
                 rp_setup_config()
@@ -560,7 +561,34 @@ def stop_cluster_with_skypilot(
     display_name: Optional[str] = None,
 ):
     try:
-        request_id = sky.stop(cluster_name=cluster_name)
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config = az_get_config_for_display()
+                    azure_config_dict = azure_config["configs"][
+                        azure_config["default_config"]
+                    ]
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
+        request_id = sky.stop(cluster_name=cluster_name, credentials=credentials)
 
         # Store the request in the database if user info is provided
         if user_id and organization_id:
@@ -592,6 +620,33 @@ def down_cluster_with_skypilot(
     organization_id: Optional[str] = None,
 ):
     try:
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config = az_get_config_for_display()
+                    azure_config_dict = azure_config["configs"][
+                        azure_config["default_config"]
+                    ]
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
         # First, get all jobs from the cluster before tearing down
         try:
             job_records = get_cluster_job_queue(cluster_name)
@@ -616,7 +671,7 @@ def down_cluster_with_skypilot(
         except Exception as e:
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
-        request_id = sky.down(cluster_name=cluster_name)
+        request_id = sky.down(cluster_name=cluster_name, credentials=credentials)
 
         # Store the request in the database if user info is provided
         if user_id and organization_id:
