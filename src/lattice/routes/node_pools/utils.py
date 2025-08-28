@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from ..instances.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
-from db_models import SSHNodePool as SSHNodePoolDB, validate_relationships_before_save, validate_relationships_before_delete
+from db.db_models import SSHNodePool as SSHNodePoolDB, validate_relationships_before_save, validate_relationships_before_delete
 
 
 async def update_gpu_resources_for_node_pool(node_pool_name: str):

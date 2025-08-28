@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
-from db_models import APIKey, validate_relationships_before_save, validate_relationships_before_delete
+from db.db_models import APIKey, validate_relationships_before_save, validate_relationships_before_delete
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 from config import SessionLocal

@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from config import SessionLocal
-from db_models import APIKey
+from db.db_models import APIKey
 from .utils import get_current_user
 from typing import Optional
 import json

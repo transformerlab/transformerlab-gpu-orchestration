@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from db_models import Team, TeamMembership, validate_relationships_before_save, validate_relationships_before_delete
+from db.db_models import Team, TeamMembership, validate_relationships_before_save, validate_relationships_before_delete
 from models import (
     TeamResponse,
     TeamListResponse,

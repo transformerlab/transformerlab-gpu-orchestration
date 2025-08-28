@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from db_models import TeamQuota, Team, TeamMembership, validate_relationships_before_save, validate_relationships_before_delete
+from db.db_models import TeamQuota, Team, TeamMembership, validate_relationships_before_save, validate_relationships_before_delete
 from lattice.models import TeamQuotaResponse
 from lattice.routes.quota.utils import refresh_quota_periods_for_user
 

@@ -38,7 +38,7 @@ from .utils import (
     schedule_gpu_resources_update,
 )
 from config import get_db
-from db_models import SSHNodePool as SSHNodePoolDB
+from db.db_models import SSHNodePool as SSHNodePoolDB
 from sqlalchemy.orm import Session
 
 router = APIRouter(

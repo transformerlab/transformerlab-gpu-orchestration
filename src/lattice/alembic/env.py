@@ -6,7 +6,7 @@ from sqlalchemy.engine import make_url
 
 from lattice.config import DATABASE_URL  # type: ignore
 from lattice.db.base import Base  # type: ignore
-import lattice.db_models  # noqa: F401  # type: ignore
+import lattice.db.db_models  # noqa: F401  # type: ignore
 
 from alembic import context
 

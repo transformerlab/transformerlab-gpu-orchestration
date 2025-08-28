@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from db_models import (
+from db.db_models import (
     GPUUsageLog,
     OrganizationQuota,
     QuotaPeriod,
