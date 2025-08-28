@@ -78,8 +78,6 @@ const SSHConfigPage: React.FC = () => {
   const [newClusterIdentityFile, setNewClusterIdentityFile] =
     useState<string>("");
   const [newClusterPassword, setNewClusterPassword] = useState("");
-  const [newClusterVcpus, setNewClusterVcpus] = useState("");
-  const [newClusterMemoryGb, setNewClusterMemoryGb] = useState("");
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
@@ -179,8 +177,6 @@ const SSHConfigPage: React.FC = () => {
       if (newClusterPassword) formData.append("password", newClusterPassword);
       if (newClusterIdentityFile)
         formData.append("identity_file_path", newClusterIdentityFile);
-      if (newClusterVcpus) formData.append("vcpus", newClusterVcpus);
-      if (newClusterMemoryGb) formData.append("memory_gb", newClusterMemoryGb);
 
       const response = await apiFetch(
         buildApiUrl("node-pools/ssh-node-pools"),
@@ -205,8 +201,6 @@ const SSHConfigPage: React.FC = () => {
         setNewClusterUser("");
         setNewClusterIdentityFile("");
         setNewClusterPassword("");
-        setNewClusterVcpus("");
-        setNewClusterMemoryGb("");
       } else {
         const errorData = await response.json();
         addNotification({
@@ -473,27 +467,6 @@ const SSHConfigPage: React.FC = () => {
                 </FormControl>
               </Box>
 
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>vCPUs (Optional)</FormLabel>
-                  <Input
-                    type="number"
-                    value={newClusterVcpus}
-                    onChange={(e) => setNewClusterVcpus(e.target.value)}
-                    placeholder="e.g., 4, 8, 16"
-                  />
-                </FormControl>
-                <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>Memory (GB) (Optional)</FormLabel>
-                  <Input
-                    type="number"
-                    value={newClusterMemoryGb}
-                    onChange={(e) => setNewClusterMemoryGb(e.target.value)}
-                    placeholder="e.g., 8, 16, 32"
-                  />
-                </FormControl>
-              </Box>
-
               <Button
                 startDecorator={<Save size={16} />}
                 onClick={createCluster}
@@ -719,7 +692,7 @@ const SSHConfigPage: React.FC = () => {
               </FormControl>
               <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>vCPUs (optional)</FormLabel>
+                  <FormLabel>vCPUs Available on the Node (optional)</FormLabel>
                   <Input
                     type="number"
                     value={newNodeVcpus}
@@ -728,7 +701,9 @@ const SSHConfigPage: React.FC = () => {
                   />
                 </FormControl>
                 <FormControl sx={{ flex: 1 }}>
-                  <FormLabel>Memory (GB) (optional)</FormLabel>
+                  <FormLabel>
+                    Memory in GB Available on the Node (optional)
+                  </FormLabel>
                   <Input
                     type="number"
                     value={newNodeMemoryGb}
