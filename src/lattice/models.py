@@ -97,6 +97,7 @@ class PortForwardInfo(BaseModel):
 class ClusterStatusResponse(BaseModel):
     cluster_name: str
     status: str
+    state: Optional[str] = None
     launched_at: Optional[int] = None
     last_use: Optional[str] = None
     autostop: Optional[int] = None

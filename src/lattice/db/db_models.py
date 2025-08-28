@@ -362,8 +362,8 @@ class ClusterPlatform(Base, ValidationMixin):
     display_name = Column(String, nullable=False)
     # Platform: runpod, azure, ssh, etc.
     platform = Column(String, nullable=False)
-    # Template used for cluster creation
-    template = Column(String, nullable=True)
+    # State of the cluster: active, terminating, etc.
+    state = Column(String, nullable=True, default="active")
     # User who owns this cluster
     user_id = Column(String, nullable=False)
     # Organization the cluster belongs to

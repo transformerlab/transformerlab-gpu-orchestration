@@ -74,7 +74,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+
   const [dockerImage, setDockerImage] = useState("");
   const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
@@ -107,12 +107,9 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const fetchAvailableGpuTypes = async () => {
     setIsLoadingGpuTypes(true);
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/runpod/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/runpod/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         console.log("RunPod display options in launcher:", data);
@@ -162,7 +159,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSetup("");
     setSelectedGpuType("");
     setSelectedGpuFullString("");
-    setSelectedTemplate("");
+
     setDockerImage("");
     setSelectedRegistryId("");
   };
@@ -192,7 +189,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         formData.append("accelerators", selectedGpuFullString);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
-      if (selectedTemplate) formData.append("template", selectedTemplate);
+
       if (dockerImage) formData.append("docker_image", dockerImage);
       if (selectedRegistryId)
         formData.append("container_registry_id", selectedRegistryId);
@@ -256,25 +253,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               placeholder="pip install torch transformers"
               minRows={2}
             />
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Select a Template</FormLabel>
-            <Select
-              value={selectedTemplate}
-              onChange={(_, value) => setSelectedTemplate(value || "")}
-              placeholder="Choose a template"
-            >
-              <Option value="transformer-lab">Transformer Lab</Option>
-              <Option value="jupyter">Jupyter</Option>
-              <Option value="vscode">VSCode</Option>
-            </Select>
-            <Typography
-              level="body-xs"
-              sx={{ mt: 0.5, color: "text.secondary" }}
-            >
-              Choose a template for your node (functionality coming soon)
-            </Typography>
           </FormControl>
 
           <Card variant="outlined">

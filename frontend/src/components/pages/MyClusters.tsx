@@ -9,6 +9,7 @@ import { Box, Button, Typography } from "@mui/joy";
 interface Cluster {
   cluster_name: string;
   status: string;
+  state?: string;
   resources_str?: string;
   launched_at?: number;
   last_use?: string;
