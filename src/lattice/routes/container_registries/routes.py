@@ -4,7 +4,7 @@ from typing import List
 from datetime import datetime
 
 from config import get_db
-from db_models import ContainerRegistry
+from db_models import ContainerRegistry, validate_relationships_before_save, validate_relationships_before_delete
 from lattice.models import (
     ContainerRegistryResponse,
     CreateContainerRegistryRequest,
@@ -127,6 +127,9 @@ async def create_container_registry(
             organization_id=organization_id,
             user_id=user_id,
         )
+
+        # Validate relationships before saving
+        validate_relationships_before_save(new_registry, db)
 
         db.add(new_registry)
         db.commit()

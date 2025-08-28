@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from ..instances.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
-from db_models import SSHNodePool as SSHNodePoolDB
+from db_models import SSHNodePool as SSHNodePoolDB, validate_relationships_before_save, validate_relationships_before_delete
 
 
 async def update_gpu_resources_for_node_pool(node_pool_name: str):
@@ -164,17 +164,20 @@ def create_cluster_in_pools(
             db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
         )
         if existing is None:
-            db.add(
-                SSHNodePoolDB(
-                    name=cluster_name,
-                    user_id=user_id,
-                    organization_id=organization_id,
-                    default_user=user,
-                    identity_file_path=identity_file,
-                    password=password,
-                    resources=resources,
-                )
+            new_pool = SSHNodePoolDB(
+                name=cluster_name,
+                user_id=user_id,
+                organization_id=organization_id,
+                default_user=user,
+                identity_file_path=identity_file,
+                password=password,
+                resources=resources,
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(new_pool, db)
+            
+            db.add(new_pool)
         else:
             existing.user_id = user_id
             existing.organization_id = organization_id
@@ -260,6 +263,10 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
         )
         if pool is None:
             pool = SSHNodePoolDB(name=cluster_name, nodes=[])
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(pool, db)
+            
             db.add(pool)
             db.commit()
             db.refresh(pool)
@@ -359,6 +366,9 @@ def delete_cluster_in_pools(cluster_name: str):
             db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
         )
         if pool is not None:
+            # Validate relationships before deleting
+            validate_relationships_before_delete(pool, db)
+            
             db.delete(pool)
             db.commit()
     except Exception as e:

@@ -4,7 +4,7 @@ from typing import List
 from datetime import datetime
 
 from config import get_db
-from db_models import StorageBucket
+from db_models import StorageBucket, validate_relationships_before_save, validate_relationships_before_delete
 from lattice.models import (
     StorageBucketResponse,
     CreateStorageBucketRequest,
@@ -144,6 +144,9 @@ async def create_storage_bucket(
             organization_id=organization_id,
             created_by=user_id,
         )
+
+        # Validate relationships before saving
+        validate_relationships_before_save(new_bucket, db)
 
         db.add(new_bucket)
         db.commit()

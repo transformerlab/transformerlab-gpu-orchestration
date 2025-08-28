@@ -4,12 +4,12 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     Text,
-    ForeignKey,
     JSON,
     Integer,
     Float,
     Date,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.sql import func
 from lattice.db.base import Base
@@ -18,7 +18,33 @@ import hashlib
 from datetime import datetime
 
 
-class APIKey(Base):
+class ValidationMixin:
+    """Mixin class for common validation methods"""
+    
+    def validate_user_exists(self, session):
+        """Validate that the referenced user exists (placeholder for user validation)"""
+        # This would typically validate against your user management system
+        # For now, we'll just check that user_id is not empty
+        if hasattr(self, 'user_id') and not self.user_id:
+            raise ValueError("user_id cannot be empty")
+        return True
+
+    def validate_organization_exists(self, session):
+        """Validate that the referenced organization exists (placeholder for org validation)"""
+        # This would typically validate against your organization management system
+        # For now, we'll just check that organization_id is not empty if provided
+        if hasattr(self, 'organization_id') and self.organization_id and not self.organization_id.strip():
+            raise ValueError("organization_id cannot be empty if provided")
+        return True
+
+    def validate_all_relationships(self, session):
+        """Validate all relationships for this model"""
+        self.validate_user_exists(session)
+        self.validate_organization_exists(session)
+        return True
+
+
+class APIKey(Base, ValidationMixin):
     __tablename__ = "api_keys"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -60,7 +86,7 @@ class APIKey(Base):
         self.last_used_at = datetime.utcnow()
 
 
-class SSHNodePool(Base):
+class SSHNodePool(Base, ValidationMixin):
     __tablename__ = "ssh_node_pools"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -87,7 +113,7 @@ class SSHNodePool(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
-class OrganizationQuota(Base):
+class OrganizationQuota(Base, ValidationMixin):
     __tablename__ = "organization_quotas"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -108,7 +134,7 @@ class OrganizationQuota(Base):
     )
 
 
-class QuotaPeriod(Base):
+class QuotaPeriod(Base, ValidationMixin):
     __tablename__ = "quota_periods"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -124,7 +150,7 @@ class QuotaPeriod(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
-class GPUUsageLog(Base):
+class GPUUsageLog(Base, ValidationMixin):
     __tablename__ = "gpu_usage_logs"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -143,7 +169,7 @@ class GPUUsageLog(Base):
     created_at = Column(DateTime, default=func.now())
 
 
-class StorageBucket(Base):
+class StorageBucket(Base, ValidationMixin):
     __tablename__ = "storage_buckets"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -170,7 +196,7 @@ class StorageBucket(Base):
     )  # Whether the bucket is active and available
 
 
-class SSHKey(Base):
+class SSHKey(Base, ValidationMixin):
     __tablename__ = "ssh_keys"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -217,7 +243,7 @@ class SSHKey(Base):
         self.last_used_at = datetime.utcnow()
 
 
-class Team(Base):
+class Team(Base, ValidationMixin):
     __tablename__ = "teams"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -233,11 +259,11 @@ class Team(Base):
     )
 
 
-class TeamMembership(Base):
+class TeamMembership(Base, ValidationMixin):
     __tablename__ = "team_memberships"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
-    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    team_id = Column(String, nullable=False)
     user_id = Column(String, nullable=False)
     organization_id = Column(String, nullable=False)  # Denormalized for constraint
     created_at = Column(DateTime, default=func.now())
@@ -249,13 +275,31 @@ class TeamMembership(Base):
         ),
     )
 
+    def validate_team_exists(self, session):
+        """Validate that the referenced team exists"""
+        # Use string-based query to avoid circular import
+        team = session.execute(
+            text("SELECT id, organization_id FROM teams WHERE id = :team_id"),
+            {"team_id": self.team_id}
+        ).first()
+        if not team:
+            raise ValueError(f"Team with id {self.team_id} does not exist")
+        return team
 
-class TeamQuota(Base):
+    def validate_team_organization_match(self, session):
+        """Validate that the team belongs to the same organization"""
+        team = self.validate_team_exists(session)
+        if team.organization_id != self.organization_id:
+            raise ValueError(f"Team {self.team_id} does not belong to organization {self.organization_id}")
+        return team
+
+
+class TeamQuota(Base, ValidationMixin):
     __tablename__ = "team_quotas"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     organization_id = Column(String, nullable=False)
-    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    team_id = Column(String, nullable=False)
     monthly_credits_per_user = Column(Float, nullable=False, default=100.0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -265,8 +309,26 @@ class TeamQuota(Base):
         UniqueConstraint("organization_id", "team_id", name="uq_team_quotas_org_team"),
     )
 
+    def validate_team_exists(self, session):
+        """Validate that the referenced team exists"""
+        # Use string-based query to avoid circular import
+        team = session.execute(
+            text("SELECT id, organization_id FROM teams WHERE id = :team_id"),
+            {"team_id": self.team_id}
+        ).first()
+        if not team:
+            raise ValueError(f"Team with id {self.team_id} does not exist")
+        return team
 
-class ContainerRegistry(Base):
+    def validate_team_organization_match(self, session):
+        """Validate that the team belongs to the same organization"""
+        team = self.validate_team_exists(session)
+        if team.organization_id != self.organization_id:
+            raise ValueError(f"Team {self.team_id} does not belong to organization {self.organization_id}")
+        return team
+
+
+class ContainerRegistry(Base, ValidationMixin):
     __tablename__ = "container_registries"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -290,7 +352,7 @@ class ContainerRegistry(Base):
     )
 
 
-class ClusterPlatform(Base):
+class ClusterPlatform(Base, ValidationMixin):
     __tablename__ = "cluster_platforms"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -322,7 +384,7 @@ class ClusterPlatform(Base):
     )
 
 
-class SkyPilotRequest(Base):
+class SkyPilotRequest(Base, ValidationMixin):
     __tablename__ = "skypilot_requests"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -343,3 +405,56 @@ class SkyPilotRequest(Base):
     __table_args__ = (
         UniqueConstraint("request_id", name="uq_skypilot_requests_request_id"),
     )
+
+
+# Utility functions for application-level foreign key validation
+def validate_relationships_before_save(model_instance, session):
+    """
+    Validate all relationships for a model instance before saving to database.
+    This should be called before any insert or update operations.
+    
+    Args:
+        model_instance: The model instance to validate
+        session: SQLAlchemy session for database queries
+        
+    Raises:
+        ValueError: If any relationship validation fails
+    """
+    if hasattr(model_instance, 'validate_all_relationships'):
+        model_instance.validate_all_relationships(session)
+    
+    # Model-specific validations
+    if isinstance(model_instance, TeamMembership):
+        model_instance.validate_team_organization_match(session)
+    elif isinstance(model_instance, TeamQuota):
+        model_instance.validate_team_organization_match(session)
+
+
+def validate_relationships_before_delete(model_instance, session):
+    """
+    Validate relationships before deleting a model instance.
+    This can be used to check for dependent records or cascade operations.
+    
+    Args:
+        model_instance: The model instance to validate for deletion
+        session: SQLAlchemy session for database queries
+        
+    Raises:
+        ValueError: If deletion is not allowed due to dependencies
+    """
+    # Example: Check if team has members before deletion
+    if isinstance(model_instance, Team):
+        # Use string-based queries to avoid circular imports
+        memberships = session.execute(
+            text("SELECT COUNT(*) as count FROM team_memberships WHERE team_id = :team_id"),
+            {"team_id": model_instance.id}
+        ).scalar()
+        if memberships > 0:
+            raise ValueError(f"Cannot delete team {model_instance.id}: has {memberships} members")
+        
+        quotas = session.execute(
+            text("SELECT COUNT(*) as count FROM team_quotas WHERE team_id = :team_id"),
+            {"team_id": model_instance.id}
+        ).scalar()
+        if quotas > 0:
+            raise ValueError(f"Cannot delete team {model_instance.id}: has {quotas} quotas")
