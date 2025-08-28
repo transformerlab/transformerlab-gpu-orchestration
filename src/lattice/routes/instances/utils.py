@@ -520,7 +520,7 @@ except Exception as e:
                         status_code=500,
                         detail=f"Launch failed: {result_data.get('error', 'Unknown error')}",
                     )
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 # Fallback to original output if JSON parsing fails
                 output = stdout.decode().strip()
                 if output:

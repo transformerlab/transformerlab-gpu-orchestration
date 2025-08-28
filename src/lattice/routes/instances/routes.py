@@ -18,8 +18,6 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from models import (
-    ClusterStatusResponse,
-    DownClusterRequest,
     DownClusterResponse,
     LaunchClusterResponse,
     StatusResponse,
