@@ -28,10 +28,11 @@ from models import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
-from routes.clouds.azure.utils import az_setup_config
+from routes.clouds.azure.utils import az_setup_config, load_azure_config
 from routes.clouds.runpod.utils import (
     map_runpod_display_to_instance_type,
     rp_setup_config,
+    load_runpod_config,
 )
 from routes.jobs.utils import get_cluster_job_queue
 from routes.node_pools.utils import (
@@ -40,6 +41,10 @@ from routes.node_pools.utils import (
     update_gpu_resources_for_node_pool,
 )
 from routes.reports.utils import record_usage
+from routes.quota.utils import get_user_team_id
+from sqlalchemy.orm import Session
+from config import get_db
+from db.db_models import NodePoolAccess as NodePoolAccessDB, SSHNodePool as SSHNodePoolDB
 from utils.cluster_resolver import handle_cluster_name_param
 from utils.cluster_utils import (
     create_cluster_platform_entry,
@@ -133,6 +138,7 @@ async def launch_instance(
     node_pool_name: Optional[str] = Form(None),
     docker_image: Optional[str] = Form(None),
     container_registry_id: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
 ):
     try:
         file_mounts = None
@@ -191,6 +197,62 @@ async def launch_instance(
         user_info = get_current_user(request, response)
         user_id = user_info["id"]
         organization_id = user_info["organization_id"]
+
+        # Enforce team-based access to selected node pool/provider
+        try:
+            team_id = get_user_team_id(db, organization_id, user_id)
+            if cloud == "ssh":
+                if not node_pool_name:
+                    raise HTTPException(status_code=400, detail="node_pool_name is required for SSH launches")
+                pool = (
+                    db.query(SSHNodePoolDB)
+                    .filter(
+                        SSHNodePoolDB.name == node_pool_name,
+                        SSHNodePoolDB.organization_id == organization_id,
+                    )
+                    .first()
+                )
+                if not pool:
+                    raise HTTPException(status_code=404, detail=f"SSH node pool '{node_pool_name}' not found")
+                allowed_team_ids = []
+                try:
+                    od = pool.other_data or {}
+                    if isinstance(od, dict):
+                        allowed_team_ids = od.get("allowed_team_ids", []) or []
+                except Exception:
+                    allowed_team_ids = []
+                if allowed_team_ids and (team_id is None or team_id not in allowed_team_ids):
+                    raise HTTPException(status_code=403, detail="Your team does not have access to this SSH node pool")
+            elif cloud in ("azure", "runpod"):
+                # Determine default config key to identify pool
+                pool_key = None
+                try:
+                    if cloud == "azure":
+                        cfg = load_azure_config()
+                    else:
+                        cfg = load_runpod_config()
+                    pool_key = cfg.get("default_config")
+                except Exception:
+                    pool_key = None
+                # If access row exists and has restrictions, enforce
+                if pool_key:
+                    access_row = (
+                        db.query(NodePoolAccessDB)
+                        .filter(
+                            NodePoolAccessDB.organization_id == organization_id,
+                            NodePoolAccessDB.provider == cloud,
+                            NodePoolAccessDB.pool_key == pool_key,
+                        )
+                        .first()
+                    )
+                    allowed_team_ids = access_row.allowed_team_ids if access_row and access_row.allowed_team_ids else []
+                    if allowed_team_ids and (team_id is None or team_id not in allowed_team_ids):
+                        raise HTTPException(status_code=403, detail=f"Your team does not have access to the {cloud.title()} node pool")
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Fail closed only if explicit restrictions exist; otherwise continue
+            print(f"Access check warning: {e}")
 
         # Create cluster platform entry and get the actual cluster name
         # For SSH clusters, use the node pool name as platform for easier mapping

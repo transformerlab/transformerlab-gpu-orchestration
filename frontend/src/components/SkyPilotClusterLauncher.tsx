@@ -106,6 +106,11 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   const [azureSetupStatus, setAzureSetupStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
+  // Access control state
+  const [currentUserTeamId, setCurrentUserTeamId] = useState<string | null>(null);
+  const [cloudAccessDenied, setCloudAccessDenied] = useState<null | string>(null);
+  const [sshAccessDenied, setSshAccessDenied] = useState<null | string>(null);
+  const [accessChecking, setAccessChecking] = useState(false);
 
   // Storage bucket state
   const [storageBuckets, setStorageBuckets] = useState<StorageBucket[]>([]);
@@ -132,6 +137,27 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     setJupyterPort("8888");
     setJupyterPassword("");
     setSelectedStorageBuckets([]);
+    setCloudAccessDenied(null);
+    setSshAccessDenied(null);
+    setAccessChecking(false);
+  };
+
+  const fetchCurrentUserTeam = async (): Promise<string | null> => {
+    try {
+      const resp = await apiFetch(buildApiUrl("admin/teams/current-user/team"), {
+        credentials: "include",
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const id = data?.id ?? null;
+        setCurrentUserTeamId(id);
+        return id;
+      }
+    } catch (e) {
+      // ignore
+    }
+    setCurrentUserTeamId(null);
+    return null;
   };
 
   const fetchStorageBuckets = async () => {
@@ -172,8 +198,39 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   useEffect(() => {
     if (cloud === "ssh") {
       fetchSSHClusters();
-    } else if (cloud === "runpod") {
-      setupRunPod();
+      setCloudAccessDenied(null);
+    } else if (cloud === "runpod" || cloud === "azure") {
+      // Check access to default cloud pool
+      (async () => {
+        setAccessChecking(true);
+        setCloudAccessDenied(null);
+        const teamId = await fetchCurrentUserTeam();
+        try {
+          const resp = await apiFetch(buildApiUrl(`clouds/${cloud}/config`), {
+            credentials: "include",
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const defaultKey = data.default_config;
+            const cfg = defaultKey && data.configs ? data.configs[defaultKey] : null;
+            const allowedIds: string[] = cfg?.allowed_team_ids || [];
+            if (allowedIds.length > 0 && (!teamId || !allowedIds.includes(teamId))) {
+              setCloudAccessDenied(
+                `Your team is not allowed to launch on ${cloud === "runpod" ? "RunPod" : "Azure"} pool`
+              );
+            }
+          }
+        } catch (e) {
+          // ignore
+        } finally {
+          setAccessChecking(false);
+        }
+      })();
+      if (cloud === "runpod") {
+        setupRunPod();
+      } else if (cloud === "azure") {
+        setupAzure();
+      }
     }
   }, [cloud]);
 
@@ -787,7 +844,32 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                   {cloud === "ssh" ? (
                     <Select
                       value={clusterName}
-                      onChange={(_, value) => setClusterName(value || "")}
+                      onChange={async (_, value) => {
+                        const newName = value || "";
+                        setClusterName(newName);
+                        setSshAccessDenied(null);
+                        if (newName) {
+                          setAccessChecking(true);
+                          const teamId = await fetchCurrentUserTeam();
+                          try {
+                            const r = await apiFetch(
+                              buildApiUrl(`node-pools/ssh-node-pools/${newName}/access`),
+                              { credentials: "include" }
+                            );
+                            if (r.ok) {
+                              const data = await r.json();
+                              const allowed = (data.allowed_team_ids || []) as string[];
+                              if (allowed.length > 0 && (!teamId || !allowed.includes(teamId))) {
+                                setSshAccessDenied("Your team is not allowed to use this SSH node pool");
+                              }
+                            }
+                          } catch (e) {
+                            // ignore
+                          } finally {
+                            setAccessChecking(false);
+                          }
+                        }
+                      }}
                       placeholder="Select a cluster from your Node Pool"
                     >
                       {sshClusters.map((cluster) => (
@@ -979,6 +1061,18 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
 
                 {/* Connection Instructions */}
                 {getConnectionInstructions()}
+
+                {/* Access restriction notices */}
+                {cloudAccessDenied && cloud !== "ssh" && (
+                  <Alert color="danger">
+                    <Typography level="body-sm">{cloudAccessDenied}</Typography>
+                  </Alert>
+                )}
+                {sshAccessDenied && cloud === "ssh" && (
+                  <Alert color="danger">
+                    <Typography level="body-sm">{sshAccessDenied}</Typography>
+                  </Alert>
+                )}
               </Stack>
             </Card>
 
@@ -1033,8 +1127,8 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
               </Button>
               <Button
                 onClick={launchCluster}
-                disabled={!clusterName || loading}
-                loading={loading}
+                disabled={!clusterName || loading || accessChecking || !!cloudAccessDenied || !!sshAccessDenied}
+                loading={loading || accessChecking}
                 startDecorator={<Play size={16} />}
               >
                 Launch{" "}
