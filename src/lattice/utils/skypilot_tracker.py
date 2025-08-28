@@ -2,7 +2,7 @@ import sky
 from typing import Optional, Dict, Any
 from datetime import datetime
 from config import get_db
-from db_models import SkyPilotRequest, validate_relationships_before_save, validate_relationships_before_delete
+from db_models import SkyPilotRequest, validate_relationships_before_save
 from concurrent.futures import ThreadPoolExecutor
 
 

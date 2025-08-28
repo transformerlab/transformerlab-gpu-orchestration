@@ -4,7 +4,7 @@ from typing import List
 from datetime import datetime
 
 from config import get_db
-from db_models import StorageBucket, validate_relationships_before_save, validate_relationships_before_delete
+from db_models import StorageBucket, validate_relationships_before_save
 from lattice.models import (
     StorageBucketResponse,
     CreateStorageBucketRequest,
