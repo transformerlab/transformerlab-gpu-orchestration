@@ -41,8 +41,38 @@ async def list_teams(
     return svc_list_teams(db, org_id)
 
 
+# Allow both '/admin/teams' and '/admin/teams/' for GET
+@router.get("", response_model=TeamListResponse)
+async def list_teams_no_slash(
+    request: Request, response: Response, db: Session = Depends(get_db)
+):
+    user_info = get_current_user(request, response)
+    org_id = user_info.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization ID required")
+
+    return svc_list_teams(db, org_id)
+
+
 @router.post("/", response_model=TeamResponse)
 async def create_team(
+    team_req: CreateTeamRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    user_info = get_current_user(request, response)
+    user_id = user_info.get("id")
+    org_id = user_info.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization ID required")
+
+    return svc_create_team(db, org_id, user_id, team_req)
+
+
+# Allow both '/admin/teams' and '/admin/teams/' for POST
+@router.post("", response_model=TeamResponse)
+async def create_team_no_slash(
     team_req: CreateTeamRequest,
     request: Request,
     response: Response,

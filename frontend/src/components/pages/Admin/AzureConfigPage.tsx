@@ -21,6 +21,11 @@ import PageWithTitle from "../templates/PageWithTitle";
 import { useNotification } from "../../../components/NotificationSystem";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+interface TeamOption {
+  id: string;
+  name: string;
+}
+
 interface AzureConfig {
   subscription_id: string;
   tenant_id: string;
@@ -65,6 +70,8 @@ const AzureConfigPage: React.FC = () => {
     InstanceType[]
   >([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
+  const [availableTeams, setAvailableTeams] = useState<TeamOption[]>([]);
+  const [allowedTeamIds, setAllowedTeamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [skyChecking, setSkyChecking] = useState(false);
@@ -85,6 +92,7 @@ const AzureConfigPage: React.FC = () => {
         fetchAvailableInstanceTypes(),
         fetchAvailableRegions(),
         fetchExistingConfigs(),
+        fetchAvailableTeams(),
       ]);
 
       // Then fetch existing config if in configure mode
@@ -144,6 +152,7 @@ const AzureConfigPage: React.FC = () => {
             max_instances: specificConfig.max_instances || 0,
           });
           setPoolName(specificConfig.name || initialPoolName);
+          setAllowedTeamIds(specificConfig.allowed_team_ids || []);
         }
         // If we got a single config from credentials endpoint
         else if (configKey && data.subscription_id) {
@@ -159,6 +168,7 @@ const AzureConfigPage: React.FC = () => {
             max_instances: data.max_instances || 0,
           });
           setPoolName(data.name || initialPoolName);
+          setAllowedTeamIds(data.allowed_team_ids || []);
         }
         // Otherwise use the default config
         else if (
@@ -179,6 +189,7 @@ const AzureConfigPage: React.FC = () => {
             max_instances: defaultConfig.max_instances || 0,
           });
           setPoolName(defaultConfig.name || initialPoolName);
+          setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
         }
       } else {
         addNotification({
@@ -193,6 +204,24 @@ const AzureConfigPage: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableTeams = async () => {
+    try {
+      const response = await apiFetch(buildApiUrl("admin/teams"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const teams: TeamOption[] = (data.teams || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+        }));
+        setAvailableTeams(teams);
+      }
+    } catch (err) {
+      console.error("Error fetching teams:", err);
     }
   };
 
@@ -301,6 +330,7 @@ const AzureConfigPage: React.FC = () => {
         allowed_instance_types: config.allowed_instance_types,
         allowed_regions: config.allowed_regions,
         max_instances: config.max_instances,
+        allowed_team_ids: allowedTeamIds,
       };
 
       // Only include config_key if it's not null
@@ -338,9 +368,11 @@ const AzureConfigPage: React.FC = () => {
             auth_method: "service_principal",
             max_instances: defaultConfig.max_instances || 0,
           });
+          setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
         } else {
           // Fallback to legacy structure
           setConfig(data);
+          setAllowedTeamIds(data.allowed_team_ids || []);
         }
 
         if (data.sky_check_result) {
@@ -977,6 +1009,52 @@ const AzureConfigPage: React.FC = () => {
                     } allowed`}
               </Typography>
             </FormControl>
+          </Stack>
+        </Card>
+
+        {/* Team Access */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            Team Access
+          </Typography>
+          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
+            Choose which teams can use this Azure node pool.
+          </Typography>
+          <Stack spacing={2}>
+            <FormControl>
+              <FormLabel>Allowed Teams</FormLabel>
+              <Autocomplete
+                multiple
+                options={availableTeams}
+                getOptionLabel={(opt) => opt.name}
+                value={availableTeams.filter((t) =>
+                  allowedTeamIds.includes(t.id)
+                )}
+                onChange={(_, newValue) => {
+                  setAllowedTeamIds(newValue.map((t) => t.id));
+                }}
+                placeholder="Select teams that can access this pool..."
+                sx={{ width: "100%" }}
+                limitTags={5}
+                disableCloseOnSelect
+              />
+            </FormControl>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                size="sm"
+                variant="outlined"
+                onClick={() => setAllowedTeamIds(availableTeams.map((t) => t.id))}
+              >
+                Allow All Teams
+              </Button>
+              <Button
+                size="sm"
+                variant="outlined"
+                onClick={() => setAllowedTeamIds([])}
+              >
+                Clear
+              </Button>
+            </Box>
           </Stack>
         </Card>
 

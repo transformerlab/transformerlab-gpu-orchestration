@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel
 
 from ..auth.api_key_auth import get_user_or_api_key
@@ -28,12 +28,17 @@ from .runpod.utils import (
     rp_set_default_config,
     rp_delete_config,
     rp_get_current_config,
+    load_runpod_config,
 )
 from routes.instances.utils import get_skypilot_status
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_data,
 )
 from routes.clouds.ssh.routes import router as ssh_router
+from config import get_db
+from sqlalchemy.orm import Session
+from db.db_models import NodePoolAccess
+from routes.quota.utils import get_user_team_id
 
 
 # Configuration models
@@ -47,6 +52,8 @@ class AzureConfigRequest(BaseModel):
     allowed_regions: list[str]
     max_instances: int = 0
     config_key: str = None
+    # Teams allowed to use this pool (team IDs)
+    allowed_team_ids: list[str] = []
 
 
 class RunPodConfigRequest(BaseModel):
@@ -56,6 +63,8 @@ class RunPodConfigRequest(BaseModel):
     allowed_display_options: list[str] = None
     max_instances: int = 0
     config_key: str = None
+    # Teams allowed to use this pool (team IDs)
+    allowed_team_ids: list[str] = []
 
 
 class AzureTestRequest(BaseModel):
@@ -129,7 +138,13 @@ async def verify_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 
 @router.get("/{cloud}/config")
-async def get_cloud_config(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def get_cloud_config(
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    request: Request = None,
+    response: Response = None,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
     """Get current cloud configuration"""
     try:
         if cloud == "azure":
@@ -138,6 +153,26 @@ async def get_cloud_config(cloud: str = Path(..., regex="^(azure|runpod)$")):
             config = rp_get_config_for_display()
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        # Enrich with allowed_team_ids from DB per config
+        try:
+            configs = config.get("configs", {})
+            for key in list(configs.keys()):
+                access = (
+                    db.query(NodePoolAccess)
+                    .filter(
+                        NodePoolAccess.organization_id == user["organization_id"],
+                        NodePoolAccess.provider == cloud,
+                        NodePoolAccess.pool_key == key,
+                    )
+                    .first()
+                )
+                if access and access.allowed_team_ids is not None:
+                    configs[key]["allowed_team_ids"] = access.allowed_team_ids
+                else:
+                    configs[key]["allowed_team_ids"] = []
+        except Exception as _:
+            pass
 
         return config
     except Exception as e:
@@ -148,7 +183,12 @@ async def get_cloud_config(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/credentials")
 async def get_cloud_credentials(
-    cloud: str = Path(..., regex="^(azure|runpod)$"), config_key: str = None
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    config_key: str = None,
+    request: Request = None,
+    response: Response = None,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """Get cloud configuration with actual credentials (Azure only)"""
     if cloud != "azure":
@@ -161,7 +201,24 @@ async def get_cloud_credentials(
 
         if config_key:
             if config_key in config_data.get("configs", {}):
-                return config_data["configs"][config_key]
+                cfg = config_data["configs"][config_key]
+                # Enrich with allowed_team_ids from DB
+                try:
+                    access = (
+                        db.query(NodePoolAccess)
+                        .filter(
+                            NodePoolAccess.organization_id == user["organization_id"],
+                            NodePoolAccess.provider == "azure",
+                            NodePoolAccess.pool_key == config_key,
+                        )
+                        .first()
+                    )
+                    if access and access.allowed_team_ids is not None:
+                        cfg = cfg.copy()
+                        cfg["allowed_team_ids"] = access.allowed_team_ids
+                except Exception:
+                    pass
+                return cfg
             else:
                 raise HTTPException(
                     status_code=404, detail=f"Azure config '{config_key}' not found"
@@ -186,6 +243,10 @@ async def get_cloud_credentials(
 async def save_cloud_config(
     cloud: str = Path(..., regex="^(azure|runpod)$"),
     config_request: AzureConfigRequest | RunPodConfigRequest = None,
+    request: Request = None,
+    response: Response = None,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """Save cloud configuration"""
     try:
@@ -205,7 +266,54 @@ async def save_cloud_config(
                 config_request.allowed_regions,
                 config_request.max_instances,
                 config_request.config_key,
+                config_request.allowed_team_ids,
             )
+
+            # Persist team access in DB keyed by config key
+            try:
+                final_key = (
+                    config_request.name.lower().replace(" ", "_").replace("-", "_")
+                )
+                # If the config was renamed, remove old access row
+                if config_request.config_key and config_request.config_key != final_key:
+                    try:
+                        old = (
+                            db.query(NodePoolAccess)
+                            .filter(
+                                NodePoolAccess.organization_id
+                                == user["organization_id"],
+                                NodePoolAccess.provider == "azure",
+                                NodePoolAccess.pool_key == config_request.config_key,
+                            )
+                            .first()
+                        )
+                        if old:
+                            db.delete(old)
+                            db.commit()
+                    except Exception:
+                        pass
+                access = (
+                    db.query(NodePoolAccess)
+                    .filter(
+                        NodePoolAccess.organization_id == user["organization_id"],
+                        NodePoolAccess.provider == "azure",
+                        NodePoolAccess.pool_key == final_key,
+                    )
+                    .first()
+                )
+                if not access:
+                    access = NodePoolAccess(
+                        organization_id=user["organization_id"],
+                        provider="azure",
+                        pool_key=final_key,
+                        allowed_team_ids=config_request.allowed_team_ids or [],
+                    )
+                    db.add(access)
+                else:
+                    access.allowed_team_ids = config_request.allowed_team_ids or []
+                db.commit()
+            except Exception as _:
+                pass
 
             return result
 
@@ -222,7 +330,54 @@ async def save_cloud_config(
                 config_request.max_instances,
                 config_request.config_key,
                 config_request.allowed_display_options,
+                config_request.allowed_team_ids,
             )
+
+            # Persist team access in DB keyed by config key
+            try:
+                final_key = (
+                    config_request.name.lower().replace(" ", "_").replace("-", "_")
+                )
+                # If the config was renamed, remove old access row
+                if config_request.config_key and config_request.config_key != final_key:
+                    try:
+                        old = (
+                            db.query(NodePoolAccess)
+                            .filter(
+                                NodePoolAccess.organization_id
+                                == user["organization_id"],
+                                NodePoolAccess.provider == "runpod",
+                                NodePoolAccess.pool_key == config_request.config_key,
+                            )
+                            .first()
+                        )
+                        if old:
+                            db.delete(old)
+                            db.commit()
+                    except Exception:
+                        pass
+                access = (
+                    db.query(NodePoolAccess)
+                    .filter(
+                        NodePoolAccess.organization_id == user["organization_id"],
+                        NodePoolAccess.provider == "runpod",
+                        NodePoolAccess.pool_key == final_key,
+                    )
+                    .first()
+                )
+                if not access:
+                    access = NodePoolAccess(
+                        organization_id=user["organization_id"],
+                        provider="runpod",
+                        pool_key=final_key,
+                        allowed_team_ids=config_request.allowed_team_ids or [],
+                    )
+                    db.add(access)
+                else:
+                    access.allowed_team_ids = config_request.allowed_team_ids or []
+                db.commit()
+            except Exception as _:
+                pass
 
             return result
         else:
@@ -350,6 +505,7 @@ async def run_cloud_sky_check(cloud: str = Path(..., regex="^(azure|runpod)$")):
 async def get_cloud_instances(
     cloud: str = Path(..., regex="^(azure|runpod)$"),
     user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """Get current cloud instance count and limits"""
     try:
@@ -378,10 +534,39 @@ async def get_cloud_instances(
         current_count = len(user_cloud_clusters)
         max_instances = config.get("max_instances", 0) if config else 0
 
+        # Team access enforcement: check default config access
+        access_allowed = True
+        try:
+            # Get default config key
+            default_key = None
+            if cloud == "azure":
+                cfg_data = load_azure_config()
+            else:
+                cfg_data = load_runpod_config()
+            default_key = cfg_data.get("default_config")
+            if default_key:
+                access_row = (
+                    db.query(NodePoolAccess)
+                    .filter(
+                        NodePoolAccess.organization_id == user["organization_id"],
+                        NodePoolAccess.provider == cloud,
+                        NodePoolAccess.pool_key == default_key,
+                    )
+                    .first()
+                )
+                allowed_team_ids = (
+                    access_row.allowed_team_ids if access_row and access_row.allowed_team_ids else []
+                )
+                if allowed_team_ids:
+                    user_team_id = get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                    access_allowed = user_team_id is not None and user_team_id in allowed_team_ids
+        except Exception:
+            pass
+
         return {
             "current_count": current_count,
             "max_instances": max_instances,
-            "can_launch": max_instances == 0 or current_count < max_instances,
+            "can_launch": (max_instances == 0 or current_count < max_instances) and access_allowed,
         }
     except Exception as e:
         raise HTTPException(

@@ -28,6 +28,11 @@ interface RunPodConfig {
   max_instances: number;
 }
 
+interface TeamOption {
+  id: string;
+  name: string;
+}
+
 interface GpuType {
   name: string;
   display_name: string;
@@ -57,6 +62,8 @@ const RunPodConfigPage: React.FC = () => {
   });
   const [poolName, setPoolName] = useState(initialPoolName);
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
+  const [availableTeams, setAvailableTeams] = useState<TeamOption[]>([]);
+  const [allowedTeamIds, setAllowedTeamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [skyChecking, setSkyChecking] = useState(false);
@@ -71,7 +78,11 @@ const RunPodConfigPage: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       // Always fetch available GPU types first
-      await Promise.all([fetchAvailableGpuTypes(), fetchExistingConfigs()]);
+      await Promise.all([
+        fetchAvailableGpuTypes(),
+        fetchExistingConfigs(),
+        fetchAvailableTeams(),
+      ]);
 
       // Then fetch existing config if in configure mode
       if (isConfigureMode) {
@@ -115,6 +126,7 @@ const RunPodConfigPage: React.FC = () => {
             max_instances: specificConfig.max_instances || 0,
           });
           setPoolName(specificConfig.name || initialPoolName);
+          setAllowedTeamIds(specificConfig.allowed_team_ids || []);
         }
         // Otherwise use the default config
         else if (
@@ -130,6 +142,7 @@ const RunPodConfigPage: React.FC = () => {
             max_instances: defaultConfig.max_instances || 0,
           });
           setPoolName(defaultConfig.name || initialPoolName);
+          setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
         }
       } else {
         addNotification({
@@ -144,6 +157,24 @@ const RunPodConfigPage: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableTeams = async () => {
+    try {
+      const response = await apiFetch(buildApiUrl("admin/teams"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const teams: TeamOption[] = (data.teams || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+        }));
+        setAvailableTeams(teams);
+      }
+    } catch (err) {
+      console.error("Error fetching teams:", err);
     }
   };
 
@@ -225,6 +256,7 @@ const RunPodConfigPage: React.FC = () => {
         api_key: config.api_key,
         allowed_gpu_types: config.allowed_gpu_types,
         max_instances: config.max_instances,
+        allowed_team_ids: allowedTeamIds,
       };
 
       // Only include config_key if it's not null
@@ -257,9 +289,11 @@ const RunPodConfigPage: React.FC = () => {
             is_configured: data.is_configured || false,
             max_instances: defaultConfig.max_instances || 0,
           });
+          setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
         } else {
           // Fallback to legacy structure
           setConfig(data);
+          setAllowedTeamIds(data.allowed_team_ids || []);
         }
 
         if (data.sky_check_result) {
@@ -432,6 +466,52 @@ const RunPodConfigPage: React.FC = () => {
                 placeholder="Enter pool name"
               />
             </FormControl>
+          </Stack>
+        </Card>
+
+        {/* Team Access */}
+        <Card variant="outlined">
+          <Typography level="h4" sx={{ mb: 2 }}>
+            Team Access
+          </Typography>
+          <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
+            Choose which teams can use this RunPod node pool.
+          </Typography>
+          <Stack spacing={2}>
+            <FormControl>
+              <FormLabel>Allowed Teams</FormLabel>
+              <Autocomplete
+                multiple
+                options={availableTeams}
+                getOptionLabel={(opt) => opt.name}
+                value={availableTeams.filter((t) =>
+                  allowedTeamIds.includes(t.id)
+                )}
+                onChange={(_, newValue) => {
+                  setAllowedTeamIds(newValue.map((t) => t.id));
+                }}
+                placeholder="Select teams that can access this pool..."
+                sx={{ width: "100%" }}
+                limitTags={5}
+                disableCloseOnSelect
+              />
+            </FormControl>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                size="sm"
+                variant="outlined"
+                onClick={() => setAllowedTeamIds(availableTeams.map((t) => t.id))}
+              >
+                Allow All Teams
+              </Button>
+              <Button
+                size="sm"
+                variant="outlined"
+                onClick={() => setAllowedTeamIds([])}
+              >
+                Clear
+              </Button>
+            </Box>
           </Stack>
         </Card>
 

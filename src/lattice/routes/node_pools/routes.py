@@ -1,4 +1,5 @@
 from typing import Optional
+from pydantic import BaseModel
 
 from fastapi import (
     APIRouter,
@@ -38,8 +39,13 @@ from .utils import (
     schedule_gpu_resources_update,
 )
 from config import get_db
-from db.db_models import SSHNodePool as SSHNodePoolDB
+from db.db_models import (
+    SSHNodePool as SSHNodePoolDB,
+    Team as TeamDB,
+    NodePoolAccess as NodePoolAccessDB,
+)
 from sqlalchemy.orm import Session
+from routes.quota.utils import get_user_team_id
 
 router = APIRouter(
     prefix="/node-pools",
@@ -163,6 +169,24 @@ async def get_node_pools(
         try:
             node_pools = []
 
+            # Helper to map team IDs to names for display
+            def map_team_ids_to_names(team_ids: list[str]) -> list[str]:
+                if not team_ids:
+                    return []
+                try:
+                    # Fetch teams in one query
+                    teams = (
+                        db.query(TeamDB)
+                        .filter(
+                            TeamDB.organization_id == user["organization_id"],
+                            TeamDB.id.in_(team_ids),
+                        )
+                        .all()
+                    )
+                    return [t.name for t in teams]
+                except Exception:
+                    return []
+
             # Get Azure configs
             try:
                 azure_config_data = load_azure_config()
@@ -185,6 +209,32 @@ async def get_node_pools(
                                 ):
                                     azure_instances += 1
 
+                        # Determine access teams for display from DB
+                        access_team_ids = []
+                        try:
+                            access_row = (
+                                db.query(NodePoolAccessDB)
+                                .filter(
+                                    NodePoolAccessDB.organization_id
+                                    == user["organization_id"],
+                                    NodePoolAccessDB.provider == "azure",
+                                    NodePoolAccessDB.pool_key == config_key,
+                                )
+                                .first()
+                            )
+                            if access_row and access_row.allowed_team_ids:
+                                access_team_ids = access_row.allowed_team_ids
+                        except Exception:
+                            pass
+                        access_team_names = map_team_ids_to_names(access_team_ids)
+                        # team-based access evaluation
+                        user_team_id = (
+                            get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                        )
+                        access_allowed = True
+                        if access_team_ids:
+                            access_allowed = user_team_id is not None and user_team_id in access_team_ids
+
                         node_pools.append(
                             {
                                 "name": config.get("name", "Azure Pool"),
@@ -192,12 +242,15 @@ async def get_node_pools(
                                 "provider": "azure",
                                 "max_instances": config.get("max_instances", 0),
                                 "current_instances": azure_instances,
-                                "can_launch": config.get("max_instances", 0) == 0
-                                or azure_instances < config.get("max_instances", 0),
+                                "can_launch": (
+                                    (config.get("max_instances", 0) == 0
+                                     or azure_instances < config.get("max_instances", 0))
+                                    and access_allowed
+                                ),
                                 "status": "enabled"
                                 if azure_config_data.get("is_configured", False)
                                 else "disabled",
-                                "access": ["Admin"],
+                                "access": access_team_names if access_team_names else ["Admin"],
                                 "config": {
                                     "is_configured": azure_config_data.get(
                                         "is_configured", False
@@ -213,6 +266,7 @@ async def get_node_pools(
                                     "allowed_regions": config.get(
                                         "allowed_regions", []
                                     ),
+                                    "allowed_team_ids": access_team_ids,
                                 },
                             }
                         )
@@ -241,6 +295,32 @@ async def get_node_pools(
                                 ):
                                     runpod_instances += 1
 
+                        # Determine access teams for display from DB
+                        access_team_ids = []
+                        try:
+                            access_row = (
+                                db.query(NodePoolAccessDB)
+                                .filter(
+                                    NodePoolAccessDB.organization_id
+                                    == user["organization_id"],
+                                    NodePoolAccessDB.provider == "runpod",
+                                    NodePoolAccessDB.pool_key == config_key,
+                                )
+                                .first()
+                            )
+                            if access_row and access_row.allowed_team_ids:
+                                access_team_ids = access_row.allowed_team_ids
+                        except Exception:
+                            pass
+                        access_team_names = map_team_ids_to_names(access_team_ids)
+                        # team-based access evaluation
+                        user_team_id = (
+                            get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                        )
+                        access_allowed = True
+                        if access_team_ids:
+                            access_allowed = user_team_id is not None and user_team_id in access_team_ids
+
                         node_pools.append(
                             {
                                 "name": config.get("name", "RunPod Pool"),
@@ -248,12 +328,15 @@ async def get_node_pools(
                                 "provider": "runpod",
                                 "max_instances": config.get("max_instances", 0),
                                 "current_instances": runpod_instances,
-                                "can_launch": config.get("max_instances", 0) == 0
-                                or runpod_instances < config.get("max_instances", 0),
+                                "can_launch": (
+                                    (config.get("max_instances", 0) == 0
+                                     or runpod_instances < config.get("max_instances", 0))
+                                    and access_allowed
+                                ),
                                 "status": "enabled"
                                 if runpod_config_data.get("is_configured", False)
                                 else "disabled",
-                                "access": ["Admin"],
+                                "access": access_team_names if access_team_names else ["Admin"],
                                 "config": {
                                     "is_configured": runpod_config_data.get(
                                         "is_configured", False
@@ -266,6 +349,7 @@ async def get_node_pools(
                                     "allowed_gpu_types": config.get(
                                         "allowed_gpu_types", []
                                     ),
+                                    "allowed_team_ids": access_team_ids,
                                 },
                             }
                         )
@@ -329,6 +413,24 @@ async def get_node_pools(
                                 )
                                 ssh_instances_for_user += 1
 
+                    # Determine access teams for display (from DB other_data)
+                    allowed_team_ids = []
+                    try:
+                        od = pool.other_data or {}
+                        if isinstance(od, dict):
+                            allowed_team_ids = od.get("allowed_team_ids", []) or []
+                    except Exception:
+                        allowed_team_ids = []
+
+                    access_team_names = map_team_ids_to_names(allowed_team_ids)
+                    # team-based access evaluation
+                    user_team_id = (
+                        get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                    )
+                    access_allowed = True
+                    if allowed_team_ids:
+                        access_allowed = user_team_id is not None and user_team_id in allowed_team_ids
+
                     node_pools.append(
                         {
                             "name": cluster_name,
@@ -336,12 +438,13 @@ async def get_node_pools(
                             "provider": "direct",
                             "max_instances": hosts_count,
                             "current_instances": hosts_count,
-                            "can_launch": True,
+                            "can_launch": access_allowed,
                             "status": "enabled",
-                            "access": ["Admin"],
+                            "access": access_team_names if access_team_names else ["Admin"],
                             "config": {
                                 "is_configured": True,
                                 "hosts": cfg.get("hosts", []),
+                                "allowed_team_ids": allowed_team_ids,
                             },
                             "gpu_resources": cached_gpu_resources,
                             "active_clusters": active_clusters,
@@ -748,3 +851,81 @@ async def get_node_pool_gpu_resources(
         raise HTTPException(
             status_code=500, detail=f"Failed to get GPU resources: {str(e)}"
         )
+
+
+@router.get("/ssh-node-pools/{cluster_name}/access")
+async def get_ssh_pool_access(
+    cluster_name: str,
+    current_user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    """Get allowed teams for an SSH node pool."""
+    # Ensure pool exists and within user's organization
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == current_user["organization_id"],
+        )
+        .first()
+    )
+    if not pool:
+        raise HTTPException(status_code=404, detail="SSH node pool not found")
+
+    allowed_team_ids = []
+    try:
+        od = pool.other_data or {}
+        if isinstance(od, dict):
+            allowed_team_ids = od.get("allowed_team_ids", []) or []
+    except Exception:
+        allowed_team_ids = []
+
+    # Map to names for convenience
+    teams = (
+        db.query(TeamDB)
+        .filter(TeamDB.organization_id == current_user["organization_id"], TeamDB.id.in_(allowed_team_ids))
+        .all()
+    )
+    return {
+        "allowed_team_ids": allowed_team_ids,
+        "allowed_team_names": [t.name for t in teams],
+    }
+
+
+class UpdateAccessRequest(BaseModel):
+    allowed_team_ids: list[str] = []
+
+
+@router.put("/ssh-node-pools/{cluster_name}/access")
+async def update_ssh_pool_access(
+    cluster_name: str,
+    body: UpdateAccessRequest,
+    current_user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    """Update allowed teams for an SSH node pool."""
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == current_user["organization_id"],
+        )
+        .first()
+    )
+    if not pool:
+        raise HTTPException(status_code=404, detail="SSH node pool not found")
+
+    # Persist in other_data JSON
+    od = pool.other_data or {}
+    if not isinstance(od, dict):
+        od = {}
+    od["allowed_team_ids"] = body.allowed_team_ids or []
+    pool.other_data = od
+
+    # Flag modified and commit
+    from sqlalchemy.orm.attributes import flag_modified
+
+    flag_modified(pool, "other_data")
+    db.commit()
+
+    return {"message": "Access updated", "allowed_team_ids": od["allowed_team_ids"]}

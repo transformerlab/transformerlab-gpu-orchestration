@@ -85,6 +85,7 @@ def rp_save_config(
     allowed_gpu_types: list[str],
     max_instances: int = 0,
     config_key: str = None,
+    allowed_team_ids: list[str] = None,
 ):
     """Save RunPod configuration to file (legacy compatibility)"""
     print(f"💾 Saving RunPod config - allowed_gpu_types: {allowed_gpu_types}")
@@ -97,6 +98,7 @@ def rp_save_config(
         "allowed_gpu_types": allowed_gpu_types,
         "max_instances": max_instances,
     }
+    # Team access is stored in DB; do not persist to config file
 
     # Generate the new config key based on the name
     new_config_key = name.lower().replace(" ", "_").replace("-", "_")
@@ -695,6 +697,7 @@ def rp_save_config_with_setup(
     max_instances: int = 0,
     config_key: str = None,
     allowed_display_options: list[str] = None,
+    allowed_team_ids: list[str] = None,
 ):
     """Save RunPod configuration with environment setup, config.toml creation, and sky check"""
     import os
@@ -706,6 +709,7 @@ def rp_save_config_with_setup(
         allowed_gpu_types,
         max_instances,
         config_key,
+        allowed_team_ids,
     )
 
     # Update display options if provided

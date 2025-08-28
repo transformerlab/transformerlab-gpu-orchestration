@@ -84,6 +84,7 @@ def az_save_config(
     allowed_regions: List[str],
     max_instances: int = 0,
     config_key: str = None,
+    allowed_team_ids: List[str] = None,
 ):
     """Save Azure configuration to file (legacy compatibility)"""
     config_data = load_azure_config()
@@ -101,6 +102,7 @@ def az_save_config(
         "max_instances": max_instances,
         "auth_method": "service_principal",
     }
+    # Team access is stored in DB; do not persist to config file
 
     # Generate the new config key based on the name
     new_config_key = name.lower().replace(" ", "_").replace("-", "_")
@@ -530,6 +532,7 @@ def az_save_config_with_setup(
     allowed_regions: list[str],
     max_instances: int = 0,
     config_key: str = None,
+    allowed_team_ids: list[str] = None,
 ):
     """Save Azure configuration with environment setup and sky check"""
     import os
@@ -545,6 +548,7 @@ def az_save_config_with_setup(
         allowed_regions,
         max_instances,
         config_key,
+        allowed_team_ids,
     )
 
     # Set environment variables for Azure
