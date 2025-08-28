@@ -352,6 +352,53 @@ class ContainerRegistry(Base, ValidationMixin):
     )
 
 
+class DockerImage(Base, ValidationMixin):
+    __tablename__ = "docker_images"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    name = Column(String, nullable=False)  # Human-readable name for the image
+    image_tag = Column(String, nullable=False)  # Full docker image tag (e.g., "myapp:latest")
+    description = Column(Text, nullable=True)  # Optional description of the image
+    container_registry_id = Column(String, nullable=True)  # Reference to container registry (empty for standalone images)
+    organization_id = Column(String, nullable=False)  # Organization that owns this image
+    user_id = Column(String, nullable=False)  # User who created this image
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)  # Whether the image is active
+
+    # Image name must be unique within a container registry (or standalone)
+    __table_args__ = (
+        UniqueConstraint(
+            "container_registry_id", "name", name="uq_docker_images_registry_name"
+        ),
+    )
+
+    def validate_container_registry_exists(self, session):
+        """Validate that the referenced container registry exists"""
+        # Skip validation for standalone images (empty container_registry_id)
+        if not self.container_registry_id:
+            return None
+            
+        registry = session.execute(
+            text("SELECT id, organization_id FROM container_registries WHERE id = :registry_id"),
+            {"registry_id": self.container_registry_id}
+        ).first()
+        if not registry:
+            raise ValueError(f"Container registry with id {self.container_registry_id} does not exist")
+        return registry
+
+    def validate_registry_organization_match(self, session):
+        """Validate that the container registry belongs to the same organization"""
+        # Skip validation for standalone images (empty container_registry_id)
+        if not self.container_registry_id:
+            return None
+            
+        registry = self.validate_container_registry_exists(session)
+        if registry.organization_id != self.organization_id:
+            raise ValueError(f"Container registry {self.container_registry_id} does not belong to organization {self.organization_id}")
+        return registry
+
+
 class ClusterPlatform(Base, ValidationMixin):
     __tablename__ = "cluster_platforms"
 

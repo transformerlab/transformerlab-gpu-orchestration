@@ -131,8 +131,7 @@ async def launch_instance(
 
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
-    docker_image: Optional[str] = Form(None),
-    container_registry_id: Optional[str] = Form(None),
+    docker_image_id: Optional[str] = Form(None),
 ):
     try:
         file_mounts = None
@@ -237,8 +236,7 @@ async def launch_instance(
             disk_size=disk_size,
             storage_bucket_ids=parsed_storage_bucket_ids,
             node_pool_name=node_pool_name,
-            docker_image=docker_image,
-            container_registry_id=container_registry_id,
+            docker_image_id=docker_image_id,
             user_id=user_id,
             organization_id=organization_id,
             display_name=cluster_name,  # Pass the display name for database storage

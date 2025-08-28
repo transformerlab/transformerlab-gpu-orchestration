@@ -430,6 +430,39 @@ class ContainerRegistryListResponse(BaseModel):
     total_count: int
 
 
+# Docker Image Models
+class DockerImageResponse(BaseModel):
+    id: str
+    name: str
+    image_tag: str
+    description: Optional[str] = None
+    container_registry_id: Optional[str] = None
+    organization_id: str
+    user_id: str
+    created_at: str
+    updated_at: str
+    is_active: bool
+
+
+class CreateDockerImageRequest(BaseModel):
+    name: str
+    image_tag: str
+    description: Optional[str] = None
+    container_registry_id: Optional[str] = None
+
+
+class UpdateDockerImageRequest(BaseModel):
+    name: Optional[str] = None
+    image_tag: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class DockerImageListResponse(BaseModel):
+    images: List[DockerImageResponse]
+    total_count: int
+
+
 # SSH Key Models
 class SSHKeyResponse(BaseModel):
     id: str

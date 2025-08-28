@@ -63,6 +63,19 @@ interface ContainerRegistry {
   is_active: boolean;
 }
 
+interface DockerImage {
+  id: string;
+  name: string;
+  image_tag: string;
+  description?: string;
+  container_registry_id: string;
+  organization_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
 const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   open,
   onClose,
@@ -75,22 +88,20 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
 
-  const [dockerImage, setDockerImage] = useState("");
-  const [selectedRegistryId, setSelectedRegistryId] = useState("");
+  const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
+
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
 
-  // Container registry state
-  const [containerRegistries, setContainerRegistries] = useState<
-    ContainerRegistry[]
-  >([]);
-  const [loadingRegistries, setLoadingRegistries] = useState(false);
+  // Docker image state
+  const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
+  const [loadingDockerImages, setLoadingDockerImages] = useState(false);
   const { addNotification } = useNotification();
 
   useEffect(() => {
     if (open) {
       fetchAvailableGpuTypes();
-      fetchContainerRegistries();
+      fetchDockerImages();
       // Set the first allowed GPU type as default when config is available
       if (
         runpodConfig.allowed_gpu_types &&
@@ -132,24 +143,24 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     }
   };
 
-  const fetchContainerRegistries = async () => {
+  const fetchDockerImages = async () => {
     try {
-      setLoadingRegistries(true);
+      setLoadingDockerImages(true);
       const response = await apiFetch(
-        buildApiUrl("container-registries/available"),
+        buildApiUrl("container-registries/images/available"),
         {
           credentials: "include",
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to fetch container registries");
+        throw new Error("Failed to fetch docker images");
       }
       const data = await response.json();
-      setContainerRegistries(data);
+      setDockerImages(data);
     } catch (err) {
-      console.error("Error fetching container registries:", err);
+      console.error("Error fetching docker images:", err);
     } finally {
-      setLoadingRegistries(false);
+      setLoadingDockerImages(false);
     }
   };
 
@@ -160,8 +171,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSelectedGpuType("");
     setSelectedGpuFullString("");
 
-    setDockerImage("");
-    setSelectedRegistryId("");
+    setSelectedDockerImageId("");
   };
 
   const handleClose = () => {
@@ -190,9 +200,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
-      if (dockerImage) formData.append("docker_image", dockerImage);
-      if (selectedRegistryId)
-        formData.append("container_registry_id", selectedRegistryId);
+      if (selectedDockerImageId)
+        formData.append("docker_image_id", selectedDockerImageId);
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
@@ -262,61 +271,39 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             <Stack spacing={2}>
               <FormControl>
                 <FormLabel>Docker Image</FormLabel>
-                <Input
-                  value={dockerImage}
-                  onChange={(e) => setDockerImage(e.target.value)}
-                  placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
-                />
+                {loadingDockerImages ? (
+                  <Typography level="body-sm" color="neutral">
+                    Loading docker images...
+                  </Typography>
+                ) : dockerImages.length === 0 ? (
+                  <Typography level="body-sm" color="warning">
+                    No docker images configured. You can add them in Admin &gt;
+                    Private Container Registry.
+                  </Typography>
+                ) : (
+                  <Select
+                    value={selectedDockerImageId}
+                    onChange={(_, value) =>
+                      setSelectedDockerImageId(value || "")
+                    }
+                    placeholder="Select a docker image (optional)"
+                  >
+                    {dockerImages.map((image) => (
+                      <Option key={image.id} value={image.id}>
+                        {image.name} ({image.image_tag})
+                      </Option>
+                    ))}
+                  </Select>
+                )}
                 <Typography
                   level="body-xs"
                   sx={{ mt: 0.5, color: "text.secondary" }}
                 >
                   Use a Docker image as runtime environment. Leave empty to use
-                  default RunPod image.
+                  default RunPod image. Configure images in Admin &gt; Private
+                  Container Registry.
                 </Typography>
               </FormControl>
-
-              {dockerImage && (
-                <>
-                  <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
-                    Private Registry Authentication (optional)
-                  </Typography>
-                  <FormControl>
-                    <FormLabel>Container Registry</FormLabel>
-                    {loadingRegistries ? (
-                      <Typography level="body-sm" color="neutral">
-                        Loading registries...
-                      </Typography>
-                    ) : containerRegistries.length === 0 ? (
-                      <Typography level="body-sm" color="warning">
-                        No container registries configured. You can add them in
-                        Admin &gt; Private Container Registry.
-                      </Typography>
-                    ) : (
-                      <Select
-                        value={selectedRegistryId}
-                        onChange={(_, value) =>
-                          setSelectedRegistryId(value || "")
-                        }
-                        placeholder="Select a registry (optional)"
-                      >
-                        {containerRegistries.map((registry) => (
-                          <Option key={registry.id} value={registry.id}>
-                            {registry.name} ({registry.docker_server})
-                          </Option>
-                        ))}
-                      </Select>
-                    )}
-                    <Typography
-                      level="body-xs"
-                      sx={{ mt: 0.5, color: "text.secondary" }}
-                    >
-                      Leave empty for public images or Docker Hub. Select a
-                      configured registry for private images.
-                    </Typography>
-                  </FormControl>
-                </>
-              )}
             </Stack>
           </Card>
 
