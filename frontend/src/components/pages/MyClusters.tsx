@@ -2,7 +2,9 @@ import React from "react";
 import useSWR from "swr";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import Held from "./MyNodes/Holds";
+import InstanceHistory from "./MyNodes/InstanceHistory";
 import PageWithTitle from "./templates/PageWithTitle";
+import { Box, Button, Typography } from "@mui/joy";
 
 interface Cluster {
   cluster_name: string;
@@ -15,7 +17,7 @@ interface Cluster {
 }
 
 const MyClusters: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState(0);
+  const [showPastInstances, setShowPastInstances] = React.useState(false);
 
   // --- SkyPilot Clusters Section ---
   const skypilotFetcher = (url: string) =>
@@ -34,20 +36,29 @@ const MyClusters: React.FC = () => {
         c.status.toLowerCase().includes("up"))
   );
 
-  const handleTabChange = (tabIndex: number) => {
-    setActiveTab(tabIndex);
-  };
-
   return (
     <PageWithTitle
       title="My Instances"
-      subtitle="View the instances or clusters currently reserved for you."
+      subtitle="View your current instances and instance history."
     >
-      <Held
-        skypilotLoading={skypilotLoading}
-        myClusters={myClusters}
-        onTabChange={handleTabChange}
-      />
+      {/* Current Instances Section */}
+      <Held skypilotLoading={skypilotLoading} myClusters={myClusters} />
+
+      {/* Past Instances Section */}
+      <Box sx={{ mt: 6 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+          <Typography level="h3">Past Instances</Typography>
+          <Button
+            size="sm"
+            variant="outlined"
+            onClick={() => setShowPastInstances(!showPastInstances)}
+          >
+            {showPastInstances ? "Hide" : "Show"} Past Instances
+          </Button>
+        </Box>
+
+        {showPastInstances && <InstanceHistory />}
+      </Box>
     </PageWithTitle>
   );
 };
