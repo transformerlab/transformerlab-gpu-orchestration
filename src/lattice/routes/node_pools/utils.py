@@ -354,12 +354,16 @@ def is_down_only_cluster(cluster_name: str):
 
 def delete_cluster_in_pools(cluster_name: str):
     pools = load_ssh_node_pools()
-    if cluster_name not in pools:
-        raise HTTPException(
-            status_code=404, detail=f"Cluster '{cluster_name}' not found"
-        )
-    del pools[cluster_name]
-    save_ssh_node_pools(pools)
+    yaml_file_found = cluster_name in pools
+    
+    # Delete from YAML file if it exists there
+    if yaml_file_found:
+        del pools[cluster_name]
+        save_ssh_node_pools(pools)
+    else:
+        print(f"Warning: Cluster '{cluster_name}' not found in YAML file, but will attempt to delete from database")
+    
+    # Always try to delete from database
     try:
         db = SessionLocal()
         pool = (
@@ -371,6 +375,16 @@ def delete_cluster_in_pools(cluster_name: str):
             
             db.delete(pool)
             db.commit()
+            print(f"Successfully deleted cluster '{cluster_name}' from database")
+        else:
+            # If not found in YAML file and not found in database, raise 404
+            if not yaml_file_found:
+                raise HTTPException(
+                    status_code=404, detail=f"Cluster '{cluster_name}' not found in database or YAML file"
+                )
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
     except Exception as e:
         print(f"Warning: Failed to delete SSH node pool from DB: {e}")
     finally:
