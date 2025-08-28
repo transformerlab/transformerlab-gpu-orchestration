@@ -29,7 +29,7 @@ from models import (
     ClusterStatusResponse,
 )
 from .utils import (
-    launch_cluster_with_skypilot,
+    launch_cluster_with_skypilot_isolated,
     get_skypilot_status,
     stop_cluster_with_skypilot,
     down_cluster_with_skypilot,
@@ -143,6 +143,7 @@ async def launch_instance(
         file_mounts = None
         python_filename = None
         disk_size = None
+        credentials = None
 
         # Parse storage bucket IDs
         parsed_storage_bucket_ids = None
@@ -154,15 +155,15 @@ async def launch_instance(
             except Exception as e:
                 print(f"Warning: Failed to parse storage bucket IDs: {e}")
 
-        if python_file is not None and python_file.filename:
-            # Save the uploaded file to a persistent uploads directory
-            python_filename = python_file.filename
-            unique_filename = f"{uuid.uuid4()}_{python_filename}"
-            file_path = UPLOADS_DIR / unique_filename
-            with open(file_path, "wb") as f:
-                f.write(await python_file.read())
-            # Mount the file to workspace/<filename> in the cluster
-            file_mounts = {f"workspace/{python_filename}": str(file_path)}
+        # if python_file is not None and python_file.filename:
+        #     # Save the uploaded file to a persistent uploads directory
+        #     python_filename = python_file.filename
+        #     unique_filename = f"{uuid.uuid4()}_{python_filename}"
+        #     file_path = UPLOADS_DIR / unique_filename
+        #     with open(file_path, "wb") as f:
+        #         f.write(await python_file.read())
+        #     # Mount the file to workspace/<filename> in the cluster
+        #     file_mounts = {f"workspace/{python_filename}": str(file_path)}
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
@@ -189,22 +190,24 @@ async def launch_instance(
             try:
                 # az_setup_config()
                 az_config = az_get_config_for_display()
+                az_config_dict = az_config["configs"][az_config["default_config"]]
+                credentials = {
+                    "azure": {
+                        "service_principal": {
+                            "tenant_id": az_config_dict["tenant_id"],
+                            "client_id": az_config_dict["client_id"],
+                            "client_secret": az_config_dict["client_secret"],
+                            "subscription_id": az_config_dict["subscription_id"],
+                        }
+                    }
+                }
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
         # print(f"az_config: {az_config}")
         # raise Exception("test")
-        credentials = {
-            "azure": {
-                "service_principal": {
-                    "tenant_id": "fake",
-                    "client_id": "fake",
-                    "client_secret": "fake",
-                    "subscription_id": "fake",
-                }
-            }
-        }
+        print(f"credentials: {credentials}")
         # Get user info first for cluster creation
         user_info = get_current_user(request, response)
         user_id = user_info["id"]
@@ -234,8 +237,8 @@ async def launch_instance(
             template=template,
         )
 
-        # Launch cluster using the actual cluster name
-        request_id = launch_cluster_with_skypilot(
+        # Launch cluster using the actual cluster name (isolated process)
+        request_id = await launch_cluster_with_skypilot_isolated(
             cluster_name=actual_cluster_name,
             command=command,
             setup=setup,

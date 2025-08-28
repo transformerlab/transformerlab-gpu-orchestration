@@ -3,6 +3,10 @@ import sky
 from typing import Optional
 from werkzeug.utils import secure_filename
 import asyncio
+import json
+import tempfile
+import os
+import sys
 
 from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
 from utils.skypilot_tracker import skypilot_tracker
@@ -385,6 +389,168 @@ def launch_cluster_with_skypilot(
         raise HTTPException(
             status_code=500, detail=f"Failed to launch cluster: {str(e)}"
         )
+
+
+async def launch_cluster_with_skypilot_isolated(
+    cluster_name: str,
+    command: str,
+    setup=None,
+    cloud=None,
+    instance_type=None,
+    cpus=None,
+    memory=None,
+    accelerators=None,
+    region=None,
+    zone=None,
+    use_spot=False,
+    idle_minutes_to_autostop=None,
+    file_mounts: Optional[dict] = None,
+    workdir: Optional[str] = None,
+    launch_mode: Optional[str] = None,
+    jupyter_port: Optional[int] = None,
+    vscode_port: Optional[int] = None,
+    disk_size: Optional[int] = None,
+    storage_bucket_ids: Optional[list] = None,
+    node_pool_name: Optional[str] = None,
+    docker_image: Optional[str] = None,
+    container_registry_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    display_name: Optional[str] = None,
+    credentials: Optional[dict] = None,
+):
+    """
+    Launch cluster in a separate process to avoid thread-local storage leakage.
+    This prevents SkyPilot's thread-local variables from interfering between launches.
+    """
+    try:
+        # Serialize the launch parameters
+        launch_params = {
+            "cluster_name": cluster_name,
+            "command": command,
+            "setup": setup,
+            "cloud": cloud,
+            "instance_type": instance_type,
+            "cpus": cpus,
+            "memory": memory,
+            "accelerators": accelerators,
+            "region": region,
+            "zone": zone,
+            "use_spot": use_spot,
+            "idle_minutes_to_autostop": idle_minutes_to_autostop,
+            "file_mounts": file_mounts,
+            "workdir": workdir,
+            "launch_mode": launch_mode,
+            "jupyter_port": jupyter_port,
+            "vscode_port": vscode_port,
+            "disk_size": disk_size,
+            "storage_bucket_ids": storage_bucket_ids,
+            "node_pool_name": node_pool_name,
+            "docker_image": docker_image,
+            "container_registry_id": container_registry_id,
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "display_name": display_name,
+            "credentials": credentials,
+        }
+
+        # Create a temporary file to pass parameters
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(launch_params, f, default=str)
+            params_file = f.name
+
+        try:
+            # Get the current working directory and Python path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            lattice_root = os.path.dirname(os.path.dirname(current_dir))
+
+            # Create the worker script content
+            worker_script = f'''
+import sys
+import os
+import json
+
+# Add the lattice directory to Python path
+sys.path.insert(0, "{lattice_root}")
+
+# Change to the correct working directory
+os.chdir("{lattice_root}")
+
+# Import the worker function
+from lattice.routes.instances.utils import _launch_cluster_worker
+
+# Load parameters
+with open("{params_file}", "r") as f:
+    params = json.load(f)
+
+# Execute the launch
+try:
+    result = _launch_cluster_worker(**params)
+    print(json.dumps({{"success": True, "request_id": result}}))
+except Exception as e:
+    print(json.dumps({{"success": False, "error": str(e)}}))
+'''
+
+            # Run the launch in a separate process
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-c",
+                worker_script,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=lattice_root,
+            )
+
+            stdout, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                error_msg = stderr.decode() if stderr else "Unknown error"
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Launch process failed with code {process.returncode}: {error_msg}",
+                )
+
+            # Parse the result
+            try:
+                result_data = json.loads(stdout.decode().strip())
+                if result_data.get("success"):
+                    return result_data.get("request_id")
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Launch failed: {result_data.get('error', 'Unknown error')}",
+                    )
+            except json.JSONDecodeError as e:
+                # Fallback to original output if JSON parsing fails
+                output = stdout.decode().strip()
+                if output:
+                    return output
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Launch process returned invalid output: {stderr.decode() if stderr else 'No output'}",
+                    )
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(params_file)
+            except FileNotFoundError:
+                pass
+
+    except Exception as e:
+        print(f"Error in isolated launch: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to launch cluster in isolated process: {str(e)}",
+        )
+
+
+def _launch_cluster_worker(**params):
+    """
+    Worker function that runs the actual sky.launch in a separate process.
+    This ensures complete isolation from thread-local storage.
+    """
+    return launch_cluster_with_skypilot(**params)
 
 
 def stop_cluster_with_skypilot(
