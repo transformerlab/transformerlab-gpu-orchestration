@@ -30,6 +30,7 @@ class OrganizationsResponse(BaseModel):
 class SSHNode(BaseModel):
     ip: str
     user: str
+    name: Optional[str] = None
     identity_file: Optional[str] = None
     password: Optional[str] = None
     resources: Optional[Dict[str, Any]] = (
