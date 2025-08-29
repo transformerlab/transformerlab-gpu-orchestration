@@ -146,7 +146,6 @@ def launch_cluster_with_skypilot(
     display_name: Optional[str] = None,
 ):
     try:
-        print(f"DOCKER IMAGE ID: {docker_image_id}")
         # Handle RunPod setup
         if cloud and cloud.lower() == "runpod":
             from routes.clouds.runpod.utils import (
