@@ -14,10 +14,10 @@ def get_ssh_node_pools_path():
 
 
 
-def get_user_identity_files_dir(user_id: str, organization_id: str):
-    """Get the identity files directory for a specific user and organization"""
+def get_organization_identity_files_dir(organization_id: str):
+    """Get the identity files directory for a specific organization"""
     sky_dir = Path.home() / ".sky"
-    identity_dir = sky_dir / "identity_files" / organization_id / user_id
+    identity_dir = sky_dir / "identity_files" / organization_id
     identity_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     return identity_dir
 
@@ -60,8 +60,8 @@ def save_named_identity_file(
                 detail="User ID and organization ID are required for identity file operations"
             )
 
-        # Use user-specific directory
-        identity_dir = get_user_identity_files_dir(user_id, organization_id)
+        # Use organization-specific directory
+        identity_dir = get_organization_identity_files_dir(organization_id)
         file_extension = Path(original_filename).suffix
 
         # Create a safe filename from the display name
@@ -102,8 +102,8 @@ def save_temporary_identity_file(
                 detail="User ID and organization ID are required for identity file operations"
             )
 
-        # Use user-specific directory
-        identity_dir = get_user_identity_files_dir(user_id, organization_id)
+        # Use organization-specific directory
+        identity_dir = get_organization_identity_files_dir(organization_id)
         file_extension = Path(original_filename).suffix
 
         # Create a unique filename for temporary files
@@ -121,16 +121,16 @@ def save_temporary_identity_file(
         )
 
 
-def get_available_identity_files(user_id: str, organization_id: str):
-    """Get list of available named identity files for a specific user and organization"""
+def get_available_identity_files(organization_id: str):
+    """Get list of available named identity files for a specific organization"""
     try:
-        if not user_id or not organization_id:
+        if not organization_id:
             raise HTTPException(
                 status_code=400,
-                detail="User ID and organization ID are required for identity file operations"
+                detail="Organization ID is required for identity file operations"
             )
 
-        identity_dir = get_user_identity_files_dir(user_id, organization_id)
+        identity_dir = get_organization_identity_files_dir(organization_id)
         files = []
         
         if identity_dir.exists():
@@ -156,20 +156,20 @@ def get_available_identity_files(user_id: str, organization_id: str):
         return []
 
 
-def delete_named_identity_file(file_path: str, user_id: str, organization_id: str):
+def delete_named_identity_file(file_path: str, organization_id: str):
     """Delete a named identity file"""
     try:
-        if not user_id or not organization_id:
+        if not organization_id:
             raise HTTPException(
                 status_code=400,
-                detail="User ID and organization ID are required for identity file operations"
+                detail="Organization ID is required for identity file operations"
             )
 
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Identity file not found")
 
         # Check if file is in the correct identity files directory
-        expected_dir = get_user_identity_files_dir(user_id, organization_id)
+        expected_dir = get_organization_identity_files_dir(organization_id)
         if not Path(file_path).parent.samefile(expected_dir):
             raise HTTPException(status_code=400, detail="Invalid file path")
 
@@ -183,19 +183,19 @@ def delete_named_identity_file(file_path: str, user_id: str, organization_id: st
         )
 
 
-def rename_identity_file(file_path: str, new_display_name: str, user_id: str, organization_id: str):
+def rename_identity_file(file_path: str, new_display_name: str, organization_id: str):
     """Rename the display name of an identity file"""
     try:
-        if not user_id or not organization_id:
+        if not organization_id:
             raise HTTPException(
                 status_code=400,
-                detail="User ID and organization ID are required for identity file operations"
+                detail="Organization ID is required for identity file operations"
             )
 
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Identity file not found")
 
-        # For user-specific files, the database will handle the rename
+        # For organization-specific files, the database will handle the rename
         # This function is kept for potential future use but doesn't modify filesystem metadata
         return True
     except Exception as e:
@@ -230,7 +230,5 @@ def save_ssh_node_pools(pools_data):
         )
 
 
-# File-based SSH node info functions removed - now using database-based approach
 
 
-# Import cluster platform functions from the new database-based implementation

@@ -540,11 +540,10 @@ async def list_identity_files(
                 detail="Organization ID not found in user context",
             )
         
-        # Get identity files from database for this user/organization        
+        # Get identity files from database for this organization        
         identity_files = (
             db.query(IdentityFile)
             .filter(
-                IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.is_active == True #noqa: E712
             )
@@ -676,7 +675,6 @@ async def delete_identity_file(
             db.query(IdentityFile)
             .filter(
                 IdentityFile.file_path == decoded_path,
-                IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.is_active == True #noqa: E712
             )
@@ -690,7 +688,7 @@ async def delete_identity_file(
             )
 
         # Delete the file from disk
-        delete_named_identity_file(decoded_path, user_id, org_id)
+        delete_named_identity_file(decoded_path, org_id)
         
         # Mark as inactive in database
         identity_file.is_active = False
@@ -730,7 +728,6 @@ async def rename_identity_file_route(
             db.query(IdentityFile)
             .filter(
                 IdentityFile.file_path == decoded_path,
-                IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.is_active == True #noqa: E712
             )
@@ -743,11 +740,10 @@ async def rename_identity_file_route(
                 detail="Identity file not found or access denied"
             )
 
-        # Check if new display name already exists for this user/organization
+        # Check if new display name already exists for this organization
         existing_file = (
             db.query(IdentityFile)
             .filter(
-                IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.display_name == new_display_name,
                 IdentityFile.is_active == True #noqa: E712
