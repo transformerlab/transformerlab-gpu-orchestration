@@ -72,10 +72,23 @@ async def get_api_key_user(
         api_key_record.update_last_used()
         db.commit()
 
-        # Parse scopes
+        # Parse scopes robustly (treat invalid as []) and normalize to lowercase
         scopes = []
-        if api_key_record.scopes:
-            scopes = json.loads(api_key_record.scopes)
+        try:
+            if api_key_record.scopes:
+                parsed = json.loads(api_key_record.scopes)
+                if isinstance(parsed, list):
+                    norm = []
+                    seen = set()
+                    for s in parsed:
+                        if isinstance(s, str):
+                            v = s.strip().lower()
+                            if v and v not in seen:
+                                seen.add(v)
+                                norm.append(v)
+                    scopes = norm
+        except Exception:
+            scopes = []
 
         return {
             "id": api_key_record.user_id,

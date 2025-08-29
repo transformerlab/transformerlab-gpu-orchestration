@@ -84,3 +84,18 @@ alembic history --verbose
 
 Then run `docker-run.sh build-and-run`
 
+
+## API Key Scopes
+
+- admin: Full access to all write operations.
+- compute:write: Launch, stop, and manage compute jobs/instances.
+- nodepools:write: Create, update, or delete node pools.
+- storage:write: Create, mount, or modify storage buckets.
+- registries:write: Manage private container registries.
+
+Notes:
+- Scopes apply to API key-authenticated requests. Session-authenticated users are not scope-restricted.
+- If an API key has no scopes, it cannot perform protected write actions that require scopes.
+- Selecting the `admin` scope supersedes all others.
+- The server exposes allowed scopes at `GET /api/v1/auth/allowed-scopes`.
+- Scope values are case-insensitive on input; they are normalized to lowercase and `admin` is exclusive (cannot be combined).

@@ -54,6 +54,7 @@ interface APIKey {
 interface CreateAPIKeyRequest {
   name: string;
   expires_in_days?: number;
+  scopes?: string[];
 }
 
 interface CreateAPIKeyResponse {
@@ -65,10 +66,19 @@ interface UpdateAPIKeyRequest {
   name?: string;
   is_active?: boolean;
   expires_in_days?: number;
+  scopes?: string[];
 }
 
 const APIKeys: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+  const FALLBACK_SCOPES = [
+    "admin",
+    "compute:write",
+    "nodepools:write",
+    "storage:write",
+    "registries:write",
+  ];
+  const [allowedScopes, setAllowedScopes] = useState<string[]>(FALLBACK_SCOPES);
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +90,7 @@ const APIKeys: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateAPIKeyRequest>({
     name: "",
     expires_in_days: undefined,
+    scopes: [],
   });
   const [createError, setCreateError] = useState<string | null>(null);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
@@ -89,6 +100,7 @@ const APIKeys: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [keyToUpdate, setKeyToUpdate] = useState<APIKey | null>(null);
   const [updateForm, setUpdateForm] = useState<UpdateAPIKeyRequest>({});
+  const [updateScopesTouched, setUpdateScopesTouched] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   // Delete confirmation state
@@ -137,6 +149,25 @@ const APIKeys: React.FC = () => {
     fetchApiKeys();
   }, [user]);
 
+  useEffect(() => {
+    const fetchScopes = async () => {
+      try {
+        const res = await apiFetch(buildApiUrl("auth/allowed-scopes"), {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.scopes)) {
+            setAllowedScopes(data.scopes);
+          }
+        }
+      } catch (e) {
+        // Keep fallback scopes
+      }
+    };
+    fetchScopes();
+  }, []);
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Never";
     return new Date(dateString).toLocaleDateString();
@@ -161,6 +192,13 @@ const APIKeys: React.FC = () => {
     try {
       setCreating(true);
       setCreateError(null);
+      const payload: CreateAPIKeyRequest = {
+        name: createForm.name,
+        expires_in_days: createForm.expires_in_days,
+        ...(createForm.scopes && createForm.scopes.length
+          ? { scopes: createForm.scopes }
+          : {}),
+      };
 
       const response = await apiFetch(buildApiUrl("api-keys"), {
         method: "POST",
@@ -168,7 +206,7 @@ const APIKeys: React.FC = () => {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(createForm),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -184,6 +222,7 @@ const APIKeys: React.FC = () => {
       setCreateForm({
         name: "",
         expires_in_days: undefined,
+        scopes: [],
       });
     } catch (err) {
       console.error("Error creating API key:", err);
@@ -201,6 +240,13 @@ const APIKeys: React.FC = () => {
     try {
       setUpdating(true);
       setUpdateError(null);
+      // Build payload; include scopes only if touched
+      const payload: UpdateAPIKeyRequest = {
+        name: updateForm.name,
+        is_active: updateForm.is_active,
+        expires_in_days: updateForm.expires_in_days,
+        ...(updateScopesTouched ? { scopes: updateForm.scopes } : {}),
+      };
 
       const response = await apiFetch(
         buildApiUrl(`api-keys/${keyToUpdate.id}`),
@@ -210,7 +256,7 @@ const APIKeys: React.FC = () => {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify(updateForm),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -227,6 +273,7 @@ const APIKeys: React.FC = () => {
       setUpdateDialogOpen(false);
       setKeyToUpdate(null);
       setUpdateForm({});
+      setUpdateScopesTouched(false);
     } catch (err) {
       console.error("Error updating API key:", err);
       setUpdateError(
@@ -308,6 +355,7 @@ const APIKeys: React.FC = () => {
     setCreateForm({
       name: "",
       expires_in_days: undefined,
+      scopes: [],
     });
   };
 
@@ -316,7 +364,9 @@ const APIKeys: React.FC = () => {
     setUpdateForm({
       name: key.name,
       is_active: key.is_active,
+      scopes: key.scopes || [],
     });
+    setUpdateScopesTouched(false);
     setUpdateDialogOpen(true);
     setUpdateError(null);
   };
@@ -424,6 +474,7 @@ const APIKeys: React.FC = () => {
                 <th>Name</th>
                 <th>Key</th>
                 <th>Status</th>
+                <th>Scopes</th>
                 <th>Created</th>
                 <th>Last Used</th>
                 <th>Expires</th>
@@ -462,6 +513,25 @@ const APIKeys: React.FC = () => {
                         ? "Expired"
                         : "Active"}
                     </Chip>
+                  </td>
+                  <td>
+                    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                      {key.scopes && key.scopes.length > 0 ? (
+                        key.scopes.includes("admin") ? (
+                          <Chip size="sm" color="warning">Admin</Chip>
+                        ) : (
+                          [...key.scopes].sort((a, b) => a.localeCompare(b)).map((s) => (
+                            <Chip key={s} size="sm" variant="soft">
+                              {s}
+                            </Chip>
+                          ))
+                        )
+                      ) : (
+                        <Chip size="sm" variant="soft" color="neutral">
+                          None
+                        </Chip>
+                      )}
+                    </Box>
                   </td>
                   <td>
                     <Typography level="body-sm">
@@ -574,49 +644,75 @@ const APIKeys: React.FC = () => {
               <Box
                 sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
               >
-                {createError && (
-                  <Alert color="danger" size="sm">
-                    {createError}
-                  </Alert>
-                )}
+              {createError && (
+                <Alert color="danger" size="sm">
+                  {createError}
+                </Alert>
+              )}
 
-                <FormControl>
-                  <FormLabel>Name</FormLabel>
-                  <Input
-                    placeholder="Enter a descriptive name"
-                    value={createForm.name}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, name: e.target.value })
-                    }
-                    disabled={creating}
-                  />
-                </FormControl>
+              <FormControl>
+                <FormLabel>Name</FormLabel>
+                <Input
+                  placeholder="Enter a descriptive name"
+                  value={createForm.name}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, name: e.target.value })
+                  }
+                  disabled={creating}
+                />
+              </FormControl>
 
-                <FormControl>
-                  <FormLabel>Expires In (Days)</FormLabel>
-                  <Select
-                    placeholder="Select expiration"
-                    value={createForm.expires_in_days?.toString() || ""}
-                    onChange={(_, value) =>
-                      setCreateForm({
-                        ...createForm,
-                        expires_in_days: value ? parseInt(value) : undefined,
-                      })
+              <FormControl>
+                <FormLabel>Expires In (Days)</FormLabel>
+                <Select
+                  placeholder="Select expiration"
+                  value={createForm.expires_in_days?.toString() || ""}
+                  onChange={(_, value) =>
+                    setCreateForm({
+                      ...createForm,
+                      expires_in_days: value ? parseInt(value) : undefined,
+                    })
+                  }
+                  disabled={creating}
+                >
+                  <Option value="">Never expires</Option>
+                  <Option value="7">7 days</Option>
+                  <Option value="30">30 days</Option>
+                  <Option value="90">90 days</Option>
+                  <Option value="365">1 year</Option>
+                </Select>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Scopes</FormLabel>
+                <Select
+                  multiple
+                  placeholder="Select one or more scopes"
+                  value={createForm.scopes || []}
+                  onChange={(_, value) => {
+                    let next = (value as string[] | null) || [];
+                    if (next.includes("admin")) {
+                      next = ["admin"]; // admin is exclusive
                     }
-                    disabled={creating}
-                  >
-                    <Option value="">Never expires</Option>
-                    <Option value="7">7 days</Option>
-                    <Option value="30">30 days</Option>
-                    <Option value="90">90 days</Option>
-                    <Option value="365">1 year</Option>
-                  </Select>
-                </FormControl>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button
+                    setCreateForm({ ...createForm, scopes: next });
+                  }}
+                  disabled={creating}
+                >
+                  {allowedScopes.map((s) => (
+                    <Option key={s} value={s}>
+                      {s === "admin" ? "admin (full access)" : s}
+                    </Option>
+                  ))}
+                </Select>
+                <Typography level="body-xs" color="neutral" sx={{ mt: 0.5 }}>
+                  Selecting "admin" grants full access; other scopes are for specific write actions.
+                </Typography>
+              </FormControl>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
               variant="plain"
               color="neutral"
               onClick={() => setCreateDialogOpen(false)}
@@ -680,13 +776,45 @@ const APIKeys: React.FC = () => {
                   <Option value="false">Inactive</Option>
                 </Select>
               </FormControl>
+
+              <FormControl>
+                <FormLabel>Scopes</FormLabel>
+                <Select
+                  multiple
+                  placeholder="Select one or more scopes"
+                  value={updateForm.scopes || []}
+                  onChange={(_, value) => {
+                    setUpdateScopesTouched(true);
+                    let next = (value as string[] | null) || [];
+                    if (next.includes("admin")) {
+                      next = ["admin"]; // admin is exclusive
+                    }
+                    setUpdateForm({ ...updateForm, scopes: next });
+                  }}
+                  disabled={updating}
+                >
+                  {allowedScopes.map((s) => (
+                    <Option key={s} value={s}>
+                      {s === "admin" ? "admin (full access)" : s}
+                    </Option>
+                  ))}
+                </Select>
+                <Typography level="body-xs" color="neutral" sx={{ mt: 0.5 }}>
+                  Selecting "admin" overrides and provides full access.
+                </Typography>
+              </FormControl>
             </Box>
           </DialogContent>
           <DialogActions>
             <Button
               variant="plain"
               color="neutral"
-              onClick={() => setUpdateDialogOpen(false)}
+              onClick={() => {
+                setUpdateDialogOpen(false);
+                setKeyToUpdate(null);
+                setUpdateForm({});
+                setUpdateScopesTouched(false);
+              }}
               disabled={updating}
             >
               Cancel
