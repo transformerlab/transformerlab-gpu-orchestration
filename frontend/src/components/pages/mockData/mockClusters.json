@@ -5118,5 +5118,297 @@
         "ip": "10.140.98.123"
       }
     ]
+  },
+  {
+    "id": "fake-gcp-cluster",
+    "name": "Fake GCP Cluster",
+    "nodes": [
+      {
+        "id": "node-0",
+        "type": "on-demand",
+        "status": "active",
+        "user": "alice",
+        "jobName": "BERT Fine-tuning",
+        "experimentName": "Exp-Zeta",
+        "gpuType": "TPU v2-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 8,
+        "vgpus": 8,
+        "ip": "10.128.0.10"
+      },
+      {
+        "id": "node-1",
+        "type": "dedicated",
+        "status": "active",
+        "user": "bob",
+        "jobName": "Computer Vision Training",
+        "experimentName": "Exp-Eta",
+        "gpuType": "TPU v3-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 8,
+        "ip": "10.128.0.11"
+      },
+      {
+        "id": "node-2",
+        "type": "on-demand",
+        "status": "inactive",
+        "gpuType": "TPU v4-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 8,
+        "ip": "10.128.0.12"
+      },
+      {
+        "id": "node-3",
+        "type": "dedicated",
+        "status": "unhealthy",
+        "gpuType": "TPU v4-32",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 64,
+        "vgpus": 32,
+        "ip": "10.128.0.13"
+      },
+      {
+        "id": "node-4",
+        "type": "on-demand",
+        "status": "active",
+        "user": "catherine",
+        "jobName": "NLP Research",
+        "experimentName": "Exp-Theta",
+        "gpuType": "TPU v3-32",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 32,
+        "ip": "10.128.0.14"
+      },
+      {
+        "id": "node-5",
+        "type": "dedicated",
+        "status": "active",
+        "gpuType": "TPU v2-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 8,
+        "vgpus": 8,
+        "ip": "10.128.0.15"
+      },
+      {
+        "id": "node-6",
+        "type": "on-demand",
+        "status": "inactive",
+        "gpuType": "TPU v4-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 8,
+        "ip": "10.128.0.16"
+      },
+      {
+        "id": "node-7",
+        "type": "dedicated",
+        "status": "active",
+        "user": "david",
+        "jobName": "Reinforcement Learning",
+        "experimentName": "Exp-Iota",
+        "gpuType": "TPU v4-16",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 64,
+        "vgpus": 16,
+        "ip": "10.128.0.17"
+      },
+      {
+        "id": "node-8",
+        "type": "on-demand",
+        "status": "active",
+        "user": "emma",
+        "jobName": "GAN Training",
+        "experimentName": "Exp-Kappa",
+        "gpuType": "TPU v3-16",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 16,
+        "ip": "10.128.0.18"
+      },
+      {
+        "id": "node-9",
+        "type": "dedicated",
+        "status": "inactive",
+        "gpuType": "TPU v4-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 8,
+        "ip": "10.128.0.19"
+      },
+      {
+        "id": "node-10",
+        "type": "on-demand",
+        "status": "unhealthy",
+        "gpuType": "TPU v2-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 8,
+        "vgpus": 8,
+        "ip": "10.128.0.20"
+      },
+      {
+        "id": "node-11",
+        "type": "dedicated",
+        "status": "active",
+        "user": "frank",
+        "jobName": "Protein Structure Prediction",
+        "experimentName": "Exp-Lambda",
+        "gpuType": "TPU v4-32",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 64,
+        "vgpus": 32,
+        "ip": "10.128.0.21"
+      },
+      {
+        "id": "node-12",
+        "type": "on-demand",
+        "status": "active",
+        "user": "grace",
+        "jobName": "Transformer Training",
+        "experimentName": "Exp-Mu",
+        "gpuType": "TPU v4-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 8,
+        "ip": "10.128.0.22"
+      },
+      {
+        "id": "node-13",
+        "type": "dedicated",
+        "status": "inactive",
+        "gpuType": "TPU v3-16",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 16,
+        "ip": "10.128.0.23"
+      },
+      {
+        "id": "node-14",
+        "type": "on-demand",
+        "status": "active",
+        "user": "henry",
+        "jobName": "Recommendation System",
+        "experimentName": "Exp-Nu",
+        "gpuType": "TPU v4-16",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 64,
+        "vgpus": 16,
+        "ip": "10.128.0.24"
+      },
+      {
+        "id": "node-15",
+        "type": "dedicated",
+        "status": "unhealthy",
+        "gpuType": "TPU v2-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 8,
+        "vgpus": 8,
+        "ip": "10.128.0.25"
+      },
+      {
+        "id": "node-16",
+        "type": "on-demand",
+        "status": "active",
+        "user": "isabella",
+        "jobName": "Speech Recognition",
+        "experimentName": "Exp-Xi",
+        "gpuType": "TPU v3-32",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 32,
+        "ip": "10.128.0.26"
+      },
+      {
+        "id": "node-17",
+        "type": "dedicated",
+        "status": "active",
+        "gpuType": "TPU v4-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 8,
+        "ip": "10.128.0.27"
+      },
+      {
+        "id": "node-18",
+        "type": "on-demand",
+        "status": "inactive",
+        "gpuType": "TPU v4-32",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 64,
+        "vgpus": 32,
+        "ip": "10.128.0.28"
+      },
+      {
+        "id": "node-19",
+        "type": "dedicated",
+        "status": "active",
+        "user": "jack",
+        "jobName": "Computer Vision Research",
+        "experimentName": "Exp-Omicron",
+        "gpuType": "TPU v3-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 8,
+        "ip": "10.128.0.29"
+      },
+      {
+        "id": "node-20",
+        "type": "on-demand",
+        "status": "active",
+        "user": "kate",
+        "jobName": "Natural Language Processing",
+        "experimentName": "Exp-Pi",
+        "gpuType": "TPU v4-16",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 16,
+        "ip": "10.128.0.30"
+      },
+      {
+        "id": "node-21",
+        "type": "dedicated",
+        "status": "unhealthy",
+        "gpuType": "TPU v2-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 8,
+        "vgpus": 8,
+        "ip": "10.128.0.31"
+      },
+      {
+        "id": "node-22",
+        "type": "on-demand",
+        "status": "active",
+        "user": "lucas",
+        "jobName": "Autonomous Driving ML",
+        "experimentName": "Exp-Rho",
+        "gpuType": "TPU v4-32",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 64,
+        "vgpus": 32,
+        "ip": "10.128.0.32"
+      },
+      {
+        "id": "node-23",
+        "type": "dedicated",
+        "status": "active",
+        "gpuType": "TPU v3-16",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 32,
+        "vgpus": 16,
+        "ip": "10.128.0.33"
+      },
+      {
+        "id": "node-24",
+        "type": "on-demand",
+        "status": "inactive",
+        "gpuType": "TPU v4-8",
+        "cpuType": "Intel Xeon E5-2686 v4",
+        "vcpus": 16,
+        "vgpus": 8,
+        "ip": "10.128.0.34"
+      }
+    ]
   }
 ]

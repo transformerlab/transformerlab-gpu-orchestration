@@ -192,15 +192,34 @@ const ClusterDetails: React.FC = () => {
           // Only show fake data if showFakeData is enabled AND API failed
           if (showFakeData) {
             const generateFakeNodes = (): Node[] => {
-              return mockClusterData[0].nodes.map(
-                (node: any, index: number) => ({
-                  id: node.id || `node-${index}`,
-                  ip: node.ip || `10.0.0.${index + 1}`,
-                  identity_file: node.identity_file || "-",
-                  gpu_info: node.gpuType || "-",
-                  status: node.status || "active",
-                })
+              // Find the cluster by name instead of using the first one
+              const cluster = mockClusterData.find(
+                (cluster: any) =>
+                  cluster.id === clusterName || cluster.name === clusterName
               );
+
+              if (!cluster) {
+                console.warn(
+                  `Cluster "${clusterName}" not found in mock data, using first cluster as fallback`
+                );
+                return mockClusterData[0].nodes.map(
+                  (node: any, index: number) => ({
+                    id: node.id || `node-${index}`,
+                    ip: node.ip || `10.0.0.${index + 1}`,
+                    identity_file: node.identity_file || "-",
+                    gpu_info: node.gpuType || "-",
+                    status: node.status || "active",
+                  })
+                );
+              }
+
+              return cluster.nodes.map((node: any, index: number) => ({
+                id: node.id || `node-${index}`,
+                ip: node.ip || `10.0.0.${index + 1}`,
+                identity_file: node.identity_file || "-",
+                gpu_info: node.gpuType || "-",
+                status: node.status || "active",
+              }));
             };
 
             const fakeNodes = generateFakeNodes();
