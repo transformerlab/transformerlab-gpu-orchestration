@@ -96,7 +96,7 @@ router.include_router(ssh_router, prefix="/ssh")
 
 
 @router.get("/{cloud}/setup")
-async def setup_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def setup_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Setup cloud configuration"""
     try:
         if cloud == "azure":
@@ -126,7 +126,7 @@ async def setup_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 
 @router.get("/{cloud}/verify")
-async def verify_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def verify_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Verify cloud setup"""
     try:
         if cloud == "azure":
@@ -145,7 +145,7 @@ async def verify_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/config")
 async def get_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     request: Request = None,
     response: Response = None,
     user: dict = Depends(get_user_or_api_key),
@@ -189,7 +189,7 @@ async def get_cloud_config(
 
 @router.get("/{cloud}/credentials")
 async def get_cloud_credentials(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_key: str = None,
     request: Request = None,
     response: Response = None,
@@ -248,7 +248,7 @@ async def get_cloud_credentials(
 
 @router.post("/{cloud}/config")
 async def save_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_request: AzureConfigRequest | RunPodConfigRequest = None,
     request: Request = None,
     response: Response = None,
@@ -541,7 +541,7 @@ async def save_cloud_config(
 
 @router.post("/{cloud}/config/{config_key}/set-default")
 async def set_cloud_default_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_key: str = None,
     __: dict = Depends(requires_admin),
     user: dict = Depends(get_user_or_api_key),
@@ -577,7 +577,7 @@ async def set_cloud_default_config(
 
 @router.delete("/{cloud}/config/{config_key}")
 async def delete_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_key: str = None,
     __: dict = Depends(requires_admin),
     user: dict = Depends(get_user_or_api_key),
@@ -618,7 +618,7 @@ async def delete_cloud_config(
 
 @router.post("/{cloud}/test")
 async def test_cloud_connection(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     test_request: AzureTestRequest | RunPodTestRequest = None,
     __: dict = Depends(requires_admin),
 ):
@@ -662,7 +662,7 @@ async def test_cloud_connection(
 
 
 @router.get("/{cloud}/sky-check")
-async def run_cloud_sky_check(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def run_cloud_sky_check(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Run 'sky check' to validate the cloud setup"""
     try:
         if cloud == "azure":
@@ -687,7 +687,7 @@ async def run_cloud_sky_check(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/instances")
 async def get_cloud_instances(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
 ):
@@ -759,7 +759,7 @@ async def get_cloud_instances(
 
 
 @router.get("/{cloud}/info")
-async def get_cloud_info(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def get_cloud_info(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Get cloud-specific information (instance types, regions, GPU types, display options, etc.)"""
     try:
         if cloud == "azure":
@@ -790,7 +790,7 @@ async def get_cloud_info(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/price")
 async def get_cloud_price(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     instance_type: str | None = None,
     region: str | None = None,
     display_option: str | None = None,
