@@ -36,6 +36,10 @@ export interface Cluster {
     user_info: any;
   }>;
   userInstances?: number;
+  provider?: string;
+  clusterType?: string;
+  launchButtonText?: string;
+  allowedGpuTypes?: string[];
 }
 
 export interface ClusterCardProps {
