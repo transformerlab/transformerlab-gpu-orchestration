@@ -28,11 +28,17 @@ from models import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key
 from routes.auth.utils import get_current_user
-from routes.clouds.azure.utils import az_setup_config, load_azure_config
+from routes.clouds.azure.utils import (
+    az_setup_config,
+    load_azure_config,
+    az_infer_gpu_count,
+    az_get_price_per_hour,
+)
 from routes.clouds.runpod.utils import (
     map_runpod_display_to_instance_type,
     rp_setup_config,
     load_runpod_config,
+    rp_get_price_per_hour,
 )
 from routes.jobs.utils import get_cluster_job_queue
 from routes.node_pools.utils import (
@@ -41,7 +47,7 @@ from routes.node_pools.utils import (
     update_gpu_resources_for_node_pool,
 )
 from routes.reports.utils import record_usage
-from routes.quota.utils import get_user_team_id
+from routes.quota.utils import get_user_team_id, get_current_user_quota_info
 from sqlalchemy.orm import Session
 from config import get_db
 from db.db_models import NodePoolAccess as NodePoolAccessDB, SSHNodePool as SSHNodePoolDB
@@ -164,6 +170,24 @@ async def launch_instance(
                 f.write(await python_file.read())
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+        # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
+        # (RunPod mapping below may clear 'accelerators')
+        def _parse_requested_gpu_count(accel: Optional[str], cloud_name: Optional[str]) -> int:
+            if not accel:
+                return 0
+            s = str(accel).strip()
+            if s.upper().startswith("CPU"):
+                return 0
+            if ":" in s:
+                try:
+                    return max(0, int(s.split(":")[-1].strip()))
+                except Exception:
+                    return 1
+            return 1
+
+        _initial_requested_gpu_count = _parse_requested_gpu_count(accelerators, cloud)
+        _runpod_display_option_for_pricing = accelerators if (cloud or "").lower() == "runpod" else None
+
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
@@ -253,6 +277,49 @@ async def launch_instance(
         except Exception as e:
             # Fail closed only if explicit restrictions exist; otherwise continue
             print(f"Access check warning: {e}")
+
+        # Quota enforcement: ensure user has enough remaining credits for requested GPUs
+        try:
+            requested_gpu_count = _initial_requested_gpu_count
+            cloud_lower = (cloud or "").lower()
+
+            # Compute price-per-hour for the requested config
+            price_per_hour = None
+            if cloud_lower == "runpod":
+                price_source = _runpod_display_option_for_pricing or accelerators
+                if price_source:
+                    price_per_hour = rp_get_price_per_hour(price_source)
+            elif cloud_lower == "azure" and instance_type:
+                price_per_hour = az_get_price_per_hour(instance_type, region=region)
+
+            # If accelerators not provided for Azure, try to infer GPU count for info logs
+            if requested_gpu_count == 0 and cloud_lower == "azure" and instance_type:
+                try:
+                    requested_gpu_count = max(0, int(az_infer_gpu_count(instance_type)))
+                except Exception as _e:
+                    print(f"Azure GPU inference warning for '{instance_type}': {_e}")
+
+            # Apply price-based quota enforcement for non-SSH clouds when price is available
+            if cloud_lower != "ssh" and price_per_hour is not None:
+                quota_info = get_current_user_quota_info(db, organization_id, user_id)
+                available_credits = float(quota_info.get("current_period_remaining", 0.0) or 0.0)
+                # Default to at least 1 hour of usage for admission check
+                estimated_hours = 1.0
+                required_credits = float(price_per_hour) * estimated_hours
+                if available_credits < required_credits:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "Insufficient quota to launch instance. "
+                            f"Estimated cost: {required_credits:.2f} for ~{estimated_hours:.0f} hour(s); "
+                            f"Available credits: {available_credits:.2f}. "
+                        ),
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Fail-open in case of unexpected quota calculation issues to avoid blocking launches unintentionally
+            print(f"Quota check warning: {e}")
 
         # Create cluster platform entry and get the actual cluster name
         # For SSH clusters, use the node pool name as platform for easier mapping

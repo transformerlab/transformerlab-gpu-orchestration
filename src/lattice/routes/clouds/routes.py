@@ -15,6 +15,7 @@ from .azure.utils import (
     az_set_default_config,
     az_delete_config,
     az_get_current_config,
+    az_get_price_per_hour,
 )
 from .runpod.utils import (
     rp_verify_setup,
@@ -29,6 +30,7 @@ from .runpod.utils import (
     rp_delete_config,
     rp_get_current_config,
     load_runpod_config,
+    rp_get_price_per_hour,
 )
 from routes.instances.utils import get_skypilot_status
 from utils.cluster_utils import (
@@ -602,3 +604,36 @@ async def get_cloud_info(cloud: str = Path(..., regex="^(azure|runpod)$")):
         raise HTTPException(
             status_code=500, detail=f"Failed to get {cloud} info: {str(e)}"
         )
+
+
+@router.get("/{cloud}/price")
+async def get_cloud_price(
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    instance_type: str | None = None,
+    region: str | None = None,
+    display_option: str | None = None,
+):
+    """Get price per hour for a specific cloud configuration.
+
+    - For azure: provide `instance_type` and optional `region`.
+    - For runpod: provide `display_option` (e.g., "A100:1" or "CPU:8-32GB").
+    """
+    try:
+        if cloud == "azure":
+            if not instance_type:
+                raise HTTPException(status_code=400, detail="instance_type is required for Azure pricing")
+            price = az_get_price_per_hour(instance_type, region=region)
+        elif cloud == "runpod":
+            if not display_option:
+                raise HTTPException(status_code=400, detail="display_option is required for RunPod pricing")
+            price = rp_get_price_per_hour(display_option)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
+
+        if price is None:
+            raise HTTPException(status_code=404, detail="Price not found for the specified configuration")
+        return {"price_per_hour": float(price)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get {cloud} price: {str(e)}")

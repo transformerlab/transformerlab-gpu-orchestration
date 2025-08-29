@@ -606,3 +606,106 @@ def az_save_config_with_setup(
         result["sky_check_result"] = sky_check_result
 
     return result
+
+
+def az_get_price_per_hour(instance_type: str, region: str | None = None) -> float | None:
+    """Return the price per hour for a given Azure instance type, optionally filtered by region.
+
+    Returns None if not found or price unavailable.
+    """
+    try:
+        from sky.catalog.common import read_catalog
+
+        df = read_catalog("azure/vms.csv")
+        if df is None:
+            return None
+
+        # Validate required columns exist
+        if "InstanceType" not in df.columns:
+            return None
+
+        # Normalize and filter by instance type
+        base = df.copy()
+        try:
+            base["InstanceType"] = base["InstanceType"].astype(str)
+        except Exception:
+            return None
+        subset = base[base["InstanceType"] == str(instance_type)]
+
+        # Optional region filter; if no rows after filtering, fall back to any region
+        if region and "Region" in subset.columns:
+            try:
+                tmp = subset.copy()
+                tmp["Region"] = tmp["Region"].astype(str)
+                tmp = tmp[tmp["Region"] == str(region)]
+                if len(tmp) > 0:
+                    subset = tmp
+            except Exception:
+                # Ignore region filtering on failure
+                pass
+
+        if subset is None or len(subset) == 0:
+            return None
+
+        # Prefer first row
+        row = subset.iloc[0]
+        price = row.get("Price", None) if "Price" in subset.columns else None
+        try:
+            return float(price) if price is not None and str(price).lower() != "nan" else None
+        except Exception:
+            return None
+    except Exception as e:
+        print(f"Error getting Azure price for '{instance_type}' ({region}): {e}")
+        return None
+
+
+def az_infer_gpu_count(instance_type: str) -> int:
+    """Infer GPU count for a given Azure instance type using SkyPilot catalog.
+
+    Returns 0 if the instance is CPU-only or unknown. Falls back to 0 on errors.
+    """
+    try:
+        from sky.catalog.common import read_catalog
+
+        df = read_catalog("azure/vms.csv")
+        if df is None:
+            return 0
+
+        # Ensure required column exists
+        if "InstanceType" not in df.columns:
+            return 0
+        # Normalize and filter by InstanceType
+        try:
+            df["InstanceType"] = df["InstanceType"].astype(str)
+        except Exception:
+            return 0
+        rows = df[df["InstanceType"] == str(instance_type)]
+        if rows is None or len(rows) == 0:
+            return 0
+
+        row = rows.iloc[0]
+
+        # Common column names for accelerator counts
+        for key in (
+            "AcceleratorCount",
+            "GPUs",
+            "GpuCount",
+            "GPUCount",
+            "NumAccelerators",
+            "num_accelerators",
+        ):
+            if key in row and str(row[key]).lower() != "nan":
+                try:
+                    return max(0, int(float(row[key])))
+                except Exception:
+                    continue
+
+        # If accelerator name exists and is non-empty, assume 1 GPU
+        for key in ("AcceleratorName", "GPU", "Gpu", "Accelerator"):
+            if key in row and str(row[key]).strip().lower() not in ("", "nan", "none"):
+                return 1
+
+        return 0
+    except Exception as e:
+        print(f"Error inferring Azure GPU count for {instance_type}: {e}")
+        return 0
