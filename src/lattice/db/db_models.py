@@ -218,7 +218,7 @@ class IdentityFile(Base, ValidationMixin):
     __tablename__ = "identity_files"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
-    user_id = Column(String, nullable=False)  # WorkOS user ID
+    user_id = Column(String, nullable=False)  # WorkOS user ID who uploaded the file
     organization_id = Column(String, nullable=False)  # Organization ID
     display_name = Column(String, nullable=False)  # Human-readable name for the file
     original_filename = Column(String, nullable=False)  # Original filename when uploaded
@@ -229,10 +229,10 @@ class IdentityFile(Base, ValidationMixin):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)  # Whether the file is active
 
-    # Composite unique constraint to prevent duplicate display names per user within an organization
+    # Composite unique constraint to prevent duplicate display names within an organization
     __table_args__ = (
         UniqueConstraint(
-            "organization_id", "user_id", "display_name", name="uq_identity_files_org_user_name"
+            "organization_id", "display_name", name="uq_identity_files_org_name"
         ),
     )
 
