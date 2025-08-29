@@ -492,6 +492,33 @@ class SkyPilotRequest(Base, ValidationMixin):
     )
 
 
+from sqlalchemy import Index
+
+
+class CloudAccount(Base, ValidationMixin):
+    __tablename__ = "cloud_accounts"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    provider = Column(String, nullable=False)  # e.g., 'azure', 'runpod'
+    key = Column(String, nullable=False)  # pool/config key (normalized name)
+    name = Column(String, nullable=False)
+    credentials = Column(JSON, nullable=False, default=dict)
+    settings = Column(JSON, nullable=True)  # allowed_* lists and other non-secret settings
+    max_instances = Column(Integer, nullable=False, server_default=text("0"))
+    is_default = Column(Boolean, nullable=False, server_default=text("false"))
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "provider", "key", name="uq_cloud_accounts_org_provider_key"),
+        Index("ix_cloud_accounts_org_provider", "organization_id", "provider"),
+    )
+
+
 # Utility functions for application-level foreign key validation
 def validate_relationships_before_save(model_instance, session):
     """
