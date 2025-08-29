@@ -302,7 +302,7 @@ async def get_available_docker_images(
                 DockerImage.organization_id == organization_id,
                 DockerImage.is_active,
                 or_(
-                    ContainerRegistry.is_active == True,
+                    ContainerRegistry.is_active == True, #noqa: E712
                     DockerImage.container_registry_id.is_(None)
                 )
             )
