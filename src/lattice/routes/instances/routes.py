@@ -139,9 +139,6 @@ async def launch_instance(
     use_spot: bool = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file: Optional[UploadFile] = File(None),
-    launch_mode: Optional[str] = Form(None),
-    jupyter_port: Optional[int] = Form(None),
-    vscode_port: Optional[int] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
@@ -346,6 +343,7 @@ async def launch_instance(
             user_info=cluster_user_info,
         )
 
+
         # Launch cluster using the actual cluster name
         request_id = launch_cluster_with_skypilot(
             cluster_name=actual_cluster_name,
@@ -361,10 +359,6 @@ async def launch_instance(
             use_spot=use_spot,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
             file_mounts=file_mounts,
-            workdir=None,
-            launch_mode=launch_mode,
-            jupyter_port=jupyter_port,
-            vscode_port=vscode_port,
             disk_size=disk_size,
             storage_bucket_ids=parsed_storage_bucket_ids,
             node_pool_name=node_pool_name,
