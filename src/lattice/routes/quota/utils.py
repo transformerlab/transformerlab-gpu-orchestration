@@ -763,7 +763,28 @@ def get_gpu_usage_summary(
         print(
             f"Failed to get GPU usage summary for organization {organization_id}: {e}"
         )
-        return {}
+        # Return a safe default shape to avoid response validation errors
+        try:
+            period_start, period_end = get_current_period_dates()
+        except Exception:
+            # Last-resort fallback if even date calc fails
+            period_start = datetime.utcnow().date()
+            period_end = period_start
+
+        return {
+            "organization_id": organization_id,
+            "user_id": user_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_limit": 0.0,
+            "quota_used": 0.0,
+            "quota_remaining": 0.0,
+            "usage_percentage": 0.0,
+            "total_credits": 0.0,
+            "active_clusters": 0,
+            "completed_sessions": 0,
+            "gpu_type_breakdown": {},
+        }
 
 
 def get_organization_user_usage_summary(
@@ -845,4 +866,27 @@ def get_organization_user_usage_summary(
         print(
             f"Failed to get organization user usage summary for {organization_id}: {e}"
         )
-        return {}
+        # Return a safe default response structure
+        try:
+            period_start, period_end = get_current_period_dates()
+        except Exception:
+            period_start = datetime.utcnow().date()
+            period_end = period_start
+
+        # Best-effort: attempt to read org default quota, but fall back to 0.0
+        quota_per_user = 0.0
+        try:
+            org_quota = get_organization_default_quota(db, organization_id)
+            quota_per_user = float(org_quota.monthly_credits_per_user or 0.0)
+        except Exception:
+            pass
+
+        return {
+            "organization_id": organization_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_per_user": quota_per_user,
+            "total_users": 0,
+            "total_organization_usage": 0.0,
+            "user_breakdown": [],
+        }
