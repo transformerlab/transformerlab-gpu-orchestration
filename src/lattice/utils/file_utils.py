@@ -38,35 +38,10 @@ def is_valid_identity_file(filename: str) -> bool:
     return False
 
 
-def save_identity_file(file_content: bytes, original_filename: str) -> str:
-    try:
-        if not is_valid_identity_file(original_filename):
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid identity file type. Allowed: .pem, .key, .rsa, .pub, or files with no extension (e.g., id_rsa)",
-            )
-        identity_dir = get_identity_files_dir()
-        file_extension = Path(original_filename).suffix
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = identity_dir / unique_filename
-        with open(file_path, "wb") as f:
-            f.write(file_content)
-        os.chmod(file_path, 0o600)
-        return str(file_path)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save identity file: {str(e)}"
-        )
 
 
-def cleanup_identity_file(file_path: str):
-    try:
-        if file_path and os.path.exists(file_path):
-            identity_dir = get_identity_files_dir()
-            if Path(file_path).parent == identity_dir:
-                os.remove(file_path)
-    except Exception as e:
-        print(f"Warning: Failed to cleanup identity file {file_path}: {e}")
+
+
 
 
 def save_named_identity_file(
@@ -107,6 +82,42 @@ def save_named_identity_file(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to save identity file: {str(e)}"
+        )
+
+
+def save_temporary_identity_file(
+    file_content: bytes, original_filename: str, user_id: str, organization_id: str
+) -> str:
+    """Save a temporary identity file for cluster/node creation (not managed)"""
+    try:
+        if not is_valid_identity_file(original_filename):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid identity file type. Allowed: .pem, .key, .rsa, .pub, or files with no extension (e.g., id_rsa)",
+            )
+
+        if not user_id or not organization_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID and organization ID are required for identity file operations"
+            )
+
+        # Use user-specific directory
+        identity_dir = get_user_identity_files_dir(user_id, organization_id)
+        file_extension = Path(original_filename).suffix
+
+        # Create a unique filename for temporary files
+        unique_filename = f"temp_{uuid.uuid4().hex[:4]}{file_extension}"
+        file_path = identity_dir / unique_filename
+
+        with open(file_path, "wb") as f:
+            f.write(file_content)
+        os.chmod(file_path, 0o600)
+
+        return str(file_path)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save temporary identity file: {str(e)}"
         )
 
 

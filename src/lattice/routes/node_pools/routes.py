@@ -23,6 +23,7 @@ from utils.cluster_utils import get_cluster_platform_info, get_display_name_from
 from utils.file_utils import (
     delete_named_identity_file,
     save_named_identity_file,
+    save_temporary_identity_file,
 )
 
 from werkzeug.utils import secure_filename
@@ -493,8 +494,8 @@ async def create_cluster(
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+        identity_file_path_final = save_temporary_identity_file(
+            file_content, identity_file.filename, logged_user["id"], logged_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path
@@ -545,7 +546,7 @@ async def list_identity_files(
             .filter(
                 IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
-                IdentityFile.is_active == True
+                IdentityFile.is_active == True #noqa: E712
             )
             .order_by(IdentityFile.display_name)
             .all()
@@ -555,7 +556,6 @@ async def list_identity_files(
         for identity_file in identity_files:
             # Check if the file still exists on disk
             if os.path.exists(identity_file.file_path):
-                stat_info = os.stat(identity_file.file_path)
                 files.append({
                     "path": identity_file.file_path,
                     "display_name": identity_file.display_name,
@@ -614,7 +614,7 @@ async def upload_identity_file(
                 IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.display_name == display_name,
-                IdentityFile.is_active == True
+                IdentityFile.is_active == True #noqa: E712
             )
             .first()
         )
@@ -678,7 +678,7 @@ async def delete_identity_file(
                 IdentityFile.file_path == decoded_path,
                 IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
-                IdentityFile.is_active == True
+                IdentityFile.is_active == True #noqa: E712
             )
             .first()
         )
@@ -732,7 +732,7 @@ async def rename_identity_file_route(
                 IdentityFile.file_path == decoded_path,
                 IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
-                IdentityFile.is_active == True
+                IdentityFile.is_active == True #noqa: E712
             )
             .first()
         )
@@ -750,7 +750,7 @@ async def rename_identity_file_route(
                 IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.display_name == new_display_name,
-                IdentityFile.is_active == True
+                IdentityFile.is_active == True #noqa: E712
             )
             .first()
         )
@@ -856,8 +856,8 @@ async def add_node(
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+        identity_file_path_final = save_temporary_identity_file(
+            file_content, identity_file.filename, current_user["id"], current_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path

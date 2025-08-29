@@ -5,7 +5,7 @@ from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import workos
-from lattice.routes.auth.provider.auth_provider import (
+from routes.auth.provider.auth_provider import (
     AuthProvider,
     AuthSession,
     AuthUser,
