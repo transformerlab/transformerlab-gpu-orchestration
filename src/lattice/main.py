@@ -2,7 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
-from config import AUTH_REDIRECT_URI
+from config import (
+    AUTH_REDIRECT_URI,
+    CORS_ALLOW_ORIGINS,
+    CORS_ALLOW_HEADERS,
+    CORS_EXPOSE_HEADERS,
+    COOKIE_SAMESITE,
+    COOKIE_SECURE,
+)
 
 # Import and include routers
 from routes.auth.routes import router as auth_router
@@ -28,10 +35,11 @@ app = FastAPI(title="Lattice", version="1.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+    allow_headers=CORS_ALLOW_HEADERS,
+    expose_headers=CORS_EXPOSE_HEADERS,
 )
 
 
@@ -77,6 +85,15 @@ if os.path.exists(frontend_build_path):
 
 
 print(f"🔗 Backend using AUTH_REDIRECT_URI: {AUTH_REDIRECT_URI}")
+
+# Startup checks for cookie security vs SameSite policy
+@app.on_event("startup")
+async def _security_startup_check():
+    # Enforce secure setting when SameSite=None
+    if (COOKIE_SAMESITE or "lax").lower() == "none" and not COOKIE_SECURE:
+        raise RuntimeError(
+            "COOKIE_SAMESITE=None requires COOKIE_SECURE=True for modern browsers."
+        )
 
 if __name__ == "__main__":
     import uvicorn

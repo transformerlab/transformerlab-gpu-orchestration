@@ -1,7 +1,9 @@
 from fastapi import Request, Response, HTTPException
 from fastapi.responses import RedirectResponse
 from models import UserResponse
-from config import AUTH_COOKIE_PASSWORD
+from config import AUTH_COOKIE_PASSWORD, COOKIE_SECURE, COOKIE_SAMESITE
+import secrets
+from config import CSRF_ENABLED
 import os
 from .provider.work_os import provider as auth_provider
 
@@ -29,12 +31,27 @@ def _set_session_cookie(response: Response, sealed_session: str):
     response.set_cookie(
         "wos_session",
         sealed_session,
-        secure=False,  # Set to True in production with HTTPS
+        secure=COOKIE_SECURE,
         httponly=True,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=86400 * 7,  # 7 days
         path="/",
     )
+    # Set CSRF double-submit cookie if enabled (non-HttpOnly so frontend can read it)
+    if CSRF_ENABLED:
+        try:
+            token = secrets.token_urlsafe(32)
+            response.set_cookie(
+                "wos_csrf",
+                token,
+                secure=COOKIE_SECURE,
+                httponly=False,
+                samesite=COOKIE_SAMESITE,
+                max_age=86400 * 7,
+                path="/",
+            )
+        except Exception:
+            pass
 
 # --- Service Logic ---
 
@@ -126,6 +143,10 @@ async def logout_user(request: Request) -> RedirectResponse:
             logout_url = session.get_logout_url()
             response = RedirectResponse(url=logout_url)
             response.delete_cookie("wos_session")
+            try:
+                response.delete_cookie("wos_csrf")
+            except Exception:
+                pass
             return response
         except Exception:
             # If session is invalid, just clear the cookie and redirect
@@ -133,6 +154,10 @@ async def logout_user(request: Request) -> RedirectResponse:
     
     response = RedirectResponse(url=login_url)
     response.delete_cookie("wos_session")
+    try:
+        response.delete_cookie("wos_csrf")
+    except Exception:
+        pass
     return response
 
 async def check_user_auth(request: Request, response: Response, user: dict) -> dict:

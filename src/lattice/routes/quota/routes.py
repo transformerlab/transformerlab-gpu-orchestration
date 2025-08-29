@@ -3,7 +3,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
 from config import get_db
-from lattice.routes.auth.utils import get_current_user
+from lattice.routes.auth.utils import (
+    get_current_user,
+    check_organization_member,
+    check_organization_admin,
+    requires_admin,
+)
 from lattice.models import (
     OrganizationQuotaResponse,
     UpdateQuotaRequest,
@@ -35,8 +40,9 @@ from lattice.routes.quota.utils import (
     refresh_quota_periods_for_user,
 )
 from lattice.routes.quota.team_quota_routes import router as team_quota_router
+from lattice.routes.auth.api_key_auth import enforce_csrf
 
-router = APIRouter(prefix="/quota", tags=["quota"])
+router = APIRouter(prefix="/quota", tags=["quota"], dependencies=[Depends(enforce_csrf)])
 
 # Include team quota routes
 router.include_router(team_quota_router)
@@ -44,7 +50,10 @@ router.include_router(team_quota_router)
 
 @router.get("/organization/{organization_id}", response_model=OrganizationQuotaResponse)
 async def get_organization_quota(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Get organization quota and current user's usage"""
     try:
@@ -73,6 +82,7 @@ async def update_organization_quota(
     request: UpdateQuotaRequest,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Update organization quota per user"""
     try:
@@ -133,6 +143,7 @@ async def get_organization_usage(
     limit: int = 50,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Get current user's quota and recent usage logs"""
     try:
@@ -202,6 +213,7 @@ async def check_quota_availability(
     price_per_hour: float | None = None,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Check if user has enough quota for a new cluster.
 
@@ -241,7 +253,7 @@ async def check_quota_availability(
 
 @router.get("/sync-from-cost-report")
 async def sync_usage_from_cost_report(
-    user=Depends(get_current_user), db: Session = Depends(get_db)
+    user=Depends(get_current_user), db: Session = Depends(get_db), __: dict = Depends(requires_admin)
 ):
     """Sync GPU usage from SkyPilot cost report"""
     try:
@@ -255,7 +267,10 @@ async def sync_usage_from_cost_report(
 
 @router.get("/summary/{organization_id}")
 async def get_usage_summary(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Get detailed GPU usage summary for current user"""
     try:
@@ -272,7 +287,10 @@ async def get_usage_summary(
     response_model=OrganizationUserUsageResponse,
 )
 async def get_organization_user_usage(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get GPU usage breakdown for all users in an organization"""
     try:
@@ -292,6 +310,7 @@ async def get_all_organization_usage(
     limit: int = 50,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get organization-wide usage data for all users"""
     try:
@@ -384,7 +403,10 @@ async def get_all_organization_usage(
     response_model=UserQuotaListResponse,
 )
 async def get_organization_user_quotas(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get all user quotas for an organization"""
     try:
@@ -457,6 +479,7 @@ async def get_user_quota(
     user_id: str,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get quota for a specific user"""
     try:
@@ -508,6 +531,7 @@ async def update_user_quota_endpoint(
     request: UpdateUserQuotaRequest,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Update quota for a specific user"""
     try:
@@ -561,6 +585,7 @@ async def delete_user_quota_endpoint(
     user_id: str,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Delete user quota, reverting to organization default"""
     try:
@@ -591,6 +616,7 @@ async def create_user_quota_endpoint(
     request: CreateUserQuotaRequest,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Create a new user quota"""
     try:
@@ -662,7 +688,10 @@ async def create_user_quota_endpoint(
 
 @router.post("/organization/{organization_id}/populate-user-quotas")
 async def populate_user_quotas_endpoint(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Populate user quotas for all users in an organization"""
     try:
@@ -681,7 +710,10 @@ async def populate_user_quotas_endpoint(
 
 @router.post("/organization/{organization_id}/refresh-quota-periods")
 async def refresh_quota_periods_endpoint(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Refresh quota periods for all users in an organization"""
     try:

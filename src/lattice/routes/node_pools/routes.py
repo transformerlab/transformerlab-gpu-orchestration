@@ -11,7 +11,8 @@ from fastapi import (
     UploadFile,
 )
 from models import ClusterResponse, ClustersListResponse, SSHNode
-from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import az_get_current_config, load_azure_config
 from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
@@ -49,7 +50,7 @@ from routes.quota.utils import get_user_team_id
 
 router = APIRouter(
     prefix="/node-pools",
-    dependencies=[Depends(get_user_or_api_key)],
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["node-pools"],
 )
 
@@ -489,6 +490,7 @@ async def create_cluster(
     vcpus: Optional[str] = Form(None),
     memory_gb: Optional[str] = Form(None),
     logged_user: dict = Depends(get_user_or_api_key),
+    __: dict = Depends(require_scope("nodepools:write")),
 ):
     identity_file_path_final = None
     if identity_file and identity_file.filename:
@@ -539,6 +541,7 @@ async def upload_identity_file(
     response: Response,
     display_name: str = Form(...),
     identity_file: UploadFile = Form(...),
+    __: dict = Depends(require_scope("nodepools:write")),
 ):
     try:
         if not identity_file.filename:
@@ -565,6 +568,7 @@ async def delete_identity_file(
     request: Request,
     response: Response,
     file_path: str,
+    __: dict = Depends(require_scope("nodepools:write")),
 ):
     try:
         # URL decode the file path
@@ -586,6 +590,7 @@ async def rename_identity_file_route(
     response: Response,
     file_path: str,
     new_display_name: str = Form(...),
+    __: dict = Depends(require_scope("nodepools:write")),
 ):
     try:
         # URL decode the file path
@@ -748,6 +753,7 @@ async def delete_cluster(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    __: dict = Depends(require_scope("nodepools:write")),
     db: Session = Depends(get_db),
 ):
     # Check if user has access to this node pool
@@ -777,6 +783,7 @@ async def remove_node(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    __: dict = Depends(require_scope("nodepools:write")),
     db: Session = Depends(get_db),
 ):
     # Check if user has access to this node pool
@@ -902,6 +909,7 @@ async def update_ssh_pool_access(
     body: UpdateAccessRequest,
     current_user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("nodepools:write")),
 ):
     """Update allowed teams for an SSH node pool."""
     pool = (

@@ -132,16 +132,17 @@ def rp_save_config(
 
 
 def rp_get_config_for_display():
-    """Get RunPod configuration for display (with masked API key)"""
+    """Get RunPod configuration for display (with masked API key)."""
     config_data = load_runpod_config()
-    print(
-        f"📤 Returning RunPod config for display - configs: {config_data.get('configs', {})}"
-    )
 
     # Return all configs with masked API keys
     display_configs = {}
     for key, config in config_data.get("configs", {}).items():
         display_config = config.copy()
+        if "api_key" in display_config and display_config["api_key"]:
+            val = display_config["api_key"]
+            # Preserve prefix for identification
+            display_config["api_key"] = f"{val[:4]}...{val[-4:]}"
         display_configs[key] = display_config
 
     return {

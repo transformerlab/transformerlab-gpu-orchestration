@@ -17,8 +17,9 @@ from lattice.routes.quota.team_quota_service import (
     team_quota_to_response,
 )
 from lattice.routes.quota.utils import get_organization_default_quota
+from lattice.routes.auth.api_key_auth import enforce_csrf
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_csrf)])
 
 
 @router.get(
