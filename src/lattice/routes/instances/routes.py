@@ -32,7 +32,6 @@ from models import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope
 from lattice.routes.auth.api_key_auth import enforce_csrf
-from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import (
     az_setup_config,
     load_azure_config,

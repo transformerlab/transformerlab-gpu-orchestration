@@ -10,12 +10,9 @@ from fastapi import (
 )
 import os
 from fastapi.responses import StreamingResponse
-import uuid
-import os
 import json
 import queue
 import threading
-from config import UPLOADS_DIR
 from werkzeug.utils import secure_filename
 from lattice.models import (
     JobQueueResponse,
@@ -36,7 +33,7 @@ from utils.cluster_resolver import (
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
-from typing import Optional, List
+from typing import Optional
 from pathlib import Path
 import yaml
 
