@@ -3,6 +3,7 @@ import sky
 from typing import Optional
 from werkzeug.utils import secure_filename
 import asyncio
+from sqlalchemy import or_
 
 from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
 from utils.skypilot_tracker import skypilot_tracker
@@ -139,8 +140,7 @@ def launch_cluster_with_skypilot(
     disk_size: Optional[int] = None,
     storage_bucket_ids: Optional[list] = None,
     node_pool_name: Optional[str] = None,
-    docker_image: Optional[str] = None,
-    container_registry_id: Optional[str] = None,
+    docker_image_id: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
@@ -208,31 +208,45 @@ def launch_cluster_with_skypilot(
                     detail=f"Failed to run sky ssh up for cluster '{validation_name}': {str(e)}",
                 )
         envs = None
-        # Set Docker authentication environment variables if registry is provided
-        if docker_image and container_registry_id:
+        docker_image_tag = None
+        # Set Docker authentication environment variables if docker image is provided
+        if docker_image_id:
             from config import get_db
-            from db.db_models import ContainerRegistry
+            from db.db_models import DockerImage, ContainerRegistry
 
             # Get database session
             db = next(get_db())
             try:
-                # Fetch container registry
-                registry = (
-                    db.query(ContainerRegistry)
+                # Fetch docker image and its associated container registry (if any)
+                image = (
+                    db.query(DockerImage)
+                    .outerjoin(ContainerRegistry, DockerImage.container_registry_id == ContainerRegistry.id)
                     .filter(
-                        ContainerRegistry.id == container_registry_id,
-                        ContainerRegistry.is_active,
+                        DockerImage.id == docker_image_id,
+                        DockerImage.is_active,
+                        or_(
+                            ContainerRegistry.is_active == True, #noqa: E712
+                            DockerImage.container_registry_id.is_(None)
+                        )
                     )
                     .first()
                 )
 
-                if registry:
-                    task_envs = {
-                        "SKYPILOT_DOCKER_USERNAME": registry.docker_username,
-                        "SKYPILOT_DOCKER_PASSWORD": registry.docker_password,
-                        "SKYPILOT_DOCKER_SERVER": registry.docker_server,
-                    }
-                    envs = task_envs.copy()
+                if image:
+                    # Set the docker image tag for SkyPilot
+                    docker_image_tag = image.image_tag
+                    
+                    # Set Docker authentication environment variables only if image has a registry
+                    if image.container_registry_id and image.container_registry:
+                        task_envs = {
+                            "SKYPILOT_DOCKER_USERNAME": image.container_registry.docker_username,
+                            "SKYPILOT_DOCKER_PASSWORD": image.container_registry.docker_password,
+                            "SKYPILOT_DOCKER_SERVER": image.container_registry.docker_server,
+                        }
+                        envs = task_envs.copy()
+                    else:
+                        # Standalone image (no registry needed)
+                        envs = None
                 else:
                     envs = None
             finally:
@@ -240,7 +254,7 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
-        name = f"lattice-task-setup-{cluster_name}"
+        name = "lattice-task-setup"
 
         task = sky.Task(
             name=name,
@@ -345,8 +359,9 @@ def launch_cluster_with_skypilot(
             resources_kwargs["disk_size"] = disk_size
 
         # Add Docker image support
-        if docker_image:
-            resources_kwargs["image_id"] = f"docker:{docker_image}"
+        if docker_image_tag:
+            resources_kwargs["image_id"] = f"docker:{docker_image_tag}"
+            print(f"DOCKER IMAGE TAG: {resources_kwargs['image_id']}")
 
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)

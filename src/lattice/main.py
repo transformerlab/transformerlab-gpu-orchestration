@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import os
 from config import (
     AUTH_REDIRECT_URI,
@@ -29,8 +30,18 @@ from routes.ssh_config.routes import router as ssh_config_router
 from routes.container_registries.routes import router as container_registries_router
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup checks for cookie security vs SameSite policy
+    # Enforce secure setting when SameSite=None
+    if (COOKIE_SAMESITE or "lax").lower() == "none" and not COOKIE_SECURE:
+        raise RuntimeError(
+            "COOKIE_SAMESITE=None requires COOKIE_SECURE=True for modern browsers."
+        )
+    yield
+
 # Create main app
-app = FastAPI(title="Lattice", version="1.0.0")
+app = FastAPI(title="Lattice", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
@@ -85,15 +96,6 @@ if os.path.exists(frontend_build_path):
 
 
 print(f"🔗 Backend using AUTH_REDIRECT_URI: {AUTH_REDIRECT_URI}")
-
-# Startup checks for cookie security vs SameSite policy
-@app.on_event("startup")
-async def _security_startup_check():
-    # Enforce secure setting when SameSite=None
-    if (COOKIE_SAMESITE or "lax").lower() == "none" and not COOKIE_SECURE:
-        raise RuntimeError(
-            "COOKIE_SAMESITE=None requires COOKIE_SECURE=True for modern browsers."
-        )
 
 if __name__ == "__main__":
     import uvicorn
