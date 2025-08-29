@@ -3,8 +3,11 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 # Removed load_ssh_node_info import as we now use database-based approach
-from typing import Optional
+from typing import Optional, List
 import yaml
+import os
+from pathlib import Path
+from werkzeug.utils import secure_filename
 
 from config import UPLOADS_DIR
 from fastapi import (
@@ -139,7 +142,7 @@ async def launch_instance(
     zone: Optional[str] = Form(None),
     use_spot: Optional[bool] = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
-    python_file: Optional[UploadFile] = File(None),
+    python_file_name: Optional[str] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
@@ -237,13 +240,20 @@ async def launch_instance(
             except Exception as e:
                 print(f"Warning: Failed to parse storage bucket IDs: {e}")
 
-        if python_file is not None and python_file.filename:
-            # Save the uploaded file to a persistent uploads directory
-            python_filename = python_file.filename
-            unique_filename = f"{uuid.uuid4()}_{python_filename}"
-            file_path = UPLOADS_DIR / unique_filename
-            with open(file_path, "wb") as f:
-                f.write(await python_file.read())
+        # Handle uploaded file name from upload route
+        if python_file_name:
+            # Extract original filename from uploaded name (remove UUID prefix)
+            if "_" in python_file_name:
+                python_filename = "_".join(python_file_name.split("_")[1:])
+            else:
+                python_filename = python_file_name
+            
+            file_path = UPLOADS_DIR / python_file_name
+            if not file_path.exists():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Uploaded file '{python_file_name}' not found. Please upload the file first using /upload endpoint."
+                )
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
@@ -1193,4 +1203,91 @@ async def cancel_request(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to cancel request: {str(e)}"
+        )
+
+
+@router.post("/upload")
+async def upload_files(
+    request: Request,
+    response: Response,
+    python_file: Optional[UploadFile] = File(None),
+    dir_files: Optional[List[UploadFile]] = File(None),
+    dir_name: Optional[str] = Form(None),
+    user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
+):
+    """
+    Upload files for use in cluster launches and job submissions.
+    Returns uploaded file names that can be passed to /launch and /{cluster_name}/submit routes.
+    """
+    try:
+        uploaded_files = {}
+        
+        # Handle single Python file upload
+        if python_file and python_file.filename:
+            python_filename = secure_filename(python_file.filename)
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+            
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+            
+            uploaded_files["python_file"] = {
+                "original_name": python_filename,
+                "uploaded_name": unique_filename,
+                "file_path": str(file_path)
+            }
+        
+        # Handle directory files upload
+        if dir_files:
+            # Sanitize provided dir_name, or derive from files
+            base_name = dir_name or "project"
+            base_name = os.path.basename(base_name.strip())
+            base_name = secure_filename(base_name) or "project"
+            
+            unique_dir = UPLOADS_DIR / f"{uuid.uuid4()}_{base_name}"
+            unique_dir.mkdir(parents=True, exist_ok=True)
+            
+            uploaded_files["dir_files"] = {
+                "dir_name": base_name,
+                "uploaded_dir": str(unique_dir),
+                "files": []
+            }
+            
+            for up_file in dir_files:
+                if up_file.filename:
+                    # Filename includes relative path as sent by frontend
+                    raw_rel = up_file.filename
+                    # Normalize path, remove leading separators and traversal
+                    norm_rel = os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
+                    parts = [p for p in norm_rel.split("/") if p not in ("..", "")]
+                    safe_rel = Path(*[secure_filename(p) for p in parts])
+                    target_path = unique_dir / safe_rel
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    with open(target_path, "wb") as f:
+                        f.write(await up_file.read())
+                    
+                    uploaded_files["dir_files"]["files"].append({
+                        "original_path": raw_rel,
+                        "uploaded_path": str(safe_rel)
+                    })
+        
+        if not uploaded_files:
+            raise HTTPException(
+                status_code=400, 
+                detail="No files were uploaded. Please provide either python_file or dir_files."
+            )
+        
+        return {
+            "uploaded_files": uploaded_files,
+            "message": "Files uploaded successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to upload files: {str(e)}"
         )

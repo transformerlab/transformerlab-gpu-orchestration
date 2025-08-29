@@ -41,6 +41,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [command, setCommand] = useState("");
   const [setup, setSetup] = useState("");
   const [dirFiles, setDirFiles] = useState<FileList | null>(null);
+  const [uploadedDirPath, setUploadedDirPath] = useState<string | null>(null);
   const [cpus, setCpus] = useState("");
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
@@ -54,6 +55,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setCommand("");
     setSetup("");
     setDirFiles(null);
+    setUploadedDirPath(null);
     setCpus("");
     setMemory("");
     setAccelerators("");
@@ -115,6 +117,43 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
 
     setLoading(true);
     try {
+      let uploadedDirPath = null;
+
+      // Step 1: Upload directory files if provided
+      if (dirFiles && dirFiles.length > 0) {
+        const uploadFormData = new FormData();
+        const dirName = deriveDirName(dirFiles);
+        if (dirName) {
+          uploadFormData.append("dir_name", dirName);
+        }
+
+        for (const file of Array.from(dirFiles)) {
+          const relativePath = (file as any).webkitRelativePath || file.name;
+          uploadFormData.append("dir_files", file, relativePath);
+        }
+
+        const uploadUrl = buildApiUrl("instances/upload");
+        const uploadResponse = await apiFetch(uploadUrl, {
+          method: "POST",
+          credentials: "include",
+          body: uploadFormData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          uploadedDirPath = uploadData.uploaded_files.dir_files.uploaded_dir;
+          setUploadedDirPath(uploadedDirPath);
+        } else {
+          const errorData = await uploadResponse.json();
+          addNotification({
+            type: "danger",
+            message: errorData.detail || "Failed to upload files",
+          });
+          return;
+        }
+      }
+
+      // Step 2: Submit job with uploaded directory path
       const formData = new FormData();
 
       formData.append("command", command);
@@ -123,17 +162,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
       if (jobName) formData.append("job_name", jobName);
-
-      // Append directory files with their relative paths to preserve structure
-      if (dirFiles && dirFiles.length > 0) {
-        const dirName = deriveDirName(dirFiles);
-        if (dirName) {
-          formData.append("dir_name", dirName);
-        }
-        for (const file of Array.from(dirFiles)) {
-          const relativePath = (file as any).webkitRelativePath || file.name;
-          formData.append("dir_files", file, relativePath);
-        }
+      if (uploadedDirPath) {
+        formData.append("uploaded_dir_path", uploadedDirPath);
       }
 
       const response = await apiFetch(

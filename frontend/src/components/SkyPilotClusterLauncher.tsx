@@ -17,7 +17,7 @@ import {
   Checkbox,
   Alert,
 } from "@mui/joy";
-import { Play, Rocket, Terminal, Code, BookOpen } from "lucide-react";
+import { Play, Rocket, Terminal, Code, BookOpen, Upload } from "lucide-react";
 import { buildApiUrl, runpodApi, apiFetch } from "../utils/api";
 import { useNotification } from "./NotificationSystem";
 
@@ -87,6 +87,10 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [pythonFile, setPythonFile] = useState<File | null>(null);
+  const [uploadedPythonFileName, setUploadedPythonFileName] = useState<
+    string | null
+  >(null);
+  const [loading, setLoading] = useState(false);
 
   // Interactive development specific states
   const [jupyterPort, setJupyterPort] = useState("8888");
@@ -107,8 +111,12 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     "idle" | "loading" | "success" | "error"
   >("idle");
   // Access control state
-  const [currentUserTeamId, setCurrentUserTeamId] = useState<string | null>(null);
-  const [cloudAccessDenied, setCloudAccessDenied] = useState<null | string>(null);
+  const [currentUserTeamId, setCurrentUserTeamId] = useState<string | null>(
+    null
+  );
+  const [cloudAccessDenied, setCloudAccessDenied] = useState<null | string>(
+    null
+  );
   const [sshAccessDenied, setSshAccessDenied] = useState<null | string>(null);
   const [accessChecking, setAccessChecking] = useState(false);
 
@@ -134,6 +142,7 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
     setUseSpot(false);
     setIdleMinutesToAutostop("");
     setPythonFile(null);
+    setUploadedPythonFileName(null);
     setJupyterPort("8888");
     setJupyterPassword("");
     setSelectedStorageBuckets([]);
@@ -144,9 +153,12 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
 
   const fetchCurrentUserTeam = async (): Promise<string | null> => {
     try {
-      const resp = await apiFetch(buildApiUrl("admin/teams/current-user/team"), {
-        credentials: "include",
-      });
+      const resp = await apiFetch(
+        buildApiUrl("admin/teams/current-user/team"),
+        {
+          credentials: "include",
+        }
+      );
       if (resp.ok) {
         const data = await resp.json();
         const id = data?.id ?? null;
@@ -212,11 +224,17 @@ const SkyPilotClusterLauncher: React.FC<SkyPilotClusterLauncherProps> = ({
           if (resp.ok) {
             const data = await resp.json();
             const defaultKey = data.default_config;
-            const cfg = defaultKey && data.configs ? data.configs[defaultKey] : null;
+            const cfg =
+              defaultKey && data.configs ? data.configs[defaultKey] : null;
             const allowedIds: string[] = cfg?.allowed_team_ids || [];
-            if (allowedIds.length > 0 && (!teamId || !allowedIds.includes(teamId))) {
+            if (
+              allowedIds.length > 0 &&
+              (!teamId || !allowedIds.includes(teamId))
+            ) {
               setCloudAccessDenied(
-                `Your team is not allowed to launch on ${cloud === "runpod" ? "RunPod" : "Azure"} pool`
+                `Your team is not allowed to launch on ${
+                  cloud === "runpod" ? "RunPod" : "Azure"
+                } pool`
               );
             }
           }
@@ -439,23 +457,38 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
   };
 
   const launchCluster = async () => {
-    // Close modal immediately and reset form
-    setShowLaunchModal(false);
-    resetForm();
-
-    // Show immediate notification that request is being processed
-    addNotification({
-      type: "success",
-      message: `Launching cluster "${clusterName}"...`,
-    });
-
-    // Add cluster to skeleton state immediately
-    if (onClusterLaunched) {
-      onClusterLaunched(clusterName);
-    }
+    setLoading(true);
 
     try {
-      // Always use multipart/form-data
+      let uploadedFileName = null;
+
+      // Step 1: Upload file if provided
+      if (pythonFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("python_file", pythonFile);
+
+        const uploadResponse = await apiFetch(buildApiUrl("instances/upload"), {
+          method: "POST",
+          credentials: "include",
+          body: uploadFormData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          uploadedFileName =
+            uploadData.uploaded_files.python_file.uploaded_name;
+          setUploadedPythonFileName(uploadedFileName);
+        } else {
+          const errorData = await uploadResponse.json();
+          addNotification({
+            type: "danger",
+            message: errorData.detail || "Failed to upload file",
+          });
+          return;
+        }
+      }
+
+      // Step 2: Launch cluster with uploaded file name
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
       formData.append("command", command);
@@ -470,8 +503,8 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
       formData.append("use_spot", useSpot ? "true" : "false");
       if (idleMinutesToAutostop)
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
-      if (pythonFile) {
-        formData.append("python_file", pythonFile);
+      if (uploadedFileName) {
+        formData.append("python_file_name", uploadedFileName);
       }
 
       // Add interactive development parameters
@@ -497,6 +530,15 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
           type: "success",
           message: `${data.message} (Request ID: ${data.request_id})`,
         });
+
+        // Close modal and reset form on success
+        setShowLaunchModal(false);
+        resetForm();
+
+        // Add cluster to skeleton state
+        if (onClusterLaunched) {
+          onClusterLaunched(clusterName);
+        }
       } else {
         const errorData = await response.json();
         addNotification({
@@ -509,6 +551,8 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
         type: "danger",
         message: "Error launching cluster",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -853,14 +897,22 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
                           const teamId = await fetchCurrentUserTeam();
                           try {
                             const r = await apiFetch(
-                              buildApiUrl(`node-pools/ssh-node-pools/${newName}/access`),
+                              buildApiUrl(
+                                `node-pools/ssh-node-pools/${newName}/access`
+                              ),
                               { credentials: "include" }
                             );
                             if (r.ok) {
                               const data = await r.json();
-                              const allowed = (data.allowed_team_ids || []) as string[];
-                              if (allowed.length > 0 && (!teamId || !allowed.includes(teamId))) {
-                                setSshAccessDenied("Your team is not allowed to use this SSH node pool");
+                              const allowed = (data.allowed_team_ids ||
+                                []) as string[];
+                              if (
+                                allowed.length > 0 &&
+                                (!teamId || !allowed.includes(teamId))
+                              ) {
+                                setSshAccessDenied(
+                                  "Your team is not allowed to use this SSH node pool"
+                                );
                               }
                             }
                           } catch (e) {
@@ -1127,7 +1179,13 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
               </Button>
               <Button
                 onClick={launchCluster}
-                disabled={!clusterName || loading || accessChecking || !!cloudAccessDenied || !!sshAccessDenied}
+                disabled={
+                  !clusterName ||
+                  loading ||
+                  accessChecking ||
+                  !!cloudAccessDenied ||
+                  !!sshAccessDenied
+                }
                 loading={loading || accessChecking}
                 startDecorator={<Play size={16} />}
               >

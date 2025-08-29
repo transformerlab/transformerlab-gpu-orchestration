@@ -8,6 +8,7 @@ from fastapi import (
     Request,
     Response,
 )
+import os
 from fastapi.responses import StreamingResponse
 import uuid
 import os
@@ -294,7 +295,7 @@ async def submit_job_to_cluster(
     zone: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
     dir_name: Optional[str] = Form(None),
-    dir_files: Optional[List[UploadFile]] = File(None),
+    uploaded_dir_path: Optional[str] = Form(None),
     job_type: Optional[str] = Form(None),
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
@@ -305,30 +306,27 @@ async def submit_job_to_cluster(
         file_mounts = None
         workdir = None
 
-        # If a directory was uploaded, reconstruct it under a unique folder
-        if dir_files:
-            # Sanitize provided dir_name, or derive from files
-            base_name = dir_name or "project"
-            base_name = os.path.basename(base_name.strip())
-            base_name = secure_filename(base_name) or "project"
-
-            unique_dir = UPLOADS_DIR / f"{uuid.uuid4()}_{base_name}"
-            unique_dir.mkdir(parents=True, exist_ok=True)
-
-            for up_file in dir_files:
-                # Filename includes relative path as sent by frontend
-                raw_rel = up_file.filename or ""
-                # Normalize path, remove leading separators and traversal
-                norm_rel = os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
-                parts = [p for p in norm_rel.split("/") if p not in ("..", "")]
-                safe_rel = Path(*[secure_filename(p) for p in parts])
-                target_path = unique_dir / safe_rel
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(target_path, "wb") as f:
-                    f.write(await up_file.read())
-
+        # Handle uploaded directory path from upload route
+        if uploaded_dir_path:
+            # Validate the uploaded directory exists
+            if not os.path.exists(uploaded_dir_path):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Uploaded directory '{uploaded_dir_path}' not found. Please upload the files first using /upload endpoint."
+                )
+            
+            # Extract base name from the uploaded directory path
+            base_name = os.path.basename(uploaded_dir_path)
+            if "_" in base_name:
+                # Remove UUID prefix if present
+                base_name = "_".join(base_name.split("_")[1:])
+            
+            # Use provided dir_name if available, otherwise use extracted base_name
+            if dir_name:
+                base_name = secure_filename(dir_name) or base_name
+            
             # Mount the entire directory at ~/<base_name>
-            file_mounts = {f"~/{base_name}": str(unique_dir)}
+            file_mounts = {f"~/{base_name}": uploaded_dir_path}
             workdir = f"~/{base_name}"
 
         # For VSCode, we need to remove the carriage return
