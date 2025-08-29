@@ -323,11 +323,15 @@ const Nodes: React.FC = () => {
             <div key={cluster.id}>
               <ClusterCard
                 cluster={cluster}
-                clusterType={cluster.clusterType || "fake"}
+                clusterType={
+                  (cluster.clusterType as "fake" | "cloud" | "regular") ||
+                  "fake"
+                }
                 provider={cluster.provider}
                 currentUser={currentUserEmail}
                 onLaunchCluster={
-                  cluster.provider === "gcp"
+                  cluster.provider === "gcp" &&
+                  (cluster.clusterType as string) !== "fake"
                     ? () => setShowGcpLauncher(true)
                     : undefined
                 }
