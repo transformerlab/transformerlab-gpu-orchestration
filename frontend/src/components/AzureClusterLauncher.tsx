@@ -21,6 +21,7 @@ import {
 } from "@mui/joy";
 import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import { useNotification } from "./NotificationSystem";
 
 interface AzureClusterLauncherProps {
@@ -68,6 +69,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   onClose,
   onClusterLaunched,
 }) => {
+  const { user } = useAuth();
   const [clusterName, setClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
@@ -89,6 +91,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
   // Storage bucket state
   const [storageBuckets, setStorageBuckets] = useState<StorageBucket[]>([]);
@@ -110,8 +114,47 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       fetchAvailableRegions();
       fetchStorageBuckets();
       fetchContainerRegistries();
+      if (user?.organization_id) {
+        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
+          credentials: "include",
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = await res.json();
+            setAvailableCredits(Number(data.credits_remaining || 0));
+          })
+          .catch(() => {});
+      }
     }
-  }, [open]);
+  }, [open, user?.organization_id]);
+
+  // Recompute estimated cost when instance type/region change
+  useEffect(() => {
+    const compute = async () => {
+      if (!selectedInstanceType || !selectedRegion) {
+        setEstimatedCost(0);
+        return;
+      }
+      try {
+        const url = buildApiUrl(
+          `clouds/azure/price?instance_type=${encodeURIComponent(
+            selectedInstanceType
+          )}&region=${encodeURIComponent(selectedRegion)}`
+        );
+        const res = await apiFetch(url, { credentials: "include" });
+        if (!res.ok) {
+          setEstimatedCost(0);
+          return;
+        }
+        const data = await res.json();
+        const p = Number(data.price_per_hour || 0);
+        setEstimatedCost(!isNaN(p) ? p * 1.0 : 0); // 1h minimum
+      } catch (e) {
+        setEstimatedCost(0);
+      }
+    };
+    compute();
+  }, [selectedInstanceType, selectedRegion]);
 
   const fetchStorageBuckets = async () => {
     try {
@@ -527,6 +570,23 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   )}
                 </Stack>
               </Card>
+              {availableCredits !== null && (
+                <Card variant="soft">
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <DollarSign size={16} />
+                    <Typography level="body-sm">
+                      Estimated cost (1h): {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"} | Remaining credits: {
+                        availableCredits?.toFixed(2) || "0.00"
+                      }
+                    </Typography>
+                  </Stack>
+                  {estimatedCost > (availableCredits ?? 0) && (
+                    <Alert color="warning" sx={{ mt: 1 }}>
+                      Insufficient credits for this selection.
+                    </Alert>
+                  )}
+                </Card>
+              )}
 
               <Card variant="outlined">
                 <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -709,7 +769,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
               !clusterName ||
               !selectedInstanceType ||
               !selectedRegion ||
-              loading
+              loading ||
+              (availableCredits !== null && estimatedCost > availableCredits)
             }
             color="success"
           >

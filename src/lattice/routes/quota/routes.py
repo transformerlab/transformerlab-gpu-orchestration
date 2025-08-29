@@ -199,20 +199,39 @@ async def check_quota_availability(
     organization_id: str,
     estimated_hours: float = 1.0,
     gpu_count: int = 1,
+    price_per_hour: float | None = None,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Check if user has enough quota for a new cluster"""
+    """Check if user has enough quota for a new cluster.
+
+    If `price_per_hour` is provided, uses price-based credits (recommended). Otherwise falls back to hours*gpu.
+    """
     try:
         quota_response = await get_organization_quota(organization_id, user, db)
 
-        required_hours = estimated_hours * gpu_count
-        has_quota = quota_response.credits_remaining >= required_hours
+        if price_per_hour is not None:
+            required_credits = float(price_per_hour) * float(estimated_hours)
+            # Back-compat fields with best-effort translation to hours
+            required_hours = float(estimated_hours)
+            available_hours = quota_response.credits_remaining / float(price_per_hour) if price_per_hour else 0.0
+        else:
+            # Deprecated hours-only path
+            required_credits = float(estimated_hours) * float(gpu_count)
+            required_hours = float(estimated_hours) * float(gpu_count)
+            available_hours = quota_response.credits_remaining
+
+        has_quota = quota_response.credits_remaining >= required_credits
 
         return {
             "has_quota": has_quota,
+            # New fields
+            "required_credits": required_credits,
+            "available_credits": quota_response.credits_remaining,
+            # Deprecated fields (hours-based) for backward compatibility
             "required_hours": required_hours,
-            "available_hours": quota_response.credits_remaining,
+            "available_hours": available_hours,
+            # Common context
             "current_usage": quota_response.credits_used,
             "quota_limit": quota_response.monthly_credits_per_user,
         }
@@ -280,7 +299,7 @@ async def get_all_organization_usage(
         org_quota = get_or_create_organization_quota(db, organization_id)
         period_start, period_end = get_current_period_dates()
 
-        # Calculate total organization usage
+        # Calculate total organization usage (credits == price)
         total_org_usage = (
             db.query(GPUUsageLog)
             .filter(
@@ -289,11 +308,8 @@ async def get_all_organization_usage(
                 >= datetime.combine(period_start, datetime.min.time()),
                 GPUUsageLog.start_time
                 <= datetime.combine(period_end, datetime.max.time()),
-                GPUUsageLog.duration_seconds.isnot(None),
             )
-            .with_entities(
-                func.sum((GPUUsageLog.duration_seconds / 3600) * GPUUsageLog.gpu_count)
-            )
+            .with_entities(func.sum(GPUUsageLog.cost_estimate))
             .scalar()
             or 0.0
         )

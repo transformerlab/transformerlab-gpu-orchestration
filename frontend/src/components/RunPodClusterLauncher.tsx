@@ -20,6 +20,7 @@ import {
 } from "@mui/joy";
 import { Rocket, Zap } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import { useNotification } from "./NotificationSystem";
 
 interface RunPodConfig {
@@ -69,6 +70,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   onClusterLaunched,
   runpodConfig,
 }) => {
+  const { user } = useAuth();
   const [clusterName, setClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
@@ -79,6 +81,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
   // Container registry state
   const [containerRegistries, setContainerRegistries] = useState<
@@ -98,11 +102,23 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       ) {
         setSelectedGpuType(runpodConfig.allowed_gpu_types[0]);
       }
+      // Fetch current user's remaining credits
+      if (user?.organization_id) {
+        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
+          credentials: "include",
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = await res.json();
+            setAvailableCredits(Number(data.credits_remaining || 0));
+          })
+          .catch(() => {});
+      }
     } else {
       // Reset loading state when modal closes
       setIsLoadingGpuTypes(false);
     }
-  }, [open, runpodConfig.allowed_gpu_types]);
+  }, [open, runpodConfig.allowed_gpu_types, user?.organization_id]);
 
   const fetchAvailableGpuTypes = async () => {
     setIsLoadingGpuTypes(true);
@@ -131,6 +147,22 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       setIsLoadingGpuTypes(false);
     }
   };
+
+  useEffect(() => {
+    // Recompute estimated cost when selection changes
+    const opt = availableGpuTypes.find(
+      (o) => o.full_string === selectedGpuFullString
+    );
+    if (opt && opt.price) {
+      const priceNum = parseFloat(String(opt.price).replace(/[^0-9.]/g, ""));
+      if (!isNaN(priceNum)) {
+        // Assume 1 hour minimum
+        setEstimatedCost(priceNum * 1.0);
+        return;
+      }
+    }
+    setEstimatedCost(0);
+  }, [selectedGpuFullString, availableGpuTypes]);
 
   const fetchContainerRegistries = async () => {
     try {
@@ -468,22 +500,34 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               availableGpuTypes.filter((gpu) =>
                 runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
               ).length === 0
+              || (availableCredits !== null && estimatedCost > availableCredits)
             }
             color="success"
           >
             Reserve a RunPod Node
           </Button>
         </Box>
+        {availableCredits !== null && (
+          <Typography level="body-xs" sx={{ mt: 1, color: "text.secondary" }}>
+            Estimated cost (1h): {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"}
+            {"  "}| Remaining credits: {availableCredits.toFixed(2)}
+          </Typography>
+        )}
         {!isLoadingGpuTypes &&
           availableGpuTypes.filter((gpu) =>
             runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
           ).length === 0 && (
-            <Alert color="warning" sx={{ mt: 2 }}>
-              No GPU types are allowed in the current configuration. Please
-              configure allowed GPU types in the Admin section before launching
-              clusters.
-            </Alert>
-          )}
+          <Alert color="warning" sx={{ mt: 2 }}>
+            No GPU types are allowed in the current configuration. Please
+            configure allowed GPU types in the Admin section before launching
+            clusters.
+          </Alert>
+        )}
+        {availableCredits !== null && estimatedCost > availableCredits && (
+          <Alert color="warning" sx={{ mt: 1 }}>
+            Insufficient credits for this selection.
+          </Alert>
+        )}
       </ModalDialog>
     </Modal>
   );
