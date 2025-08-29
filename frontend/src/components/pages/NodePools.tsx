@@ -323,25 +323,19 @@ const Nodes: React.FC = () => {
             <div key={cluster.id}>
               <ClusterCard
                 cluster={cluster}
-                clusterType="fake"
+                clusterType={cluster.clusterType || "fake"}
+                provider={cluster.provider}
                 currentUser={currentUserEmail}
+                onLaunchCluster={
+                  cluster.provider === "gcp"
+                    ? () => setShowGcpLauncher(true)
+                    : undefined
+                }
+                launchButtonText={cluster.launchButtonText}
+                allowedGpuTypes={cluster.allowedGpuTypes}
               />
             </div>
           ))}
-          {/* Fake GCP Cluster */}
-          <ClusterCard
-            cluster={{
-              id: "fake-gcp-cluster",
-              name: "GCP Instances Pool",
-              nodes: generateDedicatedNodes(25, 8, currentUserEmail),
-            }}
-            provider="gcp"
-            clusterType="fake"
-            onLaunchCluster={() => setShowGcpLauncher(true)}
-            launchDisabled={true}
-            launchButtonText="Request Instance"
-            currentUser={currentUserEmail}
-          />
         </>
       ) : (
         <></>

@@ -5122,6 +5122,18 @@
   {
     "id": "fake-gcp-cluster",
     "name": "Fake GCP Cluster",
+    "provider": "gcp",
+    "clusterType": "fake",
+    "launchButtonText": "Request Instance",
+    "allowedGpuTypes": [
+      "TPU v2-8",
+      "TPU v3-8",
+      "TPU v3-16",
+      "TPU v3-32",
+      "TPU v4-8",
+      "TPU v4-16",
+      "TPU v4-32"
+    ],
     "nodes": [
       {
         "id": "node-0",
