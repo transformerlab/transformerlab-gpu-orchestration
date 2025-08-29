@@ -32,6 +32,15 @@ interface AzureConfig {
   max_instances: number;
 }
 
+interface GcpConfig {
+  project_id: string;
+  service_account_key: string;
+  allowed_instance_types: string[];
+  allowed_regions: string[];
+  is_configured: boolean;
+  max_instances: number;
+}
+
 const Nodes: React.FC = () => {
   const [runpodConfig, setRunpodConfig] = useState<RunPodConfig>({
     api_key: "",
@@ -46,6 +55,16 @@ const Nodes: React.FC = () => {
     tenant_id: "",
     client_id: "",
     client_secret: "",
+    allowed_instance_types: [],
+    allowed_regions: [],
+    is_configured: false,
+    max_instances: 0,
+  });
+
+  // State for GCP configuration
+  const [gcpConfig, setGcpConfig] = useState<GcpConfig>({
+    project_id: "",
+    service_account_key: "",
     allowed_instance_types: [],
     allowed_regions: [],
     is_configured: false,
@@ -192,6 +211,28 @@ const Nodes: React.FC = () => {
         max_instances: 0,
       });
     }
+
+    // Extract GCP configuration from node_pools
+    const gcpPool = nodePools.find((pool: any) => pool.provider === "gcp");
+    if (gcpPool && gcpPool.config) {
+      setGcpConfig({
+        project_id: "", // Not exposed in node_pools for security
+        service_account_key: "",
+        allowed_instance_types: gcpPool.config.allowed_instance_types || [],
+        allowed_regions: gcpPool.config.allowed_regions || [],
+        is_configured: gcpPool.config.is_configured || false,
+        max_instances: gcpPool.max_instances || 0,
+      });
+    } else {
+      setGcpConfig({
+        project_id: "",
+        service_account_key: "",
+        allowed_instance_types: [],
+        allowed_regions: [],
+        is_configured: false,
+        max_instances: 0,
+      });
+    }
   }, [nodePools]);
 
   // Extract cluster details from node_pools for direct providers
@@ -248,6 +289,7 @@ const Nodes: React.FC = () => {
 
   const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
   const [showAzureLauncher, setShowAzureLauncher] = useState(false);
+  const [showGcpLauncher, setShowGcpLauncher] = useState(false);
   const [showInstanceLauncher, setShowInstanceLauncher] = useState(false);
 
   const currentUserName =
@@ -276,15 +318,31 @@ const Nodes: React.FC = () => {
     >
       {/* Existing Node Pools/Clusters UI */}
       {showFakeData ? (
-        mockClustersWithCurrentUser.map((cluster) => (
-          <div key={cluster.id}>
-            <ClusterCard
-              cluster={cluster}
-              clusterType="fake"
-              currentUser={currentUserEmail}
-            />
-          </div>
-        ))
+        <>
+          {mockClustersWithCurrentUser.map((cluster) => (
+            <div key={cluster.id}>
+              <ClusterCard
+                cluster={cluster}
+                clusterType="fake"
+                currentUser={currentUserEmail}
+              />
+            </div>
+          ))}
+          {/* Fake GCP Cluster */}
+          <ClusterCard
+            cluster={{
+              id: "fake-gcp-cluster",
+              name: "GCP Instances Pool",
+              nodes: generateDedicatedNodes(25, 8, currentUserEmail),
+            }}
+            provider="gcp"
+            clusterType="fake"
+            onLaunchCluster={() => setShowGcpLauncher(true)}
+            launchDisabled={true}
+            launchButtonText="Request Instance"
+            currentUser={currentUserEmail}
+          />
+        </>
       ) : (
         <></>
       )}
@@ -381,6 +439,38 @@ const Nodes: React.FC = () => {
               />
             );
           })()}
+
+        {/* GCP Cluster */}
+        {gcpConfig.is_configured &&
+          (() => {
+            // Find GCP pool from node pools
+            const gcpPool = nodePools.find(
+              (pool: any) => pool.provider === "gcp"
+            );
+
+            if (!gcpPool) return null;
+
+            return (
+              <ClusterCard
+                cluster={{
+                  id: "gcp-cluster",
+                  name: gcpPool?.name || "GCP Node Pool",
+                  nodes: generateDedicatedNodes(
+                    gcpPool.max_instances,
+                    gcpPool.current_instances,
+                    currentUserEmail
+                  ),
+                }}
+                provider={gcpPool?.provider}
+                clusterType="regular"
+                onLaunchCluster={() => setShowGcpLauncher(true)}
+                launchDisabled={!gcpPool.can_launch}
+                launchButtonText="Request Instance"
+                allowedGpuTypes={gcpConfig.allowed_instance_types}
+                currentUser={currentUserEmail}
+              />
+            );
+          })()}
       </Box>
 
       {/* RunPod Cluster Launcher Modal */}
@@ -395,6 +485,13 @@ const Nodes: React.FC = () => {
       <AzureClusterLauncher
         open={showAzureLauncher}
         onClose={() => setShowAzureLauncher(false)}
+        onClusterLaunched={handleClusterLaunched}
+      />
+
+      {/* GCP Cluster Launcher Modal */}
+      <AzureClusterLauncher
+        open={showGcpLauncher}
+        onClose={() => setShowGcpLauncher(false)}
         onClusterLaunched={handleClusterLaunched}
       />
 

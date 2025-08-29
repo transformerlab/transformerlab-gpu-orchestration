@@ -1,6 +1,7 @@
 import React from "react";
 import AzureIcon from "./icons/azure.svg"; // Adjust the path as needed
 import RunPodIcon from "./icons/runpod.svg"; // Adjust the path as needed
+import GcpIcon from "./icons/gcp.svg"; // Adjust the path as needed
 import { ServerIcon } from "lucide-react";
 
 interface CloudServiceIconProps {
@@ -28,6 +29,14 @@ const CloudServiceIcon: React.FC<CloudServiceIconProps> = ({
         <img
           src={RunPodIcon}
           alt="RunPod"
+          style={{ width: 16, height: 16, ...filterStyle }}
+        />
+      );
+    case "gcp":
+      return (
+        <img
+          src={GcpIcon}
+          alt="Google Cloud Platform"
           style={{ width: 16, height: 16, ...filterStyle }}
         />
       );
