@@ -333,7 +333,7 @@ def launch_cluster_with_skypilot(
         resources_kwargs = {}
         if cloud:
             if cloud.lower() == "ssh":
-                resources_kwargs["infra"] = "ssh"
+                resources_kwargs["infra"] = f"ssh/{node_pool_name}"
             elif cloud.lower() == "runpod":
                 resources_kwargs["cloud"] = "runpod"
             elif cloud.lower() == "azure":
