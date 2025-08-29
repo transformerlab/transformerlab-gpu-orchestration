@@ -108,11 +108,48 @@ export const authApi = {
   },
 };
 
+// Read a cookie by name
+const getCookie = (name: string): string | null => {
+  try {
+    const cookies = document.cookie ? document.cookie.split(";") : [];
+    for (const c of cookies) {
+      const [k, v] = c.split("=");
+      if (k && k.trim() === name) {
+        return decodeURIComponent((v || "").trim());
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
+
 export const apiFetch = async (
   input: RequestInfo,
   init?: RequestInit
 ): Promise<Response> => {
-  const response = await fetch(input, init);
+  const method = (init?.method || "GET").toUpperCase();
+
+  // Default to sending credentials unless explicitly overridden
+  const nextInit: RequestInit = {
+    ...init,
+    credentials: init?.credentials ?? "include",
+    headers: {
+      ...(init?.headers as Record<string, string>),
+    },
+  };
+
+  // For mutating requests, mirror CSRF token from cookie to header if present
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrf = getCookie("wos_csrf");
+    const headers = (nextInit.headers || {}) as Record<string, string>;
+    if (csrf && !headers["x-csrf-token"]) {
+      headers["x-csrf-token"] = csrf;
+    }
+    nextInit.headers = headers;
+  }
+
+  const response = await fetch(input, nextInit);
   if (response.status === 401) {
     window.dispatchEvent(new Event("auth-error"));
     throw new Error(`Authentication error: ${response.status}`);

@@ -12,7 +12,8 @@ from models import (
     AddTeamMemberRequest,
     AvailableUsersResponse,
 )
-from routes.auth.utils import get_current_user
+from routes.auth.utils import get_current_user, requires_admin
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from .teams_service import (
     list_teams as svc_list_teams,
     create_team as svc_create_team,
@@ -26,11 +27,24 @@ from .teams_service import (
 )
 
 
-router = APIRouter(prefix="/admin/teams", tags=["admin"])
+router = APIRouter(prefix="/admin/teams", tags=["admin"], dependencies=[Depends(enforce_csrf)])
 
 
 @router.get("/", response_model=TeamListResponse)
 async def list_teams(
+    request: Request, response: Response, db: Session = Depends(get_db)
+):
+    user_info = get_current_user(request, response)
+    org_id = user_info.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization ID required")
+
+    return svc_list_teams(db, org_id)
+
+
+# Allow both '/admin/teams' and '/admin/teams/' for GET
+@router.get("", response_model=TeamListResponse)
+async def list_teams_no_slash(
     request: Request, response: Response, db: Session = Depends(get_db)
 ):
     user_info = get_current_user(request, response)
@@ -47,6 +61,25 @@ async def create_team(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
+):
+    user_info = get_current_user(request, response)
+    user_id = user_info.get("id")
+    org_id = user_info.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization ID required")
+
+    return svc_create_team(db, org_id, user_id, team_req)
+
+
+# Allow both '/admin/teams' and '/admin/teams/' for POST
+@router.post("", response_model=TeamResponse)
+async def create_team_no_slash(
+    team_req: CreateTeamRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     user_info = get_current_user(request, response)
     user_id = user_info.get("id")
@@ -64,6 +97,7 @@ async def update_team(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
@@ -75,7 +109,11 @@ async def update_team(
 
 @router.delete("/{team_id}")
 async def delete_team(
-    team_id: str, request: Request, response: Response, db: Session = Depends(get_db)
+    team_id: str,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
@@ -105,6 +143,7 @@ async def add_team_member(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
@@ -153,6 +192,7 @@ async def remove_team_member(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     user_info = get_current_user(request, response)
     org_id = user_info.get("organization_id")
@@ -165,7 +205,10 @@ async def remove_team_member(
 
 @router.get("/available-users", response_model=AvailableUsersResponse)
 async def list_available_users(
-    request: Request, response: Response, db: Session = Depends(get_db)
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     """List users in the current organization to add to teams.
     Uses the auth provider's organization memberships to identify users.

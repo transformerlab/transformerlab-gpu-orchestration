@@ -26,12 +26,20 @@ from models import (
     StopClusterRequest,
     StopClusterResponse,
 )
-from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.auth.utils import get_current_user
-from routes.clouds.azure.utils import az_setup_config
+from routes.clouds.azure.utils import (
+    az_setup_config,
+    load_azure_config,
+    az_infer_gpu_count,
+    az_get_price_per_hour,
+)
 from routes.clouds.runpod.utils import (
     map_runpod_display_to_instance_type,
     rp_setup_config,
+    load_runpod_config,
+    rp_get_price_per_hour,
 )
 from routes.jobs.utils import get_cluster_job_queue
 from routes.node_pools.utils import (
@@ -40,6 +48,10 @@ from routes.node_pools.utils import (
     update_gpu_resources_for_node_pool,
 )
 from routes.reports.utils import record_usage
+from routes.quota.utils import get_user_team_id, get_current_user_quota_info
+from sqlalchemy.orm import Session
+from config import get_db
+from db.db_models import NodePoolAccess as NodePoolAccessDB, SSHNodePool as SSHNodePoolDB
 from utils.cluster_resolver import handle_cluster_name_param
 from utils.cluster_utils import (
     create_cluster_platform_entry,
@@ -104,7 +116,9 @@ def update_gpu_resources_background(node_pool_name: str):
 
 
 router = APIRouter(
-    prefix="/instances", dependencies=[Depends(get_user_or_api_key)], tags=["instances"]
+    prefix="/instances",
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
+    tags=["instances"],
 )
 
 
@@ -128,10 +142,11 @@ async def launch_instance(
     launch_mode: Optional[str] = Form(None),
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
-
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         file_mounts = None
@@ -157,6 +172,24 @@ async def launch_instance(
                 f.write(await python_file.read())
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+        # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
+        # (RunPod mapping below may clear 'accelerators')
+        def _parse_requested_gpu_count(accel: Optional[str], cloud_name: Optional[str]) -> int:
+            if not accel:
+                return 0
+            s = str(accel).strip()
+            if s.upper().startswith("CPU"):
+                return 0
+            if ":" in s:
+                try:
+                    return max(0, int(s.split(":")[-1].strip()))
+                except Exception:
+                    return 1
+            return 1
+
+        _initial_requested_gpu_count = _parse_requested_gpu_count(accelerators, cloud)
+        _runpod_display_option_for_pricing = accelerators if (cloud or "").lower() == "runpod" else None
+
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
@@ -190,6 +223,105 @@ async def launch_instance(
         user_info = get_current_user(request, response)
         user_id = user_info["id"]
         organization_id = user_info["organization_id"]
+
+        # Enforce team-based access to selected node pool/provider
+        try:
+            team_id = get_user_team_id(db, organization_id, user_id)
+            if cloud == "ssh":
+                if not node_pool_name:
+                    raise HTTPException(status_code=400, detail="node_pool_name is required for SSH launches")
+                pool = (
+                    db.query(SSHNodePoolDB)
+                    .filter(
+                        SSHNodePoolDB.name == node_pool_name,
+                        SSHNodePoolDB.organization_id == organization_id,
+                    )
+                    .first()
+                )
+                if not pool:
+                    raise HTTPException(status_code=404, detail=f"SSH node pool '{node_pool_name}' not found")
+                allowed_team_ids = []
+                try:
+                    od = pool.other_data or {}
+                    if isinstance(od, dict):
+                        allowed_team_ids = od.get("allowed_team_ids", []) or []
+                except Exception:
+                    allowed_team_ids = []
+                if allowed_team_ids and (team_id is None or team_id not in allowed_team_ids):
+                    raise HTTPException(status_code=403, detail="Your team does not have access to this SSH node pool")
+            elif cloud in ("azure", "runpod"):
+                # Determine default config key to identify pool
+                pool_key = None
+                try:
+                    if cloud == "azure":
+                        cfg = load_azure_config()
+                    else:
+                        cfg = load_runpod_config()
+                    pool_key = cfg.get("default_config")
+                except Exception:
+                    pool_key = None
+                # If access row exists and has restrictions, enforce
+                if pool_key:
+                    access_row = (
+                        db.query(NodePoolAccessDB)
+                        .filter(
+                            NodePoolAccessDB.organization_id == organization_id,
+                            NodePoolAccessDB.provider == cloud,
+                            NodePoolAccessDB.pool_key == pool_key,
+                        )
+                        .first()
+                    )
+                    allowed_team_ids = access_row.allowed_team_ids if access_row and access_row.allowed_team_ids else []
+                    if allowed_team_ids and (team_id is None or team_id not in allowed_team_ids):
+                        raise HTTPException(status_code=403, detail=f"Your team does not have access to the {cloud.title()} node pool")
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Fail closed only if explicit restrictions exist; otherwise continue
+            print(f"Access check warning: {e}")
+
+        # Quota enforcement: ensure user has enough remaining credits for requested GPUs
+        try:
+            requested_gpu_count = _initial_requested_gpu_count
+            cloud_lower = (cloud or "").lower()
+
+            # Compute price-per-hour for the requested config
+            price_per_hour = None
+            if cloud_lower == "runpod":
+                price_source = _runpod_display_option_for_pricing or accelerators
+                if price_source:
+                    price_per_hour = rp_get_price_per_hour(price_source)
+            elif cloud_lower == "azure" and instance_type:
+                price_per_hour = az_get_price_per_hour(instance_type, region=region)
+
+            # If accelerators not provided for Azure, try to infer GPU count for info logs
+            if requested_gpu_count == 0 and cloud_lower == "azure" and instance_type:
+                try:
+                    requested_gpu_count = max(0, int(az_infer_gpu_count(instance_type)))
+                except Exception as _e:
+                    print(f"Azure GPU inference warning for '{instance_type}': {_e}")
+
+            # Apply price-based quota enforcement for non-SSH clouds when price is available
+            if cloud_lower != "ssh" and price_per_hour is not None:
+                quota_info = get_current_user_quota_info(db, organization_id, user_id)
+                available_credits = float(quota_info.get("current_period_remaining", 0.0) or 0.0)
+                # Default to at least 1 hour of usage for admission check
+                estimated_hours = 1.0
+                required_credits = float(price_per_hour) * estimated_hours
+                if available_credits < required_credits:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "Insufficient quota to launch instance. "
+                            f"Estimated cost: {required_credits:.2f} for ~{estimated_hours:.0f} hour(s); "
+                            f"Available credits: {available_credits:.2f}. "
+                        ),
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Fail-open in case of unexpected quota calculation issues to avoid blocking launches unintentionally
+            print(f"Quota check warning: {e}")
 
         # Create cluster platform entry and get the actual cluster name
         # For SSH clusters, use the node pool name as platform for easier mapping
@@ -275,6 +407,7 @@ async def stop_instance(
     response: Response,
     stop_request: StopClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -312,6 +445,7 @@ async def down_instance(
     response: Response,
     down_request: DownClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -950,6 +1084,7 @@ async def stream_request_logs(
 async def cancel_request(
     request_id: str,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     """
     Cancel a SkyPilot request

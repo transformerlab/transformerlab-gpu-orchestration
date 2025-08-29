@@ -1,5 +1,6 @@
 from fastapi import HTTPException, Request, Response, Depends, status
-from config import AUTH_COOKIE_PASSWORD
+from config import AUTH_COOKIE_PASSWORD, COOKIE_SECURE, COOKIE_SAMESITE, CSRF_ENABLED
+import secrets
 from .provider.work_os import provider as auth_provider
 import logging
 from typing import Optional
@@ -24,11 +25,26 @@ def get_auth_info(request: Request, response: Response = None):
                     key="wos_session",
                     value=refreshed_session.sealed_session,
                     httponly=True,
-                    secure=False,
-                    samesite="lax",
+                    secure=COOKIE_SECURE,
+                    samesite=COOKIE_SAMESITE,
                     max_age=86400 * 7,
                     path="/",
                 )
+                # Ensure CSRF cookie exists if enabled
+                if CSRF_ENABLED:
+                    try:
+                        if not request.cookies.get("wos_csrf"):
+                            response.set_cookie(
+                                key="wos_csrf",
+                                value=secrets.token_urlsafe(32),
+                                httponly=False,
+                                secure=COOKIE_SECURE,
+                                samesite=COOKIE_SAMESITE,
+                                max_age=86400 * 7,
+                                path="/",
+                            )
+                    except Exception:
+                        pass
                 logging.info("Session refreshed successfully")
                 return refreshed_session
         if auth_response.authenticated:
@@ -58,6 +74,34 @@ def auth_from_cookie(wos_cookie: str):
 
     logging.info("Session auth failed")
     return False
+
+
+def get_user_from_sealed_session(wos_cookie: str):
+    """
+    Load a sealed session and return a minimal user dict if authenticated, else None.
+    Safe for WebSocket usage where Request/Response are unavailable.
+    """
+    try:
+        if not wos_cookie:
+            return None
+        session = auth_provider.load_sealed_session(
+            sealed_session=wos_cookie,
+            cookie_password=AUTH_COOKIE_PASSWORD,
+        )
+        auth_response = session.authenticate()
+        if getattr(auth_response, "authenticated", False) and getattr(auth_response, "user", None):
+            u = auth_response.user
+            return {
+                "id": getattr(u, "id", None),
+                "email": getattr(u, "email", None),
+                "first_name": getattr(u, "first_name", None),
+                "last_name": getattr(u, "last_name", None),
+                "role": getattr(auth_response, "role", None),
+                "organization_id": getattr(auth_response, "organization_id", None),
+            }
+        return None
+    except Exception as _:
+        return None
 
 
 def verify_auth(request: Request, response: Response = None):
@@ -254,11 +298,26 @@ def _revalidate_and_refresh_session(
                             key="wos_session",
                             value=refreshed_session.sealed_session,
                             httponly=True,
-                            secure=False,
-                            samesite="lax",
+                            secure=COOKIE_SECURE,
+                            samesite=COOKIE_SAMESITE,
                             max_age=86400 * 7,
                             path="/",
                         )
+                        if CSRF_ENABLED:
+                            try:
+                                if not request.cookies.get("wos_csrf"):
+                                    response.set_cookie(
+                                        key="wos_csrf",
+                                        value=secrets.token_urlsafe(32),
+                                        httponly=False,
+                                        secure=COOKIE_SECURE,
+                                        samesite=COOKIE_SAMESITE,
+                                        max_age=86400 * 7,
+                                        path="/",
+                                    )
+                            except Exception:
+                                pass
+
             except Exception as e:
                 logging.warning(f"Session cookie refresh failed: {e}")
         return fresh_role

@@ -85,6 +85,7 @@ def rp_save_config(
     allowed_gpu_types: list[str],
     max_instances: int = 0,
     config_key: str = None,
+    allowed_team_ids: list[str] = None,
 ):
     """Save RunPod configuration to file (legacy compatibility)"""
     print(f"💾 Saving RunPod config - allowed_gpu_types: {allowed_gpu_types}")
@@ -97,6 +98,7 @@ def rp_save_config(
         "allowed_gpu_types": allowed_gpu_types,
         "max_instances": max_instances,
     }
+    # Team access is stored in DB; do not persist to config file
 
     # Generate the new config key based on the name
     new_config_key = name.lower().replace(" ", "_").replace("-", "_")
@@ -130,16 +132,17 @@ def rp_save_config(
 
 
 def rp_get_config_for_display():
-    """Get RunPod configuration for display (with masked API key)"""
+    """Get RunPod configuration for display (with masked API key)."""
     config_data = load_runpod_config()
-    print(
-        f"📤 Returning RunPod config for display - configs: {config_data.get('configs', {})}"
-    )
 
     # Return all configs with masked API keys
     display_configs = {}
     for key, config in config_data.get("configs", {}).items():
         display_config = config.copy()
+        if "api_key" in display_config and display_config["api_key"]:
+            val = display_config["api_key"]
+            # Preserve prefix for identification
+            display_config["api_key"] = f"{val[:4]}...{val[-4:]}"
         display_configs[key] = display_config
 
     return {
@@ -688,6 +691,66 @@ def create_runpod_sky_yaml(
     return config
 
 
+def rp_get_price_per_hour(display_option: str) -> float | None:
+    """Return the price per hour for a given RunPod selection.
+
+    Accepts either:
+    - Exact display option name returned by rp_get_display_options_with_pricing() (e.g., "NVIDIA A100 80GB:1"), or
+    - Short token format like "A100:1" or "CPU:8-32GB" (best-effort match).
+    Returns None if not found.
+    """
+    try:
+        sel = str(display_option)
+        options = rp_get_display_options_with_pricing()
+
+        # First attempt: exact match on the canonical name
+        for opt in options:
+            if str(opt.get("name")) == sel:
+                price = opt.get("price_per_hour")
+                try:
+                    return float(price) if price is not None and str(price).lower() != "nan" else None
+                except Exception:
+                    return None
+
+        # Second attempt: normalize short GPU token like "A100:1"
+        if ":" in sel and not sel.upper().startswith("CPU"):
+            token, count_str = sel.split(":", 1)
+            token = token.strip().lower()
+            try:
+                count = int(float(count_str.strip()))
+            except Exception:
+                count = None
+            for opt in options:
+                accel_name = str(opt.get("accelerator_name", "")).lower()
+                accel_count = opt.get("accelerator_count")
+                try:
+                    accel_count = int(float(accel_count)) if accel_count is not None else None
+                except Exception:
+                    accel_count = None
+                if token and token in accel_name and (count is None or accel_count == count):
+                    price = opt.get("price_per_hour")
+                    try:
+                        return float(price) if price is not None and str(price).lower() != "nan" else None
+                    except Exception:
+                        return None
+
+        # Third attempt: CPU token match "CPU:8-32GB"
+        if sel.upper().startswith("CPU"):
+            # Match by type CPU and vcpus/memory if present in name
+            for opt in options:
+                if str(opt.get("type")).upper() == "CPU":
+                    if str(opt.get("name")) == sel:
+                        price = opt.get("price_per_hour")
+                        try:
+                            return float(price) if price is not None and str(price).lower() != "nan" else None
+                        except Exception:
+                            return None
+        return None
+    except Exception as e:
+        print(f"Error getting RunPod price for '{display_option}': {e}")
+        return None
+
+
 def rp_save_config_with_setup(
     name: str,
     api_key: str,
@@ -695,6 +758,7 @@ def rp_save_config_with_setup(
     max_instances: int = 0,
     config_key: str = None,
     allowed_display_options: list[str] = None,
+    allowed_team_ids: list[str] = None,
 ):
     """Save RunPod configuration with environment setup, config.toml creation, and sky check"""
     import os
@@ -706,6 +770,7 @@ def rp_save_config_with_setup(
         allowed_gpu_types,
         max_instances,
         config_key,
+        allowed_team_ids,
     )
 
     # Update display options if provided

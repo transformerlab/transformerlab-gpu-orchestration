@@ -16,12 +16,12 @@ from lattice.models import (
     UpdateDockerImageRequest,
     DockerImageListResponse,
 )
-from lattice.routes.auth.api_key_auth import get_user_or_api_key
+from lattice.routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from lattice.routes.auth.utils import get_current_user
 
 router = APIRouter(
     prefix="/container-registries",
-    dependencies=[Depends(get_user_or_api_key)],
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["container-registries"],
 )
 
@@ -96,6 +96,7 @@ async def create_container_registry(
     response: Response,
     registry_request: CreateContainerRegistryRequest,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("registries:write")),
 ):
     """Create a new container registry"""
     try:
@@ -548,6 +549,7 @@ async def update_container_registry(
     response: Response,
     registry_request: UpdateContainerRegistryRequest,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("registries:write")),
 ):
     """Update a container registry"""
     try:
@@ -622,6 +624,7 @@ async def delete_container_registry(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("registries:write")),
 ):
     """Delete a container registry (soft delete)"""
     try:

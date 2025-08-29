@@ -431,6 +431,27 @@ class ClusterPlatform(Base, ValidationMixin):
     )
 
 
+class NodePoolAccess(Base, ValidationMixin):
+    __tablename__ = "node_pool_access"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    # Provider identifier: 'azure', 'runpod', 'ssh', etc.
+    provider = Column(String, nullable=False)
+    # Pool key identifier: for cloud providers, this is the config key; for ssh, the pool name
+    pool_key = Column(String, nullable=False)
+    # List of allowed team IDs (JSON array)
+    allowed_team_ids = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "provider", "pool_key", name="uq_node_pool_access_org_provider_key"
+        ),
+    )
+
+
 class SkyPilotRequest(Base, ValidationMixin):
     __tablename__ = "skypilot_requests"
 

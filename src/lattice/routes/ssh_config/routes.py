@@ -10,12 +10,13 @@ from models import (
     UpdateSSHKeyRequest,
 )
 from routes.auth.utils import get_current_user
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.ssh_config.utils import validate_ssh_public_key
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 
-router = APIRouter(prefix="/ssh-config", tags=["ssh-config"])
+router = APIRouter(prefix="/ssh-config", tags=["ssh-config"], dependencies=[Depends(enforce_csrf)])
 
 
 @router.post(

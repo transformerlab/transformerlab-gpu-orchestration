@@ -15,8 +15,9 @@ import uuid
 from werkzeug.utils import secure_filename
 from lattice.routes.auth.api_key_auth import get_user_or_api_key
 from lattice.routes.auth.utils import (
-    auth_from_cookie,
-)  # Import get_auth_info
+    get_user_from_sealed_session,
+)
+from lattice.config import CORS_ALLOW_ORIGINS, WS_ALLOW_NULL_ORIGIN
 from lattice.utils.cluster_utils import get_cluster_platform_info
 from lattice.utils.cluster_resolver import handle_cluster_name_param
 import pty
@@ -26,6 +27,8 @@ router = APIRouter(include_in_schema=False)  # Hide all routes in this router fr
 
 # Store active connections
 active_sessions = {}
+active_sessions_lock = asyncio.Lock()
+SESSION_TTL_SECONDS = 30 * 60
 
 
 @router.get("/terminal", response_class=HTMLResponse)
@@ -79,11 +82,33 @@ async def terminal_connect(
     # Generate a unique session ID
     session_id = str(uuid.uuid4())
 
-    # Store connection parameters for later use
-    active_sessions[session_id] = {
-        "params": {"cluster_name": actual_cluster_name},
-        "connection": None,
-    }
+    # Store connection parameters (with TTL) and perform cleanup under lock
+    now = asyncio.get_event_loop().time()
+    async with active_sessions_lock:
+        # TTL cleanup
+        try:
+            expired = [sid for sid, data in active_sessions.items() if (now - data.get("created_at", now)) > SESSION_TTL_SECONDS]
+            for sid in expired:
+                active_sessions.pop(sid, None)
+        except Exception:
+            pass
+
+        active_sessions[session_id] = {
+            "params": {"cluster_name": actual_cluster_name},
+            "connection": None,
+            "user_id": user_id,
+            "organization_id": org_id,
+            "created_at": now,
+        }
+
+        # Bound size to prevent unbounded growth
+        try:
+            if len(active_sessions) > 1000:
+                oldest_key = next(iter(active_sessions))
+                if oldest_key != session_id:
+                    active_sessions.pop(oldest_key, None)
+        except Exception:
+            pass
 
     # Return terminal.html but replace placeholders with actual values
     with open("src/lattice/routes/terminal/terminal.html", "r") as f:
@@ -111,15 +136,42 @@ async def terminal_websocket(
         else None
     )
 
-    # Validate the session using get_auth_info
+    # Origin check against allowed CORS origins (normalized). If origin missing, require explicit opt-in.
+    from urllib.parse import urlsplit
+
+    def _normalize_origin(o: str | None) -> str | None:
+        if not o:
+            return None
+        u = urlsplit(o.strip())
+        host = (u.hostname or "").lower()
+        port = u.port
+        if port in (None, 80, 443):
+            netloc = host
+        else:
+            netloc = f"{host}:{port}"
+        scheme = (u.scheme or "").lower()
+        return f"{scheme}://{netloc}"
+
+    origin = _normalize_origin(websocket.headers.get("origin"))
+    allowed = {_normalize_origin(x) for x in (CORS_ALLOW_ORIGINS or [])}
+    if origin is None:
+        if not WS_ALLOW_NULL_ORIGIN:
+            await websocket.close(code=1008, reason="Missing Origin not allowed")
+            return
+    else:
+        if allowed and origin not in allowed:
+            await websocket.close(code=1008, reason="Origin not allowed")
+            return
+
+    # Validate the session using auth utils
     if not session_cookie:
         await websocket.close(code=1008, reason="Authentication required")
         print("WebSocket closed: Missing wos_session cookie")
         return
 
-    auth_success = auth_from_cookie(session_cookie)
-
-    if not auth_success:
+    # Bind user from cookie and compare with session owner
+    user = get_user_from_sealed_session(session_cookie)
+    if not user:
         await websocket.close(code=1008, reason="Authentication failed")
         print("WebSocket closed: Authentication failed")
         return
@@ -134,9 +186,45 @@ async def terminal_websocket(
         return
 
     session_data = active_sessions[session_id]
+    # TTL check
+    try:
+        now = asyncio.get_event_loop().time()
+        if (now - session_data.get("created_at", now)) > SESSION_TTL_SECONDS:
+            await websocket.close(code=1008, reason="Session expired")
+            async with active_sessions_lock:
+                active_sessions.pop(session_id, None)
+            return
+    except Exception:
+        pass
     params = session_data["params"]
 
+    # Enforce that the websocket user matches the session owner
+    if session_data.get("user_id") != user.get("id") or session_data.get("organization_id") != user.get("organization_id"):
+        await websocket.close(code=1008, reason="Unauthorized for session")
+        return
+
     ssh_cmd = ["ssh", params["cluster_name"]]
+
+    # Schedule forced disconnect after TTL from session creation
+    ttl_task = None
+    try:
+        created_at = float(session_data.get("created_at", asyncio.get_event_loop().time()))
+        now = asyncio.get_event_loop().time()
+        remain = max(0.0, (SESSION_TTL_SECONDS - (now - created_at)))
+
+        async def _ttl_watchdog(delay: float):
+            try:
+                await asyncio.sleep(delay)
+                try:
+                    await websocket.close(code=1008, reason="Session expired")
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        ttl_task = asyncio.create_task(_ttl_watchdog(remain))
+    except Exception:
+        ttl_task = None
 
     try:
         # Allocate a PTY for the SSH process
@@ -215,6 +303,11 @@ async def terminal_websocket(
                 print(f"Error closing WebSocket: {str(close_error)}")
         finally:
             # Cleanup: cancel reader, close PTY, terminate process, remove session
+            if ttl_task:
+                try:
+                    ttl_task.cancel()
+                except Exception:
+                    pass
             if reader_task:
                 reader_task.cancel()
                 # Close PTY and terminate process before awaiting reader_task
@@ -231,8 +324,8 @@ async def terminal_websocket(
                     await asyncio.wait_for(reader_task, timeout=2)
                 except Exception:
                     pass
-            if session_id in active_sessions:
-                del active_sessions[session_id]
+            async with active_sessions_lock:
+                active_sessions.pop(session_id, None)
     except Exception as e:
         error_message = f"Connection error: {str(e)}"
         print(f"WebSocket error: {error_message}")
@@ -244,12 +337,5 @@ async def terminal_websocket(
             await websocket.close(code=1011, reason="Connection error")
         except Exception as close_error:
             print(f"Error closing WebSocket: {str(close_error)}")
-        if session_id in active_sessions:
-            del active_sessions[session_id]
-            # Clean up session data
-            if session_id in active_sessions:
-                del active_sessions[session_id]
-
-        # Clean up session data
-        if session_id in active_sessions:
-            del active_sessions[session_id]
+        async with active_sessions_lock:
+            active_sessions.pop(session_id, None)

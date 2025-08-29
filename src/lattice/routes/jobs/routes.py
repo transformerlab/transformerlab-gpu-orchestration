@@ -32,7 +32,7 @@ from routes.jobs.vscode_parser import get_vscode_tunnel_info
 from utils.cluster_resolver import (
     handle_cluster_name_param,
 )
-from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
 from typing import Optional, List
@@ -40,7 +40,9 @@ from pathlib import Path
 
 
 router = APIRouter(
-    prefix="/jobs", dependencies=[Depends(get_user_or_api_key)], tags=["jobs"]
+    prefix="/jobs",
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
+    tags=["jobs"],
 )
 
 
@@ -257,6 +259,7 @@ async def cancel_cluster_job(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     """Cancel a job on a SkyPilot cluster."""
     try:
@@ -296,6 +299,7 @@ async def submit_job_to_cluster(
     jupyter_port: Optional[int] = Form(None),
     vscode_port: Optional[int] = Form(None),
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         file_mounts = None
