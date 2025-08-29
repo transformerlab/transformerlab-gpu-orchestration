@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
+import os
 
 from fastapi import (
     APIRouter,
@@ -10,7 +11,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from models import ClusterResponse, ClustersListResponse, SSHNode
+from models import ClusterResponse, ClustersListResponse, SSHNode, NodePoolGPUResourcesResponse
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope
 from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.auth.utils import get_current_user
@@ -21,13 +22,10 @@ from routes.reports.utils import record_availability
 from utils.cluster_utils import get_cluster_platform_info, get_display_name_from_actual
 from utils.file_utils import (
     delete_named_identity_file,
-    get_available_identity_files,
-    rename_identity_file,
-    save_identity_file,
     save_named_identity_file,
+    save_temporary_identity_file,
 )
 
-from models import NodePoolGPUResourcesResponse
 from werkzeug.utils import secure_filename
 
 from .utils import (
@@ -44,6 +42,7 @@ from db.db_models import (
     SSHNodePool as SSHNodePoolDB,
     Team as TeamDB,
     NodePoolAccess as NodePoolAccessDB,
+    IdentityFile,
 )
 from sqlalchemy.orm import Session
 from routes.quota.utils import get_user_team_id
@@ -495,8 +494,8 @@ async def create_cluster(
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+        identity_file_path_final = save_temporary_identity_file(
+            file_content, identity_file.filename, logged_user["id"], logged_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path
@@ -525,11 +524,54 @@ async def create_cluster(
 
 
 @router.get("/ssh-node-pools/identity-files")
-async def list_identity_files(request: Request, response: Response):
+async def list_identity_files(
+    request: Request, 
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
     try:
-        files = get_available_identity_files()
+        user_id = user["id"]
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
+        
+        # Get identity files from database for this user/organization        
+        identity_files = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.user_id == user_id,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .order_by(IdentityFile.display_name)
+            .all()
+        )
+        
+        files = []
+        for identity_file in identity_files:
+            # Check if the file still exists on disk
+            if os.path.exists(identity_file.file_path):
+                files.append({
+                    "path": identity_file.file_path,
+                    "display_name": identity_file.display_name,
+                    "original_filename": identity_file.original_filename,
+                    "size": identity_file.file_size,
+                    "permissions": identity_file.file_permissions,
+                    "created": identity_file.created_at.timestamp(),
+                })
+            else:
+                # File doesn't exist on disk, mark as inactive
+                identity_file.is_active = False
+                db.commit()
+        
         return {"identity_files": files}
     except Exception as e:
+        print(f"Error listing identity files: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to list identity files: {str(e)}"
         )
@@ -541,16 +583,61 @@ async def upload_identity_file(
     response: Response,
     display_name: str = Form(...),
     identity_file: UploadFile = Form(...),
-    __: dict = Depends(require_scope("nodepools:write")),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
         if not identity_file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
 
+        user_id = user["id"]
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
+
         file_content = await identity_file.read()
         file_path = save_named_identity_file(
-            file_content, identity_file.filename, display_name
+            file_content, identity_file.filename, display_name, user_id, org_id
         )
+
+        # Save to database
+        
+        
+        # Check if display name already exists for this user/organization
+        existing_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.user_id == user_id,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.display_name == display_name,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if existing_file:
+            raise HTTPException(
+                status_code=400,
+                detail=f"An identity file with display name '{display_name}' already exists"
+            )
+
+        # Create new identity file record
+        new_identity_file = IdentityFile(
+            user_id=user_id,
+            organization_id=org_id,
+            display_name=display_name,
+            original_filename=identity_file.filename,
+            file_path=file_path,
+            file_size=len(file_content),
+            file_permissions="600",
+        )
+        
+        db.add(new_identity_file)
+        db.commit()
 
         return {
             "message": "Identity file uploaded successfully",
@@ -568,15 +655,47 @@ async def delete_identity_file(
     request: Request,
     response: Response,
     file_path: str,
-    __: dict = Depends(require_scope("nodepools:write")),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
         # URL decode the file path
         import urllib.parse
 
         decoded_path = urllib.parse.unquote(file_path)
+        user_id = user["id"]
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
+        
+        identity_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.file_path == decoded_path,
+                IdentityFile.user_id == user_id,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if not identity_file:
+            raise HTTPException(
+                status_code=404,
+                detail="Identity file not found or access denied"
+            )
 
-        delete_named_identity_file(decoded_path)
+        # Delete the file from disk
+        delete_named_identity_file(decoded_path, user_id, org_id)
+        
+        # Mark as inactive in database
+        identity_file.is_active = False
+        db.commit()
+        
         return {"message": "Identity file deleted successfully"}
     except Exception as e:
         raise HTTPException(
@@ -590,15 +709,62 @@ async def rename_identity_file_route(
     response: Response,
     file_path: str,
     new_display_name: str = Form(...),
-    __: dict = Depends(require_scope("nodepools:write")),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
         # URL decode the file path
         import urllib.parse
 
         decoded_path = urllib.parse.unquote(file_path)
+        user_id = user["id"]
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
 
-        rename_identity_file(decoded_path, new_display_name)
+        identity_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.file_path == decoded_path,
+                IdentityFile.user_id == user_id,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if not identity_file:
+            raise HTTPException(
+                status_code=404,
+                detail="Identity file not found or access denied"
+            )
+
+        # Check if new display name already exists for this user/organization
+        existing_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.user_id == user_id,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.display_name == new_display_name,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if existing_file and existing_file.id != identity_file.id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"An identity file with display name '{new_display_name}' already exists"
+            )
+
+        # Update the display name in database
+        identity_file.display_name = new_display_name
+        db.commit()
+        
         return {"message": "Identity file renamed successfully"}
     except Exception as e:
         raise HTTPException(
@@ -690,8 +856,8 @@ async def add_node(
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+        identity_file_path_final = save_temporary_identity_file(
+            file_content, identity_file.filename, current_user["id"], current_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path
