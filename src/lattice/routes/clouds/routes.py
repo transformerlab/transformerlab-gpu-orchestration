@@ -41,7 +41,7 @@ from routes.clouds.ssh.routes import router as ssh_router
 from routes.auth.utils import requires_admin
 from config import get_db
 from sqlalchemy.orm import Session
-from db.db_models import NodePoolAccess
+from db.db_models import NodePoolAccess, CloudAccount
 from routes.quota.utils import get_user_team_id
 
 
@@ -96,7 +96,7 @@ router.include_router(ssh_router, prefix="/ssh")
 
 
 @router.get("/{cloud}/setup")
-async def setup_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def setup_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Setup cloud configuration"""
     try:
         if cloud == "azure":
@@ -126,7 +126,7 @@ async def setup_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 
 @router.get("/{cloud}/verify")
-async def verify_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def verify_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Verify cloud setup"""
     try:
         if cloud == "azure":
@@ -145,7 +145,7 @@ async def verify_cloud(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/config")
 async def get_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     request: Request = None,
     response: Response = None,
     user: dict = Depends(get_user_or_api_key),
@@ -189,7 +189,7 @@ async def get_cloud_config(
 
 @router.get("/{cloud}/credentials")
 async def get_cloud_credentials(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_key: str = None,
     request: Request = None,
     response: Response = None,
@@ -248,7 +248,7 @@ async def get_cloud_credentials(
 
 @router.post("/{cloud}/config")
 async def save_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_request: AzureConfigRequest | RunPodConfigRequest = None,
     request: Request = None,
     response: Response = None,
@@ -323,6 +323,79 @@ async def save_cloud_config(
             except Exception as _:
                 pass
 
+            # Persist cloud account + credentials in DB
+            try:
+                final_key = config_request.name.lower().replace(" ", "_").replace("-", "_")
+                # If renamed, remove old CloudAccount row
+                if config_request.config_key and config_request.config_key != final_key:
+                    try:
+                        old_ca = (
+                            db.query(CloudAccount)
+                            .filter(
+                                CloudAccount.organization_id == user["organization_id"],
+                                CloudAccount.provider == "azure",
+                                CloudAccount.key == config_request.config_key,
+                            )
+                            .first()
+                        )
+                        if old_ca:
+                            db.delete(old_ca)
+                            db.commit()
+                    except Exception:
+                        pass
+
+                # Determine default after save
+                try:
+                    cfg_data = load_azure_config()
+                    is_default = cfg_data.get("default_config") == final_key
+                except Exception:
+                    is_default = False
+
+                credentials = {
+                    "subscription_id": config_request.subscription_id,
+                    "tenant_id": config_request.tenant_id,
+                    "client_id": config_request.client_id,
+                    "client_secret": config_request.client_secret,
+                    "auth_method": "service_principal",
+                }
+                settings = {
+                    "allowed_instance_types": config_request.allowed_instance_types or [],
+                    "allowed_regions": config_request.allowed_regions or [],
+                }
+
+                ca = (
+                    db.query(CloudAccount)
+                    .filter(
+                        CloudAccount.organization_id == user["organization_id"],
+                        CloudAccount.provider == "azure",
+                        CloudAccount.key == final_key,
+                    )
+                    .first()
+                )
+                if not ca:
+                    ca = CloudAccount(
+                        organization_id=user["organization_id"],
+                        provider="azure",
+                        key=final_key,
+                        name=config_request.name,
+                        credentials=credentials,
+                        settings=settings,
+                        max_instances=int(config_request.max_instances or 0),
+                        is_default=bool(is_default),
+                        created_by=user.get("id"),
+                    )
+                    db.add(ca)
+                else:
+                    ca.name = config_request.name
+                    ca.credentials = credentials
+                    ca.settings = settings
+                    ca.max_instances = int(config_request.max_instances or 0)
+                    ca.is_default = bool(is_default)
+                db.commit()
+            except Exception:
+                # Don't block on DB persistence
+                pass
+
             return result
 
         elif cloud == "runpod":
@@ -387,6 +460,73 @@ async def save_cloud_config(
             except Exception as _:
                 pass
 
+            # Persist cloud account + credentials in DB
+            try:
+                final_key = config_request.name.lower().replace(" ", "_").replace("-", "_")
+                # If renamed, remove old CloudAccount row
+                if config_request.config_key and config_request.config_key != final_key:
+                    try:
+                        old_ca = (
+                            db.query(CloudAccount)
+                            .filter(
+                                CloudAccount.organization_id == user["organization_id"],
+                                CloudAccount.provider == "runpod",
+                                CloudAccount.key == config_request.config_key,
+                            )
+                            .first()
+                        )
+                        if old_ca:
+                            db.delete(old_ca)
+                            db.commit()
+                    except Exception:
+                        pass
+
+                # Determine default after save
+                try:
+                    cfg_data = load_runpod_config()
+                    is_default = cfg_data.get("default_config") == final_key
+                except Exception:
+                    is_default = False
+
+                credentials = {"api_key": config_request.api_key}
+                settings = {
+                    "allowed_gpu_types": config_request.allowed_gpu_types or [],
+                    "allowed_display_options": config_request.allowed_display_options or [],
+                }
+
+                ca = (
+                    db.query(CloudAccount)
+                    .filter(
+                        CloudAccount.organization_id == user["organization_id"],
+                        CloudAccount.provider == "runpod",
+                        CloudAccount.key == final_key,
+                    )
+                    .first()
+                )
+                if not ca:
+                    ca = CloudAccount(
+                        organization_id=user["organization_id"],
+                        provider="runpod",
+                        key=final_key,
+                        name=config_request.name,
+                        credentials=credentials,
+                        settings=settings,
+                        max_instances=int(config_request.max_instances or 0),
+                        is_default=bool(is_default),
+                        created_by=user.get("id"),
+                    )
+                    db.add(ca)
+                else:
+                    ca.name = config_request.name
+                    ca.credentials = credentials
+                    ca.settings = settings
+                    ca.max_instances = int(config_request.max_instances or 0)
+                    ca.is_default = bool(is_default)
+                db.commit()
+            except Exception:
+                # Don't block on DB persistence
+                pass
+
             return result
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
@@ -401,9 +541,11 @@ async def save_cloud_config(
 
 @router.post("/{cloud}/config/{config_key}/set-default")
 async def set_cloud_default_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_key: str = None,
     __: dict = Depends(requires_admin),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """Set a specific cloud config as default"""
     try:
@@ -414,6 +556,18 @@ async def set_cloud_default_config(
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
+        # Mark default in DB for this org+provider
+        try:
+            q = db.query(CloudAccount).filter(
+                CloudAccount.organization_id == user["organization_id"],
+                CloudAccount.provider == cloud,
+            )
+            for ca in q.all():
+                ca.is_default = (ca.key == config_key)
+            db.commit()
+        except Exception:
+            pass
+
         return result
     except Exception as e:
         raise HTTPException(
@@ -423,9 +577,11 @@ async def set_cloud_default_config(
 
 @router.delete("/{cloud}/config/{config_key}")
 async def delete_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     config_key: str = None,
     __: dict = Depends(requires_admin),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     """Delete a cloud configuration"""
     try:
@@ -436,9 +592,24 @@ async def delete_cloud_config(
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
-        return {
-            "message": f"{cloud.title()} config '{config_key}' deleted successfully"
-        }
+        # Remove CloudAccount row
+        try:
+            ca = (
+                db.query(CloudAccount)
+                .filter(
+                    CloudAccount.organization_id == user["organization_id"],
+                    CloudAccount.provider == cloud,
+                    CloudAccount.key == config_key,
+                )
+                .first()
+            )
+            if ca:
+                db.delete(ca)
+                db.commit()
+        except Exception:
+            pass
+
+        return {"message": f"{cloud.title()} config '{config_key}' deleted successfully"}
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to delete {cloud} config: {str(e)}"
@@ -447,7 +618,7 @@ async def delete_cloud_config(
 
 @router.post("/{cloud}/test")
 async def test_cloud_connection(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     test_request: AzureTestRequest | RunPodTestRequest = None,
     __: dict = Depends(requires_admin),
 ):
@@ -491,7 +662,7 @@ async def test_cloud_connection(
 
 
 @router.get("/{cloud}/sky-check")
-async def run_cloud_sky_check(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def run_cloud_sky_check(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Run 'sky check' to validate the cloud setup"""
     try:
         if cloud == "azure":
@@ -516,7 +687,7 @@ async def run_cloud_sky_check(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/instances")
 async def get_cloud_instances(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
 ):
@@ -588,7 +759,7 @@ async def get_cloud_instances(
 
 
 @router.get("/{cloud}/info")
-async def get_cloud_info(cloud: str = Path(..., regex="^(azure|runpod)$")):
+async def get_cloud_info(cloud: str = Path(..., pattern="^(azure|runpod)$")):
     """Get cloud-specific information (instance types, regions, GPU types, display options, etc.)"""
     try:
         if cloud == "azure":
@@ -619,7 +790,7 @@ async def get_cloud_info(cloud: str = Path(..., regex="^(azure|runpod)$")):
 
 @router.get("/{cloud}/price")
 async def get_cloud_price(
-    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
     instance_type: str | None = None,
     region: str | None = None,
     display_option: str | None = None,
