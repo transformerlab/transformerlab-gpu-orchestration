@@ -14,6 +14,7 @@ ALLOWED_SCOPES = {
     "nodepools:write",
     "storage:write",
     "registries:write",
+    "cli:access"
 }
 
 
