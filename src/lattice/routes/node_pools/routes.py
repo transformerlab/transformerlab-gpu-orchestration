@@ -495,7 +495,7 @@ async def create_cluster(
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
         identity_file_path_final = save_temporary_identity_file(
-            file_content, identity_file.filename, logged_user["id"], logged_user["organization_id"]
+            file_content, identity_file.filename, logged_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path
@@ -531,7 +531,6 @@ async def list_identity_files(
     db: Session = Depends(get_db),
 ):
     try:
-        user_id = user["id"]
         org_id = user.get("organization_id")
         
         if not org_id:
@@ -586,11 +585,12 @@ async def upload_identity_file(
     db: Session = Depends(get_db),
 ):
     try:
+
         if not identity_file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
 
-        user_id = user["id"]
         org_id = user.get("organization_id")
+        user_id = user.get("id")
         
         if not org_id:
             raise HTTPException(
@@ -600,7 +600,7 @@ async def upload_identity_file(
 
         file_content = await identity_file.read()
         file_path = save_named_identity_file(
-            file_content, identity_file.filename, display_name, user_id, org_id
+            file_content, identity_file.filename, display_name, org_id
         )
 
         # Save to database
@@ -610,7 +610,6 @@ async def upload_identity_file(
         existing_file = (
             db.query(IdentityFile)
             .filter(
-                IdentityFile.user_id == user_id,
                 IdentityFile.organization_id == org_id,
                 IdentityFile.display_name == display_name,
                 IdentityFile.is_active == True #noqa: E712
@@ -662,7 +661,6 @@ async def delete_identity_file(
         import urllib.parse
 
         decoded_path = urllib.parse.unquote(file_path)
-        user_id = user["id"]
         org_id = user.get("organization_id")
         
         if not org_id:
@@ -715,7 +713,6 @@ async def rename_identity_file_route(
         import urllib.parse
 
         decoded_path = urllib.parse.unquote(file_path)
-        user_id = user["id"]
         org_id = user.get("organization_id")
         
         if not org_id:
@@ -853,7 +850,7 @@ async def add_node(
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
         identity_file_path_final = save_temporary_identity_file(
-            file_content, identity_file.filename, current_user["id"], current_user["organization_id"]
+            file_content, identity_file.filename, current_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path

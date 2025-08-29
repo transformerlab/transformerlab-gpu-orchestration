@@ -45,7 +45,7 @@ def is_valid_identity_file(filename: str) -> bool:
 
 
 def save_named_identity_file(
-    file_content: bytes, original_filename: str, display_name: str, user_id: str, organization_id: str
+    file_content: bytes, original_filename: str, display_name: str, organization_id: str
 ) -> str:
     try:
         if not is_valid_identity_file(original_filename):
@@ -54,10 +54,10 @@ def save_named_identity_file(
                 detail="Invalid identity file type. Allowed: .pem, .key, .rsa, .pub, or files with no extension (e.g., id_rsa)",
             )
 
-        if not user_id or not organization_id:
+        if not organization_id:
             raise HTTPException(
                 status_code=400,
-                detail="User ID and organization ID are required for identity file operations"
+                detail="Organization ID is required for identity file operations"
             )
 
         # Use organization-specific directory
@@ -86,7 +86,7 @@ def save_named_identity_file(
 
 
 def save_temporary_identity_file(
-    file_content: bytes, original_filename: str, user_id: str, organization_id: str
+    file_content: bytes, original_filename: str, organization_id: str
 ) -> str:
     """Save a temporary identity file for cluster/node creation (not managed)"""
     try:
@@ -96,10 +96,10 @@ def save_temporary_identity_file(
                 detail="Invalid identity file type. Allowed: .pem, .key, .rsa, .pub, or files with no extension (e.g., id_rsa)",
             )
 
-        if not user_id or not organization_id:
+        if not organization_id:
             raise HTTPException(
                 status_code=400,
-                detail="User ID and organization ID are required for identity file operations"
+                detail="Organization ID is required for identity file operations"
             )
 
         # Use organization-specific directory
