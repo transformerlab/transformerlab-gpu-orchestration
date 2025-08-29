@@ -90,8 +90,19 @@ async def get_api_key_user(
         except Exception:
             scopes = []
 
+        # Get user first name, last name and email using the user_id:
+        user_info = None
+        try:
+            user_info = auth_provider.get_user(user_id=api_key_record.user_id)
+        except Exception as e:
+            # Log the error but don't fail the request
+            print(f"Failed to get user info for user_id {api_key_record.user_id}: {str(e)}")
+
         return {
             "id": api_key_record.user_id,
+            "email": user_info.email if user_info else "",
+            "first_name": user_info.first_name if user_info else "",
+            "last_name": user_info.last_name if user_info else "",
             "organization_id": api_key_record.organization_id,
             "api_key_id": api_key_record.id,
             "api_key_name": api_key_record.name,
