@@ -9,6 +9,7 @@ from sqlalchemy import (
     Float,
     Date,
     UniqueConstraint,
+    Index,
     text,
 )
 from sqlalchemy.sql import func
@@ -490,9 +491,6 @@ class SkyPilotRequest(Base, ValidationMixin):
     __table_args__ = (
         UniqueConstraint("request_id", name="uq_skypilot_requests_request_id"),
     )
-
-
-from sqlalchemy import Index
 
 
 class CloudAccount(Base, ValidationMixin):

@@ -19,7 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
     ts_default = "CURRENT_TIMESTAMP"
     op.create_table(
         "cloud_accounts",
@@ -48,6 +47,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
     op.drop_index("ix_cloud_accounts_org_provider", table_name="cloud_accounts")
     op.drop_table("cloud_accounts")
