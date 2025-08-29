@@ -147,6 +147,7 @@ async def launch_instance(
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
     yaml_file: Optional[UploadFile] = File(None),
+    user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
@@ -303,10 +304,10 @@ async def launch_instance(
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
-        # Get user info first for cluster creation
-        user_info = get_current_user(request, response)
-        user_id = user_info["id"]
-        organization_id = user_info["organization_id"]
+        # Get user info from the authenticated user (API key or session)
+        user_id = user["id"]
+        organization_id = user["organization_id"]
+        
 
         # Enforce team-based access to selected node pool/provider
         try:
@@ -415,11 +416,12 @@ async def launch_instance(
             platform = cloud or "unknown"
 
         cluster_user_info = {
-            "name": user_info.get("first_name", ""),
-            "email": user_info.get("email", ""),
-            "id": user_info.get("id", ""),
-            "organization_id": user_info.get("organization_id", ""),
+            "name": user.get("first_name", ""),
+            "email": user.get("email", ""),
+            "id": user.get("id", ""),
+            "organization_id": user.get("organization_id", ""),
         }
+        print(f"cluster_user_info: {cluster_user_info}")
 
         # Create cluster platform entry with display name and get actual cluster name
         actual_cluster_name = create_cluster_platform_entry(
