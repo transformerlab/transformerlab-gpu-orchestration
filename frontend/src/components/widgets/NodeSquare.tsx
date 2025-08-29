@@ -87,9 +87,11 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
               <b>Status:</b> {node.status}
             </Typography>
           )}
-          <Typography level="body-sm">
-            <b>IP:</b> {node.ip}
-          </Typography>
+          {node.ip && node.ip.trim() !== "" && node.ip !== "unknown" && (
+            <Typography level="body-sm">
+              <b>IP:</b> {node.ip}
+            </Typography>
+          )}
           <Typography level="body-sm">
             <b>User:</b> {node.user || "Unassigned"}
           </Typography>
