@@ -420,7 +420,6 @@ async def launch_instance(
             "id": user.get("id", ""),
             "organization_id": user.get("organization_id", ""),
         }
-        print(f"cluster_user_info: {cluster_user_info}")
 
         # Create cluster platform entry with display name and get actual cluster name
         actual_cluster_name = create_cluster_platform_entry(

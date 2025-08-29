@@ -214,6 +214,29 @@ class StorageBucket(Base, ValidationMixin):
     )  # Whether the bucket is active and available
 
 
+class IdentityFile(Base, ValidationMixin):
+    __tablename__ = "identity_files"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    user_id = Column(String, nullable=False)  # WorkOS user ID
+    organization_id = Column(String, nullable=False)  # Organization ID
+    display_name = Column(String, nullable=False)  # Human-readable name for the file
+    original_filename = Column(String, nullable=False)  # Original filename when uploaded
+    file_path = Column(String, nullable=False)  # Path to the file on disk
+    file_size = Column(Integer, nullable=False)  # File size in bytes
+    file_permissions = Column(String, nullable=False)  # File permissions (e.g., "600")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)  # Whether the file is active
+
+    # Composite unique constraint to prevent duplicate display names per user within an organization
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "user_id", "display_name", name="uq_identity_files_org_user_name"
+        ),
+    )
+
+
 class SSHKey(Base, ValidationMixin):
     __tablename__ = "ssh_keys"
 
