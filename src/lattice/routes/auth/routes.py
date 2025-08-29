@@ -50,6 +50,20 @@ async def logout(request: Request):
     return await auth_service.logout_user(request)
 
 
+@router.get("/allowed-scopes")
+async def get_allowed_scopes():
+    """Return the list of allowed API key scopes from the server.
+
+    This serves as the single source of truth for the UI and clients.
+    """
+    try:
+        from lattice.routes.api_keys.service import ALLOWED_SCOPES
+
+        return {"scopes": sorted(list(ALLOWED_SCOPES))}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load scopes: {str(e)}")
+
+
 @router.get("/check")
 async def check_auth(request: Request, response: Response, user=Depends(get_user_or_api_key)):
     """
