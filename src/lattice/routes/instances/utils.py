@@ -496,8 +496,20 @@ def get_skypilot_status(cluster_names=None):
             cluster_names=cluster_names, refresh=sky.StatusRefreshMode.AUTO
         )
         result = sky.get(request_id)
-        return result
+        result_new = result.copy()
+        for cluster in result_new:
+            # Delete the credentials if they exist
+            if "credentials" in cluster:
+                cluster['credentials'] = None
+            if 'last_creation_yaml' in cluster:
+                cluster['last_creation_yaml'] = ""
+            if 'last_update_yaml' in cluster:
+                cluster['last_update_yaml'] = ""
+            if "handle" in cluster:
+                cluster['handle'] = ""
+        return result_new
     except Exception as e:
+        print(f"ERROR: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster status: {str(e)}"
         )
