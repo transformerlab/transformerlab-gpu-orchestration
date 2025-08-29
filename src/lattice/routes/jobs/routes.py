@@ -38,6 +38,7 @@ from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
 from typing import Optional, List
 from pathlib import Path
+import yaml
 
 
 router = APIRouter(
@@ -286,7 +287,7 @@ async def submit_job_to_cluster(
     request: Request,
     response: Response,
     cluster_name: str,
-    command: str = Form(...),
+    command: Optional[str] = Form(None),
     setup: Optional[str] = Form(None),
     cpus: Optional[str] = Form(None),
     memory: Optional[str] = Form(None),
@@ -296,13 +297,74 @@ async def submit_job_to_cluster(
     job_name: Optional[str] = Form(None),
     dir_name: Optional[str] = Form(None),
     uploaded_dir_path: Optional[str] = Form(None),
-    job_type: Optional[str] = Form(None),
-    jupyter_port: Optional[int] = Form(None),
-    vscode_port: Optional[int] = Form(None),
+    yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
+        # Parse YAML configuration if provided
+        yaml_config = {}
+        if yaml_file:
+            # Validate file type
+            if not yaml_file.filename or not yaml_file.filename.lower().endswith(('.yaml', '.yml')):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)"
+                )
+            
+            # Read and parse YAML content
+            yaml_content = await yaml_file.read()
+            try:
+                yaml_config = yaml.safe_load(yaml_content) or {}
+            except yaml.YAMLError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid YAML format: {str(e)}"
+                )
+            
+            # Validate YAML structure
+            if not isinstance(yaml_config, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="YAML file must contain a valid configuration object"
+                )
+        
+        # Merge YAML config with form parameters (form parameters take precedence)
+        final_config = {
+            'command': command,
+            'setup': setup,
+            'cpus': cpus,
+            'memory': memory,
+            'accelerators': accelerators,
+            'region': region,
+            'zone': zone,
+            'job_name': job_name,
+            'dir_name': dir_name,
+        }
+        
+        # Override with YAML values where form parameters are None
+        for key, value in yaml_config.items():
+            if key in final_config and final_config[key] is None:
+                final_config[key] = value
+        
+        # Validate required fields
+        if not final_config['command']:
+            raise HTTPException(
+                status_code=400,
+                detail="command is required (either in form parameters or YAML file)"
+            )
+        
+        # Extract final values
+        command = final_config['command']
+        setup = final_config['setup']
+        cpus = final_config['cpus']
+        memory = final_config['memory']
+        accelerators = final_config['accelerators']
+        region = final_config['region']
+        zone = final_config['zone']
+        job_name = final_config['job_name']
+        dir_name = final_config['dir_name']
+        
         file_mounts = None
         workdir = None
 
@@ -354,9 +416,6 @@ async def submit_job_to_cluster(
             region=region,
             zone=zone,
             job_name=secure_job_name,
-            job_type=job_type,
-            jupyter_port=jupyter_port,
-            vscode_port=vscode_port,
         )
 
         # Record usage event
