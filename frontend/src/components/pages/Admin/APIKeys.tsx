@@ -77,6 +77,7 @@ const APIKeys: React.FC = () => {
     "nodepools:write",
     "storage:write",
     "registries:write",
+    "cli:access"
   ];
   const [allowedScopes, setAllowedScopes] = useState<string[]>(FALLBACK_SCOPES);
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
