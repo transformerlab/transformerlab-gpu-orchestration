@@ -23,10 +23,27 @@ class ValidationMixin:
     
     def validate_user_exists(self, session):
         """Validate that the referenced user exists (placeholder for user validation)"""
-        # This would typically validate against your user management system
-        # For now, we'll just check that user_id is not empty
-        if hasattr(self, 'user_id') and not self.user_id:
-            raise ValueError("user_id cannot be empty")
+        # This would typically validate against your user management system.
+        # Only enforce non-empty when the model's user_id is non-nullable, or when a value is provided but blank.
+        if hasattr(self, 'user_id'):
+            try:
+                # SQLAlchemy InstrumentedAttribute -> Column
+                col = getattr(type(self), 'user_id')
+                # Extract underlying Column to inspect nullability
+                nullable = col.property.columns[0].nullable  # type: ignore[attr-defined]
+            except Exception:
+                # If we cannot introspect, be conservative and do not block inserts
+                nullable = True
+
+            value = getattr(self, 'user_id', None)
+            if nullable is False:
+                # Required field: must be truthy/non-empty
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    raise ValueError("user_id cannot be empty")
+            else:
+                # Optional field: allow None, but if provided it must not be blank
+                if value is not None and isinstance(value, str) and not value.strip():
+                    raise ValueError("user_id cannot be empty if provided")
         return True
 
     def validate_organization_exists(self, session):
