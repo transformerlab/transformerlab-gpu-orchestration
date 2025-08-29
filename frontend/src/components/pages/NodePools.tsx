@@ -332,7 +332,7 @@ const Nodes: React.FC = () => {
           <ClusterCard
             cluster={{
               id: "fake-gcp-cluster",
-              name: "GCP Production Pool",
+              name: "GCP Instances Pool",
               nodes: generateDedicatedNodes(25, 8, currentUserEmail),
             }}
             provider="gcp"

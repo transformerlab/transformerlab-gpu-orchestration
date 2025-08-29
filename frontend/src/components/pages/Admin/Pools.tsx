@@ -414,7 +414,7 @@ const Pools: React.FC = () => {
                   <td>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography level="title-sm">
-                        GCP Production Pool
+                        GCP Instances Pool
                       </Typography>
                     </Box>
                   </td>
