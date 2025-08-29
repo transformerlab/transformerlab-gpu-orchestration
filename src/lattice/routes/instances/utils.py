@@ -3,6 +3,7 @@ import sky
 from typing import Optional
 from werkzeug.utils import secure_filename
 import asyncio
+from sqlalchemy import or_
 
 from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
 from utils.skypilot_tracker import skypilot_tracker
@@ -217,14 +218,17 @@ def launch_cluster_with_skypilot(
             # Get database session
             db = next(get_db())
             try:
-                # Fetch docker image and its associated container registry
+                # Fetch docker image and its associated container registry (if any)
                 image = (
                     db.query(DockerImage)
-                    .join(ContainerRegistry, DockerImage.container_registry_id == ContainerRegistry.id)
+                    .outerjoin(ContainerRegistry, DockerImage.container_registry_id == ContainerRegistry.id)
                     .filter(
                         DockerImage.id == docker_image_id,
                         DockerImage.is_active,
-                        ContainerRegistry.is_active,
+                        or_(
+                            ContainerRegistry.is_active == True,
+                            DockerImage.container_registry_id.is_(None)
+                        )
                     )
                     .first()
                 )
@@ -233,13 +237,17 @@ def launch_cluster_with_skypilot(
                     # Set the docker image tag for SkyPilot
                     docker_image_tag = image.image_tag
                     
-                    # Set Docker authentication environment variables
-                    task_envs = {
-                        "SKYPILOT_DOCKER_USERNAME": image.container_registry.docker_username,
-                        "SKYPILOT_DOCKER_PASSWORD": image.container_registry.docker_password,
-                        "SKYPILOT_DOCKER_SERVER": image.container_registry.docker_server,
-                    }
-                    envs = task_envs.copy()
+                    # Set Docker authentication environment variables only if image has a registry
+                    if image.container_registry_id and image.container_registry:
+                        task_envs = {
+                            "SKYPILOT_DOCKER_USERNAME": image.container_registry.docker_username,
+                            "SKYPILOT_DOCKER_PASSWORD": image.container_registry.docker_password,
+                            "SKYPILOT_DOCKER_SERVER": image.container_registry.docker_server,
+                        }
+                        envs = task_envs.copy()
+                    else:
+                        # Standalone image (no registry needed)
+                        envs = None
                 else:
                     envs = None
             finally:
@@ -247,7 +255,7 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
-        name = f"lattice-task-setup-{cluster_name}"
+        name = "lattice-task-setup"
 
         task = sky.Task(
             name=name,
