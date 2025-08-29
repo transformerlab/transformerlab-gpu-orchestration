@@ -5121,7 +5121,7 @@
   },
   {
     "id": "fake-gcp-cluster",
-    "name": "Fake GCP Cluster",
+    "name": "GCP Instance Pool",
     "provider": "gcp",
     "clusterType": "fake",
     "launchButtonText": "Request Instance",
