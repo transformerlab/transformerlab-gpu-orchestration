@@ -26,7 +26,8 @@ from models import (
     StopClusterRequest,
     StopClusterResponse,
 )
-from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import (
     az_setup_config,
@@ -115,7 +116,9 @@ def update_gpu_resources_background(node_pool_name: str):
 
 
 router = APIRouter(
-    prefix="/instances", dependencies=[Depends(get_user_or_api_key)], tags=["instances"]
+    prefix="/instances",
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
+    tags=["instances"],
 )
 
 
@@ -145,6 +148,7 @@ async def launch_instance(
     docker_image: Optional[str] = Form(None),
     container_registry_id: Optional[str] = Form(None),
     db: Session = Depends(get_db),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         file_mounts = None
@@ -406,6 +410,7 @@ async def stop_instance(
     response: Response,
     stop_request: StopClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -443,6 +448,7 @@ async def down_instance(
     response: Response,
     down_request: DownClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -1081,6 +1087,7 @@ async def stream_request_logs(
 async def cancel_request(
     request_id: str,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     """
     Cancel a SkyPilot request

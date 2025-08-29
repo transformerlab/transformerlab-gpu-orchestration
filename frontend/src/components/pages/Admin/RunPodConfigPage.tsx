@@ -253,11 +253,16 @@ const RunPodConfigPage: React.FC = () => {
 
       const requestBody: any = {
         name: poolName,
-        api_key: config.api_key,
         allowed_gpu_types: config.allowed_gpu_types,
         max_instances: config.max_instances,
         allowed_team_ids: allowedTeamIds,
       };
+      // Only include API key if user explicitly edited it and it's not a masked value
+      const isMasked = (val: string) => !!val && val.includes("...");
+      if (config.api_key && !isMasked(config.api_key)) {
+        // Heuristic: consider any change to the field as intentional; backend will validate
+        requestBody.api_key = config.api_key;
+      }
 
       // Only include config_key if it's not null
       if (configKey) {
@@ -341,6 +346,15 @@ const RunPodConfigPage: React.FC = () => {
   const testConnection = async () => {
     try {
       setLoading(true);
+
+      // Do not send masked API key; require user to enter full key
+      if (config.api_key && config.api_key.includes("...")) {
+        addNotification({
+          type: "warning",
+          message: "Please enter your full RunPod API key to test the connection.",
+        });
+        return;
+      }
 
       const response = await apiFetch(buildApiUrl("clouds/runpod/test"), {
         method: "POST",

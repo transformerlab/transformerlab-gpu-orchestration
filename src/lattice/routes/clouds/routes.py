@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel
 
 from ..auth.api_key_auth import get_user_or_api_key
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from .azure.utils import (
     az_verify_setup,
     az_get_instance_types,
@@ -37,6 +38,7 @@ from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_data,
 )
 from routes.clouds.ssh.routes import router as ssh_router
+from routes.auth.utils import requires_admin
 from config import get_db
 from sqlalchemy.orm import Session
 from db.db_models import NodePoolAccess
@@ -83,7 +85,9 @@ class RunPodTestRequest(BaseModel):
 
 # Create main clouds router
 router = APIRouter(
-    prefix="/clouds", dependencies=[Depends(get_user_or_api_key)], tags=["clouds"]
+    prefix="/clouds",
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
+    tags=["clouds"],
 )
 
 # Include SSH router
@@ -191,6 +195,7 @@ async def get_cloud_credentials(
     response: Response = None,
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     """Get cloud configuration with actual credentials (Azure only)"""
     if cloud != "azure":
@@ -249,6 +254,7 @@ async def save_cloud_config(
     response: Response = None,
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
+    __: dict = Depends(requires_admin),
 ):
     """Save cloud configuration"""
     try:
@@ -395,7 +401,9 @@ async def save_cloud_config(
 
 @router.post("/{cloud}/config/{config_key}/set-default")
 async def set_cloud_default_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"), config_key: str = None
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    config_key: str = None,
+    __: dict = Depends(requires_admin),
 ):
     """Set a specific cloud config as default"""
     try:
@@ -415,7 +423,9 @@ async def set_cloud_default_config(
 
 @router.delete("/{cloud}/config/{config_key}")
 async def delete_cloud_config(
-    cloud: str = Path(..., regex="^(azure|runpod)$"), config_key: str = None
+    cloud: str = Path(..., regex="^(azure|runpod)$"),
+    config_key: str = None,
+    __: dict = Depends(requires_admin),
 ):
     """Delete a cloud configuration"""
     try:
@@ -439,6 +449,7 @@ async def delete_cloud_config(
 async def test_cloud_connection(
     cloud: str = Path(..., regex="^(azure|runpod)$"),
     test_request: AzureTestRequest | RunPodTestRequest = None,
+    __: dict = Depends(requires_admin),
 ):
     """Test cloud API connection"""
     try:
