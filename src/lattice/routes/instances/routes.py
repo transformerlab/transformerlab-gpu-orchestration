@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Removed load_ssh_node_info import as we now use database-based approach
 from typing import Optional
+import yaml
 
 from config import UPLOADS_DIR
 from fastapi import (
@@ -126,8 +127,8 @@ router = APIRouter(
 async def launch_instance(
     request: Request,
     response: Response,
-    cluster_name: str = Form(...),
-    command: str = Form("echo 'Hello SkyPilot'"),
+    cluster_name: Optional[str] = Form(None),
+    command: Optional[str] = Form("echo 'Hello SkyPilot'"),
     setup: Optional[str] = Form(None),
     cloud: Optional[str] = Form(None),
     instance_type: Optional[str] = Form(None),
@@ -136,16 +137,92 @@ async def launch_instance(
     accelerators: Optional[str] = Form(None),
     region: Optional[str] = Form(None),
     zone: Optional[str] = Form(None),
-    use_spot: bool = Form(False),
+    use_spot: Optional[bool] = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file: Optional[UploadFile] = File(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
+    yaml_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
+        # Parse YAML configuration if provided
+        yaml_config = {}
+        if yaml_file:
+            # Validate file type
+            if not yaml_file.filename or not yaml_file.filename.lower().endswith(('.yaml', '.yml')):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)"
+                )
+            
+            # Read and parse YAML content
+            yaml_content = await yaml_file.read()
+            try:
+                yaml_config = yaml.safe_load(yaml_content) or {}
+            except yaml.YAMLError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid YAML format: {str(e)}"
+                )
+            
+            # Validate YAML structure
+            if not isinstance(yaml_config, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="YAML file must contain a valid configuration object"
+                )
+        
+        # Merge YAML config with form parameters (form parameters take precedence)
+        final_config = {
+            'cluster_name': cluster_name,
+            'command': command,
+            'setup': setup,
+            'cloud': cloud,
+            'instance_type': instance_type,
+            'cpus': cpus,
+            'memory': memory,
+            'accelerators': accelerators,
+            'region': region,
+            'zone': zone,
+            'use_spot': use_spot,
+            'idle_minutes_to_autostop': idle_minutes_to_autostop,
+            'storage_bucket_ids': storage_bucket_ids,
+            'node_pool_name': node_pool_name,
+            'docker_image_id': docker_image_id,
+        }
+        
+        # Override with YAML values where form parameters are None
+        for key, value in yaml_config.items():
+            if key in final_config and final_config[key] is None:
+                final_config[key] = value
+        
+        # Validate required fields
+        if not final_config['cluster_name']:
+            raise HTTPException(
+                status_code=400,
+                detail="cluster_name is required (either in form parameters or YAML file)"
+            )
+        
+        # Extract final values
+        cluster_name = final_config['cluster_name']
+        command = final_config['command'] or "echo 'Hello SkyPilot'"
+        setup = final_config['setup']
+        cloud = final_config['cloud']
+        instance_type = final_config['instance_type']
+        cpus = final_config['cpus']
+        memory = final_config['memory']
+        accelerators = final_config['accelerators']
+        region = final_config['region']
+        zone = final_config['zone']
+        use_spot = final_config['use_spot'] or False
+        idle_minutes_to_autostop = final_config['idle_minutes_to_autostop']
+        storage_bucket_ids = final_config['storage_bucket_ids']
+        node_pool_name = final_config['node_pool_name']
+        docker_image_id = final_config['docker_image_id']
+        
         file_mounts = None
         python_filename = None
         disk_size = None
