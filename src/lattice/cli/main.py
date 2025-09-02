@@ -16,6 +16,7 @@ from lattice.cli.commands.login import login_command, logout_command
 from lattice.cli.commands.instances import (
     list_instances_command,
     start_instance_command,
+    destroy_instance_command,
 )
 import typer
 from rich.console import Console
@@ -95,7 +96,14 @@ def start_instance(
     start_instance_command(console, yaml_file)
 
 
-
+@instances_app.command("destroy")
+def destroy_instance(
+    cluster_name: Optional[str] = typer.Argument(
+        None, help="Cluster name to destroy. If omitted, you'll be prompted to select."
+    ),
+):
+    """Destroy (terminate) a lab instance."""
+    destroy_instance_command(console, cluster_name)
 
 
 @node_pools_app.command("list")

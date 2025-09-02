@@ -1,0 +1,30 @@
+name: Pytest
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      AUTH_API_KEY: dummy_test_key
+      AUTH_CLIENT_ID: dummy_test_client
+      AUTH_REDIRECT_URI: http://localhost:8000/api/v1/auth/callback
+      FRONTEND_URL: http://localhost:3000
+      BASE_URL: http://localhost:8000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python (via uv)
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.10'
+
+      - name: Create virtualenv
+        run: uv venv --python 3.10 --seed
+
+      - name: Install dependencies
+        run: uv pip install -e .[dev]
+
+      - name: Run pytest
+        run: uv run pytest -q
