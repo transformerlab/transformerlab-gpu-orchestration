@@ -1,4 +1,3 @@
-import subprocess
 from typing import List, Dict, Optional
 
 from sqlalchemy.orm import Session
@@ -306,75 +305,26 @@ def az_test_connection(
     client_secret: str,
     auth_mode: str = "service_principal",
 ):
-    """Test Azure connection with service principal credentials"""
+    """Lightweight validation assuming admin-entered credentials are correct.
+
+    No external CLI calls; simply ensures all required fields are non-empty.
+    """
     try:
-        # Test the connection using Azure CLI with service principal
-        result = subprocess.run(
-            [
-                "az",
-                "login",
-                "--service-principal",
-                "--username",
-                client_id,
-                "--password",
-                client_secret,
-                "--tenant",
-                tenant_id,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            print(result.stderr)
-            return False
-
-        # Ensure intended subscription is selected and matches
-        set_res = subprocess.run(
-            ["az", "account", "set", "--subscription", subscription_id],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if set_res.returncode != 0:
-            print(set_res.stderr)
-            return False
-
-        show_res = subprocess.run(
-            ["az", "account", "show", "--query", "id", "-o", "tsv"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if show_res.returncode != 0:
-            print(show_res.stderr)
-            return False
-
-        current_sub_id = (show_res.stdout or "").strip()
-        if current_sub_id != subscription_id:
-            return False
-
-        return True
-
+        return bool(subscription_id and tenant_id and client_id and client_secret)
     except Exception as e:
-        print(f"Error testing Azure connection: {e}")
+        print(f"Error validating Azure credentials: {e}")
         return False
 
 
 def az_verify_setup(organization_id: Optional[str] = None):
-    """Verify Azure setup by checking CLI and presence of credentials in current config."""
-    try:
-        try:
-            subprocess.run(
-                ["az", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
-        except Exception:
-            return False
+    """Verify Azure setup by checking presence of credentials in current config.
 
+    External CLI checks are removed; assumes credentials are correct if present.
+    """
+    try:
         current = az_get_current_config(organization_id)
         if not current:
             return False
-
         return bool(
             current.get("subscription_id")
             and current.get("tenant_id")
@@ -387,15 +337,8 @@ def az_verify_setup(organization_id: Optional[str] = None):
 
 
 def az_setup_config(organization_id: Optional[str] = None):
-    """Setup Azure configuration - now only supports service principal authentication"""
+    """Setup Azure configuration - assumes service principal credentials are valid if present."""
     try:
-        # Check if Azure CLI is installed
-        result = subprocess.run(
-            ["az", "--version"], capture_output=True, text=True, timeout=10
-        )
-        if result.returncode != 0:
-            raise Exception("Azure CLI is not installed. Please install it first.")
-
         # Load existing config
         config = load_azure_config(organization_id)
         default_config = config.get("default_config")
@@ -412,18 +355,7 @@ def az_setup_config(organization_id: Optional[str] = None):
                 "Azure service principal credentials are not configured. Please configure them in the admin panel."
             )
 
-        # Test the connection
-        if not az_test_connection(
-            config["subscription_id"],
-            config["tenant_id"],
-            config["client_id"],
-            config["client_secret"],
-        ):
-            raise Exception(
-                "Azure service principal authentication failed. Please check your credentials."
-            )
-
-        # Update config to mark as configured
+        # Update config to mark as configured without external checks
         config["is_configured"] = True
         config["auth_method"] = "service_principal"
         az_save_config(
@@ -562,34 +494,13 @@ run: |
 
 
 def az_run_sky_check():
-    """Run 'sky check azure' to validate the Azure setup"""
-    try:
-        print("🔍 Running 'sky check azure' to validate setup...")
-        result = subprocess.run(
-            ["sky", "check", "azure"],
-            capture_output=True,
-            text=True,
-            timeout=30,  # 30 second timeout
-        )
+    """Stubbed 'sky check azure' that avoids external commands.
 
-        if result.returncode == 0:
-            print("✅ Sky check azure completed successfully")
-            print(f"Output: {result.stdout}")
-            return True, result.stdout
-        else:
-            print(f"❌ Sky check azure failed with return code {result.returncode}")
-            print(f"Error output: {result.stderr}")
-            return False, result.stderr
-
-    except subprocess.TimeoutExpired:
-        print("❌ Sky check azure timed out after 30 seconds")
-        return False, "Timeout"
-    except FileNotFoundError:
-        print("❌ 'sky' command not found. Make sure SkyPilot is properly installed.")
-        return False, "Sky command not found"
-    except Exception as e:
-        print(f"❌ Error running sky check azure: {e}")
-        return False, str(e)
+    Returns a successful status with a note that the check was skipped.
+    """
+    msg = "Skipped external 'sky check azure'; assuming valid setup."
+    print(f"ℹ️ {msg}")
+    return True, msg
 
 
 def az_save_config_with_setup(

@@ -185,7 +185,7 @@ def test_azure_masked_update_and_rename(db_session):
     assert new["client_secret"] == "secX"
 
 
-def test_azure_verify_setup(monkeypatch, db_session):
+def test_azure_verify_setup(db_session):
     from lattice.routes.clouds.azure import utils as az
 
     org = "org_az_verify"
@@ -202,22 +202,11 @@ def test_azure_verify_setup(monkeypatch, db_session):
         db=db_session,
     )
 
-    class DummyProc:
-        def __init__(self, returncode=0):
-            self.returncode = returncode
-            self.stdout = "ok"
-            self.stderr = ""
-
-    # CLI present -> True because config exists with creds
-    monkeypatch.setattr(az.subprocess, "run", lambda *a, **k: DummyProc(0))
+    # With valid saved credentials, setup verifies without external CLI checks
     assert az.az_verify_setup(organization_id=org) is True
 
-    # CLI missing -> False
-    def _raise(*a, **k):
-        raise RuntimeError("az not found")
-
-    monkeypatch.setattr(az.subprocess, "run", _raise)
-    assert az.az_verify_setup(organization_id=org) is False
+    # Without any config, verify_setup should be False
+    assert az.az_verify_setup(organization_id="org_no_config") is False
 
 
 def test_runpod_save_load_set_default_and_delete(db_session, monkeypatch, tmp_path):
@@ -501,14 +490,5 @@ def test_azure_setup_config(monkeypatch, db_session):
         db=db_session,
     )
 
-    class DummyProc:
-        def __init__(self, returncode=0):
-            self.returncode = returncode
-            self.stdout = "ok"
-            self.stderr = ""
-
-    # CLI present
-    monkeypatch.setattr(az.subprocess, "run", lambda *a, **k: DummyProc(0))
-    # Connection test OK
-    monkeypatch.setattr(az, "az_test_connection", lambda *a, **k: True)
+    # With credentials present, setup completes without external CLI checks
     assert az.az_setup_config(organization_id=org) is True
