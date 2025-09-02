@@ -4,6 +4,8 @@ from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
+from config import SessionLocal
+from db.db_models import ClusterPlatform
 from utils.cluster_resolver import handle_cluster_name_param
 
 
@@ -228,12 +230,33 @@ def save_cluster_jobs(
         return None
 
 
-def get_past_jobs():
-    """Retrieve all past jobs from saved files."""
+def get_past_jobs(user_id: str = None, organization_id: str = None):
+    """Retrieve past jobs from saved files, filtered by user and organization."""
     try:
         jobs_dir = os.path.expanduser("~/.sky/lattice_data/jobs")
 
         if not os.path.exists(jobs_dir):
+            return []
+
+        # Get all cluster names owned by the current user and organization
+        if user_id and organization_id:
+            db = SessionLocal()
+            try:
+                user_clusters = (
+                    db.query(ClusterPlatform)
+                    .filter(
+                        ClusterPlatform.user_id == user_id,
+                        ClusterPlatform.organization_id == organization_id,
+                    )
+                    .all()
+                )
+                allowed_cluster_names = {
+                    cluster.display_name for cluster in user_clusters
+                }
+            finally:
+                db.close()
+        else:
+            # If no user/org provided, return empty list (shouldn't happen in normal flow)
             return []
 
         past_jobs = []
@@ -242,7 +265,12 @@ def get_past_jobs():
                 try:
                     with open(os.path.join(jobs_dir, filepath), "r") as f:
                         data = json.load(f)
-                        past_jobs.append(data)
+
+                        # Filter jobs by checking if the cluster belongs to the current user/org
+                        cluster_name = data.get("cluster_name", "")
+                        if cluster_name in allowed_cluster_names:
+                            past_jobs.append(data)
+
                 except Exception as e:
                     print(f"Failed to read job file {filepath}: {str(e)}")
                     continue

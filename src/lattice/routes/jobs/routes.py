@@ -46,10 +46,17 @@ router = APIRouter(
 
 
 @router.get("/past-jobs")
-async def get_past_jobs_endpoint(request: Request, response: Response):
-    """Get all past jobs from saved files."""
+async def get_past_jobs_endpoint(
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key)
+):
+    """Get past jobs from saved files for the current user and organization."""
     try:
-        past_jobs = get_past_jobs()
+        past_jobs = get_past_jobs(
+            user_id=user["id"],
+            organization_id=user["organization_id"]
+        )
         return {"past_jobs": past_jobs}
     except Exception as e:
         raise HTTPException(
