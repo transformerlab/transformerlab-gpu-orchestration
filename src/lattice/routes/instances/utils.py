@@ -150,8 +150,8 @@ def launch_cluster_with_skypilot(
             )
 
             try:
-                rp_setup_config()
-                if not rp_verify_setup():
+                rp_setup_config(organization_id)
+                if not rp_verify_setup(organization_id=organization_id):
                     raise HTTPException(
                         status_code=500,
                         detail="RunPod setup verification failed. Please check your RUNPOD_API_KEY.",
