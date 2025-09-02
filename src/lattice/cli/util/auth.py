@@ -105,6 +105,19 @@ def get_saved_api_key():
         return f.read().strip()
 
 
+def get_saved_api_key_metadata():
+    """Get the saved API key metadata (including ID) if it exists."""
+    api_key_json_file = os.path.join(CLI_CONFIG_DIR, "api_key.json")
+    if not os.path.exists(api_key_json_file):
+        return None
+
+    try:
+        with open(api_key_json_file, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
 def status() -> Union[Dict, None]:
     """
     Check the current user's authentication status by calling the /me endpoint.

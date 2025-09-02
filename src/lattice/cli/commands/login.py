@@ -8,7 +8,12 @@ import requests
 
 
 from lattice.cli.util.api import BACKEND_URL
-from lattice.cli.util.auth import save_api_key, get_saved_api_key, api_request
+from lattice.cli.util.auth import (
+    save_api_key,
+    get_saved_api_key,
+    get_saved_api_key_metadata,
+    api_request,
+)
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt
@@ -213,11 +218,12 @@ def login_command(console: Console, username: Optional[str] = None):
 
 
 def logout_command(console: Console):
-    """Logout from your Transformer Lab account by deleting the saved API key."""
+    """Logout from your Transformer Lab account by revoking the API key from the backend and deleting local credentials."""
     console.print("[bold blue]Logging out of your Transformer Lab account[/bold blue]")
 
     # Check if we have an API key to delete
     current_api_key = get_saved_api_key()
+    api_key_metadata = get_saved_api_key_metadata()
 
     if not current_api_key:
         console.print("[bold yellow]⚠[/bold yellow] You are not currently logged in.")
@@ -225,7 +231,7 @@ def logout_command(console: Console):
 
     # Ask for confirmation before proceeding
     confirm = Prompt.ask(
-        "[bold yellow]Are you sure you want to log out? This will delete your saved API key (yes/no)[/bold yellow]",
+        "[bold yellow]Are you sure you want to log out? This will revoke your API key from the server and delete your saved credentials (yes/no)[/bold yellow]",
         choices=["yes", "no"],
         default="no",
     )
@@ -234,20 +240,70 @@ def logout_command(console: Console):
         console.print("[bold yellow]Logout cancelled.[/bold yellow]")
         return
 
+    # First, try to revoke the API key from the backend
+    if api_key_metadata and "id" in api_key_metadata:
+        try:
+            console.print("[dim]Revoking API key from server...[/dim]")
+            revoke_response = api_request(
+                "DELETE", f"/api-keys/{api_key_metadata['id']}", auth_needed=True
+            )
+
+            if revoke_response.status_code == 200:
+                console.print("[dim]✓ API key revoked from server[/dim]")
+            elif revoke_response.status_code == 401:
+                console.print(
+                    "[bold yellow]⚠[/bold yellow] Could not revoke API key from server (authentication failed)"
+                )
+                console.print(
+                    "[dim]This is normal if the API key has expired - the server correctly rejects expired keys.[/dim]"
+                )
+                console.print(
+                    "[dim]Your local credentials will still be deleted for security.[/dim]"
+                )
+            else:
+                console.print(
+                    f"[bold yellow]⚠[/bold yellow] Could not revoke API key from server (HTTP {revoke_response.status_code})"
+                )
+                debug_print(console, f"Revoke response: {revoke_response.text}")
+
+        except requests.RequestException as e:
+            console.print(
+                f"[bold yellow]⚠[/bold yellow] Could not revoke API key from server: {str(e)}[/bold yellow]"
+            )
+            debug_print(console, f"Revoke error details: {str(e)}")
+    else:
+        console.print(
+            "[dim]No API key metadata found, skipping server revocation[/dim]"
+        )
+
+    # Then delete the local credentials
     try:
-        # Delete the API key from storage
         from pathlib import Path
 
-        # Get the credentials file path (same as used in save_api_key)
+        # Get the credentials directory path
         credentials_dir = Path.home() / ".lab" / "cli"
         credentials_file = credentials_dir / "credentials"
+        api_key_json_file = credentials_dir / "api_key.json"
 
+        # Delete the credentials files
+        files_deleted = 0
         if credentials_file.exists():
-            credentials_file.unlink()  # Delete the file
+            credentials_file.unlink()
+            files_deleted += 1
+
+        if api_key_json_file.exists():
+            api_key_json_file.unlink()
+            files_deleted += 1
+
+        if files_deleted > 0:
             console.print("[bold green]✓[/bold green] Successfully logged out.")
-            console.print("[dim]Your API key has been deleted.[/dim]")
+            console.print(
+                "[dim]Your API key has been revoked and local credentials deleted.[/dim]"
+            )
         else:
-            console.print("[bold yellow]⚠[/bold yellow] No credentials file found.")
+            console.print(
+                "[bold yellow]⚠[/bold yellow] No local credential files found."
+            )
 
     except Exception as e:
         console.print(f"[bold red]Error during logout: {str(e)}[/bold red]")
