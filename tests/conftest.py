@@ -52,14 +52,16 @@ def pytest_sessionstart(session):
     except Exception:
         pass
 
-    # Create database schema up front
+    # Apply Alembic migrations up front to ensure schema matches production
     try:
-        # Delay imports until after sys.path and env are set
-        from lattice.db.base import Base
-        import lattice.db.db_models  # noqa: F401  # register models
-        from lattice.config import engine
+        from alembic.config import Config
+        from alembic import command
 
-        Base.metadata.create_all(bind=engine)
+        alembic_ini = repo_root / "src" / "lattice" / "alembic.ini"
+        alembic_cfg = Config(str(alembic_ini))
+        # Ensure Alembic uses the test DATABASE_URL
+        alembic_cfg.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+        command.upgrade(alembic_cfg, "head")
     except Exception as e:
-        # Do not fail early; individual tests can still handle lazy creation
-        print(f"[tests] Warning: failed to pre-create DB schema: {e}")
+        # Surface schema issues early so tests don't behave inconsistently
+        raise RuntimeError(f"Failed to run Alembic migrations for tests: {e}")

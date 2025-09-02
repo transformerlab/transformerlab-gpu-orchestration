@@ -10,31 +10,7 @@ from config import get_db
 from db.db_models import SSHNodePool as SSHNodePoolDB
 from sqlalchemy.orm import Session
 
-from .utils import (
-    run_sky_check_ssh,
-)
-
-
 router = APIRouter()
-
-
-@router.get("/sky-check")
-async def run_sky_check_ssh_route(request: Request, response: Response):
-    """Run 'sky check ssh' to validate the SSH setup"""
-    try:
-        is_valid, output = run_sky_check_ssh()
-        return {
-            "valid": is_valid,
-            "output": output,
-            "message": "Sky check ssh completed successfully"
-            if is_valid
-            else "Sky check ssh failed",
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to run sky check ssh: {str(e)}"
-        )
-
 
 @router.get("/node-info")
 async def get_ssh_node_info(

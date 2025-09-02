@@ -19,13 +19,8 @@ def _fake_user(org: str = "org_test", uid: str = "user_test") -> Dict[str, str]:
 
 @pytest.fixture()
 def db_session():
-    # Use the same SessionLocal as the app
+    # Use the same SessionLocal as the app; schema is applied via Alembic in conftest
     from lattice.config import SessionLocal
-    from lattice.db.base import Base
-    from lattice.config import engine
-
-    # Ensure schema exists (idempotent)
-    Base.metadata.create_all(bind=engine)
 
     session = SessionLocal()
     try:

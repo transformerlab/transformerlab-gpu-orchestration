@@ -12,7 +12,6 @@ from .azure.utils import (
     az_get_config_for_display,
     az_test_connection,
     load_azure_config,
-    az_run_sky_check,
     az_set_default_config,
     az_delete_config,
     az_get_current_config,
@@ -26,7 +25,6 @@ from .runpod.utils import (
     rp_save_config_with_setup,
     rp_get_config_for_display,
     rp_test_connection,
-    rp_run_sky_check,
     rp_set_default_config,
     rp_delete_config,
     rp_get_current_config,
@@ -62,7 +60,7 @@ class AzureConfigRequest(BaseModel):
 
 class RunPodConfigRequest(BaseModel):
     name: str
-    api_key: str
+    api_key: str | None = None
     allowed_gpu_types: list[str]
     allowed_display_options: list[str] = None
     max_instances: int = 0
@@ -107,19 +105,7 @@ async def setup_cloud(
             return {"message": f"{cloud.title()} configuration setup successfully"}
         elif cloud == "runpod":
             rp_setup_config(user.get("organization_id"))
-            try:
-                is_valid, output = rp_run_sky_check(user.get("organization_id"))
-                return {
-                    "message": f"{cloud.title()} configuration setup successfully",
-                    "sky_check_valid": is_valid,
-                    "sky_check_output": output,
-                }
-            except Exception as e:
-                return {
-                    "message": f"{cloud.title()} configuration setup successfully",
-                    "sky_check_valid": False,
-                    "sky_check_output": str(e),
-                }
+            return {"message": f"{cloud.title()} configuration setup successfully"}
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
     except Exception as e:
@@ -507,30 +493,6 @@ async def test_cloud_connection(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to test {cloud} connection: {str(e)}"
-        )
-
-
-@router.get("/{cloud}/sky-check")
-async def run_cloud_sky_check(cloud: str = Path(..., pattern="^(azure|runpod)$")):
-    """Run 'sky check' to validate the cloud setup"""
-    try:
-        if cloud == "azure":
-            is_valid, output = az_run_sky_check()
-        elif cloud == "runpod":
-            is_valid, output = rp_run_sky_check()
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
-
-        return {
-            "valid": is_valid,
-            "output": output,
-            "message": f"Sky check {cloud} completed successfully"
-            if is_valid
-            else f"Sky check {cloud} failed",
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to run sky check {cloud}: {str(e)}"
         )
 
 
