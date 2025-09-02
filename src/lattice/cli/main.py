@@ -16,6 +16,7 @@ from lattice.cli.commands.login import login_command, logout_command
 from lattice.cli.commands.instances import (
     list_instances_command,
     request_instance_command,
+    start_instance_command,
 )
 import typer
 from rich.console import Console
@@ -88,15 +89,14 @@ def list_instances():
 
 
 @instances_app.command("request")
-def request_instance(
-    name: str = typer.Option(..., help="Name of the instance"),
-    instance_type: str = typer.Option(
-        "gpu-a100", help="Type of instance (cpu, gpu-a100, gpu-h100)"
-    ),
-    region: str = typer.Option("us-west-2", help="Region to deploy the instance"),
+def start_instance(
+    yaml_file: str = typer.Argument(..., help="Path to YAML configuration file"),
 ):
-    """Request a new Transformer Lab instance."""
-    request_instance_command(console, name, instance_type, region)
+    """Start a new lab instance using a YAML configuration file."""
+    start_instance_command(console, yaml_file)
+
+
+
 
 
 @node_pools_app.command("list")
