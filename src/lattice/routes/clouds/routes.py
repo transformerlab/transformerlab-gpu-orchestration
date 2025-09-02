@@ -62,7 +62,7 @@ class AzureConfigRequest(BaseModel):
 
 class RunPodConfigRequest(BaseModel):
     name: str
-    api_key: str
+    api_key: str | None = None
     allowed_gpu_types: list[str]
     allowed_display_options: list[str] = None
     max_instances: int = 0
