@@ -1,13 +1,14 @@
 import time
 import os
 from lattice.cli.util.auth import api_request
+from typing import Optional
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich import box
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
 
 
 def list_instances_command(console: Console):
@@ -26,7 +27,7 @@ def list_instances_command(console: Console):
     resp_json = resp.json()
 
     # Parse the response
-    clusters = resp_json.get("node-pools/ssh-node-pools", [])
+    clusters = resp_json.get("clusters", [])
     if not clusters:
         console.print("[yellow]No instances found.[/yellow]")
         return
@@ -226,3 +227,122 @@ def request_instance_command(console, name, instance_type, region):
         )
     )
     console.print("[dim]You can connect to it using: tlab ssh {}[/dim]".format(name))
+
+
+def destroy_instance_command(console: Console, cluster_name: Optional[str]):
+    """Destroy (terminate) a lab instance by calling the /instances/down route.
+
+    If cluster_name is not provided, show a list of instances and prompt the user to select one.
+    """
+    # Fetch instances to validate/choose from
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Fetching instances...[/bold blue]"),
+        transient=True,
+    ) as progress:
+        progress.add_task("", total=None)
+        resp = api_request("GET", "/instances/status", auth_needed=True)
+
+    try:
+        resp_json = resp.json()
+    except Exception:
+        resp_json = {}
+
+    # The API returns { clusters: [...] }
+    clusters = resp_json.get("clusters") or resp_json.get(
+        "node-pools/ssh-node-pools", []
+    )
+
+    if not clusters:
+        console.print("[yellow]No instances found to destroy.[/yellow]")
+        return
+
+    # Helper to extract display name
+    def _get_name(c):
+        return c.get("cluster_name") or c.get("name") or "-"
+
+    # If name not provided, prompt interactively
+    selected_name = None
+    if not cluster_name:
+        table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
+        table.add_column("#", justify="right")
+        table.add_column("Name")
+        table.add_column("Status", justify="center")
+        for idx, c in enumerate(clusters, start=1):
+            status = c.get("status") or "-"
+            status = (
+                status.replace("ClusterStatus.", "")
+                if isinstance(status, str)
+                else status
+            )
+            table.add_row(str(idx), _get_name(c), status)
+        console.print(
+            Panel(table, title="Select an instance to destroy", border_style="red")
+        )
+
+        while True:
+            choice = Prompt.ask(
+                "Enter the number of the instance to destroy", default="1"
+            )
+            try:
+                index = int(choice)
+                if 1 <= index <= len(clusters):
+                    selected_name = _get_name(clusters[index - 1])
+                    break
+            except Exception:
+                pass
+            console.print("[red]Invalid selection. Please enter a valid number.[/red]")
+    else:
+        selected_name = cluster_name
+
+    if not selected_name or selected_name == "-":
+        console.print("[red]Invalid cluster name.[/red]")
+        return
+
+    # Confirm destructive action
+    if not Confirm.ask(
+        f"[yellow]Are you sure you want to destroy [bold red]{selected_name}[/bold red]? This will delete all resources.[/yellow]",
+        default=False,
+    ):
+        console.print("[yellow]Destroy cancelled.[/yellow]")
+        return
+
+    # Call the down endpoint
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Destroying instance...[/bold blue]"),
+        transient=False,
+    ) as progress:
+        task = progress.add_task("", total=100)
+        try:
+            progress.update(task, completed=30)
+            resp = api_request(
+                "POST",
+                "/instances/down",
+                auth_needed=True,
+                json_data={"cluster_name": selected_name},
+            )
+            progress.update(task, completed=100)
+
+            if resp.status_code == 200:
+                data = resp.json()
+                console.print("[bold green]✓[/bold green] Destroy initiated.")
+                msg = (
+                    data.get("message")
+                    or f"Cluster '{selected_name}' termination initiated successfully"
+                )
+                console.print(f"[bold]Message:[/bold] {msg}")
+                if data.get("request_id"):
+                    console.print(f"[dim]Request ID: {data['request_id']}[/dim]")
+            else:
+                console.print("[bold red]✗[/bold red] Failed to destroy instance.")
+                console.print(f"[bold]Status Code:[/bold] {resp.status_code}")
+                try:
+                    error_data = resp.json()
+                    console.print(
+                        f"[bold]Error:[/bold] {error_data.get('detail', 'Unknown error')}"
+                    )
+                except Exception:
+                    console.print(f"[bold]Error:[/bold] {resp.text}")
+        except Exception as e:
+            console.print(f"[bold red]✗[/bold red] Error destroying instance: {str(e)}")
