@@ -303,67 +303,67 @@ async def submit_job_to_cluster(
         yaml_config = {}
         if yaml_file:
             # Validate file type
-            if not yaml_file.filename or not yaml_file.filename.lower().endswith(('.yaml', '.yml')):
+            if not yaml_file.filename or not yaml_file.filename.lower().endswith(
+                (".yaml", ".yml")
+            ):
                 raise HTTPException(
-                    status_code=400, 
-                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)"
+                    status_code=400,
+                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)",
                 )
-            
+
             # Read and parse YAML content
             yaml_content = await yaml_file.read()
             try:
                 yaml_config = yaml.safe_load(yaml_content) or {}
             except yaml.YAMLError as e:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid YAML format: {str(e)}"
+                    status_code=400, detail=f"Invalid YAML format: {str(e)}"
                 )
-            
+
             # Validate YAML structure
             if not isinstance(yaml_config, dict):
                 raise HTTPException(
                     status_code=400,
-                    detail="YAML file must contain a valid configuration object"
+                    detail="YAML file must contain a valid configuration object",
                 )
-        
+
         # Merge YAML config with form parameters (form parameters take precedence)
         final_config = {
-            'command': command,
-            'setup': setup,
-            'cpus': cpus,
-            'memory': memory,
-            'accelerators': accelerators,
-            'region': region,
-            'zone': zone,
-            'job_name': job_name,
-            'dir_name': dir_name,
+            "command": command,
+            "setup": setup,
+            "cpus": cpus,
+            "memory": memory,
+            "accelerators": accelerators,
+            "region": region,
+            "zone": zone,
+            "job_name": job_name,
+            "dir_name": dir_name,
         }
-        
+
         # Override with YAML values where form parameters are None
         for key, value in yaml_config.items():
             if key in final_config and final_config[key] is None:
                 final_config[key] = value
-        
+
         # Validate required fields
-        if not final_config['command']:
+        if not final_config["command"]:
             raise HTTPException(
                 status_code=400,
-                detail="command is required (either in form parameters or YAML file)"
+                detail="command is required (either in form parameters or YAML file)",
             )
-        
+
         # Extract final values
-        command = final_config['command']
-        setup = final_config['setup']
-        cpus = final_config['cpus']
-        memory = final_config['memory']
-        accelerators = final_config['accelerators']
-        region = final_config['region']
-        zone = final_config['zone']
-        job_name = final_config['job_name']
-        dir_name = final_config['dir_name']
-        
+        command = final_config["command"]
+        setup = final_config["setup"]
+        cpus = final_config["cpus"]
+        memory = final_config["memory"]
+        accelerators = final_config["accelerators"]
+        region = final_config["region"]
+        zone = final_config["zone"]
+        job_name = final_config["job_name"]
+        dir_name = final_config["dir_name"]
+
         file_mounts = None
-        workdir = None
 
         # Handle uploaded directory path from upload route
         if uploaded_dir_path:
@@ -371,22 +371,21 @@ async def submit_job_to_cluster(
             if not os.path.exists(uploaded_dir_path):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Uploaded directory '{uploaded_dir_path}' not found. Please upload the files first using /upload endpoint."
+                    detail=f"Uploaded directory '{uploaded_dir_path}' not found. Please upload the files first using /upload endpoint.",
                 )
-            
+
             # Extract base name from the uploaded directory path
             base_name = os.path.basename(uploaded_dir_path)
             if "_" in base_name:
                 # Remove UUID prefix if present
                 base_name = "_".join(base_name.split("_")[1:])
-            
+
             # Use provided dir_name if available, otherwise use extracted base_name
             if dir_name:
                 base_name = secure_filename(dir_name) or base_name
-            
+
             # Mount the entire directory at ~/<base_name>
             file_mounts = {f"~/{base_name}": uploaded_dir_path}
-            workdir = f"~/{base_name}"
 
         # For VSCode, we need to remove the carriage return
         command = command.replace("\r", "")
@@ -406,7 +405,6 @@ async def submit_job_to_cluster(
             command=command,
             setup=setup,
             file_mounts=file_mounts,
-            workdir=workdir,
             cpus=cpus,
             memory=memory,
             accelerators=accelerators,
