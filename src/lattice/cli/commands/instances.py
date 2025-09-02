@@ -142,7 +142,7 @@ def start_instance_command(console: Console, yaml_file_path: str):
             if resp.status_code == 200:
                 resp_data = resp.json()
                 console.print(
-                    f"[bold green]✓[/bold green] Instance launched successfully!"
+                    "[bold green]✓[/bold green] Instance launched successfully!"
                 )
                 console.print(
                     f"[bold]Cluster Name:[/bold] {resp_data.get('cluster_name', 'N/A')}"
@@ -151,14 +151,14 @@ def start_instance_command(console: Console, yaml_file_path: str):
                 if "message" in resp_data:
                     console.print(f"[bold]Message:[/bold] {resp_data['message']}")
             else:
-                console.print(f"[bold red]✗[/bold red] Failed to launch instance.")
+                console.print("[bold red]✗[/bold red] Failed to launch instance.")
                 console.print(f"[bold]Status Code:[/bold] {resp.status_code}")
                 try:
                     error_data = resp.json()
                     console.print(
                         f"[bold]Error:[/bold] {error_data.get('detail', 'Unknown error')}"
                     )
-                except:
+                except Exception:
                     console.print(f"[bold]Error:[/bold] {resp.text}")
 
         except Exception as e:
