@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from config import get_db
-from db_models import Team
+from db.db_models import Team
 from lattice.models import TeamQuotaRequest, TeamQuotaResponse, TeamQuotaListResponse
 from lattice.routes.admin.teams_service import list_teams
 from lattice.routes.auth.utils import (
@@ -17,8 +17,9 @@ from lattice.routes.quota.team_quota_service import (
     team_quota_to_response,
 )
 from lattice.routes.quota.utils import get_organization_default_quota
+from lattice.routes.auth.api_key_auth import enforce_csrf
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_csrf)])
 
 
 @router.get(

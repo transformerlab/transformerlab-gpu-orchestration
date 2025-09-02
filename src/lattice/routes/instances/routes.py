@@ -3,7 +3,11 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 # Removed load_ssh_node_info import as we now use database-based approach
-from typing import Optional
+from typing import Optional, List
+import yaml
+import os
+from pathlib import Path
+from werkzeug.utils import secure_filename
 
 from config import UPLOADS_DIR
 from fastapi import (
@@ -36,8 +40,18 @@ from .utils import (
 from routes.clouds.azure.utils import (
     az_get_config_for_display,
 )
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope
+from lattice.routes.auth.api_key_auth import enforce_csrf
+from routes.clouds.azure.utils import (
+    az_setup_config,
+    load_azure_config,
+    az_infer_gpu_count,
+    az_get_price_per_hour,
+)
 from routes.clouds.runpod.utils import (
     rp_setup_config,
+    load_runpod_config,
+    rp_get_price_per_hour,
     map_runpod_display_to_instance_type,
 )
 from routes.node_pools.utils import (
@@ -45,9 +59,28 @@ from routes.node_pools.utils import (
     is_down_only_cluster,
     update_gpu_resources_for_node_pool,
 )
+from routes.reports.utils import record_usage
+from routes.quota.utils import get_user_team_id, get_current_user_quota_info
+from sqlalchemy.orm import Session
+from config import get_db
+from db.db_models import (
+    NodePoolAccess as NodePoolAccessDB,
+    SSHNodePool as SSHNodePoolDB,
+)
+from utils.cluster_resolver import handle_cluster_name_param
 from utils.cluster_utils import (
     create_cluster_platform_entry,
     get_actual_cluster_name,
+    get_cluster_platform,
+)
+from utils.cluster_utils import get_cluster_platform_info as get_cluster_platform_data
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_info_util,
+)
+from utils.cluster_utils import (
+    get_cluster_state,
+    update_cluster_state,
+    get_cluster_user_info,
     get_display_name_from_actual,
     get_cluster_platform_info as get_cluster_platform_data,
     get_cluster_platform_info as get_cluster_platform_info_util,
@@ -107,7 +140,9 @@ def update_gpu_resources_background(node_pool_name: str):
 
 
 router = APIRouter(
-    prefix="/instances", dependencies=[Depends(get_user_or_api_key)], tags=["instances"]
+    prefix="/instances",
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
+    tags=["instances"],
 )
 
 
@@ -115,8 +150,8 @@ router = APIRouter(
 async def launch_instance(
     request: Request,
     response: Response,
-    cluster_name: str = Form(...),
-    command: str = Form("echo 'Hello SkyPilot'"),
+    cluster_name: Optional[str] = Form(None),
+    command: Optional[str] = Form("echo 'Hello SkyPilot'"),
     setup: Optional[str] = Form(None),
     cloud: Optional[str] = Form(None),
     instance_type: Optional[str] = Form(None),
@@ -125,19 +160,94 @@ async def launch_instance(
     accelerators: Optional[str] = Form(None),
     region: Optional[str] = Form(None),
     zone: Optional[str] = Form(None),
-    use_spot: bool = Form(False),
+    use_spot: Optional[bool] = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
-    python_file: Optional[UploadFile] = File(None),
-    launch_mode: Optional[str] = Form(None),
-    jupyter_port: Optional[int] = Form(None),
-    vscode_port: Optional[int] = Form(None),
-    template: Optional[str] = Form(None),
+    python_file_name: Optional[str] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
-    docker_image: Optional[str] = Form(None),
-    container_registry_id: Optional[str] = Form(None),
+    docker_image_id: Optional[str] = Form(None),
+    yaml_file: Optional[UploadFile] = File(None),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
+        # Parse YAML configuration if provided
+        yaml_config = {}
+        if yaml_file:
+            # Validate file type
+            if not yaml_file.filename or not yaml_file.filename.lower().endswith(
+                (".yaml", ".yml")
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)",
+                )
+
+            # Read and parse YAML content
+            yaml_content = await yaml_file.read()
+            try:
+                yaml_config = yaml.safe_load(yaml_content) or {}
+            except yaml.YAMLError as e:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid YAML format: {str(e)}"
+                )
+
+            # Validate YAML structure
+            if not isinstance(yaml_config, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="YAML file must contain a valid configuration object",
+                )
+
+        # Merge YAML config with form parameters (form parameters take precedence)
+        final_config = {
+            "cluster_name": cluster_name,
+            "command": command,
+            "setup": setup,
+            "cloud": cloud,
+            "instance_type": instance_type,
+            "cpus": cpus,
+            "memory": memory,
+            "accelerators": accelerators,
+            "region": region,
+            "zone": zone,
+            "use_spot": use_spot,
+            "idle_minutes_to_autostop": idle_minutes_to_autostop,
+            "storage_bucket_ids": storage_bucket_ids,
+            "node_pool_name": node_pool_name,
+            "docker_image_id": docker_image_id,
+        }
+
+        # Override with YAML values where form parameters are None
+        for key, value in yaml_config.items():
+            if key in final_config and final_config[key] is None:
+                final_config[key] = value
+
+        # Validate required fields
+        if not final_config["cluster_name"]:
+            raise HTTPException(
+                status_code=400,
+                detail="cluster_name is required (either in form parameters or YAML file)",
+            )
+
+        # Extract final values
+        cluster_name = final_config["cluster_name"]
+        command = final_config["command"] or "echo 'Hello SkyPilot'"
+        setup = final_config["setup"]
+        cloud = final_config["cloud"]
+        instance_type = final_config["instance_type"]
+        cpus = final_config["cpus"]
+        memory = final_config["memory"]
+        accelerators = final_config["accelerators"]
+        region = final_config["region"]
+        zone = final_config["zone"]
+        use_spot = final_config["use_spot"] or False
+        idle_minutes_to_autostop = final_config["idle_minutes_to_autostop"]
+        storage_bucket_ids = final_config["storage_bucket_ids"]
+        node_pool_name = final_config["node_pool_name"]
+        docker_image_id = final_config["docker_image_id"]
+
         file_mounts = None
         python_filename = None
         disk_size = None
@@ -153,15 +263,45 @@ async def launch_instance(
             except Exception as e:
                 print(f"Warning: Failed to parse storage bucket IDs: {e}")
 
-        if python_file is not None and python_file.filename:
-            # Save the uploaded file to a persistent uploads directory
-            python_filename = python_file.filename
-            unique_filename = f"{uuid.uuid4()}_{python_filename}"
-            file_path = UPLOADS_DIR / unique_filename
-            with open(file_path, "wb") as f:
-                f.write(await python_file.read())
+        # Handle uploaded file name from upload route
+        if python_file_name:
+            # Extract original filename from uploaded name (remove UUID prefix)
+            if "_" in python_file_name:
+                python_filename = "_".join(python_file_name.split("_")[1:])
+            else:
+                python_filename = python_file_name
+
+            file_path = UPLOADS_DIR / python_file_name
+            if not file_path.exists():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Uploaded file '{python_file_name}' not found. Please upload the file first using /upload endpoint.",
+                )
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+
+        # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
+        # (RunPod mapping below may clear 'accelerators')
+        def _parse_requested_gpu_count(
+            accel: Optional[str], cloud_name: Optional[str]
+        ) -> int:
+            if not accel:
+                return 0
+            s = str(accel).strip()
+            if s.upper().startswith("CPU"):
+                return 0
+            if ":" in s:
+                try:
+                    return max(0, int(s.split(":")[-1].strip()))
+                except Exception:
+                    return 1
+            return 1
+
+        _initial_requested_gpu_count = _parse_requested_gpu_count(accelerators, cloud)
+        _runpod_display_option_for_pricing = (
+            accelerators if (cloud or "").lower() == "runpod" else None
+        )
+
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
@@ -206,10 +346,131 @@ async def launch_instance(
         # print(f"az_config: {az_config}")
         # raise Exception("test")
         print(f"credentials: {credentials}")
-        # Get user info first for cluster creation
-        user_info = get_current_user(request, response)
-        user_id = user_info["id"]
-        organization_id = user_info["organization_id"]
+
+        # Get user info from the authenticated user (API key or session)
+        user_id = user["id"]
+        organization_id = user["organization_id"]
+
+        # Enforce team-based access to selected node pool/provider
+        try:
+            team_id = get_user_team_id(db, organization_id, user_id)
+            if cloud == "ssh":
+                if not node_pool_name:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="node_pool_name is required for SSH launches",
+                    )
+                pool = (
+                    db.query(SSHNodePoolDB)
+                    .filter(
+                        SSHNodePoolDB.name == node_pool_name,
+                        SSHNodePoolDB.organization_id == organization_id,
+                    )
+                    .first()
+                )
+                if not pool:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"SSH node pool '{node_pool_name}' not found",
+                    )
+                allowed_team_ids = []
+                try:
+                    od = pool.other_data or {}
+                    if isinstance(od, dict):
+                        allowed_team_ids = od.get("allowed_team_ids", []) or []
+                except Exception:
+                    allowed_team_ids = []
+                if allowed_team_ids and (
+                    team_id is None or team_id not in allowed_team_ids
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Your team does not have access to this SSH node pool",
+                    )
+            elif cloud in ("azure", "runpod"):
+                # Determine default config key to identify pool
+                pool_key = None
+                try:
+                    if cloud == "azure":
+                        cfg = load_azure_config()
+                    else:
+                        cfg = load_runpod_config()
+                    pool_key = cfg.get("default_config")
+                except Exception:
+                    pool_key = None
+                # If access row exists and has restrictions, enforce
+                if pool_key:
+                    access_row = (
+                        db.query(NodePoolAccessDB)
+                        .filter(
+                            NodePoolAccessDB.organization_id == organization_id,
+                            NodePoolAccessDB.provider == cloud,
+                            NodePoolAccessDB.pool_key == pool_key,
+                        )
+                        .first()
+                    )
+                    allowed_team_ids = (
+                        access_row.allowed_team_ids
+                        if access_row and access_row.allowed_team_ids
+                        else []
+                    )
+                    if allowed_team_ids and (
+                        team_id is None or team_id not in allowed_team_ids
+                    ):
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Your team does not have access to the {cloud.title()} node pool",
+                        )
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Fail closed only if explicit restrictions exist; otherwise continue
+            print(f"Access check warning: {e}")
+
+        # Quota enforcement: ensure user has enough remaining credits for requested GPUs
+        try:
+            requested_gpu_count = _initial_requested_gpu_count
+            cloud_lower = (cloud or "").lower()
+
+            # Compute price-per-hour for the requested config
+            price_per_hour = None
+            if cloud_lower == "runpod":
+                price_source = _runpod_display_option_for_pricing or accelerators
+                if price_source:
+                    price_per_hour = rp_get_price_per_hour(price_source)
+            elif cloud_lower == "azure" and instance_type:
+                price_per_hour = az_get_price_per_hour(instance_type, region=region)
+
+            # If accelerators not provided for Azure, try to infer GPU count for info logs
+            if requested_gpu_count == 0 and cloud_lower == "azure" and instance_type:
+                try:
+                    requested_gpu_count = max(0, int(az_infer_gpu_count(instance_type)))
+                except Exception as _e:
+                    print(f"Azure GPU inference warning for '{instance_type}': {_e}")
+
+            # Apply price-based quota enforcement for non-SSH clouds when price is available
+            if cloud_lower != "ssh" and price_per_hour is not None:
+                quota_info = get_current_user_quota_info(db, organization_id, user_id)
+                available_credits = float(
+                    quota_info.get("current_period_remaining", 0.0) or 0.0
+                )
+                # Default to at least 1 hour of usage for admission check
+                estimated_hours = 1.0
+                required_credits = float(price_per_hour) * estimated_hours
+                if available_credits < required_credits:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "Insufficient quota to launch instance. "
+                            f"Estimated cost: {required_credits:.2f} for ~{estimated_hours:.0f} hour(s); "
+                            f"Available credits: {available_credits:.2f}. "
+                        ),
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Fail-open in case of unexpected quota calculation issues to avoid blocking launches unintentionally
+            print(f"Quota check warning: {e}")
 
         # Create cluster platform entry and get the actual cluster name
         # For SSH clusters, use the node pool name as platform for easier mapping
@@ -219,10 +480,10 @@ async def launch_instance(
             platform = cloud or "unknown"
 
         cluster_user_info = {
-            "name": user_info.get("first_name", ""),
-            "email": user_info.get("email", ""),
-            "id": user_info.get("id", ""),
-            "organization_id": user_info.get("organization_id", ""),
+            "name": user.get("first_name", ""),
+            "email": user.get("email", ""),
+            "id": user.get("id", ""),
+            "organization_id": user.get("organization_id", ""),
         }
 
         # Create cluster platform entry with display name and get actual cluster name
@@ -232,7 +493,6 @@ async def launch_instance(
             user_id=user_id,
             organization_id=organization_id,
             user_info=cluster_user_info,
-            template=template,
         )
 
         # Launch cluster using the actual cluster name (isolated process)
@@ -250,15 +510,10 @@ async def launch_instance(
             use_spot=use_spot,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
             file_mounts=file_mounts,
-            workdir=None,
-            launch_mode=launch_mode,
-            jupyter_port=jupyter_port,
-            vscode_port=vscode_port,
             disk_size=disk_size,
             storage_bucket_ids=parsed_storage_bucket_ids,
             node_pool_name=node_pool_name,
-            docker_image=docker_image,
-            container_registry_id=container_registry_id,
+            docker_image_id=docker_image_id,
             user_id=user_id,
             organization_id=organization_id,
             display_name=cluster_name,
@@ -298,6 +553,7 @@ async def stop_instance(
     response: Response,
     stop_request: StopClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -335,6 +591,7 @@ async def down_instance(
     response: Response,
     down_request: DownClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -342,6 +599,9 @@ async def down_instance(
         actual_cluster_name = handle_cluster_name_param(
             display_name, user["id"], user["organization_id"]
         )
+
+        # Update cluster state to terminating
+        update_cluster_state(actual_cluster_name, "terminating")
 
         request_id = down_cluster_with_skypilot(
             actual_cluster_name,
@@ -421,10 +681,14 @@ async def get_instance_status(
             if not display_name:
                 display_name = record["name"]  # Fallback to actual name
 
+            # Get cluster state
+            state = get_cluster_state(record["name"])
+
             clusters.append(
                 ClusterStatusResponse(
                     cluster_name=display_name,  # Return display name to user
                     status=str(record["status"]),
+                    state=state,
                     launched_at=record.get("launched_at"),
                     last_use=record.get("last_use"),
                     autostop=record.get("autostop"),
@@ -508,28 +772,6 @@ async def get_all_cluster_platforms(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster platforms: {str(e)}"
-        )
-
-
-@router.get("/cluster-template/{cluster_name}")
-async def get_cluster_template_info(
-    cluster_name: str,
-    request: Request,
-    response: Response,
-    user: dict = Depends(get_user_or_api_key),
-):
-    """Get template information for a specific cluster."""
-    try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
-        )
-
-        template = get_cluster_template(actual_cluster_name)
-        return {"template": template}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get cluster template info: {str(e)}"
         )
 
 
@@ -680,8 +922,8 @@ async def get_cluster_info(
         # Get platform information
         platform_info = get_cluster_platform(actual_cluster_name)
 
-        # Get template information
-        template = get_cluster_template(actual_cluster_name)
+        # Get cluster state
+        state = get_cluster_state(actual_cluster_name)
 
         # Get jobs for this cluster
         try:
@@ -726,7 +968,7 @@ async def get_cluster_info(
             "cluster": cluster_data,
             "cluster_type": cluster_type_info,
             "platform": platform_info,
-            "template": template,
+            "state": state,
             "jobs": jobs,
             "ssh_node_info": ssh_node_info,
         }
@@ -985,6 +1227,7 @@ async def stream_request_logs(
 async def cancel_request(
     request_id: str,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     """
     Cancel a SkyPilot request
@@ -1023,3 +1266,88 @@ async def cancel_request(
         raise HTTPException(
             status_code=500, detail=f"Failed to cancel request: {str(e)}"
         )
+
+
+@router.post("/upload")
+async def upload_files(
+    request: Request,
+    response: Response,
+    python_file: Optional[UploadFile] = File(None),
+    dir_files: Optional[List[UploadFile]] = File(None),
+    dir_name: Optional[str] = Form(None),
+    user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
+):
+    """
+    Upload files for use in cluster launches and job submissions.
+    Returns uploaded file names that can be passed to /launch and /{cluster_name}/submit routes.
+    """
+    try:
+        uploaded_files = {}
+
+        # Handle single Python file upload
+        if python_file and python_file.filename:
+            python_filename = secure_filename(python_file.filename)
+            unique_filename = f"{uuid.uuid4()}_{python_filename}"
+            file_path = UPLOADS_DIR / unique_filename
+
+            with open(file_path, "wb") as f:
+                f.write(await python_file.read())
+
+            uploaded_files["python_file"] = {
+                "original_name": python_filename,
+                "uploaded_name": unique_filename,
+                "file_path": str(file_path),
+            }
+
+        # Handle directory files upload
+        if dir_files:
+            # Sanitize provided dir_name, or derive from files
+            base_name = dir_name or "project"
+            base_name = os.path.basename(base_name.strip())
+            base_name = secure_filename(base_name) or "project"
+
+            unique_dir = UPLOADS_DIR / f"{uuid.uuid4()}_{base_name}"
+            unique_dir.mkdir(parents=True, exist_ok=True)
+
+            uploaded_files["dir_files"] = {
+                "dir_name": base_name,
+                "uploaded_dir": str(unique_dir),
+                "files": [],
+            }
+
+            for up_file in dir_files:
+                if up_file.filename:
+                    # Filename includes relative path as sent by frontend
+                    raw_rel = up_file.filename
+                    # Normalize path, remove leading separators and traversal
+                    norm_rel = (
+                        os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
+                    )
+                    parts = [p for p in norm_rel.split("/") if p not in ("..", "")]
+                    safe_rel = Path(*[secure_filename(p) for p in parts])
+                    target_path = unique_dir / safe_rel
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                    with open(target_path, "wb") as f:
+                        f.write(await up_file.read())
+
+                    uploaded_files["dir_files"]["files"].append(
+                        {"original_path": raw_rel, "uploaded_path": str(safe_rel)}
+                    )
+
+        if not uploaded_files:
+            raise HTTPException(
+                status_code=400,
+                detail="No files were uploaded. Please provide either python_file or dir_files.",
+            )
+
+        return {
+            "uploaded_files": uploaded_files,
+            "message": "Files uploaded successfully",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload files: {str(e)}")

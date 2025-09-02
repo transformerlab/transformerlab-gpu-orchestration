@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from lattice.routes.auth.utils import get_current_user
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
@@ -37,7 +38,7 @@ class UpdateAPIKeyRequest(BaseModel):
     scopes: Optional[List[str]] = None
 
 
-router = APIRouter(prefix="/api-keys", tags=["auth"])
+router = APIRouter(prefix="/api-keys", tags=["auth"], dependencies=[Depends(enforce_csrf)])
 
 
 @router.post("", response_model=CreateAPIKeyResponse)

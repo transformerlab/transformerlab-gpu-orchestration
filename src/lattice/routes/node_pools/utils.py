@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from ..instances.utils import fetch_and_parse_gpu_resources
 from config import SessionLocal
-from db_models import SSHNodePool as SSHNodePoolDB
+from db.db_models import SSHNodePool as SSHNodePoolDB, validate_relationships_before_save, validate_relationships_before_delete
 
 
 async def update_gpu_resources_for_node_pool(node_pool_name: str):
@@ -164,17 +164,20 @@ def create_cluster_in_pools(
             db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
         )
         if existing is None:
-            db.add(
-                SSHNodePoolDB(
-                    name=cluster_name,
-                    user_id=user_id,
-                    organization_id=organization_id,
-                    default_user=user,
-                    identity_file_path=identity_file,
-                    password=password,
-                    resources=resources,
-                )
+            new_pool = SSHNodePoolDB(
+                name=cluster_name,
+                user_id=user_id,
+                organization_id=organization_id,
+                default_user=user,
+                identity_file_path=identity_file,
+                password=password,
+                resources=resources,
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(new_pool, db)
+            
+            db.add(new_pool)
         else:
             existing.user_id = user_id
             existing.organization_id = organization_id
@@ -260,6 +263,10 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
         )
         if pool is None:
             pool = SSHNodePoolDB(name=cluster_name, nodes=[])
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(pool, db)
+            
             db.add(pool)
             db.commit()
             db.refresh(pool)
@@ -274,6 +281,8 @@ def add_node_to_cluster(cluster_name: str, node: SSHNode):
         else:
             # Append new node dict, using identity_file key for JSON
             new_node = {"ip": node.ip, "user": node.user}
+            if node.name:
+                new_node["name"] = node.name
             if node.identity_file:
                 new_node["identity_file"] = node.identity_file
             if node.password:
@@ -345,20 +354,37 @@ def is_down_only_cluster(cluster_name: str):
 
 def delete_cluster_in_pools(cluster_name: str):
     pools = load_ssh_node_pools()
-    if cluster_name not in pools:
-        raise HTTPException(
-            status_code=404, detail=f"Cluster '{cluster_name}' not found"
-        )
-    del pools[cluster_name]
-    save_ssh_node_pools(pools)
+    yaml_file_found = cluster_name in pools
+    
+    # Delete from YAML file if it exists there
+    if yaml_file_found:
+        del pools[cluster_name]
+        save_ssh_node_pools(pools)
+    else:
+        print(f"Warning: Cluster '{cluster_name}' not found in YAML file, but will attempt to delete from database")
+    
+    # Always try to delete from database
     try:
         db = SessionLocal()
         pool = (
             db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
         )
         if pool is not None:
+            # Validate relationships before deleting
+            validate_relationships_before_delete(pool, db)
+            
             db.delete(pool)
             db.commit()
+            print(f"Successfully deleted cluster '{cluster_name}' from database")
+        else:
+            # If not found in YAML file and not found in database, raise 404
+            if not yaml_file_found:
+                raise HTTPException(
+                    status_code=404, detail=f"Cluster '{cluster_name}' not found in database or YAML file"
+                )
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
     except Exception as e:
         print(f"Warning: Failed to delete SSH node pool from DB: {e}")
     finally:
@@ -492,6 +518,8 @@ def get_cluster_config_from_db(cluster_name: str) -> dict:
             host = {"ip": n.get("ip")}
             if n.get("user"):
                 host["user"] = n.get("user")
+            if n.get("name"):
+                host["name"] = n.get("name")
             if n.get("identity_file"):
                 host["identity_file"] = n.get("identity_file")
             if n.get("password"):

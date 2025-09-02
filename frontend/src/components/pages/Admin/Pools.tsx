@@ -65,13 +65,14 @@ const Pools: React.FC = () => {
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
 
-  // Check if Azure or RunPod configurations already exist
+  // Check if Azure, RunPod, or GCP configurations already exist
   const hasAzureConfig = nodePools.some(
     (pool: Pool) => pool.provider === "azure"
   );
   const hasRunPodConfig = nodePools.some(
     (pool: Pool) => pool.provider === "runpod"
   );
+  const hasGcpConfig = nodePools.some((pool: Pool) => pool.provider === "gcp");
 
   const handleConfigurePool = (pool: Pool) => {
     setSelectedPool(pool);
@@ -93,6 +94,11 @@ const Pools: React.FC = () => {
           `/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`
         );
         break;
+      case "gcp":
+        navigate(
+          `/dashboard/admin/gcp-config?mode=configure&poolName=${poolName}`
+        );
+        break;
       case "direct":
         navigate(
           `/dashboard/admin/ssh-config?mode=configure&poolName=${poolName}`
@@ -110,7 +116,9 @@ const Pools: React.FC = () => {
       const endpoint =
         platform === "azure"
           ? buildApiUrl(`clouds/azure/config/${configKey}/set-default`)
-          : buildApiUrl(`clouds/runpod/config/${configKey}/set-default`);
+          : platform === "runpod"
+          ? buildApiUrl(`clouds/runpod/config/${configKey}/set-default`)
+          : buildApiUrl(`clouds/gcp/config/${configKey}/set-default`);
 
       const response = await apiFetch(endpoint, {
         method: "POST",
@@ -121,7 +129,11 @@ const Pools: React.FC = () => {
         addNotification({
           type: "success",
           message: `${
-            platform === "azure" ? "Azure" : "RunPod"
+            platform === "azure"
+              ? "Azure"
+              : platform === "runpod"
+              ? "RunPod"
+              : "GCP"
           } config set as default successfully`,
         });
         // Refresh the data
@@ -130,8 +142,11 @@ const Pools: React.FC = () => {
         if (platform === "azure") {
           // Trigger a refetch of Azure configs
           window.location.reload();
-        } else {
+        } else if (platform === "runpod") {
           // Trigger a refetch of RunPod configs
+          window.location.reload();
+        } else {
+          // Trigger a refetch of GCP configs
           window.location.reload();
         }
       } else {
@@ -163,7 +178,9 @@ const Pools: React.FC = () => {
       const endpoint =
         platform === "azure"
           ? buildApiUrl(`clouds/azure/config/${configKey}`)
-          : buildApiUrl(`clouds/runpod/config/${configKey}`);
+          : platform === "runpod"
+          ? buildApiUrl(`clouds/runpod/config/${configKey}`)
+          : buildApiUrl(`clouds/gcp/config/${configKey}`);
 
       const response = await apiFetch(endpoint, {
         method: "DELETE",
@@ -174,7 +191,11 @@ const Pools: React.FC = () => {
         addNotification({
           type: "success",
           message: `${
-            platform === "azure" ? "Azure" : "RunPod"
+            platform === "azure"
+              ? "Azure"
+              : platform === "runpod"
+              ? "RunPod"
+              : "GCP"
           } configuration deleted successfully`,
         });
         // Refresh the data
@@ -183,8 +204,11 @@ const Pools: React.FC = () => {
         if (platform === "azure") {
           // Trigger a refetch of Azure configs
           window.location.reload();
-        } else {
+        } else if (platform === "runpod") {
           // Trigger a refetch of RunPod configs
+          window.location.reload();
+        } else {
+          // Trigger a refetch of GCP configs
           window.location.reload();
         }
       } else {
@@ -385,6 +409,72 @@ const Pools: React.FC = () => {
                   </td>
                 </tr>
               ))}
+              {showFakeData && (
+                <tr key="fake-gcp-pool">
+                  <td>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography level="title-sm">
+                        GCP Instances Pool
+                      </Typography>
+                    </Box>
+                  </td>
+                  <td>
+                    <Chip
+                      size="sm"
+                      variant="soft"
+                      startDecorator={<CloudServiceIcon platform="gcp" />}
+                    >
+                      gcp
+                    </Chip>
+                  </td>
+                  <td>
+                    <Typography level="body-sm" fontWeight="lg">
+                      25
+                    </Typography>
+                  </td>
+                  <td>
+                    <Chip size="sm" color="success">
+                      enabled
+                    </Chip>
+                  </td>
+                  <td>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 0.5,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Chip size="sm" variant="soft" color="success">
+                        Admin
+                      </Chip>
+                      <Chip size="sm" variant="soft" color="primary">
+                        Research Team
+                      </Chip>
+                    </Box>
+                  </td>
+                  <td>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 1,
+                        justifyContent: "flex-start",
+                        alignItems: "center",
+                        minWidth: "fit-content",
+                      }}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        disabled
+                        sx={{ opacity: 0.6, cursor: "not-allowed" }}
+                      >
+                        Configure
+                      </Button>
+                    </Box>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
         ) : (
@@ -443,6 +533,24 @@ const Pools: React.FC = () => {
                 }}
               >
                 RunPod {hasRunPodConfig && "(Already Configured)"}
+              </Button>
+              <Button
+                variant="outlined"
+                startDecorator={<CloudServiceIcon platform="gcp" />}
+                disabled={hasGcpConfig}
+                sx={{
+                  opacity: hasGcpConfig ? 0.6 : 1,
+                  cursor: hasGcpConfig ? "not-allowed" : "pointer",
+                }}
+                onClick={() => {
+                  if (hasGcpConfig) return;
+                  setOpenAdd(false);
+                  navigate(
+                    `/dashboard/admin/gcp-config?mode=add&poolName=new-gcp-pool`
+                  );
+                }}
+              >
+                Google Cloud Platform {hasGcpConfig && "(Already Configured)"}
               </Button>
               <Button
                 variant="outlined"

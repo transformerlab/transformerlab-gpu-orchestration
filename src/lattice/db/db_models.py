@@ -4,12 +4,13 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     Text,
-    ForeignKey,
     JSON,
     Integer,
     Float,
     Date,
     UniqueConstraint,
+    Index,
+    text,
 )
 from sqlalchemy.sql import func
 from lattice.db.base import Base
@@ -18,7 +19,50 @@ import hashlib
 from datetime import datetime
 
 
-class APIKey(Base):
+class ValidationMixin:
+    """Mixin class for common validation methods"""
+    
+    def validate_user_exists(self, session):
+        """Validate that the referenced user exists (placeholder for user validation)"""
+        # This would typically validate against your user management system.
+        # Only enforce non-empty when the model's user_id is non-nullable, or when a value is provided but blank.
+        if hasattr(self, 'user_id'):
+            try:
+                # SQLAlchemy InstrumentedAttribute -> Column
+                col = getattr(type(self), 'user_id')
+                # Extract underlying Column to inspect nullability
+                nullable = col.property.columns[0].nullable  # type: ignore[attr-defined]
+            except Exception:
+                # If we cannot introspect, be conservative and do not block inserts
+                nullable = True
+
+            value = getattr(self, 'user_id', None)
+            if nullable is False:
+                # Required field: must be truthy/non-empty
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    raise ValueError("user_id cannot be empty")
+            else:
+                # Optional field: allow None, but if provided it must not be blank
+                if value is not None and isinstance(value, str) and not value.strip():
+                    raise ValueError("user_id cannot be empty if provided")
+        return True
+
+    def validate_organization_exists(self, session):
+        """Validate that the referenced organization exists (placeholder for org validation)"""
+        # This would typically validate against your organization management system
+        # For now, we'll just check that organization_id is not empty if provided
+        if hasattr(self, 'organization_id') and self.organization_id and not self.organization_id.strip():
+            raise ValueError("organization_id cannot be empty if provided")
+        return True
+
+    def validate_all_relationships(self, session):
+        """Validate all relationships for this model"""
+        self.validate_user_exists(session)
+        self.validate_organization_exists(session)
+        return True
+
+
+class APIKey(Base, ValidationMixin):
     __tablename__ = "api_keys"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -60,7 +104,7 @@ class APIKey(Base):
         self.last_used_at = datetime.utcnow()
 
 
-class SSHNodePool(Base):
+class SSHNodePool(Base, ValidationMixin):
     __tablename__ = "ssh_node_pools"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -87,7 +131,7 @@ class SSHNodePool(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
-class OrganizationQuota(Base):
+class OrganizationQuota(Base, ValidationMixin):
     __tablename__ = "organization_quotas"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -108,7 +152,7 @@ class OrganizationQuota(Base):
     )
 
 
-class QuotaPeriod(Base):
+class QuotaPeriod(Base, ValidationMixin):
     __tablename__ = "quota_periods"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -124,7 +168,7 @@ class QuotaPeriod(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
-class GPUUsageLog(Base):
+class GPUUsageLog(Base, ValidationMixin):
     __tablename__ = "gpu_usage_logs"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -143,7 +187,7 @@ class GPUUsageLog(Base):
     created_at = Column(DateTime, default=func.now())
 
 
-class StorageBucket(Base):
+class StorageBucket(Base, ValidationMixin):
     __tablename__ = "storage_buckets"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -170,7 +214,30 @@ class StorageBucket(Base):
     )  # Whether the bucket is active and available
 
 
-class SSHKey(Base):
+class IdentityFile(Base, ValidationMixin):
+    __tablename__ = "identity_files"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    user_id = Column(String, nullable=False)  # WorkOS user ID who uploaded the file
+    organization_id = Column(String, nullable=False)  # Organization ID
+    display_name = Column(String, nullable=False)  # Human-readable name for the file
+    original_filename = Column(String, nullable=False)  # Original filename when uploaded
+    file_path = Column(String, nullable=False)  # Path to the file on disk
+    file_size = Column(Integer, nullable=False)  # File size in bytes
+    file_permissions = Column(String, nullable=False)  # File permissions (e.g., "600")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)  # Whether the file is active
+
+    # Composite unique constraint to prevent duplicate display names within an organization
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "display_name", name="uq_identity_files_org_name"
+        ),
+    )
+
+
+class SSHKey(Base, ValidationMixin):
     __tablename__ = "ssh_keys"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -217,7 +284,7 @@ class SSHKey(Base):
         self.last_used_at = datetime.utcnow()
 
 
-class Team(Base):
+class Team(Base, ValidationMixin):
     __tablename__ = "teams"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -233,11 +300,11 @@ class Team(Base):
     )
 
 
-class TeamMembership(Base):
+class TeamMembership(Base, ValidationMixin):
     __tablename__ = "team_memberships"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
-    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    team_id = Column(String, nullable=False)
     user_id = Column(String, nullable=False)
     organization_id = Column(String, nullable=False)  # Denormalized for constraint
     created_at = Column(DateTime, default=func.now())
@@ -249,13 +316,31 @@ class TeamMembership(Base):
         ),
     )
 
+    def validate_team_exists(self, session):
+        """Validate that the referenced team exists"""
+        # Use string-based query to avoid circular import
+        team = session.execute(
+            text("SELECT id, organization_id FROM teams WHERE id = :team_id"),
+            {"team_id": self.team_id}
+        ).first()
+        if not team:
+            raise ValueError(f"Team with id {self.team_id} does not exist")
+        return team
 
-class TeamQuota(Base):
+    def validate_team_organization_match(self, session):
+        """Validate that the team belongs to the same organization"""
+        team = self.validate_team_exists(session)
+        if team.organization_id != self.organization_id:
+            raise ValueError(f"Team {self.team_id} does not belong to organization {self.organization_id}")
+        return team
+
+
+class TeamQuota(Base, ValidationMixin):
     __tablename__ = "team_quotas"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
     organization_id = Column(String, nullable=False)
-    team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    team_id = Column(String, nullable=False)
     monthly_credits_per_user = Column(Float, nullable=False, default=100.0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -265,8 +350,26 @@ class TeamQuota(Base):
         UniqueConstraint("organization_id", "team_id", name="uq_team_quotas_org_team"),
     )
 
+    def validate_team_exists(self, session):
+        """Validate that the referenced team exists"""
+        # Use string-based query to avoid circular import
+        team = session.execute(
+            text("SELECT id, organization_id FROM teams WHERE id = :team_id"),
+            {"team_id": self.team_id}
+        ).first()
+        if not team:
+            raise ValueError(f"Team with id {self.team_id} does not exist")
+        return team
 
-class ContainerRegistry(Base):
+    def validate_team_organization_match(self, session):
+        """Validate that the team belongs to the same organization"""
+        team = self.validate_team_exists(session)
+        if team.organization_id != self.organization_id:
+            raise ValueError(f"Team {self.team_id} does not belong to organization {self.organization_id}")
+        return team
+
+
+class ContainerRegistry(Base, ValidationMixin):
     __tablename__ = "container_registries"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -290,7 +393,54 @@ class ContainerRegistry(Base):
     )
 
 
-class ClusterPlatform(Base):
+class DockerImage(Base, ValidationMixin):
+    __tablename__ = "docker_images"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    name = Column(String, nullable=False)  # Human-readable name for the image
+    image_tag = Column(String, nullable=False)  # Full docker image tag (e.g., "myapp:latest")
+    description = Column(Text, nullable=True)  # Optional description of the image
+    container_registry_id = Column(String, nullable=True)  # Reference to container registry (empty for standalone images)
+    organization_id = Column(String, nullable=False)  # Organization that owns this image
+    user_id = Column(String, nullable=False)  # User who created this image
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)  # Whether the image is active
+
+    # Image name must be unique within a container registry (or standalone)
+    __table_args__ = (
+        UniqueConstraint(
+            "container_registry_id", "name", name="uq_docker_images_registry_name"
+        ),
+    )
+
+    def validate_container_registry_exists(self, session):
+        """Validate that the referenced container registry exists"""
+        # Skip validation for standalone images (empty container_registry_id)
+        if not self.container_registry_id:
+            return None
+            
+        registry = session.execute(
+            text("SELECT id, organization_id FROM container_registries WHERE id = :registry_id"),
+            {"registry_id": self.container_registry_id}
+        ).first()
+        if not registry:
+            raise ValueError(f"Container registry with id {self.container_registry_id} does not exist")
+        return registry
+
+    def validate_registry_organization_match(self, session):
+        """Validate that the container registry belongs to the same organization"""
+        # Skip validation for standalone images (empty container_registry_id)
+        if not self.container_registry_id:
+            return None
+            
+        registry = self.validate_container_registry_exists(session)
+        if registry.organization_id != self.organization_id:
+            raise ValueError(f"Container registry {self.container_registry_id} does not belong to organization {self.organization_id}")
+        return registry
+
+
+class ClusterPlatform(Base, ValidationMixin):
     __tablename__ = "cluster_platforms"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -300,8 +450,8 @@ class ClusterPlatform(Base):
     display_name = Column(String, nullable=False)
     # Platform: runpod, azure, ssh, etc.
     platform = Column(String, nullable=False)
-    # Template used for cluster creation
-    template = Column(String, nullable=True)
+    # State of the cluster: active, terminating, etc.
+    state = Column(String, nullable=True, default="active")
     # User who owns this cluster
     user_id = Column(String, nullable=False)
     # Organization the cluster belongs to
@@ -322,7 +472,28 @@ class ClusterPlatform(Base):
     )
 
 
-class SkyPilotRequest(Base):
+class NodePoolAccess(Base, ValidationMixin):
+    __tablename__ = "node_pool_access"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    # Provider identifier: 'azure', 'runpod', 'ssh', etc.
+    provider = Column(String, nullable=False)
+    # Pool key identifier: for cloud providers, this is the config key; for ssh, the pool name
+    pool_key = Column(String, nullable=False)
+    # List of allowed team IDs (JSON array)
+    allowed_team_ids = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "provider", "pool_key", name="uq_node_pool_access_org_provider_key"
+        ),
+    )
+
+
+class SkyPilotRequest(Base, ValidationMixin):
     __tablename__ = "skypilot_requests"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
@@ -343,3 +514,80 @@ class SkyPilotRequest(Base):
     __table_args__ = (
         UniqueConstraint("request_id", name="uq_skypilot_requests_request_id"),
     )
+
+
+class CloudAccount(Base, ValidationMixin):
+    __tablename__ = "cloud_accounts"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    provider = Column(String, nullable=False)  # e.g., 'azure', 'runpod'
+    key = Column(String, nullable=False)  # pool/config key (normalized name)
+    name = Column(String, nullable=False)
+    credentials = Column(JSON, nullable=False, default=dict)
+    settings = Column(JSON, nullable=True)  # allowed_* lists and other non-secret settings
+    max_instances = Column(Integer, nullable=False, server_default=text("0"))
+    is_default = Column(Boolean, nullable=False, server_default=text("false"))
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "provider", "key", name="uq_cloud_accounts_org_provider_key"),
+        Index("ix_cloud_accounts_org_provider", "organization_id", "provider"),
+    )
+
+
+# Utility functions for application-level foreign key validation
+def validate_relationships_before_save(model_instance, session):
+    """
+    Validate all relationships for a model instance before saving to database.
+    This should be called before any insert or update operations.
+    
+    Args:
+        model_instance: The model instance to validate
+        session: SQLAlchemy session for database queries
+        
+    Raises:
+        ValueError: If any relationship validation fails
+    """
+    if hasattr(model_instance, 'validate_all_relationships'):
+        model_instance.validate_all_relationships(session)
+    
+    # Model-specific validations
+    if isinstance(model_instance, TeamMembership):
+        model_instance.validate_team_organization_match(session)
+    elif isinstance(model_instance, TeamQuota):
+        model_instance.validate_team_organization_match(session)
+
+
+def validate_relationships_before_delete(model_instance, session):
+    """
+    Validate relationships before deleting a model instance.
+    This can be used to check for dependent records or cascade operations.
+    
+    Args:
+        model_instance: The model instance to validate for deletion
+        session: SQLAlchemy session for database queries
+        
+    Raises:
+        ValueError: If deletion is not allowed due to dependencies
+    """
+    # Example: Check if team has members before deletion
+    if isinstance(model_instance, Team):
+        # Use string-based queries to avoid circular imports
+        memberships = session.execute(
+            text("SELECT COUNT(*) as count FROM team_memberships WHERE team_id = :team_id"),
+            {"team_id": model_instance.id}
+        ).scalar()
+        if memberships > 0:
+            raise ValueError(f"Cannot delete team {model_instance.id}: has {memberships} members")
+        
+        quotas = session.execute(
+            text("SELECT COUNT(*) as count FROM team_quotas WHERE team_id = :team_id"),
+            {"team_id": model_instance.id}
+        ).scalar()
+        if quotas > 0:
+            raise ValueError(f"Cannot delete team {model_instance.id}: has {quotas} quotas")

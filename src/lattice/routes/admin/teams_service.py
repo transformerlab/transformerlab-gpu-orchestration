@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from db_models import Team, TeamMembership
+from db.db_models import Team, TeamMembership, validate_relationships_before_save, validate_relationships_before_delete
 from models import (
     TeamResponse,
     TeamListResponse,
@@ -76,6 +76,10 @@ def create_team(db: Session, organization_id: str, created_by_user_id: str, team
         raise HTTPException(status_code=400, detail="Team name already exists")
 
     team = Team(name=team_req.name, organization_id=organization_id, created_by=created_by_user_id)
+    
+    # Validate relationships before saving
+    validate_relationships_before_save(team, db)
+    
     db.add(team)
     db.commit()
     db.refresh(team)
@@ -115,6 +119,9 @@ def delete_team(db: Session, organization_id: str, team_id: str) -> None:
     )
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
+
+    # Validate relationships before deleting
+    validate_relationships_before_delete(team, db)
 
     db.delete(team)
     db.commit()
@@ -179,6 +186,10 @@ def add_team_member(db: Session, organization_id: str, team_id: str, body: AddTe
         user_id=body.user_id,
         organization_id=team.organization_id,
     )
+    
+    # Validate relationships before saving
+    validate_relationships_before_save(membership, db)
+    
     db.add(membership)
 
     try:

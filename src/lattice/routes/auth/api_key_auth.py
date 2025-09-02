@@ -3,11 +3,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from config import SessionLocal
-from db_models import APIKey
+from db.db_models import APIKey
 from .utils import get_current_user
 from typing import Optional
 import json
 from .provider.work_os import provider as auth_provider
+from config import CSRF_ENABLED, CORS_ALLOW_ORIGINS
 
 security = HTTPBearer(auto_error=False)
 
@@ -71,13 +72,37 @@ async def get_api_key_user(
         api_key_record.update_last_used()
         db.commit()
 
-        # Parse scopes
+        # Parse scopes robustly (treat invalid as []) and normalize to lowercase
         scopes = []
-        if api_key_record.scopes:
-            scopes = json.loads(api_key_record.scopes)
+        try:
+            if api_key_record.scopes:
+                parsed = json.loads(api_key_record.scopes)
+                if isinstance(parsed, list):
+                    norm = []
+                    seen = set()
+                    for s in parsed:
+                        if isinstance(s, str):
+                            v = s.strip().lower()
+                            if v and v not in seen:
+                                seen.add(v)
+                                norm.append(v)
+                    scopes = norm
+        except Exception:
+            scopes = []
+
+        # Get user first name, last name and email using the user_id:
+        user_info = None
+        try:
+            user_info = auth_provider.get_user(user_id=api_key_record.user_id)
+        except Exception as e:
+            # Log the error but don't fail the request
+            print(f"Failed to get user info for user_id {api_key_record.user_id}: {str(e)}")
 
         return {
             "id": api_key_record.user_id,
+            "email": user_info.email if user_info else "",
+            "first_name": user_info.first_name if user_info else "",
+            "last_name": user_info.last_name if user_info else "",
             "organization_id": api_key_record.organization_id,
             "api_key_id": api_key_record.id,
             "api_key_name": api_key_record.name,
@@ -142,3 +167,56 @@ def require_scope(required_scope: str):
         return user
 
     return scope_checker
+
+
+def enforce_csrf(
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """Dependency to enforce CSRF on state-changing requests when using session auth.
+
+    Skips enforcement for API key-authenticated requests.
+    """
+    if not CSRF_ENABLED:
+        return True
+
+    method = request.method.upper()
+    if method not in ("POST", "PUT", "PATCH", "DELETE"):
+        return True
+
+    # Skip for API key flows
+    if isinstance(user, dict) and user.get("auth_method") == "api_key":
+        return True
+
+    header_token = request.headers.get("x-csrf-token")
+    cookie_token = request.cookies.get("wos_csrf")
+    if header_token and cookie_token and header_token == cookie_token:
+        return True
+
+    # Fallback: strict Origin/Referer allow-list match (defense-in-depth, supports clients without header echo)
+    try:
+        from urllib.parse import urlsplit
+
+        def _normalize_origin(o: str | None) -> str | None:
+            if not o:
+                return None
+            u = urlsplit(o.strip())
+            if not u.scheme or not u.hostname:
+                return None
+            host = u.hostname.lower()
+            port = f":{u.port}" if u.port and u.port not in (80, 443) else ""
+            return f"{u.scheme.lower()}://{host}{port}"
+
+        allowed = {_normalize_origin(x) for x in (CORS_ALLOW_ORIGINS or [])}
+        origin = _normalize_origin(request.headers.get("origin"))
+        if origin and origin in allowed:
+            return True
+        referer = _normalize_origin(request.headers.get("referer"))
+        if referer and referer in allowed:
+            return True
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=403, detail="CSRF check failed")
+    return True

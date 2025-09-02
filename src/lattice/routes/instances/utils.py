@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 from typing import Optional
+from sqlalchemy import or_
 
 import sky
 from fastapi import HTTPException
@@ -140,15 +141,10 @@ def launch_cluster_with_skypilot(
     use_spot=False,
     idle_minutes_to_autostop=None,
     file_mounts: Optional[dict] = None,
-    workdir: Optional[str] = None,
-    launch_mode: Optional[str] = None,
-    jupyter_port: Optional[int] = None,
-    vscode_port: Optional[int] = None,
     disk_size: Optional[int] = None,
     storage_bucket_ids: Optional[list] = None,
     node_pool_name: Optional[str] = None,
-    docker_image: Optional[str] = None,
-    container_registry_id: Optional[str] = None,
+    docker_image_id: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
@@ -214,31 +210,48 @@ def launch_cluster_with_skypilot(
                     detail=f"Failed to run sky ssh up for cluster '{validation_name}': {str(e)}",
                 )
         envs = None
-        # Set Docker authentication environment variables if registry is provided
-        if docker_image and container_registry_id:
+        docker_image_tag = None
+        # Set Docker authentication environment variables if docker image is provided
+        if docker_image_id:
             from config import get_db
-            from db_models import ContainerRegistry
+            from db.db_models import DockerImage, ContainerRegistry
 
             # Get database session
             db = next(get_db())
             try:
-                # Fetch container registry
-                registry = (
-                    db.query(ContainerRegistry)
+                # Fetch docker image and its associated container registry (if any)
+                image = (
+                    db.query(DockerImage)
+                    .outerjoin(
+                        ContainerRegistry,
+                        DockerImage.container_registry_id == ContainerRegistry.id,
+                    )
                     .filter(
-                        ContainerRegistry.id == container_registry_id,
-                        ContainerRegistry.is_active,
+                        DockerImage.id == docker_image_id,
+                        DockerImage.is_active,
+                        or_(
+                            ContainerRegistry.is_active == True,  # noqa: E712
+                            DockerImage.container_registry_id.is_(None),
+                        ),
                     )
                     .first()
                 )
 
-                if registry:
-                    task_envs = {
-                        "SKYPILOT_DOCKER_USERNAME": registry.docker_username,
-                        "SKYPILOT_DOCKER_PASSWORD": registry.docker_password,
-                        "SKYPILOT_DOCKER_SERVER": registry.docker_server,
-                    }
-                    envs = task_envs.copy()
+                if image:
+                    # Set the docker image tag for SkyPilot
+                    docker_image_tag = image.image_tag
+
+                    # Set Docker authentication environment variables only if image has a registry
+                    if image.container_registry_id and image.container_registry:
+                        task_envs = {
+                            "SKYPILOT_DOCKER_USERNAME": image.container_registry.docker_username,
+                            "SKYPILOT_DOCKER_PASSWORD": image.container_registry.docker_password,
+                            "SKYPILOT_DOCKER_SERVER": image.container_registry.docker_server,
+                        }
+                        envs = task_envs.copy()
+                    else:
+                        # Standalone image (no registry needed)
+                        envs = None
                 else:
                     envs = None
             finally:
@@ -246,7 +259,7 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
-        name = f"lattice-task-setup-{cluster_name}"
+        name = "lattice-task-setup"
 
         task = sky.Task(
             name=name,
@@ -258,7 +271,7 @@ def launch_cluster_with_skypilot(
         # Process storage buckets if provided
         if storage_bucket_ids:
             from config import get_db
-            from db_models import StorageBucket
+            from db.db_models import StorageBucket
 
             # Get database session
             db = next(get_db())
@@ -325,7 +338,7 @@ def launch_cluster_with_skypilot(
         resources_kwargs = {}
         if cloud:
             if cloud.lower() == "ssh":
-                resources_kwargs["infra"] = "ssh"
+                resources_kwargs["infra"] = f"ssh/{node_pool_name}"
             elif cloud.lower() == "runpod":
                 resources_kwargs["cloud"] = "runpod"
             elif cloud.lower() == "azure":
@@ -351,8 +364,9 @@ def launch_cluster_with_skypilot(
             resources_kwargs["disk_size"] = disk_size
 
         # Add Docker image support
-        if docker_image:
-            resources_kwargs["image_id"] = f"docker:{docker_image}"
+        if docker_image_tag:
+            resources_kwargs["image_id"] = f"docker:{docker_image_tag}"
+            print(f"DOCKER IMAGE TAG: {resources_kwargs['image_id']}")
 
         if resources_kwargs:
             resources = sky.Resources(**resources_kwargs)
@@ -704,8 +718,20 @@ def get_skypilot_status(cluster_names=None):
             cluster_names=cluster_names, refresh=sky.StatusRefreshMode.AUTO
         )
         result = sky.get(request_id)
-        return result
+        result_new = result.copy()
+        for cluster in result_new:
+            # Delete the credentials if they exist
+            if "credentials" in cluster:
+                cluster["credentials"] = None
+            if "last_creation_yaml" in cluster:
+                cluster["last_creation_yaml"] = ""
+            if "last_update_yaml" in cluster:
+                cluster["last_update_yaml"] = ""
+            if "handle" in cluster:
+                cluster["handle"] = ""
+        return result_new
     except Exception as e:
+        print(f"ERROR: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster status: {str(e)}"
         )

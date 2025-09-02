@@ -1,22 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List
 from datetime import datetime
 
 from config import get_db
-from db_models import ContainerRegistry
+from db.db_models import ContainerRegistry, DockerImage, validate_relationships_before_save
 from lattice.models import (
     ContainerRegistryResponse,
     CreateContainerRegistryRequest,
     UpdateContainerRegistryRequest,
     ContainerRegistryListResponse,
+    DockerImageResponse,
+    CreateDockerImageRequest,
+    UpdateDockerImageRequest,
+    DockerImageListResponse,
 )
-from lattice.routes.auth.api_key_auth import get_user_or_api_key
+from lattice.routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from lattice.routes.auth.utils import get_current_user
 
 router = APIRouter(
     prefix="/container-registries",
-    dependencies=[Depends(get_user_or_api_key)],
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["container-registries"],
 )
 
@@ -91,6 +96,7 @@ async def create_container_registry(
     response: Response,
     registry_request: CreateContainerRegistryRequest,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("registries:write")),
 ):
     """Create a new container registry"""
     try:
@@ -127,6 +133,9 @@ async def create_container_registry(
             organization_id=organization_id,
             user_id=user_id,
         )
+
+        # Validate relationships before saving
+        validate_relationships_before_save(new_registry, db)
 
         db.add(new_registry)
         db.commit()
@@ -201,6 +210,293 @@ async def get_available_container_registries(
             detail=f"Failed to get available container registries: {str(e)}",
         )
 
+@router.post("/images", response_model=DockerImageResponse)
+async def create_standalone_docker_image(
+    request: Request,
+    response: Response,
+    image_request: CreateDockerImageRequest,
+    db: Session = Depends(get_db),
+):
+    """Create a new standalone docker image (not linked to any registry)"""
+    try:
+        user_info = get_current_user(request, response)
+        user_id = user_info.get("id")
+        organization_id = user_info.get("organization_id")
+
+        if not organization_id:
+            raise HTTPException(status_code=400, detail="Organization ID required")
+
+        # Check if image name already exists in the organization
+        existing_image = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.name == image_request.name,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .first()
+        )
+
+        if existing_image:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Docker image with name '{image_request.name}' already exists",
+            )
+
+        # Create new image (without container_registry_id for standalone images)
+        new_image = DockerImage(
+            name=image_request.name,
+            image_tag=image_request.image_tag,
+            description=image_request.description,
+            container_registry_id=None,  # None for standalone images
+            organization_id=organization_id,
+            user_id=user_id,
+        )
+
+        # Validate relationships before saving
+        validate_relationships_before_save(new_image, db)
+
+        db.add(new_image)
+        db.commit()
+        db.refresh(new_image)
+
+        return DockerImageResponse(
+            id=new_image.id,
+            name=new_image.name,
+            image_tag=new_image.image_tag,
+            description=new_image.description,
+            container_registry_id=new_image.container_registry_id,
+            organization_id=new_image.organization_id,
+            user_id=new_image.user_id,
+            created_at=new_image.created_at.isoformat(),
+            updated_at=new_image.updated_at.isoformat(),
+            is_active=new_image.is_active,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create docker image: {str(e)}"
+        )
+        
+@router.get("/images/available", response_model=List[DockerImageResponse])
+async def get_available_docker_images(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Get all available docker images for the current organization (for selection in cluster launching)"""
+    try:
+        user_info = get_current_user(request, response)
+        organization_id = user_info.get("organization_id")
+
+        if not organization_id:
+            raise HTTPException(status_code=400, detail="Organization ID required")
+
+        # Get active images for the organization (including standalone images)
+        images = (
+            db.query(DockerImage)
+            .outerjoin(ContainerRegistry, DockerImage.container_registry_id == ContainerRegistry.id)
+            .filter(
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+                or_(
+                    ContainerRegistry.is_active == True, #noqa: E712
+                    DockerImage.container_registry_id.is_(None)
+                )
+            )
+            .all()
+        )
+
+        image_responses = []
+        for image in images:
+            image_responses.append(
+                DockerImageResponse(
+                    id=image.id,
+                    name=image.name,
+                    image_tag=image.image_tag,
+                    description=image.description,
+                    container_registry_id=image.container_registry_id,
+                    organization_id=image.organization_id,
+                    user_id=image.user_id,
+                    created_at=image.created_at.isoformat(),
+                    updated_at=image.updated_at.isoformat(),
+                    is_active=image.is_active,
+                )
+            )
+
+        return image_responses
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get available docker images: {str(e)}",
+        )
+
+@router.get("/images/{image_id}", response_model=DockerImageResponse)
+async def get_docker_image(
+    image_id: str,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Get a specific docker image by ID"""
+    try:
+        user_info = get_current_user(request, response)
+        organization_id = user_info.get("organization_id")
+
+        image = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.id == image_id,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .first()
+        )
+
+        if not image:
+            raise HTTPException(status_code=404, detail="Docker image not found")
+
+        return DockerImageResponse(
+            id=image.id,
+            name=image.name,
+            image_tag=image.image_tag,
+            description=image.description,
+            container_registry_id=image.container_registry_id,
+            organization_id=image.organization_id,
+            user_id=image.user_id,
+            created_at=image.created_at.isoformat(),
+            updated_at=image.updated_at.isoformat(),
+            is_active=image.is_active,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get docker image: {str(e)}"
+        )
+
+
+@router.put("/images/{image_id}", response_model=DockerImageResponse)
+async def update_docker_image(
+    image_id: str,
+    request: Request,
+    response: Response,
+    image_request: UpdateDockerImageRequest,
+    db: Session = Depends(get_db),
+):
+    """Update a docker image"""
+    try:
+        user_info = get_current_user(request, response)
+        organization_id = user_info.get("organization_id")
+
+        image = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.id == image_id,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .first()
+        )
+
+        if not image:
+            raise HTTPException(status_code=404, detail="Docker image not found")
+
+        # Check if new name conflicts with existing image in the same registry
+        if image_request.name and image_request.name != image.name:
+            existing_image = (
+                db.query(DockerImage)
+                .filter(
+                    DockerImage.name == image_request.name,
+                    DockerImage.container_registry_id == image.container_registry_id,
+                    DockerImage.organization_id == organization_id,
+                    DockerImage.id != image_id,
+                    DockerImage.is_active,
+                )
+                .first()
+            )
+
+            if existing_image:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Docker image with name '{image_request.name}' already exists in this registry",
+                )
+
+        # Update fields
+        update_data = image_request.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(image, field, value)
+
+        image.updated_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(image)
+
+        return DockerImageResponse(
+            id=image.id,
+            name=image.name,
+            image_tag=image.image_tag,
+            description=image.description,
+            container_registry_id=image.container_registry_id,
+            organization_id=image.organization_id,
+            user_id=image.user_id,
+            created_at=image.created_at.isoformat(),
+            updated_at=image.updated_at.isoformat(),
+            is_active=image.is_active,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update docker image: {str(e)}"
+        )
+
+
+@router.delete("/images/{image_id}")
+async def delete_docker_image(
+    image_id: str,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Delete a docker image (soft delete)"""
+    try:
+        user_info = get_current_user(request, response)
+        organization_id = user_info.get("organization_id")
+
+        image = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.id == image_id,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .first()
+        )
+
+        if not image:
+            raise HTTPException(status_code=404, detail="Docker image not found")
+
+        # Soft delete
+        image.is_active = False
+        image.updated_at = datetime.utcnow()
+
+        db.commit()
+
+        return {"message": f"Docker image '{image.name}' deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete docker image: {str(e)}"
+        )
+
 
 @router.get("/{registry_id}", response_model=ContainerRegistryResponse)
 async def get_container_registry(
@@ -253,6 +549,7 @@ async def update_container_registry(
     response: Response,
     registry_request: UpdateContainerRegistryRequest,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("registries:write")),
 ):
     """Update a container registry"""
     try:
@@ -327,6 +624,7 @@ async def delete_container_registry(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("registries:write")),
 ):
     """Delete a container registry (soft delete)"""
     try:
@@ -360,3 +658,178 @@ async def delete_container_registry(
         raise HTTPException(
             status_code=500, detail=f"Failed to delete container registry: {str(e)}"
         )
+
+
+# Docker Image Management Routes
+
+
+@router.get("/{registry_id}/images", response_model=DockerImageListResponse)
+async def list_docker_images(
+    registry_id: str,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+):
+    """List all docker images for a specific container registry"""
+    try:
+        user_info = get_current_user(request, response)
+        organization_id = user_info.get("organization_id")
+
+        if not organization_id:
+            raise HTTPException(status_code=400, detail="Organization ID required")
+
+        # Verify the container registry exists and belongs to the organization
+        registry = (
+            db.query(ContainerRegistry)
+            .filter(
+                ContainerRegistry.id == registry_id,
+                ContainerRegistry.organization_id == organization_id,
+                ContainerRegistry.is_active,
+            )
+            .first()
+        )
+
+        if not registry:
+            raise HTTPException(status_code=404, detail="Container registry not found")
+
+        # Get images for the registry
+        images = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.container_registry_id == registry_id,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+        total_count = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.container_registry_id == registry_id,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .count()
+        )
+
+        image_responses = []
+        for image in images:
+            image_responses.append(
+                DockerImageResponse(
+                    id=image.id,
+                    name=image.name,
+                    image_tag=image.image_tag,
+                    description=image.description,
+                    container_registry_id=image.container_registry_id,
+                    organization_id=image.organization_id,
+                    user_id=image.user_id,
+                    created_at=image.created_at.isoformat(),
+                    updated_at=image.updated_at.isoformat(),
+                    is_active=image.is_active,
+                )
+            )
+
+        return DockerImageListResponse(
+            images=image_responses, total_count=total_count
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list docker images: {str(e)}"
+        )
+
+
+@router.post("/{registry_id}/images", response_model=DockerImageResponse)
+async def create_docker_image(
+    registry_id: str,
+    request: Request,
+    response: Response,
+    image_request: CreateDockerImageRequest,
+    db: Session = Depends(get_db),
+):
+    """Create a new docker image for a container registry"""
+    try:
+        user_info = get_current_user(request, response)
+        user_id = user_info.get("id")
+        organization_id = user_info.get("organization_id")
+
+        if not organization_id:
+            raise HTTPException(status_code=400, detail="Organization ID required")
+
+        # Verify the container registry exists and belongs to the organization
+        registry = (
+            db.query(ContainerRegistry)
+            .filter(
+                ContainerRegistry.id == registry_id,
+                ContainerRegistry.organization_id == organization_id,
+                ContainerRegistry.is_active,
+            )
+            .first()
+        )
+
+        if not registry:
+            raise HTTPException(status_code=404, detail="Container registry not found")
+
+        # Check if image name already exists in the registry
+        existing_image = (
+            db.query(DockerImage)
+            .filter(
+                DockerImage.name == image_request.name,
+                DockerImage.container_registry_id == registry_id,
+                DockerImage.organization_id == organization_id,
+                DockerImage.is_active,
+            )
+            .first()
+        )
+
+        if existing_image:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Docker image with name '{image_request.name}' already exists in this registry",
+            )
+
+        # Create new image
+        new_image = DockerImage(
+            name=image_request.name,
+            image_tag=image_request.image_tag,
+            description=image_request.description,
+            container_registry_id=registry_id,
+            organization_id=organization_id,
+            user_id=user_id,
+        )
+
+        # Validate relationships before saving
+        validate_relationships_before_save(new_image, db)
+
+        db.add(new_image)
+        db.commit()
+        db.refresh(new_image)
+
+        return DockerImageResponse(
+            id=new_image.id,
+            name=new_image.name,
+            image_tag=new_image.image_tag,
+            description=new_image.description,
+            container_registry_id=new_image.container_registry_id,
+            organization_id=new_image.organization_id,
+            user_id=new_image.user_id,
+            created_at=new_image.created_at.isoformat(),
+            updated_at=new_image.updated_at.isoformat(),
+            is_active=new_image.is_active,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create docker image: {str(e)}"
+        )
+
+
+

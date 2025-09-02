@@ -4,19 +4,19 @@ from typing import List
 from datetime import datetime
 
 from config import get_db
-from db_models import StorageBucket
+from db.db_models import StorageBucket, validate_relationships_before_save
 from lattice.models import (
     StorageBucketResponse,
     CreateStorageBucketRequest,
     UpdateStorageBucketRequest,
     StorageBucketListResponse,
 )
-from lattice.routes.auth.api_key_auth import get_user_or_api_key
+from lattice.routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from lattice.routes.auth.utils import get_current_user
 
 router = APIRouter(
     prefix="/storage-buckets",
-    dependencies=[Depends(get_user_or_api_key)],
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["storage-buckets"],
 )
 
@@ -94,6 +94,7 @@ async def create_storage_bucket(
     response: Response,
     bucket_request: CreateStorageBucketRequest,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("storage:write")),
 ):
     """Create a new storage bucket"""
     try:
@@ -144,6 +145,9 @@ async def create_storage_bucket(
             organization_id=organization_id,
             created_by=user_id,
         )
+
+        # Validate relationships before saving
+        validate_relationships_before_save(new_bucket, db)
 
         db.add(new_bucket)
         db.commit()
@@ -278,6 +282,7 @@ async def update_storage_bucket(
     response: Response,
     bucket_request: UpdateStorageBucketRequest,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("storage:write")),
 ):
     """Update a storage bucket"""
     try:
@@ -371,6 +376,7 @@ async def delete_storage_bucket(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("storage:write")),
 ):
     """Delete a storage bucket (soft delete)"""
     try:

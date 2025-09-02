@@ -67,26 +67,16 @@ def submit_job_to_existing_cluster(
     command: str,
     setup: Optional[str] = None,
     file_mounts: Optional[dict] = None,
-    workdir: Optional[str] = None,
     cpus: Optional[str] = None,
     memory: Optional[str] = None,
     accelerators: Optional[str] = None,
     region: Optional[str] = None,
     zone: Optional[str] = None,
     job_name: Optional[str] = None,
-    job_type: Optional[str] = None,
-    jupyter_port: Optional[int] = None,
-    vscode_port: Optional[int] = None,
 ):
     try:
         # Create job name with metadata if it's a special job type
         final_job_name = job_name if job_name else "lattice-job"
-        if job_type and job_type != "custom":
-            final_job_name = f"{final_job_name}-{job_type}"
-            if job_type == "jupyter" and jupyter_port:
-                final_job_name = f"{final_job_name}-port{jupyter_port}"
-            elif job_type == "vscode" and vscode_port:
-                final_job_name = f"{final_job_name}-port{vscode_port}"
 
         task = sky.Task(
             name=final_job_name,

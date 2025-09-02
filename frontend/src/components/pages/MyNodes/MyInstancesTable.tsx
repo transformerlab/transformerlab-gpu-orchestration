@@ -39,6 +39,7 @@ const generateFakeClusters = () => {
     {
       cluster_name: "llm-train1",
       status: "up",
+      state: "active",
       resources_str: "2x(gpus=NVIDIA A100:1, cpus=32, mem=256, disk=512)",
       launched_at: Math.floor(Date.now() / 1000) - 7200,
       last_use: "1 hour ago",
@@ -48,6 +49,7 @@ const generateFakeClusters = () => {
     {
       cluster_name: "llm-train2",
       status: "init",
+      state: "active",
       resources_str: "4x(gpus=NVIDIA V100:1, cpus=64, mem=512, disk=1024)",
       launched_at: Math.floor(Date.now() / 1000) - 300,
       last_use: "5 minutes ago",
@@ -57,6 +59,7 @@ const generateFakeClusters = () => {
     {
       cluster_name: "research-cluster",
       status: "up",
+      state: "active",
       resources_str: "8x(gpus=NVIDIA T4:1, cpus=128, mem=1024, disk=2048)",
       launched_at: Math.floor(Date.now() / 1000) - 3600,
       last_use: "30 minutes ago",
@@ -81,6 +84,7 @@ function getRandomStatus(id: string): "up" | "stopped" | "init" {
 interface Cluster {
   cluster_name: string;
   status: string;
+  state?: string;
   resources_str?: string;
   launched_at?: number;
   last_use?: string;
@@ -666,20 +670,24 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
               showFakeData &&
               !myClusters.some((c) => c.cluster_name === cluster.cluster_name);
 
+            const isTerminating = cluster.state === "terminating";
+
             return (
               <tr
                 key={cluster.cluster_name}
                 style={{
                   transition: "background-color 0.2s ease",
+                  opacity: isTerminating ? 0.6 : 1,
+                  pointerEvents: isTerminating ? "none" : "auto",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isFakeData) {
+                  if (!isFakeData && !isTerminating) {
                     e.currentTarget.style.backgroundColor =
                       "rgba(0, 0, 0, 0.04)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isFakeData) {
+                  if (!isFakeData && !isTerminating) {
                     e.currentTarget.style.backgroundColor = "";
                   }
                 }}
@@ -739,7 +747,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                         )
                       }
                       startDecorator={<Info size="16px" />}
-                      disabled={isFakeData}
+                      disabled={isFakeData || isTerminating}
                     >
                       Info
                     </Button>
@@ -755,11 +763,12 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                         }
                         disabled={
                           operationLoading[`down_${cluster.cluster_name}`] ||
-                          isFakeData
+                          isFakeData ||
+                          isTerminating
                         }
                         startDecorator={<Trash2Icon size="16px" />}
                       >
-                        Terminate
+                        {isTerminating ? "Terminating..." : "Terminate"}
                       </Button>
                     )}
                     <Dropdown>
@@ -789,7 +798,9 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               disabled={
                                 operationLoading[
                                   `stop_${cluster.cluster_name}`
-                                ] || isFakeData
+                                ] ||
+                                isFakeData ||
+                                isTerminating
                               }
                             >
                               <ListItemDecorator>
@@ -801,7 +812,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               onClick={() =>
                                 openSubmitJobModal(cluster.cluster_name)
                               }
-                              disabled={isFakeData}
+                              disabled={isFakeData || isTerminating}
                             >
                               <ListItemDecorator>
                                 <Zap />
@@ -813,7 +824,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               onClick={() => {
                                 setSshClusterName(cluster.cluster_name);
                               }}
-                              disabled={isFakeData}
+                              disabled={isFakeData || isTerminating}
                             >
                               <ListItemDecorator>
                                 <SquareTerminalIcon />
@@ -827,7 +838,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                   "vscode"
                                 )
                               }
-                              disabled={isFakeData}
+                              disabled={isFakeData || isTerminating}
                             >
                               <ListItemDecorator>
                                 <CodeIcon />
@@ -841,7 +852,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                   "jupyter"
                                 )
                               }
-                              disabled={isFakeData}
+                              disabled={isFakeData || isTerminating}
                             >
                               <ListItemDecorator>
                                 <BookOpenIcon />

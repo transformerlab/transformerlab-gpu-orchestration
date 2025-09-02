@@ -29,6 +29,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 interface SSHNode {
   ip: string;
   user: string;
+  name?: string; // Optional name for frontend display
   identity_file?: string;
   password?: string;
   resources?: {
@@ -49,6 +50,11 @@ interface IdentityFile {
   size: number;
   permissions: string;
   created: number;
+}
+
+interface TeamOption {
+  id: string;
+  name: string;
 }
 
 const SSHConfigPage: React.FC = () => {
@@ -81,20 +87,26 @@ const SSHConfigPage: React.FC = () => {
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
+  const [newNodeName, setNewNodeName] = useState(""); // Node name for frontend display
   const [newNodeIdentityFile, setNewNodeIdentityFile] = useState<string>("");
   const [newNodePassword, setNewNodePassword] = useState("");
   const [newNodeVcpus, setNewNodeVcpus] = useState("");
   const [newNodeMemoryGb, setNewNodeMemoryGb] = useState("");
 
   const [identityFiles, setIdentityFiles] = useState<IdentityFile[]>([]);
+  const [availableTeams, setAvailableTeams] = useState<TeamOption[]>([]);
+  const [allowedTeamIds, setAllowedTeamIds] = useState<string[]>([]);
+  const [savingAccess, setSavingAccess] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       await fetchIdentityFiles();
+      await fetchAvailableTeams();
 
       if (isConfigureMode) {
         // In configure mode, load the specific cluster details
         await fetchClusterDetails(newClusterName);
+        await fetchPoolAccess(newClusterName);
       } else {
         // In add mode, load all clusters
         await fetchClusters();
@@ -140,6 +152,39 @@ const SSHConfigPage: React.FC = () => {
       setError("Error fetching clusters");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableTeams = async () => {
+    try {
+      const response = await apiFetch(buildApiUrl("admin/teams"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const teams: TeamOption[] = (data.teams || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+        }));
+        setAvailableTeams(teams);
+      }
+    } catch (err) {
+      console.error("Error fetching teams:", err);
+    }
+  };
+
+  const fetchPoolAccess = async (clusterName: string) => {
+    try {
+      const response = await apiFetch(
+        buildApiUrl(`node-pools/ssh-node-pools/${clusterName}/access`),
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setAllowedTeamIds(data.allowed_team_ids || []);
+      }
+    } catch (err) {
+      console.error("Error fetching pool access:", err);
     }
   };
 
@@ -226,6 +271,7 @@ const SSHConfigPage: React.FC = () => {
       const formData = new FormData();
       formData.append("ip", newNodeIp);
       formData.append("user", newNodeUser);
+      if (newNodeName) formData.append("name", newNodeName);
       if (newNodePassword) formData.append("password", newNodePassword);
       if (newNodeIdentityFile)
         formData.append("identity_file_path", newNodeIdentityFile);
@@ -251,6 +297,7 @@ const SSHConfigPage: React.FC = () => {
         setShowAddNodeModal(false);
         setNewNodeIp("");
         setNewNodeUser("");
+        setNewNodeName("");
         setNewNodeIdentityFile("");
         setNewNodePassword("");
         setNewNodeVcpus("");
@@ -339,6 +386,37 @@ const SSHConfigPage: React.FC = () => {
         type: "danger",
         message: "Error removing node",
       });
+    }
+  };
+
+  const savePoolAccess = async () => {
+    if (!selectedCluster) return;
+    try {
+      setSavingAccess(true);
+      const response = await apiFetch(
+        buildApiUrl(
+          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/access`
+        ),
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ allowed_team_ids: allowedTeamIds }),
+        }
+      );
+      if (response.ok) {
+        addNotification({ type: "success", message: "Access updated" });
+      } else {
+        const errorData = await response.json();
+        addNotification({
+          type: "danger",
+          message: errorData.detail || "Failed to update access",
+        });
+      }
+    } catch (err) {
+      addNotification({ type: "danger", message: "Error updating access" });
+    } finally {
+      setSavingAccess(false);
     }
   };
 
@@ -527,6 +605,7 @@ const SSHConfigPage: React.FC = () => {
                 <Table size="sm">
                   <thead>
                     <tr>
+                      <th>Name</th>
                       <th>IP Address</th>
                       <th>User</th>
                       <th>Auth Method</th>
@@ -537,6 +616,7 @@ const SSHConfigPage: React.FC = () => {
                   <tbody>
                     {selectedCluster.nodes.map((node) => (
                       <tr key={node.ip}>
+                        <td>{node.name || "-"}</td>
                         <td>{node.ip}</td>
                         <td>{node.user}</td>
                         <td>
@@ -639,6 +719,14 @@ const SSHConfigPage: React.FC = () => {
             </Typography>
             <Stack spacing={2}>
               <FormControl required>
+                <FormLabel>Node Name</FormLabel>
+                <Input
+                  value={newNodeName}
+                  onChange={(e) => setNewNodeName(e.target.value)}
+                  placeholder="e.g., GPU Server 1, Compute Node A"
+                />
+              </FormControl>
+              <FormControl required>
                 <FormLabel>IP Address</FormLabel>
                 <Input
                   value={newNodeIp}
@@ -729,6 +817,48 @@ const SSHConfigPage: React.FC = () => {
             </Stack>
           </ModalDialog>
         </Modal>
+
+        {isConfigureMode && selectedCluster && (
+          <Card variant="outlined">
+            <Typography level="h4" sx={{ mb: 2 }}>
+              Team Access
+            </Typography>
+            <Typography level="body-sm" sx={{ mb: 2, color: "neutral.500" }}>
+              Choose which teams can use this node pool.
+            </Typography>
+            <Stack spacing={2}>
+              <FormControl>
+                <FormLabel>Allowed Teams</FormLabel>
+                <Select
+                  multiple
+                  placeholder="Select teams..."
+                  value={allowedTeamIds}
+                  onChange={(_, value) => setAllowedTeamIds(value as string[])}
+                >
+                  {availableTeams.map((team) => (
+                    <Option key={team.id} value={team.id}>
+                      {team.name}
+                    </Option>
+                  ))}
+                </Select>
+              </FormControl>
+              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setAllowedTeamIds(availableTeams.map((t) => t.id))}
+                >
+                  Allow All
+                </Button>
+                <Button variant="plain" onClick={() => setAllowedTeamIds([])}>
+                  Clear
+                </Button>
+                <Button onClick={savePoolAccess} loading={savingAccess}>
+                  Save Access
+                </Button>
+              </Box>
+            </Stack>
+          </Card>
+        )}
       </Stack>
     </PageWithTitle>
   );

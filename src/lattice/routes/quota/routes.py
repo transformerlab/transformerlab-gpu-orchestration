@@ -3,7 +3,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
 from config import get_db
-from lattice.routes.auth.utils import get_current_user
+from lattice.routes.auth.utils import (
+    get_current_user,
+    check_organization_member,
+    check_organization_admin,
+    requires_admin,
+)
 from lattice.models import (
     OrganizationQuotaResponse,
     UpdateQuotaRequest,
@@ -15,7 +20,7 @@ from lattice.models import (
     UserQuotaListResponse,
     CreateUserQuotaRequest,
 )
-from db_models import GPUUsageLog, OrganizationQuota
+from db.db_models import GPUUsageLog, OrganizationQuota
 from lattice.utils.cluster_utils import get_display_name_from_actual
 from lattice.routes.quota.utils import (
     get_or_create_organization_quota,
@@ -35,8 +40,9 @@ from lattice.routes.quota.utils import (
     refresh_quota_periods_for_user,
 )
 from lattice.routes.quota.team_quota_routes import router as team_quota_router
+from lattice.routes.auth.api_key_auth import enforce_csrf
 
-router = APIRouter(prefix="/quota", tags=["quota"])
+router = APIRouter(prefix="/quota", tags=["quota"], dependencies=[Depends(enforce_csrf)])
 
 # Include team quota routes
 router.include_router(team_quota_router)
@@ -44,7 +50,10 @@ router.include_router(team_quota_router)
 
 @router.get("/organization/{organization_id}", response_model=OrganizationQuotaResponse)
 async def get_organization_quota(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Get organization quota and current user's usage"""
     try:
@@ -73,6 +82,7 @@ async def update_organization_quota(
     request: UpdateQuotaRequest,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Update organization quota per user"""
     try:
@@ -133,6 +143,7 @@ async def get_organization_usage(
     limit: int = 50,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Get current user's quota and recent usage logs"""
     try:
@@ -199,20 +210,40 @@ async def check_quota_availability(
     organization_id: str,
     estimated_hours: float = 1.0,
     gpu_count: int = 1,
+    price_per_hour: float | None = None,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
-    """Check if user has enough quota for a new cluster"""
+    """Check if user has enough quota for a new cluster.
+
+    If `price_per_hour` is provided, uses price-based credits (recommended). Otherwise falls back to hours*gpu.
+    """
     try:
         quota_response = await get_organization_quota(organization_id, user, db)
 
-        required_hours = estimated_hours * gpu_count
-        has_quota = quota_response.credits_remaining >= required_hours
+        if price_per_hour is not None:
+            required_credits = float(price_per_hour) * float(estimated_hours)
+            # Back-compat fields with best-effort translation to hours
+            required_hours = float(estimated_hours)
+            available_hours = quota_response.credits_remaining / float(price_per_hour) if price_per_hour else 0.0
+        else:
+            # Deprecated hours-only path
+            required_credits = float(estimated_hours) * float(gpu_count)
+            required_hours = float(estimated_hours) * float(gpu_count)
+            available_hours = quota_response.credits_remaining
+
+        has_quota = quota_response.credits_remaining >= required_credits
 
         return {
             "has_quota": has_quota,
+            # New fields
+            "required_credits": required_credits,
+            "available_credits": quota_response.credits_remaining,
+            # Deprecated fields (hours-based) for backward compatibility
             "required_hours": required_hours,
-            "available_hours": quota_response.credits_remaining,
+            "available_hours": available_hours,
+            # Common context
             "current_usage": quota_response.credits_used,
             "quota_limit": quota_response.monthly_credits_per_user,
         }
@@ -222,7 +253,7 @@ async def check_quota_availability(
 
 @router.get("/sync-from-cost-report")
 async def sync_usage_from_cost_report(
-    user=Depends(get_current_user), db: Session = Depends(get_db)
+    user=Depends(get_current_user), db: Session = Depends(get_db), __: dict = Depends(requires_admin)
 ):
     """Sync GPU usage from SkyPilot cost report"""
     try:
@@ -236,7 +267,10 @@ async def sync_usage_from_cost_report(
 
 @router.get("/summary/{organization_id}")
 async def get_usage_summary(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    _: dict = Depends(check_organization_member),
 ):
     """Get detailed GPU usage summary for current user"""
     try:
@@ -253,7 +287,10 @@ async def get_usage_summary(
     response_model=OrganizationUserUsageResponse,
 )
 async def get_organization_user_usage(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get GPU usage breakdown for all users in an organization"""
     try:
@@ -273,6 +310,7 @@ async def get_all_organization_usage(
     limit: int = 50,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get organization-wide usage data for all users"""
     try:
@@ -280,7 +318,7 @@ async def get_all_organization_usage(
         org_quota = get_or_create_organization_quota(db, organization_id)
         period_start, period_end = get_current_period_dates()
 
-        # Calculate total organization usage
+        # Calculate total organization usage (credits == price)
         total_org_usage = (
             db.query(GPUUsageLog)
             .filter(
@@ -289,11 +327,8 @@ async def get_all_organization_usage(
                 >= datetime.combine(period_start, datetime.min.time()),
                 GPUUsageLog.start_time
                 <= datetime.combine(period_end, datetime.max.time()),
-                GPUUsageLog.duration_seconds.isnot(None),
             )
-            .with_entities(
-                func.sum((GPUUsageLog.duration_seconds / 3600) * GPUUsageLog.gpu_count)
-            )
+            .with_entities(func.sum(GPUUsageLog.cost_estimate))
             .scalar()
             or 0.0
         )
@@ -368,7 +403,10 @@ async def get_all_organization_usage(
     response_model=UserQuotaListResponse,
 )
 async def get_organization_user_quotas(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get all user quotas for an organization"""
     try:
@@ -441,6 +479,7 @@ async def get_user_quota(
     user_id: str,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Get quota for a specific user"""
     try:
@@ -492,6 +531,7 @@ async def update_user_quota_endpoint(
     request: UpdateUserQuotaRequest,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Update quota for a specific user"""
     try:
@@ -545,6 +585,7 @@ async def delete_user_quota_endpoint(
     user_id: str,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Delete user quota, reverting to organization default"""
     try:
@@ -575,6 +616,7 @@ async def create_user_quota_endpoint(
     request: CreateUserQuotaRequest,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Create a new user quota"""
     try:
@@ -646,7 +688,10 @@ async def create_user_quota_endpoint(
 
 @router.post("/organization/{organization_id}/populate-user-quotas")
 async def populate_user_quotas_endpoint(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Populate user quotas for all users in an organization"""
     try:
@@ -665,7 +710,10 @@ async def populate_user_quotas_endpoint(
 
 @router.post("/organization/{organization_id}/refresh-quota-periods")
 async def refresh_quota_periods_endpoint(
-    organization_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)
+    organization_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
 ):
     """Refresh quota periods for all users in an organization"""
     try:

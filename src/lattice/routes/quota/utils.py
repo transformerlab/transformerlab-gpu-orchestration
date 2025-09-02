@@ -2,12 +2,14 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from db_models import (
+from db.db_models import (
     GPUUsageLog,
     OrganizationQuota,
     QuotaPeriod,
     TeamMembership,
     TeamQuota,
+    validate_relationships_before_save,
+    validate_relationships_before_delete,
 )
 from routes.instances.utils import generate_cost_report
 from sqlalchemy import func
@@ -134,6 +136,10 @@ def get_or_create_user_quota(
                 monthly_credits_per_user=org_quota.monthly_credits_per_user,
                 custom_quota=False,  # Initially not custom
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(user_quota, db)
+            
             db.add(user_quota)
             db.commit()
             db.refresh(user_quota)
@@ -308,6 +314,9 @@ def delete_user_quota(db: Session, organization_id: str, user_id: str) -> bool:
     )
 
     if user_quota:
+        # Validate relationships before deleting
+        validate_relationships_before_delete(user_quota, db)
+        
         db.delete(user_quota)
         db.commit()
         return True
@@ -352,6 +361,10 @@ def get_organization_default_quota(
                 monthly_credits_per_user=100.0,
                 custom_quota=False,
             )
+            
+            # Validate relationships before saving
+            validate_relationships_before_save(org_quota, db)
+            
             db.add(org_quota)
             db.commit()
             db.refresh(org_quota)
@@ -566,6 +579,13 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                     "cloud", existing_log.cloud_provider
                 )
                 existing_log.region = cluster_data.get("region", existing_log.region)
+                # Update cost estimate from report when available
+                try:
+                    total_cost = cluster_data.get("total_cost")
+                    if total_cost is not None:
+                        existing_log.cost_estimate = total_cost
+                except Exception:
+                    pass
 
                 # Calculate duration from cost report
                 duration_seconds = cluster_data.get(
@@ -636,7 +656,8 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                     for (user_id,) in users_in_org:
                         # Recalculate quota period usage for each user
                         current_period = get_or_create_quota_period(db, org_id, user_id)
-                        total_usage = (
+                        # Sum estimated costs as credits used in the period
+                        total_cost = (
                             db.query(GPUUsageLog)
                             .filter(
                                 GPUUsageLog.organization_id == org_id,
@@ -649,19 +670,13 @@ def sync_gpu_usage_from_cost_report(db: Session) -> Dict[str, Any]:
                                 <= datetime.combine(
                                     current_period.period_end, datetime.max.time()
                                 ),
-                                GPUUsageLog.duration_seconds.isnot(None),
                             )
-                            .with_entities(
-                                func.sum(
-                                    (GPUUsageLog.duration_seconds / 3600)
-                                    * GPUUsageLog.gpu_count
-                                )
-                            )
+                            .with_entities(func.sum(GPUUsageLog.cost_estimate))
                             .scalar()
                             or 0.0
                         )
 
-                        current_period.credits_used = total_usage
+                        current_period.credits_used = float(total_cost)
                         current_period.updated_at = datetime.utcnow()
                         db.commit()
                 except Exception as e:
@@ -707,7 +722,8 @@ def get_gpu_usage_summary(
         usage_logs = usage_query.all()
 
         # Calculate summary
-        total_credits = sum((log.duration_seconds or 0) / 3600 for log in usage_logs)
+        # Credits equal price: sum cost estimates for the period
+        total_credits = sum((log.cost_estimate or 0) for log in usage_logs)
         active_clusters = len([log for log in usage_logs if log.end_time is None])
         completed_sessions = len(
             [log for log in usage_logs if log.end_time is not None]
@@ -747,7 +763,28 @@ def get_gpu_usage_summary(
         print(
             f"Failed to get GPU usage summary for organization {organization_id}: {e}"
         )
-        return {}
+        # Return a safe default shape to avoid response validation errors
+        try:
+            period_start, period_end = get_current_period_dates()
+        except Exception:
+            # Last-resort fallback if even date calc fails
+            period_start = datetime.utcnow().date()
+            period_end = period_start
+
+        return {
+            "organization_id": organization_id,
+            "user_id": user_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_limit": 0.0,
+            "quota_used": 0.0,
+            "quota_remaining": 0.0,
+            "usage_percentage": 0.0,
+            "total_credits": 0.0,
+            "active_clusters": 0,
+            "completed_sessions": 0,
+            "gpu_type_breakdown": {},
+        }
 
 
 def get_organization_user_usage_summary(
@@ -765,9 +802,7 @@ def get_organization_user_usage_summary(
         user_usage = (
             db.query(
                 GPUUsageLog.user_id,
-                func.sum(
-                    (GPUUsageLog.duration_seconds / 3600) * GPUUsageLog.gpu_count
-                ).label("total_hours"),
+                func.sum(GPUUsageLog.cost_estimate).label("total_cost"),
             )
             .filter(
                 GPUUsageLog.organization_id == organization_id,
@@ -775,7 +810,6 @@ def get_organization_user_usage_summary(
                 >= datetime.combine(period_start, datetime.min.time()),
                 GPUUsageLog.start_time
                 <= datetime.combine(period_end, datetime.max.time()),
-                GPUUsageLog.duration_seconds.isnot(None),
             )
             .group_by(GPUUsageLog.user_id)
             .all()
@@ -785,9 +819,9 @@ def get_organization_user_usage_summary(
         user_breakdown = []
         total_org_usage = 0
 
-        for user_id, total_hours in user_usage:
-            total_hours = total_hours or 0
-            total_org_usage += total_hours
+        for user_id, total_cost in user_usage:
+            total_cost = float(total_cost or 0.0)
+            total_org_usage += total_cost
 
             # Try to get user info from any cluster
             user_cluster = (
@@ -809,10 +843,10 @@ def get_organization_user_usage_summary(
                     "user_id": user_id,
                     "user_email": user_info.get("email"),
                     "user_name": user_info.get("name"),
-                    "credits_used": total_hours,
+                    "credits_used": total_cost,
                     "credits_limit": user_quota_limit,
-                    "credits_remaining": max(0, user_quota_limit - total_hours),
-                    "usage_percentage": (total_hours / user_quota_limit * 100)
+                    "credits_remaining": max(0, user_quota_limit - total_cost),
+                    "usage_percentage": (total_cost / user_quota_limit * 100)
                     if user_quota_limit > 0
                     else 0,
                 }
@@ -832,4 +866,27 @@ def get_organization_user_usage_summary(
         print(
             f"Failed to get organization user usage summary for {organization_id}: {e}"
         )
-        return {}
+        # Return a safe default response structure
+        try:
+            period_start, period_end = get_current_period_dates()
+        except Exception:
+            period_start = datetime.utcnow().date()
+            period_end = period_start
+
+        # Best-effort: attempt to read org default quota, but fall back to 0.0
+        quota_per_user = 0.0
+        try:
+            org_quota = get_organization_default_quota(db, organization_id)
+            quota_per_user = float(org_quota.monthly_credits_per_user or 0.0)
+        except Exception:
+            pass
+
+        return {
+            "organization_id": organization_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_per_user": quota_per_user,
+            "total_users": 0,
+            "total_organization_usage": 0.0,
+            "user_breakdown": [],
+        }

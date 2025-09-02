@@ -1,4 +1,6 @@
 from typing import Optional
+from pydantic import BaseModel
+import os
 
 from fastapi import (
     APIRouter,
@@ -9,8 +11,9 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from models import ClusterResponse, ClustersListResponse, SSHNode
-from routes.auth.api_key_auth import get_user_or_api_key
+from models import ClusterResponse, ClustersListResponse, SSHNode, NodePoolGPUResourcesResponse
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope
+from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import az_get_current_config, load_azure_config
 from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
@@ -19,13 +22,10 @@ from routes.reports.utils import record_availability
 from utils.cluster_utils import get_cluster_platform_info, get_display_name_from_actual
 from utils.file_utils import (
     delete_named_identity_file,
-    get_available_identity_files,
-    rename_identity_file,
-    save_identity_file,
     save_named_identity_file,
+    save_temporary_identity_file,
 )
 
-from models import NodePoolGPUResourcesResponse
 from werkzeug.utils import secure_filename
 
 from .utils import (
@@ -38,12 +38,18 @@ from .utils import (
     schedule_gpu_resources_update,
 )
 from config import get_db
-from db_models import SSHNodePool as SSHNodePoolDB
+from db.db_models import (
+    SSHNodePool as SSHNodePoolDB,
+    Team as TeamDB,
+    NodePoolAccess as NodePoolAccessDB,
+    IdentityFile,
+)
 from sqlalchemy.orm import Session
+from routes.quota.utils import get_user_team_id
 
 router = APIRouter(
     prefix="/node-pools",
-    dependencies=[Depends(get_user_or_api_key)],
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["node-pools"],
 )
 
@@ -163,6 +169,24 @@ async def get_node_pools(
         try:
             node_pools = []
 
+            # Helper to map team IDs to names for display
+            def map_team_ids_to_names(team_ids: list[str]) -> list[str]:
+                if not team_ids:
+                    return []
+                try:
+                    # Fetch teams in one query
+                    teams = (
+                        db.query(TeamDB)
+                        .filter(
+                            TeamDB.organization_id == user["organization_id"],
+                            TeamDB.id.in_(team_ids),
+                        )
+                        .all()
+                    )
+                    return [t.name for t in teams]
+                except Exception:
+                    return []
+
             # Get Azure configs
             try:
                 azure_config_data = load_azure_config()
@@ -185,6 +209,32 @@ async def get_node_pools(
                                 ):
                                     azure_instances += 1
 
+                        # Determine access teams for display from DB
+                        access_team_ids = []
+                        try:
+                            access_row = (
+                                db.query(NodePoolAccessDB)
+                                .filter(
+                                    NodePoolAccessDB.organization_id
+                                    == user["organization_id"],
+                                    NodePoolAccessDB.provider == "azure",
+                                    NodePoolAccessDB.pool_key == config_key,
+                                )
+                                .first()
+                            )
+                            if access_row and access_row.allowed_team_ids:
+                                access_team_ids = access_row.allowed_team_ids
+                        except Exception:
+                            pass
+                        access_team_names = map_team_ids_to_names(access_team_ids)
+                        # team-based access evaluation
+                        user_team_id = (
+                            get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                        )
+                        access_allowed = True
+                        if access_team_ids:
+                            access_allowed = user_team_id is not None and user_team_id in access_team_ids
+
                         node_pools.append(
                             {
                                 "name": config.get("name", "Azure Pool"),
@@ -192,12 +242,15 @@ async def get_node_pools(
                                 "provider": "azure",
                                 "max_instances": config.get("max_instances", 0),
                                 "current_instances": azure_instances,
-                                "can_launch": config.get("max_instances", 0) == 0
-                                or azure_instances < config.get("max_instances", 0),
+                                "can_launch": (
+                                    (config.get("max_instances", 0) == 0
+                                     or azure_instances < config.get("max_instances", 0))
+                                    and access_allowed
+                                ),
                                 "status": "enabled"
                                 if azure_config_data.get("is_configured", False)
                                 else "disabled",
-                                "access": ["Admin"],
+                                "access": access_team_names if access_team_names else ["Admin"],
                                 "config": {
                                     "is_configured": azure_config_data.get(
                                         "is_configured", False
@@ -213,6 +266,7 @@ async def get_node_pools(
                                     "allowed_regions": config.get(
                                         "allowed_regions", []
                                     ),
+                                    "allowed_team_ids": access_team_ids,
                                 },
                             }
                         )
@@ -241,6 +295,32 @@ async def get_node_pools(
                                 ):
                                     runpod_instances += 1
 
+                        # Determine access teams for display from DB
+                        access_team_ids = []
+                        try:
+                            access_row = (
+                                db.query(NodePoolAccessDB)
+                                .filter(
+                                    NodePoolAccessDB.organization_id
+                                    == user["organization_id"],
+                                    NodePoolAccessDB.provider == "runpod",
+                                    NodePoolAccessDB.pool_key == config_key,
+                                )
+                                .first()
+                            )
+                            if access_row and access_row.allowed_team_ids:
+                                access_team_ids = access_row.allowed_team_ids
+                        except Exception:
+                            pass
+                        access_team_names = map_team_ids_to_names(access_team_ids)
+                        # team-based access evaluation
+                        user_team_id = (
+                            get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                        )
+                        access_allowed = True
+                        if access_team_ids:
+                            access_allowed = user_team_id is not None and user_team_id in access_team_ids
+
                         node_pools.append(
                             {
                                 "name": config.get("name", "RunPod Pool"),
@@ -248,12 +328,15 @@ async def get_node_pools(
                                 "provider": "runpod",
                                 "max_instances": config.get("max_instances", 0),
                                 "current_instances": runpod_instances,
-                                "can_launch": config.get("max_instances", 0) == 0
-                                or runpod_instances < config.get("max_instances", 0),
+                                "can_launch": (
+                                    (config.get("max_instances", 0) == 0
+                                     or runpod_instances < config.get("max_instances", 0))
+                                    and access_allowed
+                                ),
                                 "status": "enabled"
                                 if runpod_config_data.get("is_configured", False)
                                 else "disabled",
-                                "access": ["Admin"],
+                                "access": access_team_names if access_team_names else ["Admin"],
                                 "config": {
                                     "is_configured": runpod_config_data.get(
                                         "is_configured", False
@@ -266,6 +349,7 @@ async def get_node_pools(
                                     "allowed_gpu_types": config.get(
                                         "allowed_gpu_types", []
                                     ),
+                                    "allowed_team_ids": access_team_ids,
                                 },
                             }
                         )
@@ -329,6 +413,24 @@ async def get_node_pools(
                                 )
                                 ssh_instances_for_user += 1
 
+                    # Determine access teams for display (from DB other_data)
+                    allowed_team_ids = []
+                    try:
+                        od = pool.other_data or {}
+                        if isinstance(od, dict):
+                            allowed_team_ids = od.get("allowed_team_ids", []) or []
+                    except Exception:
+                        allowed_team_ids = []
+
+                    access_team_names = map_team_ids_to_names(allowed_team_ids)
+                    # team-based access evaluation
+                    user_team_id = (
+                        get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                    )
+                    access_allowed = True
+                    if allowed_team_ids:
+                        access_allowed = user_team_id is not None and user_team_id in allowed_team_ids
+
                     node_pools.append(
                         {
                             "name": cluster_name,
@@ -336,12 +438,13 @@ async def get_node_pools(
                             "provider": "direct",
                             "max_instances": hosts_count,
                             "current_instances": hosts_count,
-                            "can_launch": True,
+                            "can_launch": access_allowed,
                             "status": "enabled",
-                            "access": ["Admin"],
+                            "access": access_team_names if access_team_names else ["Admin"],
                             "config": {
                                 "is_configured": True,
                                 "hosts": cfg.get("hosts", []),
+                                "allowed_team_ids": allowed_team_ids,
                             },
                             "gpu_resources": cached_gpu_resources,
                             "active_clusters": active_clusters,
@@ -386,12 +489,13 @@ async def create_cluster(
     vcpus: Optional[str] = Form(None),
     memory_gb: Optional[str] = Form(None),
     logged_user: dict = Depends(get_user_or_api_key),
+    __: dict = Depends(require_scope("nodepools:write")),
 ):
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+        identity_file_path_final = save_temporary_identity_file(
+            file_content, identity_file.filename, logged_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path
@@ -420,11 +524,52 @@ async def create_cluster(
 
 
 @router.get("/ssh-node-pools/identity-files")
-async def list_identity_files(request: Request, response: Response):
+async def list_identity_files(
+    request: Request, 
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
     try:
-        files = get_available_identity_files()
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
+        
+        # Get identity files from database for this organization        
+        identity_files = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.organization_id == org_id,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .order_by(IdentityFile.display_name)
+            .all()
+        )
+        
+        files = []
+        for identity_file in identity_files:
+            # Check if the file still exists on disk
+            if os.path.exists(identity_file.file_path):
+                files.append({
+                    "path": identity_file.file_path,
+                    "display_name": identity_file.display_name,
+                    "original_filename": identity_file.original_filename,
+                    "size": identity_file.file_size,
+                    "permissions": identity_file.file_permissions,
+                    "created": identity_file.created_at.timestamp(),
+                })
+            else:
+                # File doesn't exist on disk, mark as inactive
+                identity_file.is_active = False
+                db.commit()
+        
         return {"identity_files": files}
     except Exception as e:
+        print(f"Error listing identity files: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to list identity files: {str(e)}"
         )
@@ -436,15 +581,61 @@ async def upload_identity_file(
     response: Response,
     display_name: str = Form(...),
     identity_file: UploadFile = Form(...),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
+
         if not identity_file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
 
+        org_id = user.get("organization_id")
+        user_id = user.get("id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
+
         file_content = await identity_file.read()
         file_path = save_named_identity_file(
-            file_content, identity_file.filename, display_name
+            file_content, identity_file.filename, display_name, org_id
         )
+
+        # Save to database
+        
+        
+        # Check if display name already exists for this user/organization
+        existing_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.organization_id == org_id,
+                IdentityFile.display_name == display_name,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if existing_file:
+            raise HTTPException(
+                status_code=400,
+                detail=f"An identity file with display name '{display_name}' already exists"
+            )
+
+        # Create new identity file record
+        new_identity_file = IdentityFile(
+            user_id=user_id,
+            organization_id=org_id,
+            display_name=display_name,
+            original_filename=identity_file.filename,
+            file_path=file_path,
+            file_size=len(file_content),
+            file_permissions="600",
+        )
+        
+        db.add(new_identity_file)
+        db.commit()
 
         return {
             "message": "Identity file uploaded successfully",
@@ -462,14 +653,45 @@ async def delete_identity_file(
     request: Request,
     response: Response,
     file_path: str,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
         # URL decode the file path
         import urllib.parse
 
         decoded_path = urllib.parse.unquote(file_path)
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
+        
+        identity_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.file_path == decoded_path,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if not identity_file:
+            raise HTTPException(
+                status_code=404,
+                detail="Identity file not found or access denied"
+            )
 
-        delete_named_identity_file(decoded_path)
+        # Delete the file from disk
+        delete_named_identity_file(decoded_path, org_id)
+        
+        # Mark as inactive in database
+        identity_file.is_active = False
+        db.commit()
+        
         return {"message": "Identity file deleted successfully"}
     except Exception as e:
         raise HTTPException(
@@ -483,14 +705,59 @@ async def rename_identity_file_route(
     response: Response,
     file_path: str,
     new_display_name: str = Form(...),
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
         # URL decode the file path
         import urllib.parse
 
         decoded_path = urllib.parse.unquote(file_path)
+        org_id = user.get("organization_id")
+        
+        if not org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization ID not found in user context",
+            )
 
-        rename_identity_file(decoded_path, new_display_name)
+        identity_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.file_path == decoded_path,
+                IdentityFile.organization_id == org_id,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if not identity_file:
+            raise HTTPException(
+                status_code=404,
+                detail="Identity file not found or access denied"
+            )
+
+        # Check if new display name already exists for this organization
+        existing_file = (
+            db.query(IdentityFile)
+            .filter(
+                IdentityFile.organization_id == org_id,
+                IdentityFile.display_name == new_display_name,
+                IdentityFile.is_active == True #noqa: E712
+            )
+            .first()
+        )
+        
+        if existing_file and existing_file.id != identity_file.id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"An identity file with display name '{new_display_name}' already exists"
+            )
+
+        # Update the display name in database
+        identity_file.display_name = new_display_name
+        db.commit()
+        
         return {"message": "Identity file renamed successfully"}
     except Exception as e:
         raise HTTPException(
@@ -529,6 +796,7 @@ async def get_cluster(
         SSHNode(
             ip=host["ip"],
             user=host.get("user"),
+            name=host.get("name"),
             identity_file=host.get("identity_file"),
             password=host.get("password"),
             resources=host.get("resources"),
@@ -554,6 +822,7 @@ async def add_node(
     cluster_name: str,
     ip: str = Form(...),
     user: str = Form(...),
+    name: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
     identity_file: Optional[UploadFile] = None,
     identity_file_path: Optional[str] = Form(None),
@@ -580,8 +849,8 @@ async def add_node(
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
-        identity_file_path_final = save_identity_file(
-            file_content, identity_file.filename
+        identity_file_path_final = save_temporary_identity_file(
+            file_content, identity_file.filename, current_user["organization_id"]
         )
     elif identity_file_path:
         # Use the selected identity file path
@@ -599,6 +868,7 @@ async def add_node(
     node = SSHNode(
         ip=ip,
         user=user,
+        name=name,
         identity_file=identity_file_path_final,
         password=password,
         resources=resources,
@@ -627,6 +897,7 @@ async def add_node(
         node_obj = SSHNode(
             ip=host["ip"],
             user=host["user"],
+            name=host.get("name"),
             identity_file=host.get("identity_file"),
             password=host.get("password"),
             resources=host.get("resources"),
@@ -641,6 +912,7 @@ async def delete_cluster(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    __: dict = Depends(require_scope("nodepools:write")),
     db: Session = Depends(get_db),
 ):
     # Check if user has access to this node pool
@@ -670,6 +942,7 @@ async def remove_node(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    __: dict = Depends(require_scope("nodepools:write")),
     db: Session = Depends(get_db),
 ):
     # Check if user has access to this node pool
@@ -744,3 +1017,82 @@ async def get_node_pool_gpu_resources(
         raise HTTPException(
             status_code=500, detail=f"Failed to get GPU resources: {str(e)}"
         )
+
+
+@router.get("/ssh-node-pools/{cluster_name}/access")
+async def get_ssh_pool_access(
+    cluster_name: str,
+    current_user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    """Get allowed teams for an SSH node pool."""
+    # Ensure pool exists and within user's organization
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == current_user["organization_id"],
+        )
+        .first()
+    )
+    if not pool:
+        raise HTTPException(status_code=404, detail="SSH node pool not found")
+
+    allowed_team_ids = []
+    try:
+        od = pool.other_data or {}
+        if isinstance(od, dict):
+            allowed_team_ids = od.get("allowed_team_ids", []) or []
+    except Exception:
+        allowed_team_ids = []
+
+    # Map to names for convenience
+    teams = (
+        db.query(TeamDB)
+        .filter(TeamDB.organization_id == current_user["organization_id"], TeamDB.id.in_(allowed_team_ids))
+        .all()
+    )
+    return {
+        "allowed_team_ids": allowed_team_ids,
+        "allowed_team_names": [t.name for t in teams],
+    }
+
+
+class UpdateAccessRequest(BaseModel):
+    allowed_team_ids: list[str] = []
+
+
+@router.put("/ssh-node-pools/{cluster_name}/access")
+async def update_ssh_pool_access(
+    cluster_name: str,
+    body: UpdateAccessRequest,
+    current_user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+    __: dict = Depends(require_scope("nodepools:write")),
+):
+    """Update allowed teams for an SSH node pool."""
+    pool = (
+        db.query(SSHNodePoolDB)
+        .filter(
+            SSHNodePoolDB.name == cluster_name,
+            SSHNodePoolDB.organization_id == current_user["organization_id"],
+        )
+        .first()
+    )
+    if not pool:
+        raise HTTPException(status_code=404, detail="SSH node pool not found")
+
+    # Persist in other_data JSON
+    od = pool.other_data or {}
+    if not isinstance(od, dict):
+        od = {}
+    od["allowed_team_ids"] = body.allowed_team_ids or []
+    pool.other_data = od
+
+    # Flag modified and commit
+    from sqlalchemy.orm.attributes import flag_modified
+
+    flag_modified(pool, "other_data")
+    db.commit()
+
+    return {"message": "Access updated", "allowed_team_ids": od["allowed_team_ids"]}

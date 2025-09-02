@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-
+# CORS configuration: comma-separated list of origins
+from urllib.parse import urlsplit
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
@@ -47,6 +48,58 @@ AUTH_CLIENT_ID = os.getenv("AUTH_CLIENT_ID")
 AUTH_COOKIE_PASSWORD = (
     os.getenv("AUTH_COOKIE_PASSWORD") or "y0jN-wF1bIUoSwdKT6yWIHS5qLI4Kfq5TnqIANOxEXM="
 )
+# Controls cookie security flags (set True in production behind HTTPS)
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").strip().lower() in ("1", "true", "yes")
+# SameSite strategy for cookies: "lax" | "none" | "strict"
+_samesite_env = (os.getenv("COOKIE_SAMESITE", "lax") or "lax").strip().lower()
+COOKIE_SAMESITE = _samesite_env if _samesite_env in ("lax", "none", "strict") else "lax"
+
+# WebSocket policy: whether to allow null/missing Origin (for native/WebView clients)
+WS_ALLOW_NULL_ORIGIN = os.getenv("WS_ALLOW_NULL_ORIGIN", "false").strip().lower() in ("1", "true", "yes")
+
+def _coerce_origin(o: str) -> str | None:
+    o = (o or "").strip().rstrip("/")
+    if not o:
+        return None
+    if "://" not in o:
+        scheme = "https" if COOKIE_SECURE else "http"
+        o = f"{scheme}://{o}"
+    u = urlsplit(o)
+    if not u.scheme or not u.hostname:
+        return None
+    host = u.hostname.lower()
+    port = f":{u.port}" if u.port and u.port not in (80, 443) else ""
+    return f"{u.scheme.lower()}://{host}{port}"
+
+_cors_env = os.getenv("CORS_ALLOW_ORIGINS")
+if _cors_env:
+    CORS_ALLOW_ORIGINS = [x for x in (_coerce_origin(o) for o in _cors_env.split(",")) if x]
+else:
+    # Default to FRONTEND_URL if provided, otherwise localhost dev
+    _frontend = os.getenv("FRONTEND_URL")
+    coerced = _coerce_origin(_frontend) if _frontend else None
+    CORS_ALLOW_ORIGINS = [coerced] if coerced else ["http://localhost:3000"]
+
+# CORS headers allowlist (comma-separated). Keep a tight default set; add x-csrf-token for CSRF patterns.
+_cors_headers_env = os.getenv("CORS_ALLOW_HEADERS")
+if _cors_headers_env:
+    CORS_ALLOW_HEADERS = [h.strip().lower() for h in _cors_headers_env.split(",") if h.strip()]
+else:
+    CORS_ALLOW_HEADERS = [
+        "authorization",
+        "content-type",
+        "x-requested-with",
+        "accept",
+        "origin",
+        "x-csrf-token",
+    ]
+
+# CORS expose headers (comma-separated) for non-simple response headers clients may need to read
+_cors_expose_env = os.getenv("CORS_EXPOSE_HEADERS")
+if _cors_expose_env:
+    CORS_EXPOSE_HEADERS = [h.strip() for h in _cors_expose_env.split(",") if h.strip()]
+else:
+    CORS_EXPOSE_HEADERS = []
 AUTH_REDIRECT_URI = os.getenv("AUTH_REDIRECT_URI")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
@@ -61,3 +114,6 @@ RUNPOD_CONFIG_FILE = Path.home() / ".runpod" / "lattice_config.json"
 RUNPOD_CONFIG_TOML = Path.home() / ".runpod" / "config.toml"
 
 AZURE_CONFIG_FILE = Path.home() / ".azure" / "lattice_config.json"
+
+# CSRF enforcement (double-submit cookie pattern)
+CSRF_ENABLED = os.getenv("CSRF_ENABLED", "false").strip().lower() in ("1", "true", "yes")

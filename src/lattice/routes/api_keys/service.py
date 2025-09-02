@@ -1,11 +1,61 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
-from db_models import APIKey
+from db.db_models import APIKey, validate_relationships_before_save, validate_relationships_before_delete
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 from config import SessionLocal
 import json
 from typing import List, Optional
+
+
+ALLOWED_SCOPES = {
+    "admin",
+    "compute:write",
+    "nodepools:write",
+    "storage:write",
+    "registries:write",
+    "cli:access"
+}
+
+
+def _validate_and_normalize_scopes(scopes: Optional[List[str]]) -> Optional[List[str]]:
+    """Validate scopes against allowed values and admin exclusivity.
+
+    Returns a normalized list (deduped) or None if scopes is None.
+    Raises HTTPException(400) on invalid values or admin mixed with others.
+    """
+    if scopes is None:
+        return None
+
+    if not isinstance(scopes, list):
+        raise HTTPException(status_code=400, detail="Invalid scopes format")
+
+    # Deduplicate while preserving order
+    seen = set()
+    normalized = []
+    for s in scopes:
+        if not isinstance(s, str):
+            raise HTTPException(status_code=400, detail="Invalid scope value")
+        v = s.strip().lower()
+        if not v:
+            continue
+        if v not in ALLOWED_SCOPES:
+            valid = ", ".join(sorted(ALLOWED_SCOPES))
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown scope: {v}. Valid scopes are: {valid}",
+            )
+        if v not in seen:
+            seen.add(v)
+            normalized.append(v)
+
+    # Enforce admin exclusivity
+    if "admin" in seen and len(normalized) > 1:
+        raise HTTPException(
+            status_code=400, detail="'admin' cannot be combined with other scopes"
+        )
+
+    return normalized
 
 
 class APIKeyService:
@@ -47,10 +97,9 @@ class APIKeyService:
             if expires_in_days:
                 expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
 
-            # Serialize scopes to JSON if provided
-            scopes_json = None
-            if scopes:
-                scopes_json = json.dumps(scopes)
+            # Validate and serialize scopes
+            normalized_scopes = _validate_and_normalize_scopes(scopes)
+            scopes_json = json.dumps(normalized_scopes) if normalized_scopes is not None else None
 
             # Create the API key record
             api_key_record = APIKey(
@@ -62,6 +111,9 @@ class APIKeyService:
                 expires_at=expires_at,
                 scopes=scopes_json,
             )
+
+            # Validate relationships before saving
+            validate_relationships_before_save(api_key_record, db)
 
             db.add(api_key_record)
             db.commit()
@@ -165,7 +217,8 @@ class APIKeyService:
                     api_key.expires_at = None
 
             if scopes is not None:
-                api_key.scopes = json.dumps(scopes)
+                normalized_scopes = _validate_and_normalize_scopes(scopes)
+                api_key.scopes = json.dumps(normalized_scopes)
 
             db.commit()
             db.refresh(api_key)
@@ -192,6 +245,9 @@ class APIKeyService:
 
         try:
             api_key = cls.get_api_key(key_id, user_id, db)
+
+            # Validate relationships before deleting
+            validate_relationships_before_delete(api_key, db)
 
             db.delete(api_key)
             db.commit()
@@ -245,7 +301,11 @@ class APIKeyService:
 
     @staticmethod
     def parse_scopes(api_key):
-        """Helper method to parse scopes from JSON"""
-        if api_key.scopes:
-            return json.loads(api_key.scopes)
-        return None
+        """Helper method to parse scopes from JSON. Returns [] if not set."""
+        try:
+            if api_key.scopes:
+                parsed = json.loads(api_key.scopes)
+                return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+        return []

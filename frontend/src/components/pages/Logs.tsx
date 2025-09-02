@@ -16,15 +16,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/joy";
-import {
-  Play,
-  X,
-  RefreshCw,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-} from "lucide-react";
+import { Play, RefreshCw, Clock } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import useSWR from "swr";
@@ -79,38 +71,19 @@ const Logs: React.FC = () => {
 
   const requests = requestsData || [];
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle size={16} color="green" />;
-      case "failed":
-        return <XCircle size={16} color="red" />;
-      case "cancelled":
-        return <X size={16} color="orange" />;
-      case "pending":
-        return <Clock size={16} color="blue" />;
-      default:
-        return <AlertCircle size={16} color="gray" />;
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
+  const getTaskTypeColor = (taskType: string) => {
+    switch (taskType.toLowerCase()) {
+      case "launch":
         return "success";
-      case "failed":
+      case "terminate":
         return "danger";
-      case "cancelled":
-        return "warning";
-      case "pending":
-        return "primary";
       default:
         return "neutral";
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
   };
 
   const openLogs = async (request: SkyPilotRequest) => {
@@ -175,27 +148,6 @@ const Logs: React.FC = () => {
     setLogsLoading(false);
   };
 
-  const cancelRequest = async (requestId: string) => {
-    try {
-      const response = await apiFetch(
-        buildApiUrl(`instances/requests/${requestId}/cancel`),
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to cancel request");
-      }
-
-      // Refresh the requests list using SWR
-      mutate();
-    } catch (err) {
-      console.error("Error cancelling request:", err);
-    }
-  };
-
   if (!requestsData && !error) {
     return (
       <Box
@@ -236,7 +188,6 @@ const Logs: React.FC = () => {
             <tr>
               <th>Task Type</th>
               <th>Cluster</th>
-              <th>Status</th>
               <th>Created</th>
               <th>Completed</th>
               <th>Actions</th>
@@ -246,7 +197,7 @@ const Logs: React.FC = () => {
             {requests.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   style={{ textAlign: "center", padding: "2rem" }}
                 >
                   <Typography level="body-sm" color="neutral">
@@ -258,27 +209,19 @@ const Logs: React.FC = () => {
               requests.map((request: SkyPilotRequest) => (
                 <tr key={request.id}>
                   <td>
-                    <Typography
-                      level="body-sm"
+                    <Chip
+                      color={getTaskTypeColor(request.task_type)}
+                      size="sm"
+                      variant="soft"
                       sx={{ textTransform: "capitalize" }}
                     >
                       {request.task_type}
-                    </Typography>
+                    </Chip>
                   </td>
                   <td>
                     <Typography level="body-sm">
                       {request.cluster_name || "N/A"}
                     </Typography>
-                  </td>
-                  <td>
-                    <Chip
-                      startDecorator={getStatusIcon(request.status)}
-                      color={getStatusColor(request.status)}
-                      size="sm"
-                      variant="soft"
-                    >
-                      {request.status}
-                    </Chip>
                   </td>
                   <td>
                     <Typography level="body-sm">
@@ -293,23 +236,12 @@ const Logs: React.FC = () => {
                     </Typography>
                   </td>
                   <td>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        size="sm"
-                        onClick={() => openLogs(request as SkyPilotRequest)}
-                      >
-                        <Play size={16} />
-                      </IconButton>
-                      {request.status === "pending" && (
-                        <IconButton
-                          size="sm"
-                          color="danger"
-                          onClick={() => cancelRequest(request.request_id)}
-                        >
-                          <X size={16} />
-                        </IconButton>
-                      )}
-                    </Stack>
+                    <IconButton
+                      size="sm"
+                      onClick={() => openLogs(request as SkyPilotRequest)}
+                    >
+                      <Play size={16} />
+                    </IconButton>
                   </td>
                 </tr>
               ))

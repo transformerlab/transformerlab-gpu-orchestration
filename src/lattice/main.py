@@ -1,8 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import os
-from config import AUTH_REDIRECT_URI
+from config import (
+    AUTH_REDIRECT_URI,
+    CORS_ALLOW_ORIGINS,
+    CORS_ALLOW_HEADERS,
+    CORS_EXPOSE_HEADERS,
+    COOKIE_SAMESITE,
+    COOKIE_SECURE,
+)
 
 # Import and include routers
 from routes.auth.routes import router as auth_router
@@ -22,16 +30,27 @@ from routes.ssh_config.routes import router as ssh_config_router
 from routes.container_registries.routes import router as container_registries_router
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup checks for cookie security vs SameSite policy
+    # Enforce secure setting when SameSite=None
+    if (COOKIE_SAMESITE or "lax").lower() == "none" and not COOKIE_SECURE:
+        raise RuntimeError(
+            "COOKIE_SAMESITE=None requires COOKIE_SECURE=True for modern browsers."
+        )
+    yield
+
 # Create main app
-app = FastAPI(title="Lattice", version="1.0.0")
+app = FastAPI(title="Lattice", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+    allow_headers=CORS_ALLOW_HEADERS,
+    expose_headers=CORS_EXPOSE_HEADERS,
 )
 
 

@@ -45,7 +45,7 @@ async def start_cli_authorization(
             print("[DEBUG] API key provided, validating")
             # Hash the provided key for lookup
             key_hash = None
-            from db_models import APIKey
+            from db.db_models import APIKey
 
             try:
                 key_hash = APIKey.hash_key(api_key)

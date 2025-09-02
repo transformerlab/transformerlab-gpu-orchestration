@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from db_models import TeamQuota, Team, TeamMembership
+from db.db_models import TeamQuota, Team, TeamMembership, validate_relationships_before_save, validate_relationships_before_delete
 from lattice.models import TeamQuotaResponse
 from lattice.routes.quota.utils import refresh_quota_periods_for_user
 
@@ -54,6 +54,10 @@ def create_or_update_team_quota(
             team_id=team_id,
             monthly_credits_per_user=monthly_credits_per_user,
         )
+        
+        # Validate relationships before saving
+        validate_relationships_before_save(team_quota, db)
+        
         db.add(team_quota)
 
     db.commit()
@@ -70,6 +74,9 @@ def delete_team_quota(db: Session, organization_id: str, team_id: str) -> bool:
     team_quota = get_team_quota_by_id(db, organization_id, team_id)
     if not team_quota:
         return False
+
+    # Validate relationships before deleting
+    validate_relationships_before_delete(team_quota, db)
 
     db.delete(team_quota)
     db.commit()

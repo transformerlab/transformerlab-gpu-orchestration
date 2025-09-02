@@ -14,6 +14,7 @@ import { buildApiUrl, apiFetch } from "../utils/api";
 interface SSHNode {
   ip: string;
   user: string;
+  name?: string;
   identity_file?: string;
   password?: string;
 }
@@ -174,6 +175,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
             <Table>
               <thead>
                 <tr>
+                  <th>Name</th>
                   <th>IP Address</th>
                   <th>User</th>
                   <th>Identity File</th>
@@ -201,6 +203,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
                   }
                   return (
                     <tr key={index}>
+                      <td>{node.name || "-"}</td>
                       <td>{node.ip}</td>
                       <td>{node.user}</td>
                       <td>

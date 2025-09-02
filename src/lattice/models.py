@@ -30,6 +30,7 @@ class OrganizationsResponse(BaseModel):
 class SSHNode(BaseModel):
     ip: str
     user: str
+    name: Optional[str] = None
     identity_file: Optional[str] = None
     password: Optional[str] = None
     resources: Optional[Dict[str, Any]] = (
@@ -96,6 +97,7 @@ class PortForwardInfo(BaseModel):
 class ClusterStatusResponse(BaseModel):
     cluster_name: str
     status: str
+    state: Optional[str] = None
     launched_at: Optional[int] = None
     last_use: Optional[str] = None
     autostop: Optional[int] = None
@@ -127,6 +129,9 @@ class JobQueueResponse(BaseModel):
 class JobLogsResponse(BaseModel):
     job_id: int
     logs: str
+
+
+
 
 
 class StopClusterRequest(BaseModel):
@@ -428,6 +433,39 @@ class ContainerRegistryListResponse(BaseModel):
     total_count: int
 
 
+# Docker Image Models
+class DockerImageResponse(BaseModel):
+    id: str
+    name: str
+    image_tag: str
+    description: Optional[str] = None
+    container_registry_id: Optional[str] = None
+    organization_id: str
+    user_id: str
+    created_at: str
+    updated_at: str
+    is_active: bool
+
+
+class CreateDockerImageRequest(BaseModel):
+    name: str
+    image_tag: str
+    description: Optional[str] = None
+    container_registry_id: Optional[str] = None
+
+
+class UpdateDockerImageRequest(BaseModel):
+    name: Optional[str] = None
+    image_tag: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class DockerImageListResponse(BaseModel):
+    images: List[DockerImageResponse]
+    total_count: int
+
+
 # SSH Key Models
 class SSHKeyResponse(BaseModel):
     id: str
@@ -504,3 +542,31 @@ class AvailableUser(BaseModel):
 
 class AvailableUsersResponse(BaseModel):
     users: List[AvailableUser]
+
+class OrganizationResponse(BaseModel):
+    id: str
+    name: str
+    domains: Optional[List[str]] = None
+    object: str = "organization"
+
+class CreateOrganizationRequest(BaseModel):
+    name: str
+    domains: Optional[List[str]] = None
+
+class UpdateOrganizationRequest(BaseModel):
+    name: Optional[str] = None
+    domains: Optional[List[str]] = None
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+    role: Optional[str] = "member"
+
+class SendInvitationRequest(BaseModel):
+    email: str
+    organization_id: Optional[str] = None
+    expires_in_days: Optional[int] = None
+    inviter_user_id: Optional[str] = None
+    role_slug: Optional[str] = None
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: str

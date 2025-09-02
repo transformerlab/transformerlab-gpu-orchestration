@@ -8,13 +8,11 @@ from fastapi import (
     Request,
     Response,
 )
-from fastapi.responses import StreamingResponse
-import uuid
 import os
+from fastapi.responses import StreamingResponse
 import json
 import queue
 import threading
-from config import UPLOADS_DIR
 from werkzeug.utils import secure_filename
 from lattice.models import (
     JobQueueResponse,
@@ -32,15 +30,18 @@ from routes.jobs.vscode_parser import get_vscode_tunnel_info
 from utils.cluster_resolver import (
     handle_cluster_name_param,
 )
-from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
-from typing import Optional, List
+from typing import Optional
 from pathlib import Path
+import yaml
 
 
 router = APIRouter(
-    prefix="/jobs", dependencies=[Depends(get_user_or_api_key)], tags=["jobs"]
+    prefix="/jobs",
+    dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
+    tags=["jobs"],
 )
 
 
@@ -257,6 +258,7 @@ async def cancel_cluster_job(
     request: Request,
     response: Response,
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     """Cancel a job on a SkyPilot cluster."""
     try:
@@ -282,7 +284,7 @@ async def submit_job_to_cluster(
     request: Request,
     response: Response,
     cluster_name: str,
-    command: str = Form(...),
+    command: Optional[str] = Form(None),
     setup: Optional[str] = Form(None),
     cpus: Optional[str] = Form(None),
     memory: Optional[str] = Form(None),
@@ -291,41 +293,99 @@ async def submit_job_to_cluster(
     zone: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
     dir_name: Optional[str] = Form(None),
-    dir_files: Optional[List[UploadFile]] = File(None),
-    job_type: Optional[str] = Form(None),
-    jupyter_port: Optional[int] = Form(None),
-    vscode_port: Optional[int] = Form(None),
+    uploaded_dir_path: Optional[str] = Form(None),
+    yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
+    scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
+        # Parse YAML configuration if provided
+        yaml_config = {}
+        if yaml_file:
+            # Validate file type
+            if not yaml_file.filename or not yaml_file.filename.lower().endswith(
+                (".yaml", ".yml")
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)",
+                )
+
+            # Read and parse YAML content
+            yaml_content = await yaml_file.read()
+            try:
+                yaml_config = yaml.safe_load(yaml_content) or {}
+            except yaml.YAMLError as e:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid YAML format: {str(e)}"
+                )
+
+            # Validate YAML structure
+            if not isinstance(yaml_config, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="YAML file must contain a valid configuration object",
+                )
+
+        # Merge YAML config with form parameters (form parameters take precedence)
+        final_config = {
+            "command": command,
+            "setup": setup,
+            "cpus": cpus,
+            "memory": memory,
+            "accelerators": accelerators,
+            "region": region,
+            "zone": zone,
+            "job_name": job_name,
+            "dir_name": dir_name,
+        }
+
+        # Override with YAML values where form parameters are None
+        for key, value in yaml_config.items():
+            if key in final_config and final_config[key] is None:
+                final_config[key] = value
+
+        # Validate required fields
+        if not final_config["command"]:
+            raise HTTPException(
+                status_code=400,
+                detail="command is required (either in form parameters or YAML file)",
+            )
+
+        # Extract final values
+        command = final_config["command"]
+        setup = final_config["setup"]
+        cpus = final_config["cpus"]
+        memory = final_config["memory"]
+        accelerators = final_config["accelerators"]
+        region = final_config["region"]
+        zone = final_config["zone"]
+        job_name = final_config["job_name"]
+        dir_name = final_config["dir_name"]
+
         file_mounts = None
-        workdir = None
 
-        # If a directory was uploaded, reconstruct it under a unique folder
-        if dir_files:
-            # Sanitize provided dir_name, or derive from files
-            base_name = dir_name or "project"
-            base_name = os.path.basename(base_name.strip())
-            base_name = secure_filename(base_name) or "project"
+        # Handle uploaded directory path from upload route
+        if uploaded_dir_path:
+            # Validate the uploaded directory exists
+            if not os.path.exists(uploaded_dir_path):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Uploaded directory '{uploaded_dir_path}' not found. Please upload the files first using /upload endpoint.",
+                )
 
-            unique_dir = UPLOADS_DIR / f"{uuid.uuid4()}_{base_name}"
-            unique_dir.mkdir(parents=True, exist_ok=True)
+            # Extract base name from the uploaded directory path
+            base_name = os.path.basename(uploaded_dir_path)
+            if "_" in base_name:
+                # Remove UUID prefix if present
+                base_name = "_".join(base_name.split("_")[1:])
 
-            for up_file in dir_files:
-                # Filename includes relative path as sent by frontend
-                raw_rel = up_file.filename or ""
-                # Normalize path, remove leading separators and traversal
-                norm_rel = os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
-                parts = [p for p in norm_rel.split("/") if p not in ("..", "")]
-                safe_rel = Path(*[secure_filename(p) for p in parts])
-                target_path = unique_dir / safe_rel
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(target_path, "wb") as f:
-                    f.write(await up_file.read())
+            # Use provided dir_name if available, otherwise use extracted base_name
+            if dir_name:
+                base_name = secure_filename(dir_name) or base_name
 
             # Mount the entire directory at ~/<base_name>
-            file_mounts = {f"~/{base_name}": str(unique_dir)}
-            workdir = f"~/{base_name}"
+            file_mounts = {f"~/{base_name}": uploaded_dir_path}
 
         # For VSCode, we need to remove the carriage return
         command = command.replace("\r", "")
@@ -345,16 +405,12 @@ async def submit_job_to_cluster(
             command=command,
             setup=setup,
             file_mounts=file_mounts,
-            workdir=workdir,
             cpus=cpus,
             memory=memory,
             accelerators=accelerators,
             region=region,
             zone=zone,
             job_name=secure_job_name,
-            job_type=job_type,
-            jupyter_port=jupyter_port,
-            vscode_port=vscode_port,
         )
 
         # Record usage event

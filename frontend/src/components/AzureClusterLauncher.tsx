@@ -21,6 +21,7 @@ import {
 } from "@mui/joy";
 import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import { useNotification } from "./NotificationSystem";
 
 interface AzureClusterLauncherProps {
@@ -57,6 +58,19 @@ interface ContainerRegistry {
   is_active: boolean;
 }
 
+interface DockerImage {
+  id: string;
+  name: string;
+  image_tag: string;
+  description?: string;
+  container_registry_id: string;
+  organization_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
 interface InstanceType {
   name: string;
   display_name: string;
@@ -68,6 +82,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   onClose,
   onClusterLaunched,
 }) => {
+  const { user } = useAuth();
   const [clusterName, setClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
@@ -84,11 +99,12 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   });
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [dockerImage, setDockerImage] = useState("");
-  const [selectedRegistryId, setSelectedRegistryId] = useState("");
+
+  const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
   // Storage bucket state
   const [storageBuckets, setStorageBuckets] = useState<StorageBucket[]>([]);
@@ -97,11 +113,9 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   >([]);
   const [loadingStorageBuckets, setLoadingStorageBuckets] = useState(false);
 
-  // Container registry state
-  const [containerRegistries, setContainerRegistries] = useState<
-    ContainerRegistry[]
-  >([]);
-  const [loadingRegistries, setLoadingRegistries] = useState(false);
+  // Docker image state
+  const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
+  const [loadingDockerImages, setLoadingDockerImages] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -109,9 +123,48 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       fetchAvailableInstanceTypes();
       fetchAvailableRegions();
       fetchStorageBuckets();
-      fetchContainerRegistries();
+      fetchDockerImages();
+      if (user?.organization_id) {
+        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
+          credentials: "include",
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = await res.json();
+            setAvailableCredits(Number(data.credits_remaining || 0));
+          })
+          .catch(() => {});
+      }
     }
-  }, [open]);
+  }, [open, user?.organization_id]);
+
+  // Recompute estimated cost when instance type/region change
+  useEffect(() => {
+    const compute = async () => {
+      if (!selectedInstanceType || !selectedRegion) {
+        setEstimatedCost(0);
+        return;
+      }
+      try {
+        const url = buildApiUrl(
+          `clouds/azure/price?instance_type=${encodeURIComponent(
+            selectedInstanceType
+          )}&region=${encodeURIComponent(selectedRegion)}`
+        );
+        const res = await apiFetch(url, { credentials: "include" });
+        if (!res.ok) {
+          setEstimatedCost(0);
+          return;
+        }
+        const data = await res.json();
+        const p = Number(data.price_per_hour || 0);
+        setEstimatedCost(!isNaN(p) ? p * 1.0 : 0); // 1h minimum
+      } catch (e) {
+        setEstimatedCost(0);
+      }
+    };
+    compute();
+  }, [selectedInstanceType, selectedRegion]);
 
   const fetchStorageBuckets = async () => {
     try {
@@ -134,24 +187,24 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     }
   };
 
-  const fetchContainerRegistries = async () => {
+  const fetchDockerImages = async () => {
     try {
-      setLoadingRegistries(true);
+      setLoadingDockerImages(true);
       const response = await apiFetch(
-        buildApiUrl("container-registries/available"),
+        buildApiUrl("container-registries/images/available"),
         {
           credentials: "include",
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to fetch container registries");
+        throw new Error("Failed to fetch docker images");
       }
       const data = await response.json();
-      setContainerRegistries(data);
+      setDockerImages(data);
     } catch (err) {
-      console.error("Error fetching container registries:", err);
+      console.error("Error fetching docker images:", err);
     } finally {
-      setLoadingRegistries(false);
+      setLoadingDockerImages(false);
     }
   };
 
@@ -223,12 +276,9 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const fetchAvailableInstanceTypes = async () => {
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/azure/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         const instanceTypes = (data.instance_types || []).map(
@@ -302,9 +352,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setSelectedRegion("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
-    setSelectedTemplate("");
-    setDockerImage("");
-    setSelectedRegistryId("");
+
+    setSelectedDockerImageId("");
   };
 
   const handleClose = () => {
@@ -351,10 +400,9 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       if (idleMinutesToAutostop) {
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
       }
-      if (selectedTemplate) formData.append("template", selectedTemplate);
-      if (dockerImage) formData.append("docker_image", dockerImage);
-      if (selectedRegistryId)
-        formData.append("container_registry_id", selectedRegistryId);
+
+      if (selectedDockerImageId)
+        formData.append("docker_image_id", selectedDockerImageId);
 
       // Add storage bucket IDs if selected
       if (selectedStorageBuckets.length > 0) {
@@ -472,84 +520,60 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel>Select a Template</FormLabel>
-                    <Select
-                      value={selectedTemplate}
-                      onChange={(_, value) => setSelectedTemplate(value || "")}
-                      placeholder="Choose a template"
-                    >
-                      <Option value="transformer-lab">Transformer Lab</Option>
-                      <Option value="jupyter">Jupyter</Option>
-                      <Option value="vscode">VSCode</Option>
-                    </Select>
-                    <Typography
-                      level="body-xs"
-                      sx={{ mt: 0.5, color: "text.secondary" }}
-                    >
-                      Choose a template for your node (functionality coming
-                      soon)
-                    </Typography>
-                  </FormControl>
-
-                  <FormControl>
                     <FormLabel>Docker Image (optional)</FormLabel>
-                    <Input
-                      value={dockerImage}
-                      onChange={(e) => setDockerImage(e.target.value)}
-                      placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
-                    />
+                    {loadingDockerImages ? (
+                      <Typography level="body-sm" color="neutral">
+                        Loading docker images...
+                      </Typography>
+                    ) : dockerImages.length === 0 ? (
+                      <Typography level="body-sm" color="warning">
+                        No docker images configured. You can add them in Admin
+                        &gt; Private Container Registry.
+                      </Typography>
+                    ) : (
+                      <Select
+                        value={selectedDockerImageId}
+                        onChange={(_, value) =>
+                          setSelectedDockerImageId(value || "")
+                        }
+                        placeholder="Select a docker image (optional)"
+                      >
+                        {dockerImages.map((image) => (
+                          <Option key={image.id} value={image.id}>
+                            {image.name} ({image.image_tag})
+                          </Option>
+                        ))}
+                      </Select>
+                    )}
                     <Typography
                       level="body-xs"
                       sx={{ mt: 0.5, color: "text.secondary" }}
                     >
                       Use a Docker image as runtime environment. Leave empty to
-                      use default VM image.
+                      use default VM image. Configure images in Admin &gt;
+                      Private Container Registry.
                     </Typography>
                   </FormControl>
-
-                  {dockerImage && (
-                    <>
-                      <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
-                        Private Registry Authentication (optional)
-                      </Typography>
-                      <FormControl>
-                        <FormLabel>Container Registry</FormLabel>
-                        {loadingRegistries ? (
-                          <Typography level="body-sm" color="neutral">
-                            Loading registries...
-                          </Typography>
-                        ) : containerRegistries.length === 0 ? (
-                          <Typography level="body-sm" color="warning">
-                            No container registries configured. You can add them
-                            in Admin &gt; Private Container Registry.
-                          </Typography>
-                        ) : (
-                          <Select
-                            value={selectedRegistryId}
-                            onChange={(_, value) =>
-                              setSelectedRegistryId(value || "")
-                            }
-                            placeholder="Select a registry (optional)"
-                          >
-                            {containerRegistries.map((registry) => (
-                              <Option key={registry.id} value={registry.id}>
-                                {registry.name} ({registry.docker_server})
-                              </Option>
-                            ))}
-                          </Select>
-                        )}
-                        <Typography
-                          level="body-xs"
-                          sx={{ mt: 0.5, color: "text.secondary" }}
-                        >
-                          Leave empty for public images or Docker Hub. Select a
-                          configured registry for private images.
-                        </Typography>
-                      </FormControl>
-                    </>
-                  )}
                 </Stack>
               </Card>
+              {availableCredits !== null && (
+                <Card variant="soft">
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <DollarSign size={16} />
+                    <Typography level="body-sm">
+                      Estimated cost (1h):{" "}
+                      {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"} |
+                      Remaining credits:{" "}
+                      {availableCredits?.toFixed(2) || "0.00"}
+                    </Typography>
+                  </Stack>
+                  {estimatedCost > (availableCredits ?? 0) && (
+                    <Alert color="warning" sx={{ mt: 1 }}>
+                      Insufficient credits for this selection.
+                    </Alert>
+                  )}
+                </Card>
+              )}
 
               <Card variant="outlined">
                 <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -732,7 +756,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
               !clusterName ||
               !selectedInstanceType ||
               !selectedRegion ||
-              loading
+              loading ||
+              (availableCredits !== null && estimatedCost > availableCredits)
             }
             color="success"
           >

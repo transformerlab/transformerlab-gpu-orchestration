@@ -22,6 +22,15 @@ if [[ "$1" == "--dev" ]]; then
     export FRONTEND_URL="http://localhost:3000"
     # In development mode, use a fixed, known cookie password for convenience
     export AUTH_COOKIE_PASSWORD="uX2+8A0+KO0UFR131I6eyehwZmZSt2V5wul6x5QiJYU="
+
+    # Dev-friendly security defaults
+    export COOKIE_SECURE=${COOKIE_SECURE:-false}
+    export COOKIE_SAMESITE=${COOKIE_SAMESITE:-lax}
+    export CSRF_ENABLED=${CSRF_ENABLED:-false}
+    # CORS explicit fallback to frontend URL
+    export CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-$FRONTEND_URL}
+    # WebSocket default: do not allow null Origin unless explicitly set
+    export WS_ALLOW_NULL_ORIGIN=${WS_ALLOW_NULL_ORIGIN:-false}
 else
     echo "🔨 Building frontend..."
     cd frontend || exit
@@ -62,6 +71,30 @@ else
             export AUTH_COOKIE_PASSWORD=$GENERATED_COOKIE_PASSWORD
         fi
     fi
+
+    # Prod-friendly security defaults
+    if [ -z "$COOKIE_SECURE" ]; then
+        if [[ "$FRONTEND_URL" == https://* ]]; then
+            export COOKIE_SECURE=true
+        else
+            export COOKIE_SECURE=false
+        fi
+    fi
+    export COOKIE_SAMESITE=${COOKIE_SAMESITE:-lax}
+    export CSRF_ENABLED=${CSRF_ENABLED:-true}
+    # CORS explicit fallback to frontend URL
+    export CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-$FRONTEND_URL}
+    # WebSocket default: do not allow null Origin unless explicitly set
+    export WS_ALLOW_NULL_ORIGIN=${WS_ALLOW_NULL_ORIGIN:-false}
+fi
+
+# Preflight validation: SameSite=None requires Secure=true (fail fast)
+# Use portable lowercase conversion (Bash 3 compatible)
+samesite_lc=$(printf '%s' "${COOKIE_SAMESITE:-}" | tr '[:upper:]' '[:lower:]')
+cookiesecure_lc=$(printf '%s' "${COOKIE_SECURE:-}" | tr '[:upper:]' '[:lower:]')
+if [[ "$samesite_lc" == "none" ]] && [[ "$cookiesecure_lc" != "true" && "$COOKIE_SECURE" != "1" ]]; then
+    echo "❌ Misconfiguration: COOKIE_SAMESITE=None requires COOKIE_SECURE=true"
+    exit 1
 fi
 
 if [ -n "$FRONTEND_URL" ]; then
@@ -73,6 +106,9 @@ echo "🔧 Backend API: http://localhost:$PORT/api/v1"
 echo "📝 API Documentation: http://localhost:$PORT/docs"
 echo "🔑 AUTH Client ID: ${AUTH_CLIENT_ID}"
 echo "🔗 Redirect URI: ${AUTH_REDIRECT_URI}"
+echo "🍪 Cookies: secure=${COOKIE_SECURE} samesite=${COOKIE_SAMESITE} csrf_enabled=${CSRF_ENABLED}"
+echo "🌐 CORS Allow Origins: ${CORS_ALLOW_ORIGINS}"
+echo "🛰️  WS Allow Null Origin: ${WS_ALLOW_NULL_ORIGIN}"
 
 echo "🔄 Activating Python virtual environment..."
 

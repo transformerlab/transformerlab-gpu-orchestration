@@ -7,7 +7,7 @@ from fastapi import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key
 from config import get_db
-from db_models import SSHNodePool as SSHNodePoolDB
+from db.db_models import SSHNodePool as SSHNodePoolDB
 from sqlalchemy.orm import Session
 
 from .utils import (

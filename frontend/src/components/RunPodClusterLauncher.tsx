@@ -20,6 +20,7 @@ import {
 } from "@mui/joy";
 import { Rocket, Zap } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import { useNotification } from "./NotificationSystem";
 
 interface RunPodConfig {
@@ -63,34 +64,48 @@ interface ContainerRegistry {
   is_active: boolean;
 }
 
+interface DockerImage {
+  id: string;
+  name: string;
+  image_tag: string;
+  description?: string;
+  container_registry_id: string;
+  organization_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
 const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   open,
   onClose,
   onClusterLaunched,
   runpodConfig,
 }) => {
+  const { user } = useAuth();
   const [clusterName, setClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [dockerImage, setDockerImage] = useState("");
-  const [selectedRegistryId, setSelectedRegistryId] = useState("");
+
+  const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
+
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
-  // Container registry state
-  const [containerRegistries, setContainerRegistries] = useState<
-    ContainerRegistry[]
-  >([]);
-  const [loadingRegistries, setLoadingRegistries] = useState(false);
+  // Docker image state
+  const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
+  const [loadingDockerImages, setLoadingDockerImages] = useState(false);
   const { addNotification } = useNotification();
 
   useEffect(() => {
     if (open) {
       fetchAvailableGpuTypes();
-      fetchContainerRegistries();
+      fetchDockerImages();
       // Set the first allowed GPU type as default when config is available
       if (
         runpodConfig.allowed_gpu_types &&
@@ -98,21 +113,30 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       ) {
         setSelectedGpuType(runpodConfig.allowed_gpu_types[0]);
       }
+      // Fetch current user's remaining credits
+      if (user?.organization_id) {
+        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
+          credentials: "include",
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = await res.json();
+            setAvailableCredits(Number(data.credits_remaining || 0));
+          })
+          .catch(() => {});
+      }
     } else {
       // Reset loading state when modal closes
       setIsLoadingGpuTypes(false);
     }
-  }, [open, runpodConfig.allowed_gpu_types]);
+  }, [open, runpodConfig.allowed_gpu_types, user?.organization_id]);
 
   const fetchAvailableGpuTypes = async () => {
     setIsLoadingGpuTypes(true);
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/runpod/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/runpod/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         console.log("RunPod display options in launcher:", data);
@@ -135,24 +159,40 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     }
   };
 
-  const fetchContainerRegistries = async () => {
+  useEffect(() => {
+    // Recompute estimated cost when selection changes
+    const opt = availableGpuTypes.find(
+      (o) => o.full_string === selectedGpuFullString
+    );
+    if (opt && opt.price) {
+      const priceNum = parseFloat(String(opt.price).replace(/[^0-9.]/g, ""));
+      if (!isNaN(priceNum)) {
+        // Assume 1 hour minimum
+        setEstimatedCost(priceNum * 1.0);
+        return;
+      }
+    }
+    setEstimatedCost(0);
+  }, [selectedGpuFullString, availableGpuTypes]);
+
+  const fetchDockerImages = async () => {
     try {
-      setLoadingRegistries(true);
+      setLoadingDockerImages(true);
       const response = await apiFetch(
-        buildApiUrl("container-registries/available"),
+        buildApiUrl("container-registries/images/available"),
         {
           credentials: "include",
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to fetch container registries");
+        throw new Error("Failed to fetch docker images");
       }
       const data = await response.json();
-      setContainerRegistries(data);
+      setDockerImages(data);
     } catch (err) {
-      console.error("Error fetching container registries:", err);
+      console.error("Error fetching docker images:", err);
     } finally {
-      setLoadingRegistries(false);
+      setLoadingDockerImages(false);
     }
   };
 
@@ -162,9 +202,8 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSetup("");
     setSelectedGpuType("");
     setSelectedGpuFullString("");
-    setSelectedTemplate("");
-    setDockerImage("");
-    setSelectedRegistryId("");
+
+    setSelectedDockerImageId("");
   };
 
   const handleClose = () => {
@@ -192,10 +231,9 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         formData.append("accelerators", selectedGpuFullString);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
-      if (selectedTemplate) formData.append("template", selectedTemplate);
-      if (dockerImage) formData.append("docker_image", dockerImage);
-      if (selectedRegistryId)
-        formData.append("container_registry_id", selectedRegistryId);
+
+      if (selectedDockerImageId)
+        formData.append("docker_image_id", selectedDockerImageId);
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
@@ -258,25 +296,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             />
           </FormControl>
 
-          <FormControl>
-            <FormLabel>Select a Template</FormLabel>
-            <Select
-              value={selectedTemplate}
-              onChange={(_, value) => setSelectedTemplate(value || "")}
-              placeholder="Choose a template"
-            >
-              <Option value="transformer-lab">Transformer Lab</Option>
-              <Option value="jupyter">Jupyter</Option>
-              <Option value="vscode">VSCode</Option>
-            </Select>
-            <Typography
-              level="body-xs"
-              sx={{ mt: 0.5, color: "text.secondary" }}
-            >
-              Choose a template for your node (functionality coming soon)
-            </Typography>
-          </FormControl>
-
           <Card variant="outlined">
             <Typography level="title-sm" sx={{ mb: 2 }}>
               Docker Configuration (Optional)
@@ -284,61 +303,39 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             <Stack spacing={2}>
               <FormControl>
                 <FormLabel>Docker Image</FormLabel>
-                <Input
-                  value={dockerImage}
-                  onChange={(e) => setDockerImage(e.target.value)}
-                  placeholder="e.g., ubuntu:20.04, nvcr.io/nvidia/pytorch:23.10-py3"
-                />
+                {loadingDockerImages ? (
+                  <Typography level="body-sm" color="neutral">
+                    Loading docker images...
+                  </Typography>
+                ) : dockerImages.length === 0 ? (
+                  <Typography level="body-sm" color="warning">
+                    No docker images configured. You can add them in Admin &gt;
+                    Private Container Registry.
+                  </Typography>
+                ) : (
+                  <Select
+                    value={selectedDockerImageId}
+                    onChange={(_, value) =>
+                      setSelectedDockerImageId(value || "")
+                    }
+                    placeholder="Select a docker image (optional)"
+                  >
+                    {dockerImages.map((image) => (
+                      <Option key={image.id} value={image.id}>
+                        {image.name} ({image.image_tag})
+                      </Option>
+                    ))}
+                  </Select>
+                )}
                 <Typography
                   level="body-xs"
                   sx={{ mt: 0.5, color: "text.secondary" }}
                 >
                   Use a Docker image as runtime environment. Leave empty to use
-                  default RunPod image.
+                  default RunPod image. Configure images in Admin &gt; Private
+                  Container Registry.
                 </Typography>
               </FormControl>
-
-              {dockerImage && (
-                <>
-                  <Typography level="title-sm" sx={{ mt: 2, mb: 1 }}>
-                    Private Registry Authentication (optional)
-                  </Typography>
-                  <FormControl>
-                    <FormLabel>Container Registry</FormLabel>
-                    {loadingRegistries ? (
-                      <Typography level="body-sm" color="neutral">
-                        Loading registries...
-                      </Typography>
-                    ) : containerRegistries.length === 0 ? (
-                      <Typography level="body-sm" color="warning">
-                        No container registries configured. You can add them in
-                        Admin &gt; Private Container Registry.
-                      </Typography>
-                    ) : (
-                      <Select
-                        value={selectedRegistryId}
-                        onChange={(_, value) =>
-                          setSelectedRegistryId(value || "")
-                        }
-                        placeholder="Select a registry (optional)"
-                      >
-                        {containerRegistries.map((registry) => (
-                          <Option key={registry.id} value={registry.id}>
-                            {registry.name} ({registry.docker_server})
-                          </Option>
-                        ))}
-                      </Select>
-                    )}
-                    <Typography
-                      level="body-xs"
-                      sx={{ mt: 0.5, color: "text.secondary" }}
-                    >
-                      Leave empty for public images or Docker Hub. Select a
-                      configured registry for private images.
-                    </Typography>
-                  </FormControl>
-                </>
-              )}
             </Stack>
           </Card>
 
@@ -489,13 +486,21 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               isLoadingGpuTypes ||
               availableGpuTypes.filter((gpu) =>
                 runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-              ).length === 0
+              ).length === 0 ||
+              (availableCredits !== null && estimatedCost > availableCredits)
             }
             color="success"
           >
             Reserve a RunPod Node
           </Button>
         </Box>
+        {availableCredits !== null && (
+          <Typography level="body-xs" sx={{ mt: 1, color: "text.secondary" }}>
+            Estimated cost (1h):{" "}
+            {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"}
+            {"  "}| Remaining credits: {availableCredits.toFixed(2)}
+          </Typography>
+        )}
         {!isLoadingGpuTypes &&
           availableGpuTypes.filter((gpu) =>
             runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
@@ -506,6 +511,11 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               clusters.
             </Alert>
           )}
+        {availableCredits !== null && estimatedCost > availableCredits && (
+          <Alert color="warning" sx={{ mt: 1 }}>
+            Insufficient credits for this selection.
+          </Alert>
+        )}
       </ModalDialog>
     </Modal>
   );
