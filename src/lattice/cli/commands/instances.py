@@ -366,7 +366,7 @@ def info_instance_command(console: Console, cluster_name: str):
         data = {}
 
     if resp.status_code != 200:
-        console.print(f"[bold red]✗[/bold red] Failed to get cluster info.")
+        console.print("[bold red]✗[/bold red] Failed to get cluster info.")
         console.print(f"[bold]Status Code:[/bold] {resp.status_code}")
         try:
             error_data = resp.json()
@@ -399,7 +399,7 @@ def info_instance_command(console: Console, cluster_name: str):
             try:
                 import time
                 launched_at = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(launched_at))
-            except:
+            except Exception:
                 pass  # Keep original format if formatting fails
         console.print(f"[bold]Launched:[/bold] {launched_at}")
 
@@ -425,7 +425,7 @@ def info_instance_command(console: Console, cluster_name: str):
 
     # Display platform information
     if platform:
-        console.print(f"\n[bold]Platform:[/bold]")
+        console.print("\n[bold]Platform:[/bold]")
         if isinstance(platform, dict):
             if platform.get('platform'):
                 console.print(f"  [dim]Provider:[/dim] {platform['platform']}")
@@ -465,7 +465,7 @@ def info_instance_command(console: Console, cluster_name: str):
                 try:
                     import time
                     submitted = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(submitted))
-                except:
+                except Exception:
                     submitted = str(submitted)[:19]  # Truncate if formatting fails
 
             username = job.get('username', 'N/A')
@@ -474,6 +474,6 @@ def info_instance_command(console: Console, cluster_name: str):
 
         console.print(job_table)
     else:
-        console.print(f"\n[bold]Jobs:[/bold] No jobs found")
+        console.print("\n[bold]Jobs:[/bold] No jobs found")
 
     console.print(f"\n[dim]Info retrieved successfully for cluster '{cluster_name}'[/dim]")
