@@ -284,7 +284,7 @@ async def authorize_cli(
                 name=api_key_name,
                 organization_id=organization_id,
                 expires_in_days=90,  # 90-day expiration
-                scopes=["cli:access"],  # Define appropriate scope for CLI access
+                scopes=["cli:access", "compute:write"],  # Define appropriate scope for CLI access
                 db=db,
             )
 

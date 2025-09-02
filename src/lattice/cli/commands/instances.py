@@ -1,4 +1,5 @@
 import time
+import os
 from lattice.cli.util.auth import api_request
 
 from rich.console import Console
@@ -75,6 +76,93 @@ def list_instances_command(console: Console):
 
     console.print(table)
     console.print(f"[dim]Total instances: {len(clusters)}[/dim]")
+
+
+def start_instance_command(console: Console, yaml_file_path: str):
+    """Start a new lab instance using a YAML configuration file."""
+    console.print(
+        f"[bold blue]Starting lab instance with configuration: [cyan]{yaml_file_path}[/cyan][/bold blue]"
+    )
+
+    # Check if file exists
+    if not os.path.exists(yaml_file_path):
+        console.print(
+            f"[bold red]Error:[/bold red] File '{yaml_file_path}' does not exist."
+        )
+        return
+
+    # Check if file is a YAML file
+    if not yaml_file_path.lower().endswith((".yaml", ".yml")):
+        console.print(
+            f"[bold red]Error:[/bold red] File '{yaml_file_path}' is not a YAML file (.yaml or .yml extension required)."
+        )
+        return
+
+    # Show file info
+    file_info = Panel(
+        f"File: {yaml_file_path}\nSize: {os.path.getsize(yaml_file_path)} bytes",
+        title="Configuration File",
+        border_style="blue",
+    )
+    console.print(file_info)
+
+    # Confirm the launch
+    if not Confirm.ask(
+        "[yellow]Launch instance with this configuration?[/yellow]", default=True
+    ):
+        console.print("[yellow]Launch cancelled.[/yellow]")
+        return
+
+    # Show progress
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Launching instance...[/bold blue]"),
+        transient=False,
+    ) as progress:
+        task = progress.add_task("", total=100)
+
+        try:
+            # Prepare the multipart form data
+            with open(yaml_file_path, "rb") as yaml_file:
+                files = {
+                    "yaml_file": (
+                        os.path.basename(yaml_file_path),
+                        yaml_file,
+                        "application/x-yaml",
+                    )
+                }
+
+                # Make the API request
+                progress.update(task, completed=50)
+                resp = api_request(
+                    "POST", "/instances/launch", auth_needed=True, files=files
+                )
+                progress.update(task, completed=100)
+
+            if resp.status_code == 200:
+                resp_data = resp.json()
+                console.print(
+                    "[bold green]✓[/bold green] Instance launched successfully!"
+                )
+                console.print(
+                    f"[bold]Cluster Name:[/bold] {resp_data.get('cluster_name', 'N/A')}"
+                )
+                console.print(f"[bold]Status:[/bold] {resp_data.get('status', 'N/A')}")
+                if "message" in resp_data:
+                    console.print(f"[bold]Message:[/bold] {resp_data['message']}")
+            else:
+                console.print("[bold red]✗[/bold red] Failed to launch instance.")
+                console.print(f"[bold]Status Code:[/bold] {resp.status_code}")
+                try:
+                    error_data = resp.json()
+                    console.print(
+                        f"[bold]Error:[/bold] {error_data.get('detail', 'Unknown error')}"
+                    )
+                except Exception:
+                    console.print(f"[bold]Error:[/bold] {resp.text}")
+
+        except Exception as e:
+            console.print(f"[bold red]✗[/bold red] Error launching instance: {str(e)}")
 
 
 def request_instance_command(console, name, instance_type, region):
