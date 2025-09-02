@@ -17,6 +17,7 @@ from lattice.cli.commands.instances import (
     list_instances_command,
     start_instance_command,
     destroy_instance_command,
+    info_instance_command,
 )
 import typer
 from rich.console import Console
@@ -104,6 +105,14 @@ def destroy_instance(
 ):
     """Destroy (terminate) a lab instance."""
     destroy_instance_command(console, cluster_name)
+
+
+@instances_app.command("info")
+def info_instance(
+    instance_name: str = typer.Argument(..., help="Name of the instance to get information about"),
+):
+    """Get comprehensive information about a specific instance instance."""
+    info_instance_command(console, instance_name)
 
 
 @node_pools_app.command("list")

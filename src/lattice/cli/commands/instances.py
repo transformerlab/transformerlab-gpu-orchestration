@@ -346,3 +346,134 @@ def destroy_instance_command(console: Console, cluster_name: Optional[str]):
                     console.print(f"[bold]Error:[/bold] {resp.text}")
         except Exception as e:
             console.print(f"[bold red]✗[/bold red] Error destroying instance: {str(e)}")
+
+
+def info_instance_command(console: Console, cluster_name: str):
+    """Get comprehensive information about a specific cluster instance."""
+    console.print(f"[bold blue]Getting info for cluster: [cyan]{cluster_name}[/cyan][/bold blue]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Fetching cluster info...[/bold blue]"),
+        transient=True,
+    ) as progress:
+        progress.add_task("", total=None)
+        resp = api_request("GET", f"/instances/{cluster_name}/info", auth_needed=True)
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = {}
+
+    if resp.status_code != 200:
+        console.print(f"[bold red]✗[/bold red] Failed to get cluster info.")
+        console.print(f"[bold]Status Code:[/bold] {resp.status_code}")
+        try:
+            error_data = resp.json()
+            console.print(f"[bold]Error:[/bold] {error_data.get('detail', 'Unknown error')}")
+        except Exception:
+            console.print(f"[bold]Error:[/bold] {resp.text}")
+        return
+
+    # Extract the data we want (excluding available operations and SSH node info)
+    cluster = data.get("cluster", {})
+    platform = data.get("platform", {})
+    cluster_state = data.get("state")
+    jobs = data.get("jobs", [])
+
+    # Display basic cluster information
+    console.print(f"\n[bold]Cluster:[/bold] {cluster.get('cluster_name', cluster_name)}")
+
+    # Clean up status (remove "ClusterStatus." prefix)
+    status = cluster.get('status', 'Unknown')
+    if status and 'ClusterStatus.' in status:
+        status = status.replace('ClusterStatus.', '')
+    console.print(f"[bold]Status:[/bold] {status}")
+
+    console.print(f"[bold]State:[/bold] {cluster_state or 'Unknown'}")
+
+    if cluster.get('launched_at'):
+        # Try to format timestamp if it's a number
+        launched_at = cluster['launched_at']
+        if isinstance(launched_at, (int, float)):
+            try:
+                import time
+                launched_at = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(launched_at))
+            except:
+                pass  # Keep original format if formatting fails
+        console.print(f"[bold]Launched:[/bold] {launched_at}")
+
+    if cluster.get('last_use'):
+        last_use = cluster['last_use']
+        # Skip if it looks like a file path
+        if not (isinstance(last_use, str) and last_use.startswith('./')):
+            console.print(f"[bold]Last Use:[/bold] {last_use}")
+
+    if cluster.get('autostop') is not None:
+        autostop_val = cluster['autostop']
+        autostop_display = str(autostop_val) if autostop_val != -1 else "Disabled"
+        console.print(f"[bold]Autostop:[/bold] {autostop_display}")
+
+    if cluster.get('resources_str'):
+        console.print(f"[bold]Resources:[/bold] {cluster['resources_str']}")
+
+    if cluster.get('user_info'):
+        user_info = cluster['user_info']
+        user_name = user_info.get('name', 'Unknown')
+        user_email = user_info.get('email', 'Unknown')
+        console.print(f"[bold]User:[/bold] {user_name} ({user_email})")
+
+    # Display platform information
+    if platform:
+        console.print(f"\n[bold]Platform:[/bold]")
+        if isinstance(platform, dict):
+            if platform.get('platform'):
+                console.print(f"  [dim]Provider:[/dim] {platform['platform']}")
+            if platform.get('region'):
+                console.print(f"  [dim]Region:[/dim] {platform['region']}")
+            if platform.get('zone'):
+                console.print(f"  [dim]Zone:[/dim] {platform['zone']}")
+            if platform.get('user_id'):
+                console.print(f"  [dim]Owner ID:[/dim] {platform['user_id']}")
+        elif isinstance(platform, str):
+            console.print(f"  [dim]Provider:[/dim] {platform}")
+
+    # Display jobs information
+    if jobs:
+        console.print(f"\n[bold]Jobs:[/bold] {len(jobs)} total")
+
+        # Create a table for jobs
+        job_table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
+        job_table.add_column("Job ID", style="dim", max_width=12)
+        job_table.add_column("Name", max_width=20)
+        job_table.add_column("Status", justify="center")
+        job_table.add_column("Submitted", justify="center")
+        job_table.add_column("Username", max_width=15)
+
+        for job in jobs:
+            job_id = str(job.get('job_id', 'N/A'))[:12]  # Truncate long IDs and convert to string
+            job_name = job.get('job_name', 'N/A')
+
+            # Clean up status (remove "JobStatus." prefix)
+            status = job.get('status', 'Unknown')
+            if status and 'JobStatus.' in status:
+                status = status.replace('JobStatus.', '')
+
+            # Format submitted timestamp
+            submitted = job.get('submitted_at', 'N/A')
+            if isinstance(submitted, (int, float)):
+                try:
+                    import time
+                    submitted = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(submitted))
+                except:
+                    submitted = str(submitted)[:19]  # Truncate if formatting fails
+
+            username = job.get('username', 'N/A')
+
+            job_table.add_row(job_id, job_name, status, submitted, username)
+
+        console.print(job_table)
+    else:
+        console.print(f"\n[bold]Jobs:[/bold] No jobs found")
+
+    console.print(f"\n[dim]Info retrieved successfully for cluster '{cluster_name}'[/dim]")
