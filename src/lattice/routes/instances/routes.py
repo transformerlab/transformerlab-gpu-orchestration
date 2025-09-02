@@ -1,15 +1,16 @@
 import json
+import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 # Removed load_ssh_node_info import as we now use database-based approach
-from typing import Optional, List
-import yaml
-import os
-from pathlib import Path
-from werkzeug.utils import secure_filename
+from typing import List, Optional
 
-from config import UPLOADS_DIR
+import yaml
+from config import UPLOADS_DIR, get_db
+from db.db_models import NodePoolAccess as NodePoolAccessDB
+from db.db_models import SSHNodePool as SSHNodePoolDB
 from fastapi import (
     APIRouter,
     Depends,
@@ -22,86 +23,65 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from models import (
+    ClusterStatusResponse,
+    DownClusterRequest,
     DownClusterResponse,
     LaunchClusterResponse,
     StatusResponse,
     StopClusterRequest,
     StopClusterResponse,
-    DownClusterRequest,
-    ClusterStatusResponse,
-)
-from .utils import (
-    launch_cluster_with_skypilot_isolated,
-    get_skypilot_status,
-    stop_cluster_with_skypilot,
-    down_cluster_with_skypilot,
-    generate_cost_report,
-)
-from routes.clouds.azure.utils import (
-    az_get_config_for_display,
 )
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope
-from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.clouds.azure.utils import (
+    az_get_config_for_display,
+    az_get_price_per_hour,
+    az_infer_gpu_count,
     az_setup_config,
     load_azure_config,
-    az_infer_gpu_count,
-    az_get_price_per_hour,
 )
 from routes.clouds.runpod.utils import (
-    rp_setup_config,
     load_runpod_config,
-    rp_get_price_per_hour,
     map_runpod_display_to_instance_type,
+    rp_get_price_per_hour,
+    rp_setup_config,
 )
+from routes.jobs.utils import get_cluster_job_queue
 from routes.node_pools.utils import (
-    is_ssh_cluster,
     is_down_only_cluster,
+    is_ssh_cluster,
     update_gpu_resources_for_node_pool,
 )
+from routes.quota.utils import get_current_user_quota_info, get_user_team_id
 from routes.reports.utils import record_usage
-from routes.quota.utils import get_user_team_id, get_current_user_quota_info
 from sqlalchemy.orm import Session
-from config import get_db
-from db.db_models import (
-    NodePoolAccess as NodePoolAccessDB,
-    SSHNodePool as SSHNodePoolDB,
-)
 from utils.cluster_resolver import handle_cluster_name_param
-from utils.cluster_utils import (
-    create_cluster_platform_entry,
-    get_actual_cluster_name,
-    get_cluster_platform,
-)
+
 from utils.cluster_utils import get_cluster_platform_info as get_cluster_platform_data
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
 from utils.cluster_utils import (
     get_cluster_state,
-    update_cluster_state,
     get_cluster_user_info,
     get_display_name_from_actual,
-    get_cluster_platform_info as get_cluster_platform_data,
-    get_cluster_platform_info as get_cluster_platform_info_util,
-    get_cluster_platform,
     load_cluster_platforms,
-    get_cluster_template,
+    update_cluster_state,
+    create_cluster_platform_entry,
+    get_actual_cluster_name,
+    get_cluster_platform,
 )
-from utils.cluster_utils import (
-    get_cluster_user_info,
-)
-from utils.cluster_resolver import (
-    handle_cluster_name_param,
-)
-from routes.auth.api_key_auth import get_user_or_api_key
-from routes.auth.utils import get_current_user
-
-from routes.jobs.utils import get_cluster_job_queue
-
-from routes.reports.utils import record_usage
-
 from utils.skypilot_tracker import skypilot_tracker
+from werkzeug.utils import secure_filename
+
+from routes.auth.api_key_auth import enforce_csrf
+
+from .utils import (
+    down_cluster_with_skypilot,
+    generate_cost_report,
+    get_skypilot_status,
+    launch_cluster_with_skypilot_isolated,
+    stop_cluster_with_skypilot,
+)
 
 # Global thread pool executor for GPU resource updates
 _gpu_update_executor = ThreadPoolExecutor(
