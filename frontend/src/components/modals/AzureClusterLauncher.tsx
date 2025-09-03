@@ -20,9 +20,10 @@ import {
   Switch,
 } from "@mui/joy";
 import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
-import { buildApiUrl, apiFetch } from "../utils/api";
-import { useAuth } from "../context/AuthContext";
-import { useNotification } from "./NotificationSystem";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../NotificationSystem";
+import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 
 interface AzureClusterLauncherProps {
   open: boolean;
@@ -556,24 +557,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   </FormControl>
                 </Stack>
               </Card>
-              {availableCredits !== null && (
-                <Card variant="soft">
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <DollarSign size={16} />
-                    <Typography level="body-sm">
-                      Estimated cost (1h):{" "}
-                      {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"} |
-                      Remaining credits:{" "}
-                      {availableCredits?.toFixed(2) || "0.00"}
-                    </Typography>
-                  </Stack>
-                  {estimatedCost > (availableCredits ?? 0) && (
-                    <Alert color="warning" sx={{ mt: 1 }}>
-                      Insufficient credits for this selection.
-                    </Alert>
-                  )}
-                </Card>
-              )}
 
               <Card variant="outlined">
                 <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -733,6 +716,25 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
             </Stack>
           </form>
         </Box>
+
+        {/* Cost & Credits Display */}
+        {availableCredits !== null && (
+          <Box sx={{ mt: 2 }}>
+            <CostCreditsDisplay
+              estimatedCost={estimatedCost}
+              availableCredits={availableCredits}
+              variant="card"
+              showWarning={true}
+            />
+            <Typography
+              level="body-xs"
+              sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+            >
+              Note: Cost estimates are approximate and may vary based on actual
+              usage and resource allocation.
+            </Typography>
+          </Box>
+        )}
 
         <Box
           sx={{
