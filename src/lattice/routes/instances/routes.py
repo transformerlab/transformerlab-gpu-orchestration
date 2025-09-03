@@ -767,6 +767,9 @@ async def get_cost_report(
         )
 
 
+
+
+
 @router.get("/{cluster_name}/info")
 async def get_cluster_info(
     cluster_name: str,
@@ -902,6 +905,34 @@ async def get_cluster_info(
                     f"Warning: Failed to get SSH node info for cluster {cluster_name}: {e}"
                 )
 
+        # Get cost information for this cluster
+        cost_info = None
+        try:
+            # Get the full cost report and find this cluster's cost data
+            report = generate_cost_report()
+            if report:
+                for cluster_cost_data in report:
+                    if cluster_cost_data.get("name") == actual_cluster_name:
+                        total_cost = cluster_cost_data.get("total_cost", 0)
+                        duration = cluster_cost_data.get("duration", 0)
+                        cost_per_hour = 0
+                        if duration and duration > 0:
+                            cost_per_hour = total_cost / (duration / 3600)  # Convert seconds to hours
+                        
+                        cost_info = {
+                            "total_cost": total_cost,
+                            "duration": duration,
+                            "cost_per_hour": cost_per_hour,
+                            "launched_at": cluster_cost_data.get("launched_at"),
+                            "status": cluster_cost_data.get("status"),
+                            "cloud": cluster_cost_data.get("cloud"),
+                            "region": cluster_cost_data.get("region")
+                        }
+                        break
+        except Exception as e:
+            print(f"Warning: Failed to get cost info for cluster {cluster_name}: {e}")
+            # Continue without cost info if there's an error
+
         return {
             "cluster": cluster_data,
             "cluster_type": cluster_type_info,
@@ -909,6 +940,7 @@ async def get_cluster_info(
             "state": state,
             "jobs": jobs,
             "ssh_node_info": ssh_node_info,
+            "cost_info": cost_info,
         }
 
     except HTTPException:
