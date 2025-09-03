@@ -306,7 +306,6 @@ async def launch_instance(
         # Setup Azure if cloud is azure
         if cloud == "azure":
             try:
-<<<<<<< HEAD
                 # az_setup_config()
                 az_config = az_get_config_for_display()
                 az_config_dict = az_config["configs"][az_config["default_config"]]
@@ -320,9 +319,6 @@ async def launch_instance(
                         }
                     }
                 }
-=======
-                az_setup_config(user.get("organization_id"))
->>>>>>> e474b1eda1ebf11d3b489169883beb1cce8d30d9
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
