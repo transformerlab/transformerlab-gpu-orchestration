@@ -112,7 +112,7 @@ async def get_node_pools(
 
             # Add RunPod max instances
             try:
-                runpod_config = rp_get_current_config()
+                runpod_config = rp_get_current_config(user.get("organization_id"), db)
                 if runpod_config:
                     total_max_instances += runpod_config.get("max_instances", 0)
             except Exception as e:
@@ -120,7 +120,7 @@ async def get_node_pools(
 
             # Add Azure max instances
             try:
-                azure_config = az_get_current_config()
+                azure_config = az_get_current_config(user.get("organization_id"), db)
                 if azure_config:
                     total_max_instances += azure_config.get("max_instances", 0)
             except Exception as e:
@@ -189,7 +189,7 @@ async def get_node_pools(
 
             # Get Azure configs
             try:
-                azure_config_data = load_azure_config()
+                azure_config_data = load_azure_config(user.get("organization_id"), db)
                 if azure_config_data.get("configs"):
                     for config_key, config in azure_config_data["configs"].items():
                         # Get current Azure instances for this config (filtered by user)
@@ -275,7 +275,7 @@ async def get_node_pools(
 
             # Get RunPod configs
             try:
-                runpod_config_data = load_runpod_config()
+                runpod_config_data = load_runpod_config(user.get("organization_id"), db)
                 if runpod_config_data.get("configs"):
                     for config_key, config in runpod_config_data["configs"].items():
                         # Get current RunPod instances for this config (filtered by user)

@@ -15,7 +15,6 @@ import {
   Autocomplete,
 } from "@mui/joy";
 import { Save, Key, Gpu, Settings, ArrowLeft } from "lucide-react";
-import LogViewer from "../../widgets/LogViewer";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import PageWithTitle from "../templates/PageWithTitle";
 import { useNotification } from "../../../components/NotificationSystem";
@@ -66,13 +65,7 @@ const RunPodConfigPage: React.FC = () => {
   const [allowedTeamIds, setAllowedTeamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [skyChecking, setSkyChecking] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [skyCheckResult, setSkyCheckResult] = useState<{
-    valid: boolean;
-    output: string;
-    message: string;
-  } | null>(null);
   const [existingConfigs, setExistingConfigs] = useState<any>(null);
 
   useEffect(() => {
@@ -249,7 +242,6 @@ const RunPodConfigPage: React.FC = () => {
   const saveConfig = async () => {
     try {
       setSaving(true);
-      setSkyCheckResult(null);
 
       const requestBody: any = {
         name: poolName,
@@ -300,27 +292,10 @@ const RunPodConfigPage: React.FC = () => {
           setConfig(data);
           setAllowedTeamIds(data.allowed_team_ids || []);
         }
-
-        if (data.sky_check_result) {
-          setSkyCheckResult(data.sky_check_result);
-          if (data.sky_check_result.valid) {
-            addNotification({
-              type: "success",
-              message:
-                "RunPod configuration saved successfully and sky check passed",
-            });
-          } else {
-            addNotification({
-              type: "danger",
-              message: `RunPod configuration saved but sky check failed: ${data.sky_check_result.message}`,
-            });
-          }
-        } else {
-          addNotification({
-            type: "success",
-            message: "RunPod configuration saved successfully",
-          });
-        }
+        addNotification({
+          type: "success",
+          message: "RunPod configuration saved successfully",
+        });
 
         // Navigate back to pools page after successful save
         setTimeout(() => {
@@ -390,45 +365,7 @@ const RunPodConfigPage: React.FC = () => {
     }
   };
 
-  const runSkyCheck = async () => {
-    try {
-      setSkyChecking(true);
-      setSkyCheckResult(null);
-
-      const response = await apiFetch(buildApiUrl("clouds/runpod/sky-check"), {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSkyCheckResult(data);
-        if (data.valid) {
-          addNotification({
-            type: "success",
-            message: "Sky check runpod completed successfully",
-          });
-        } else {
-          addNotification({
-            type: "danger",
-            message: "Sky check runpod failed",
-          });
-        }
-      } else {
-        const errorData = await response.json();
-        addNotification({
-          type: "danger",
-          message: errorData.detail || "Sky check runpod failed",
-        });
-      }
-    } catch (err) {
-      addNotification({
-        type: "danger",
-        message: "Error running sky check runpod",
-      });
-    } finally {
-      setSkyChecking(false);
-    }
-  };
+  
 
   if (loading && isConfigureMode) {
     return (
@@ -569,14 +506,7 @@ const RunPodConfigPage: React.FC = () => {
               >
                 Test Connection
               </Button>
-              <Button
-                variant="outlined"
-                onClick={runSkyCheck}
-                disabled={skyChecking || !config.is_configured}
-                loading={skyChecking}
-              >
-                Sky Check RunPod
-              </Button>
+              
               <Button
                 variant="outlined"
                 onClick={() => setShowApiKey(!showApiKey)}
@@ -587,45 +517,7 @@ const RunPodConfigPage: React.FC = () => {
           </Stack>
         </Card>
 
-        {/* Sky Check Results */}
-        {skyCheckResult && (
-          <Card variant="outlined">
-            <Typography level="h4" sx={{ mb: 2 }}>
-              Sky Check RunPod Results
-            </Typography>
-            <Stack spacing={2}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography>Validation Status</Typography>
-                <Chip
-                  variant="soft"
-                  color={skyCheckResult.valid ? "success" : "danger"}
-                  size="sm"
-                >
-                  {skyCheckResult.valid ? "Passed" : "Failed"}
-                </Chip>
-              </Box>
-              <Box>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Output:
-                </Typography>
-                <Box
-                  sx={{
-                    height: 400,
-                    borderRadius: 1,
-                  }}
-                >
-                  <LogViewer log={skyCheckResult.output} />
-                </Box>
-              </Box>
-            </Stack>
-          </Card>
-        )}
+        
 
         {/* GPU Types Configuration */}
         <Card variant="outlined">

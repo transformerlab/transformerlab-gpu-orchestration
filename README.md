@@ -138,5 +138,5 @@ Tips:
  - Forward args via script: `./run_tests.sh -k login_url`
 
 Notes:
-- Tests set `DATABASE_URL=sqlite:///:memory:` and isolate `$HOME` to `tests/.tmp_home` via `tests/conftest.py` to avoid touching your real database or `~/.sky`.
+- Tests isolate `$HOME` to `tests/.tmp_home` and set `DATABASE_URL` to a file-based SQLite DB under that folder; Alembic migrations run at test session start to match production schema.
 - The initial tests are intentionally simple to serve as templates for future tests.
