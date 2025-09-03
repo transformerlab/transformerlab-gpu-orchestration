@@ -78,7 +78,7 @@ else:
     # Default to FRONTEND_URL if provided, otherwise localhost dev
     _frontend = os.getenv("FRONTEND_URL")
     coerced = _coerce_origin(_frontend) if _frontend else None
-    CORS_ALLOW_ORIGINS = [coerced] if coerced else ["http://localhost:3000"]
+    CORS_ALLOW_ORIGINS = [coerced] if coerced else ["http://localhost:3000", "http://localhost:8000"]
 
 # CORS headers allowlist (comma-separated). Keep a tight default set; add x-csrf-token for CSRF patterns.
 _cors_headers_env = os.getenv("CORS_ALLOW_HEADERS")
