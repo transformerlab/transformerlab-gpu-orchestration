@@ -23,7 +23,7 @@ import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../NotificationSystem";
-import CostCreditsDisplay from "../CostCreditsDisplay";
+import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 
 interface AzureClusterLauncherProps {
   open: boolean;

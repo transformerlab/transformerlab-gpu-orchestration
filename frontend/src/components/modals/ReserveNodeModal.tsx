@@ -20,7 +20,7 @@ import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
 import { useNotification } from "../NotificationSystem";
 import { useAuth } from "../../context/AuthContext";
-import CostCreditsDisplay from "../CostCreditsDisplay";
+import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 
 interface DockerImage {
   id: string;
