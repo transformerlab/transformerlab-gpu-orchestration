@@ -8,11 +8,12 @@ from sqlalchemy import or_
 
 import sky
 from fastapi import HTTPException
-from routes.clouds.azure.utils import az_get_config_for_display
+from routes.clouds.azure.utils import az_get_current_config
 from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
+from sqlalchemy.orm import Session
 from utils.skypilot_tracker import skypilot_tracker
 from werkzeug.utils import secure_filename
 
@@ -420,15 +421,10 @@ async def launch_cluster_with_skypilot_isolated(
     use_spot=False,
     idle_minutes_to_autostop=None,
     file_mounts: Optional[dict] = None,
-    workdir: Optional[str] = None,
-    launch_mode: Optional[str] = None,
-    jupyter_port: Optional[int] = None,
-    vscode_port: Optional[int] = None,
     disk_size: Optional[int] = None,
     storage_bucket_ids: Optional[list] = None,
     node_pool_name: Optional[str] = None,
-    docker_image: Optional[str] = None,
-    container_registry_id: Optional[str] = None,
+    docker_image_id: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
@@ -454,15 +450,10 @@ async def launch_cluster_with_skypilot_isolated(
             "use_spot": use_spot,
             "idle_minutes_to_autostop": idle_minutes_to_autostop,
             "file_mounts": file_mounts,
-            "workdir": workdir,
-            "launch_mode": launch_mode,
-            "jupyter_port": jupyter_port,
-            "vscode_port": vscode_port,
             "disk_size": disk_size,
             "storage_bucket_ids": storage_bucket_ids,
             "node_pool_name": node_pool_name,
-            "docker_image": docker_image,
-            "container_registry_id": container_registry_id,
+            "docker_image_id": docker_image_id,
             "user_id": user_id,
             "organization_id": organization_id,
             "display_name": display_name,
@@ -632,6 +623,7 @@ def down_cluster_with_skypilot(
     display_name: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
 ):
     try:
         # Fetch credentials for the cluster based on the platform
@@ -641,10 +633,7 @@ def down_cluster_with_skypilot(
             platform = platform_info["platform"]
             if platform == "azure":
                 try:
-                    azure_config = az_get_config_for_display()
-                    azure_config_dict = azure_config["configs"][
-                        azure_config["default_config"]
-                    ]
+                    azure_config_dict = az_get_current_config(organization_id=organization_id, db=db)
                     credentials = {
                         "azure": {
                             "service_principal": {
@@ -663,7 +652,9 @@ def down_cluster_with_skypilot(
 
         # First, get all jobs from the cluster before tearing down
         try:
-            job_records = get_cluster_job_queue(cluster_name)
+            # job_records = get_cluster_job_queue(cluster_name)
+            # DISABLE TEMPORARILY as sky.queue requires active azure accounts, which we don't have in our dev skypilot
+            job_records = None
             # Extract jobs from the job records
             if job_records and hasattr(job_records, "jobs"):
                 jobs = job_records.jobs

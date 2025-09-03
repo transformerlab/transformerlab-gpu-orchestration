@@ -33,7 +33,7 @@ from models import (
 )
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope
 from routes.clouds.azure.utils import (
-    az_get_config_for_display,
+    az_get_current_config,
     az_get_price_per_hour,
     az_infer_gpu_count,
     az_setup_config,
@@ -307,8 +307,8 @@ async def launch_instance(
         if cloud == "azure":
             try:
                 # az_setup_config()
-                az_config = az_get_config_for_display()
-                az_config_dict = az_config["configs"][az_config["default_config"]]
+                az_config_dict = az_get_current_config(organization_id=user.get("organization_id"), db=db)
+                # az_config_dict = az_config["configs"][az_config["default_config"]]
                 credentials = {
                     "azure": {
                         "service_principal": {
@@ -319,6 +319,7 @@ async def launch_instance(
                         }
                     }
                 }
+
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
@@ -572,6 +573,7 @@ async def down_instance(
     down_request: DownClusterRequest,
     user: dict = Depends(get_user_or_api_key),
     scope_check: dict = Depends(require_scope("compute:write")),
+    db: Session = Depends(get_db),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -588,6 +590,7 @@ async def down_instance(
             display_name,
             user_id=user["id"],
             organization_id=user["organization_id"],
+            db=db,
         )
 
         # Check if this cluster uses an SSH node pool as its platform (background thread)
