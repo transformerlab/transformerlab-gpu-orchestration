@@ -89,6 +89,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [setup, setSetup] = useState("");
   const [selectedInstanceType, setSelectedInstanceType] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<
     InstanceType[]
   >([]);
@@ -351,6 +352,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setSetup("");
     setSelectedInstanceType("");
     setSelectedRegion("");
+    setDiskSpace("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
 
@@ -397,6 +399,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       formData.append("cloud", "azure");
       formData.append("instance_type", selectedInstanceType);
       formData.append("region", selectedRegion);
+      if (diskSpace) formData.append("disk_space", diskSpace);
       formData.append("use_spot", useSpot.toString());
       if (idleMinutesToAutostop) {
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
@@ -606,6 +609,27 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   </FormControl>
                 </Stack>
               </Card>
+
+              <FormControl>
+                <FormLabel>Disk Space (GB) - Optional</FormLabel>
+                <Input
+                  value={diskSpace}
+                  onChange={(e) => setDiskSpace(e.target.value)}
+                  placeholder="e.g., 100, 200, 500 (leave empty for default)"
+                  slotProps={{
+                    input: {
+                      type: "number",
+                      min: 1,
+                    },
+                  }}
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 0.5, color: "text.secondary" }}
+                >
+                  Custom disk size for the instance. Leave empty to use default.
+                </Typography>
+              </FormControl>
 
               <Card variant="outlined">
                 <Typography level="title-sm" sx={{ mb: 2 }}>
