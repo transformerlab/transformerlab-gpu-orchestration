@@ -55,8 +55,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [cpus, setCpus] = useState("");
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
-  const [region, setRegion] = useState("");
-  const [zone, setZone] = useState("");
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -159,8 +157,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
-      if (region) formData.append("region", region);
-      if (zone) formData.append("zone", zone);
       if (selectedDockerImageId)
         formData.append("docker_image_id", selectedDockerImageId);
       formData.append("use_spot", "false");
@@ -355,24 +351,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   value={accelerators}
                   onChange={(e) => setAccelerators(e.target.value)}
                   placeholder="e.g., V100, V100:2, A100:4"
-                />
-              </FormControl>
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Region</FormLabel>
-                <Input
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  placeholder="Not applicable for SSH"
-                  disabled
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Zone</FormLabel>
-                <Input
-                  value={zone}
-                  onChange={(e) => setZone(e.target.value)}
-                  placeholder="Not applicable for SSH"
-                  disabled
                 />
               </FormControl>
             </Box>
