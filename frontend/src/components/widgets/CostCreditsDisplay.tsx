@@ -111,9 +111,9 @@ const CostCreditsDisplay: React.FC<CostCreditsDisplayProps> = ({
             alignItems: "center",
           }}
         >
-          <Typography level="body-sm">Estimated cost (1h):</Typography>
+          <Typography level="body-sm">Estimated Credits Used (1h):</Typography>
           <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
-            ${costFormatted}
+            {costFormatted}
           </Typography>
         </Box>
 
@@ -124,9 +124,9 @@ const CostCreditsDisplay: React.FC<CostCreditsDisplayProps> = ({
             alignItems: "center",
           }}
         >
-          <Typography level="body-sm">Credits remaining:</Typography>
+          <Typography level="body-sm">Credits Available:</Typography>
           <Typography level="body-sm" sx={{ fontWeight: "bold" }}>
-            ${creditsFormatted}
+            {creditsFormatted}
           </Typography>
         </Box>
 
