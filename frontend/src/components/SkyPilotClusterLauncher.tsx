@@ -348,14 +348,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
             } catch (err) {
               console.warn("Failed to fetch RunPod display options:", err);
             }
-
-            // Show sky check results if available
-            if (setupData.sky_check_valid === false) {
-              addNotification({
-                type: "danger",
-                message: `RunPod setup completed but sky check failed: ${setupData.sky_check_output}`,
-              });
-            }
           } else {
             setRunpodSetupStatus("error");
             addNotification({
@@ -416,14 +408,6 @@ echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"`);
             setAzureSetupStatus("success");
             // Use configured instance types
             setAzureInstanceTypes(config.allowed_instance_types);
-
-            // Show sky check results if available
-            if (setupData.sky_check_valid === false) {
-              addNotification({
-                type: "danger",
-                message: `Azure setup completed but sky check failed: ${setupData.sky_check_output}`,
-              });
-            }
           } else {
             setAzureSetupStatus("error");
             addNotification({

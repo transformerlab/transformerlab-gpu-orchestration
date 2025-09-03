@@ -12,7 +12,6 @@ from .azure.utils import (
     az_get_config_for_display,
     az_test_connection,
     load_azure_config,
-    az_run_sky_check,
     az_set_default_config,
     az_delete_config,
     az_get_current_config,
@@ -26,7 +25,6 @@ from .runpod.utils import (
     rp_save_config_with_setup,
     rp_get_config_for_display,
     rp_test_connection,
-    rp_run_sky_check,
     rp_set_default_config,
     rp_delete_config,
     rp_get_current_config,
@@ -41,7 +39,7 @@ from routes.clouds.ssh.routes import router as ssh_router
 from routes.auth.utils import requires_admin
 from config import get_db
 from sqlalchemy.orm import Session
-from db.db_models import NodePoolAccess, CloudAccount
+from db.db_models import NodePoolAccess
 from routes.quota.utils import get_user_team_id
 
 
@@ -62,7 +60,7 @@ class AzureConfigRequest(BaseModel):
 
 class RunPodConfigRequest(BaseModel):
     name: str
-    api_key: str
+    api_key: str | None = None
     allowed_gpu_types: list[str]
     allowed_display_options: list[str] = None
     max_instances: int = 0
@@ -96,27 +94,18 @@ router.include_router(ssh_router, prefix="/ssh")
 
 
 @router.get("/{cloud}/setup")
-async def setup_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
+async def setup_cloud(
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    user: dict = Depends(get_user_or_api_key),
+):
     """Setup cloud configuration"""
     try:
         if cloud == "azure":
-            az_setup_config()
+            az_setup_config(user.get("organization_id"))
             return {"message": f"{cloud.title()} configuration setup successfully"}
         elif cloud == "runpod":
-            rp_setup_config()
-            try:
-                is_valid, output = rp_run_sky_check()
-                return {
-                    "message": f"{cloud.title()} configuration setup successfully",
-                    "sky_check_valid": is_valid,
-                    "sky_check_output": output,
-                }
-            except Exception as e:
-                return {
-                    "message": f"{cloud.title()} configuration setup successfully",
-                    "sky_check_valid": False,
-                    "sky_check_output": str(e),
-                }
+            rp_setup_config(user.get("organization_id"))
+            return {"message": f"{cloud.title()} configuration setup successfully"}
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
     except Exception as e:
@@ -126,13 +115,16 @@ async def setup_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
 
 
 @router.get("/{cloud}/verify")
-async def verify_cloud(cloud: str = Path(..., pattern="^(azure|runpod)$")):
+async def verify_cloud(
+    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    user: dict = Depends(get_user_or_api_key),
+):
     """Verify cloud setup"""
     try:
         if cloud == "azure":
-            is_valid = az_verify_setup()
+            is_valid = az_verify_setup(user.get("organization_id"))
         elif cloud == "runpod":
-            is_valid = rp_verify_setup()
+            is_valid = rp_verify_setup(organization_id=user.get("organization_id"))
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
@@ -154,9 +146,9 @@ async def get_cloud_config(
     """Get current cloud configuration"""
     try:
         if cloud == "azure":
-            config = az_get_config_for_display()
+            config = az_get_config_for_display(user.get("organization_id"), db)
         elif cloud == "runpod":
-            config = rp_get_config_for_display()
+            config = rp_get_config_for_display(user.get("organization_id"), db)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
@@ -204,7 +196,7 @@ async def get_cloud_credentials(
         )
 
     try:
-        config_data = load_azure_config()
+        config_data = load_azure_config(user.get("organization_id"), db)
 
         if config_key:
             if config_key in config_data.get("configs", {}):
@@ -231,7 +223,7 @@ async def get_cloud_credentials(
                     status_code=404, detail=f"Azure config '{config_key}' not found"
                 )
         else:
-            config = az_get_current_config()
+            config = az_get_current_config(user.get("organization_id"), db)
             if config:
                 return config
             else:
@@ -275,6 +267,8 @@ async def save_cloud_config(
                 config_request.max_instances,
                 config_request.config_key,
                 config_request.allowed_team_ids,
+                organization_id=user.get("organization_id"),
+                user_id=user.get("id"),
             )
 
             # Persist team access in DB keyed by config key
@@ -323,78 +317,7 @@ async def save_cloud_config(
             except Exception as _:
                 pass
 
-            # Persist cloud account + credentials in DB
-            try:
-                final_key = config_request.name.lower().replace(" ", "_").replace("-", "_")
-                # If renamed, remove old CloudAccount row
-                if config_request.config_key and config_request.config_key != final_key:
-                    try:
-                        old_ca = (
-                            db.query(CloudAccount)
-                            .filter(
-                                CloudAccount.organization_id == user["organization_id"],
-                                CloudAccount.provider == "azure",
-                                CloudAccount.key == config_request.config_key,
-                            )
-                            .first()
-                        )
-                        if old_ca:
-                            db.delete(old_ca)
-                            db.commit()
-                    except Exception:
-                        pass
-
-                # Determine default after save
-                try:
-                    cfg_data = load_azure_config()
-                    is_default = cfg_data.get("default_config") == final_key
-                except Exception:
-                    is_default = False
-
-                credentials = {
-                    "subscription_id": config_request.subscription_id,
-                    "tenant_id": config_request.tenant_id,
-                    "client_id": config_request.client_id,
-                    "client_secret": config_request.client_secret,
-                    "auth_method": "service_principal",
-                }
-                settings = {
-                    "allowed_instance_types": config_request.allowed_instance_types or [],
-                    "allowed_regions": config_request.allowed_regions or [],
-                }
-
-                ca = (
-                    db.query(CloudAccount)
-                    .filter(
-                        CloudAccount.organization_id == user["organization_id"],
-                        CloudAccount.provider == "azure",
-                        CloudAccount.key == final_key,
-                    )
-                    .first()
-                )
-                if not ca:
-                    ca = CloudAccount(
-                        organization_id=user["organization_id"],
-                        provider="azure",
-                        key=final_key,
-                        name=config_request.name,
-                        credentials=credentials,
-                        settings=settings,
-                        max_instances=int(config_request.max_instances or 0),
-                        is_default=bool(is_default),
-                        created_by=user.get("id"),
-                    )
-                    db.add(ca)
-                else:
-                    ca.name = config_request.name
-                    ca.credentials = credentials
-                    ca.settings = settings
-                    ca.max_instances = int(config_request.max_instances or 0)
-                    ca.is_default = bool(is_default)
-                db.commit()
-            except Exception:
-                # Don't block on DB persistence
-                pass
+            # CloudAccount persistence handled in utils
 
             return result
 
@@ -412,6 +335,8 @@ async def save_cloud_config(
                 config_request.config_key,
                 config_request.allowed_display_options,
                 config_request.allowed_team_ids,
+                organization_id=user.get("organization_id"),
+                user_id=user.get("id"),
             )
 
             # Persist team access in DB keyed by config key
@@ -460,72 +385,7 @@ async def save_cloud_config(
             except Exception as _:
                 pass
 
-            # Persist cloud account + credentials in DB
-            try:
-                final_key = config_request.name.lower().replace(" ", "_").replace("-", "_")
-                # If renamed, remove old CloudAccount row
-                if config_request.config_key and config_request.config_key != final_key:
-                    try:
-                        old_ca = (
-                            db.query(CloudAccount)
-                            .filter(
-                                CloudAccount.organization_id == user["organization_id"],
-                                CloudAccount.provider == "runpod",
-                                CloudAccount.key == config_request.config_key,
-                            )
-                            .first()
-                        )
-                        if old_ca:
-                            db.delete(old_ca)
-                            db.commit()
-                    except Exception:
-                        pass
-
-                # Determine default after save
-                try:
-                    cfg_data = load_runpod_config()
-                    is_default = cfg_data.get("default_config") == final_key
-                except Exception:
-                    is_default = False
-
-                credentials = {"api_key": config_request.api_key}
-                settings = {
-                    "allowed_gpu_types": config_request.allowed_gpu_types or [],
-                    "allowed_display_options": config_request.allowed_display_options or [],
-                }
-
-                ca = (
-                    db.query(CloudAccount)
-                    .filter(
-                        CloudAccount.organization_id == user["organization_id"],
-                        CloudAccount.provider == "runpod",
-                        CloudAccount.key == final_key,
-                    )
-                    .first()
-                )
-                if not ca:
-                    ca = CloudAccount(
-                        organization_id=user["organization_id"],
-                        provider="runpod",
-                        key=final_key,
-                        name=config_request.name,
-                        credentials=credentials,
-                        settings=settings,
-                        max_instances=int(config_request.max_instances or 0),
-                        is_default=bool(is_default),
-                        created_by=user.get("id"),
-                    )
-                    db.add(ca)
-                else:
-                    ca.name = config_request.name
-                    ca.credentials = credentials
-                    ca.settings = settings
-                    ca.max_instances = int(config_request.max_instances or 0)
-                    ca.is_default = bool(is_default)
-                db.commit()
-            except Exception:
-                # Don't block on DB persistence
-                pass
+            # CloudAccount persistence handled in utils
 
             return result
         else:
@@ -550,23 +410,13 @@ async def set_cloud_default_config(
     """Set a specific cloud config as default"""
     try:
         if cloud == "azure":
-            result = az_set_default_config(config_key)
+            result = az_set_default_config(config_key, user.get("organization_id"), db)
         elif cloud == "runpod":
-            result = rp_set_default_config(config_key)
+            result = rp_set_default_config(config_key, user.get("organization_id"), db)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
-        # Mark default in DB for this org+provider
-        try:
-            q = db.query(CloudAccount).filter(
-                CloudAccount.organization_id == user["organization_id"],
-                CloudAccount.provider == cloud,
-            )
-            for ca in q.all():
-                ca.is_default = (ca.key == config_key)
-            db.commit()
-        except Exception:
-            pass
+        # Default is persisted by utils
 
         return result
     except Exception as e:
@@ -586,28 +436,13 @@ async def delete_cloud_config(
     """Delete a cloud configuration"""
     try:
         if cloud == "azure":
-            az_delete_config(config_key)
+            az_delete_config(config_key, user.get("organization_id"), db)
         elif cloud == "runpod":
-            rp_delete_config(config_key)
+            rp_delete_config(config_key, user.get("organization_id"), db)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
-        # Remove CloudAccount row
-        try:
-            ca = (
-                db.query(CloudAccount)
-                .filter(
-                    CloudAccount.organization_id == user["organization_id"],
-                    CloudAccount.provider == cloud,
-                    CloudAccount.key == config_key,
-                )
-                .first()
-            )
-            if ca:
-                db.delete(ca)
-                db.commit()
-        except Exception:
-            pass
+        # CloudAccount removal handled by utils
 
         return {"message": f"{cloud.title()} config '{config_key}' deleted successfully"}
     except Exception as e:
@@ -661,30 +496,6 @@ async def test_cloud_connection(
         )
 
 
-@router.get("/{cloud}/sky-check")
-async def run_cloud_sky_check(cloud: str = Path(..., pattern="^(azure|runpod)$")):
-    """Run 'sky check' to validate the cloud setup"""
-    try:
-        if cloud == "azure":
-            is_valid, output = az_run_sky_check()
-        elif cloud == "runpod":
-            is_valid, output = rp_run_sky_check()
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
-
-        return {
-            "valid": is_valid,
-            "output": output,
-            "message": f"Sky check {cloud} completed successfully"
-            if is_valid
-            else f"Sky check {cloud} failed",
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to run sky check {cloud}: {str(e)}"
-        )
-
-
 @router.get("/{cloud}/instances")
 async def get_cloud_instances(
     cloud: str = Path(..., pattern="^(azure|runpod)$"),
@@ -694,9 +505,9 @@ async def get_cloud_instances(
     """Get current cloud instance count and limits"""
     try:
         if cloud == "azure":
-            config = az_get_current_config()
+            config = az_get_current_config(user.get("organization_id"), db)
         elif cloud == "runpod":
-            config = rp_get_current_config()
+            config = rp_get_current_config(user.get("organization_id"), db)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
@@ -724,9 +535,9 @@ async def get_cloud_instances(
             # Get default config key
             default_key = None
             if cloud == "azure":
-                cfg_data = load_azure_config()
+                cfg_data = load_azure_config(user.get("organization_id"), db)
             else:
-                cfg_data = load_runpod_config()
+                cfg_data = load_runpod_config(user.get("organization_id"), db)
             default_key = cfg_data.get("default_config")
             if default_key:
                 access_row = (

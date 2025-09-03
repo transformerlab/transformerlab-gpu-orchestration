@@ -751,26 +751,22 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                     >
                       Info
                     </Button>
-                    {cluster.status.toLowerCase().includes("up") && (
-                      <Button
-                        size="sm"
-                        variant="soft"
-                        color="danger"
-                        onClick={() =>
-                          handleDownClusterWithConfirmation(
-                            cluster.cluster_name
-                          )
-                        }
-                        disabled={
-                          operationLoading[`down_${cluster.cluster_name}`] ||
-                          isFakeData ||
-                          isTerminating
-                        }
-                        startDecorator={<Trash2Icon size="16px" />}
-                      >
-                        {isTerminating ? "Terminating..." : "Terminate"}
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="soft"
+                      color="danger"
+                      onClick={() =>
+                        handleDownClusterWithConfirmation(cluster.cluster_name)
+                      }
+                      disabled={
+                        operationLoading[`down_${cluster.cluster_name}`] ||
+                        isFakeData ||
+                        isTerminating
+                      }
+                      startDecorator={<Trash2Icon size="16px" />}
+                    >
+                      {isTerminating ? "Terminating..." : "Terminate"}
+                    </Button>
                     <Dropdown>
                       <MenuButton
                         variant="plain"

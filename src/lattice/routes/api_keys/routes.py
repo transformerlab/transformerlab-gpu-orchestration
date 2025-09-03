@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from lattice.routes.auth.utils import get_current_user
+from lattice.routes.auth.api_key_auth import get_user_or_api_key
 from lattice.routes.auth.api_key_auth import enforce_csrf
 from typing import List, Optional
 from pydantic import BaseModel
@@ -38,11 +38,15 @@ class UpdateAPIKeyRequest(BaseModel):
     scopes: Optional[List[str]] = None
 
 
-router = APIRouter(prefix="/api-keys", tags=["auth"], dependencies=[Depends(enforce_csrf)])
+router = APIRouter(
+    prefix="/api-keys", tags=["auth"], dependencies=[Depends(enforce_csrf)]
+)
 
 
 @router.post("", response_model=CreateAPIKeyResponse)
-async def create_api_key(request: CreateAPIKeyRequest, user=Depends(get_current_user)):
+async def create_api_key(
+    request: CreateAPIKeyRequest, user=Depends(get_user_or_api_key)
+):
     """Create a new API key for the current user"""
     api_key, api_key_record = APIKeyService.create_api_key(
         user_id=user.get("id"),
@@ -71,7 +75,7 @@ async def create_api_key(request: CreateAPIKeyRequest, user=Depends(get_current_
 
 
 @router.get("", response_model=List[APIKeyResponse])
-async def list_api_keys(user=Depends(get_current_user)):
+async def list_api_keys(user=Depends(get_user_or_api_key)):
     """List all API keys for the current user"""
     api_keys = APIKeyService.list_api_keys(user_id=user.get("id"))
 
@@ -98,7 +102,7 @@ async def list_api_keys(user=Depends(get_current_user)):
 
 
 @router.get("/{key_id}", response_model=APIKeyResponse)
-async def get_api_key(key_id: str, user=Depends(get_current_user)):
+async def get_api_key(key_id: str, user=Depends(get_user_or_api_key)):
     """Get a specific API key by ID"""
     api_key = APIKeyService.get_api_key(key_id=key_id, user_id=user.get("id"))
     scopes_list = APIKeyService.parse_scopes(api_key)
@@ -119,7 +123,7 @@ async def get_api_key(key_id: str, user=Depends(get_current_user)):
 
 @router.put("/{key_id}", response_model=APIKeyResponse)
 async def update_api_key(
-    key_id: str, request: UpdateAPIKeyRequest, user=Depends(get_current_user)
+    key_id: str, request: UpdateAPIKeyRequest, user=Depends(get_user_or_api_key)
 ):
     """Update an API key"""
     api_key = APIKeyService.update_api_key(
@@ -148,14 +152,14 @@ async def update_api_key(
 
 
 @router.delete("/{key_id}")
-async def delete_api_key(key_id: str, user=Depends(get_current_user)):
+async def delete_api_key(key_id: str, user=Depends(get_user_or_api_key)):
     """Delete an API key"""
     APIKeyService.delete_api_key(key_id=key_id, user_id=user.get("id"))
     return {"message": "API key deleted successfully"}
 
 
 @router.post("/{key_id}/regenerate", response_model=CreateAPIKeyResponse)
-async def regenerate_api_key(key_id: str, user=Depends(get_current_user)):
+async def regenerate_api_key(key_id: str, user=Depends(get_user_or_api_key)):
     """Regenerate an API key (creates a new key value but keeps the same record)"""
     new_api_key, api_key = APIKeyService.regenerate_api_key(
         key_id=key_id, user_id=user.get("id")

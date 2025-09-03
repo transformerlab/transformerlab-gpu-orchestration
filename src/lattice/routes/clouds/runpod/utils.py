@@ -1,81 +1,80 @@
 import os
 import runpod
-import json
 import subprocess
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
-RUNPOD_CONFIG_FILE = Path.home() / ".runpod" / "lattice_config.json"
+from sqlalchemy.orm import Session
+
+from config import get_db
+from db.db_models import CloudAccount
+from routes.clouds.utils import normalize_key, require_org_id
+
 RUNPOD_CONFIG_TOML = Path.home() / ".runpod" / "config.toml"
 
 
-def load_runpod_config():
-    """Load RunPod configuration from file"""
-    if not RUNPOD_CONFIG_FILE.exists():
-        return {
-            "configs": {},
-            "default_config": None,
-            "is_configured": False,
-        }
+def load_runpod_config(
+    organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
+):
+    """Load RunPod configuration from DB and return legacy-compatible shape.
 
+    Returns a dict of shape:
+      {"configs": {key: {...}}, "default_config": key|None, "is_configured": bool}
+    """
+    should_close = False
+    if db is None:
+        db = next(get_db())
+        should_close = True
     try:
-        with open(RUNPOD_CONFIG_FILE, "r") as f:
-            config = json.load(f)
+        org_id = require_org_id(organization_id)
+        q = db.query(CloudAccount).filter(
+            CloudAccount.provider == "runpod",
+            CloudAccount.organization_id == org_id,
+        )
+        rows = q.all()
 
-            # Handle legacy format (single config)
-            if "api_key" in config:
-                # Convert legacy format to new format
-                legacy_config = {
-                    "name": config.get("name", "Default RunPod Config"),
-                    "api_key": config.get("api_key", ""),
-                    "allowed_gpu_types": config.get("allowed_gpu_types", []),
-                    "max_instances": config.get("max_instances", 0),
-                }
+        configs: Dict[str, Dict] = {}
+        default_key: Optional[str] = None
+        for row in rows:
+            key = row.key
+            creds = row.credentials or {}
+            settings = row.settings or {}
+            configs[key] = {
+                "name": row.name,
+                "api_key": creds.get("api_key", ""),
+                "allowed_gpu_types": settings.get("allowed_gpu_types", []),
+                "allowed_display_options": settings.get("allowed_display_options", []),
+                "max_instances": int(row.max_instances or 0),
+            }
+            if row.is_default:
+                default_key = key
 
-                new_config = {
-                    "configs": {"default": legacy_config},
-                    "default_config": "default",
-                    "is_configured": bool(config.get("api_key")),
-                }
+        # If no explicit default, pick the first one for convenience
+        if default_key is None and rows:
+            default_key = rows[0].key
 
-                # Save the new format
-                save_runpod_configs(new_config["configs"], new_config["default_config"])
-                return new_config
-
-            # New format with multiple configs
-            config["is_configured"] = bool(
-                config.get("default_config")
-                and config.get("configs", {}).get(config["default_config"])
-            )
-            return config
-    except Exception as e:
-        print(f"Error loading RunPod config: {e}")
         return {
-            "configs": {},
-            "default_config": None,
-            "is_configured": False,
+            "configs": configs,
+            "default_config": default_key,
+            "is_configured": bool(default_key and default_key in configs),
         }
+    except Exception as e:
+        print(f"Error loading RunPod config from DB: {e}")
+        return {"configs": {}, "default_config": None, "is_configured": False}
+    finally:
+        if should_close:
+            db.close()
 
 
-def save_runpod_configs(configs: Dict[str, Dict], default_config: str = None):
-    """Save RunPod configurations to file"""
-    config = {
-        "configs": configs,
-        "default_config": default_config,
-        "is_configured": bool(default_config and configs.get(default_config)),
-    }
-    RUNPOD_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(RUNPOD_CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
-    return config
-
-
-def rp_get_api_key():
-    """Get RunPod API key from config file or environment variable"""
-    config_data = load_runpod_config()
-    default_key = config_data.get("default_config")
-    if default_key and default_key in config_data.get("configs", {}):
-        return config_data["configs"][default_key].get("api_key", "")
+def rp_get_api_key(organization_id: Optional[str] = None) -> Optional[str]:
+    """Get RunPod API key from DB (default config) or environment variable."""
+    cfg = load_runpod_config(organization_id)
+    default_key = cfg.get("default_config")
+    if default_key:
+        c = cfg.get("configs", {}).get(default_key) or {}
+        if c.get("api_key"):
+            return c.get("api_key")
     return os.getenv("RUNPOD_API_KEY", None)
 
 
@@ -84,133 +83,232 @@ def rp_save_config(
     api_key: str,
     allowed_gpu_types: list[str],
     max_instances: int = 0,
-    config_key: str = None,
-    allowed_team_ids: list[str] = None,
+    config_key: Optional[str] = None,
+    allowed_team_ids: Optional[list[str]] = None,
+    organization_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    allowed_display_options: Optional[list[str]] = None,
+    db: Optional[Session] = None,
 ):
-    """Save RunPod configuration to file (legacy compatibility)"""
-    print(f"💾 Saving RunPod config - allowed_gpu_types: {allowed_gpu_types}")
-    config_data = load_runpod_config()
+    """Upsert RunPod configuration in DB.
 
-    # Create new config entry
-    new_config = {
-        "name": name,
-        "api_key": api_key,
-        "allowed_gpu_types": allowed_gpu_types,
-        "max_instances": max_instances,
-    }
-    # Team access is stored in DB; do not persist to config file
+    Handles masked credential placeholders by falling back to existing stored values.
+    Performs safe rename by updating the existing row's key instead of delete+insert when possible.
 
-    # Generate the new config key based on the name
-    new_config_key = name.lower().replace(" ", "_").replace("-", "_")
+    Returns legacy-compatible config shape via load_runpod_config().
+    """
+    should_close = False
+    if db is None:
+        db = next(get_db())
+        should_close = True
+    try:
+        org_id = require_org_id(organization_id)
+        key_new = normalize_key(name)
 
-    # If config_key is provided, check if we're updating an existing config
-    if config_key and config_key in config_data.get("configs", {}):
-        # Check if the name has changed
-        if config_key != new_config_key:
-            # Name has changed, so we need to create a new config key and remove the old one
-            # Remove the old config
-            del config_data["configs"][config_key]
+        # Find existing row (prefer config_key for updates/renames)
+        row = None
+        if config_key:
+            q_old = db.query(CloudAccount).filter(
+                CloudAccount.provider == "runpod",
+                CloudAccount.key == config_key,
+            )
+            q_old = q_old.filter(CloudAccount.organization_id == org_id)
+            row = q_old.first()
+        if row is None:
+            q_new = db.query(CloudAccount).filter(
+                CloudAccount.provider == "runpod",
+                CloudAccount.key == key_new,
+            )
+            q_new = q_new.filter(CloudAccount.organization_id == org_id)
+            row = q_new.first()
 
-            # If this was the default config, update the default to the new key
-            if config_data.get("default_config") == config_key:
-                config_data["default_config"] = new_config_key
+        # Build credentials with masked fallback
+        def _unmask(val: Optional[str], existing: Optional[str]) -> str:
+            if val is None:
+                return existing or ""
+            if isinstance(val, str) and val.strip().startswith("*"):
+                return existing or ""
+            return val
 
-            # Add the new config with the new key
-            config_data["configs"][new_config_key] = new_config
+        existing_creds = (row.credentials if row and row.credentials else {}) if row else {}
+        credentials = {"api_key": _unmask(api_key, existing_creds.get("api_key"))}
+        settings = {
+            "allowed_gpu_types": allowed_gpu_types or [],
+            "allowed_display_options": allowed_display_options or [],
+        }
+
+        # Determine default if none exists for this org/provider
+        default_exists_q = db.query(CloudAccount).filter(
+            CloudAccount.provider == "runpod",
+            CloudAccount.organization_id == org_id,
+        )
+        default_exists_q = default_exists_q.filter(CloudAccount.is_default == True)  # noqa: E712
+        default_exists = default_exists_q.first() is not None
+
+        if not row:
+            row = CloudAccount(
+                organization_id=org_id,
+                provider="runpod",
+                key=key_new,
+                name=name,
+                credentials=credentials,
+                settings=settings,
+                max_instances=int(max_instances or 0),
+                is_default=False if default_exists else True,
+                created_by=user_id,
+            )
+            db.add(row)
         else:
-            # Name hasn't changed, just update the existing config
-            config_data["configs"][config_key] = new_config
-    else:
-        # Create new config
-        config_data["configs"][new_config_key] = new_config
+            # Safe rename if key changed
+            if row.key != key_new:
+                conflict_q = db.query(CloudAccount).filter(
+                    CloudAccount.provider == "runpod",
+                    CloudAccount.key == key_new,
+                    CloudAccount.organization_id == org_id,
+                )
+                conflict = conflict_q.first()
+                if conflict is None:
+                    row.key = key_new
+                else:
+                    # Merge values into conflict row and delete old
+                    conflict.name = name
+                    conflict.credentials = credentials
+                    conflict.settings = settings
+                    conflict.max_instances = int(max_instances or 0)
+                    if not default_exists and not conflict.is_default:
+                        conflict.is_default = True
+                    db.delete(row)
+                    row = conflict
 
-    # If this is the first config, set it as default
-    if not config_data["default_config"]:
-        config_data["default_config"] = new_config_key
+            row.name = name
+            row.credentials = credentials
+            row.settings = settings
+            row.max_instances = int(max_instances or 0)
+            if not default_exists and not row.is_default:
+                row.is_default = True
 
-    return save_runpod_configs(config_data["configs"], config_data["default_config"])
+        db.commit()
+        return load_runpod_config(org_id, db)
+    finally:
+        if should_close:
+            db.close()
 
 
-def rp_get_config_for_display():
+def rp_get_config_for_display(
+    organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
+):
     """Get RunPod configuration for display (with masked API key)."""
-    config_data = load_runpod_config()
+    config_data = load_runpod_config(organization_id, db)
 
-    # Return all configs with masked API keys
-    display_configs = {}
+    display_configs: Dict[str, Dict] = {}
     for key, config in config_data.get("configs", {}).items():
-        display_config = config.copy()
-        if "api_key" in display_config and display_config["api_key"]:
+        display_config = dict(config)
+        if display_config.get("api_key"):
             val = display_config["api_key"]
-            # Preserve prefix for identification
             display_config["api_key"] = f"{val[:4]}...{val[-4:]}"
         display_configs[key] = display_config
 
     return {
         "configs": display_configs,
         "default_config": config_data.get("default_config"),
-        "is_configured": config_data.get("is_configured", False),
+        "is_configured": bool(config_data.get("default_config")),
     }
 
 
-def rp_get_current_config():
-    """Get the current default RunPod configuration"""
-    config_data = load_runpod_config()
+def rp_get_current_config(
+    organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
+):
+    """Get the current default RunPod configuration from DB."""
+    config_data = load_runpod_config(organization_id, db)
     default_key = config_data.get("default_config")
     if default_key and default_key in config_data.get("configs", {}):
         return config_data["configs"][default_key]
     return None
 
 
-def rp_set_default_config(config_key: str):
-    """Set a specific RunPod config as default and update environment"""
-    config_data = load_runpod_config()
+def rp_set_default_config(
+    config_key: str,
+    organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
+):
+    """Set a specific RunPod config as default in DB and update environment."""
+    should_close = False
+    if db is None:
+        db = next(get_db())
+        should_close = True
+    try:
+        # Verify exists
+        org_id = require_org_id(organization_id)
+        cfg = load_runpod_config(org_id, db)
+        if config_key not in cfg.get("configs", {}):
+            raise ValueError(f"RunPod config '{config_key}' not found")
 
-    if config_key not in config_data.get("configs", {}):
-        raise ValueError(f"RunPod config '{config_key}' not found")
+        # Update defaults in DB
+        q = db.query(CloudAccount).filter(
+            CloudAccount.provider == "runpod",
+            CloudAccount.organization_id == org_id,
+        )
+        for row in q.all():
+            row.is_default = (row.key == config_key)
+        db.commit()
 
-    # Update default config
-    config_data["default_config"] = config_key
-    config_data["is_configured"] = True
+        # Update env + TOML
+        default_config = cfg["configs"][config_key]
+        # Avoid process-wide env mutation; write TOML for SkyPilot
+        create_runpod_config_toml(default_config.get("api_key", ""))
 
-    # Save the updated config
-    save_runpod_configs(config_data["configs"], config_data["default_config"])
-
-    # Update environment variables with the new default config
-    default_config = config_data["configs"][config_key]
-
-    # Set environment variable for the new default config
-    os.environ["RUNPOD_API_KEY"] = default_config.get("api_key", "")
-
-    # Update the config.toml file with the new API key
-    create_runpod_config_toml(default_config.get("api_key", ""))
-
-    return {
-        "message": f"RunPod config '{config_key}' set as default",
-        "config": default_config,
-    }
+        # Return masked config (as used by display) to avoid exposing API key
+        masked = rp_get_config_for_display(org_id, db).get("configs", {}).get(config_key, {})
+        return {
+            "message": f"RunPod config '{config_key}' set as default",
+            "config": masked,
+        }
+    finally:
+        if should_close:
+            db.close()
 
 
-def rp_delete_config(config_key: str):
-    """Delete a RunPod configuration"""
-    config_data = load_runpod_config()
+def rp_delete_config(
+    config_key: str,
+    organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
+):
+    """Delete a RunPod configuration from DB and maintain default if needed."""
+    should_close = False
+    if db is None:
+        db = next(get_db())
+        should_close = True
+    try:
+        org_id = require_org_id(organization_id)
+        target = db.query(CloudAccount).filter(
+            CloudAccount.provider == "runpod",
+            CloudAccount.key == config_key,
+            CloudAccount.organization_id == org_id,
+        )
+        row = target.first()
+        if not row:
+            raise ValueError(f"RunPod config '{config_key}' not found")
+        was_default = bool(row.is_default)
+        db.delete(row)
+        db.commit()
 
-    if config_key not in config_data.get("configs", {}):
-        raise ValueError(f"RunPod config '{config_key}' not found")
+        if was_default:
+            # Pick another as default if any
+            q = db.query(CloudAccount).filter(
+                CloudAccount.provider == "runpod",
+                CloudAccount.organization_id == org_id,
+            )
+            remaining = q.all()
+            if remaining:
+                remaining[0].is_default = True
+                db.commit()
 
-    # Remove the config
-    del config_data["configs"][config_key]
-
-    # If this was the default config, clear the default
-    if config_data.get("default_config") == config_key:
-        config_data["default_config"] = None
-        config_data["is_configured"] = False
-
-    # If there are other configs and no default, set the first one as default
-    if not config_data["default_config"] and config_data["configs"]:
-        config_data["default_config"] = list(config_data["configs"].keys())[0]
-        config_data["is_configured"] = True
-
-    return save_runpod_configs(config_data["configs"], config_data["default_config"])
+        return load_runpod_config(org_id, db)
+    finally:
+        if should_close:
+            db.close()
 
 
 def rp_test_connection(api_key: str):
@@ -247,15 +345,23 @@ api_key = "{api_key}"
         return False
 
 
-def rp_run_sky_check():
+def rp_run_sky_check(organization_id: Optional[str] = None):
     """Run 'sky check runpod' to validate the RunPod setup"""
     try:
         print("🔍 Running 'sky check runpod' to validate setup...")
+        env = os.environ.copy()
+        try:
+            key = rp_get_api_key(organization_id)
+            if key:
+                env["RUNPOD_API_KEY"] = key
+        except Exception:
+            pass
         result = subprocess.run(
             ["sky", "check", "runpod"],
             capture_output=True,
             text=True,
-            timeout=30,  # 30 second timeout
+            timeout=30,
+            env=env,
         )
 
         if result.returncode == 0:
@@ -278,9 +384,9 @@ def rp_run_sky_check():
         return False, str(e)
 
 
-def rp_setup_config():
+def rp_setup_config(organization_id: Optional[str] = None):
     """Setup RunPod configuration for SkyPilot integration"""
-    api_key = rp_get_api_key()
+    api_key = rp_get_api_key(organization_id)
     if not api_key:
         raise ValueError(
             "RunPod API key is required. Please configure it in the Admin section."
@@ -289,15 +395,12 @@ def rp_setup_config():
     # Set the API key for the RunPod SDK
     runpod.api_key = api_key
 
-    # Also set the environment variable for SkyPilot
-    os.environ["RUNPOD_API_KEY"] = api_key
-
     # Create the config.toml file that SkyPilot expects
     if not create_runpod_config_toml(api_key):
         raise ValueError("Failed to create RunPod config.toml file")
 
     # Run sky check runpod to validate the setup
-    is_valid, output = rp_run_sky_check()
+    is_valid, output = rp_run_sky_check(organization_id)
     if not is_valid:
         print(f"⚠️ Sky check runpod validation failed: {output}")
         # Don't raise an exception here, just log the warning
@@ -307,7 +410,7 @@ def rp_setup_config():
     return True
 
 
-def rp_verify_setup(test_api_key: str = None):
+def rp_verify_setup(test_api_key: str = None, organization_id: Optional[str] = None):
     """
     Verify that RunPod is properly configured and API is accessible
 
@@ -316,7 +419,7 @@ def rp_verify_setup(test_api_key: str = None):
     """
     try:
         # Use the provided API key if given, otherwise fetch from config
-        api_key = test_api_key or rp_get_api_key()
+        api_key = test_api_key or rp_get_api_key(organization_id)
         if not api_key:
             print(
                 "❌ RunPod API key is required. Please configure it in the Admin section."
@@ -329,8 +432,7 @@ def rp_verify_setup(test_api_key: str = None):
             print(f"❌ RunPod config.toml not found at {RUNPOD_CONFIG_TOML}")
             return False
 
-        # Also set the environment variable for SkyPilot
-        os.environ["RUNPOD_API_KEY"] = api_key
+        # Avoid mutating process-wide env; runpod SDK uses runpod.api_key
 
         # Test API connectivity by trying to get user info
         try:
@@ -759,40 +861,47 @@ def rp_save_config_with_setup(
     config_key: str = None,
     allowed_display_options: list[str] = None,
     allowed_team_ids: list[str] = None,
+    organization_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ):
-    """Save RunPod configuration with environment setup, config.toml creation, and sky check"""
-    import os
+    """Save RunPod configuration with environment setup, config.toml creation, and sky check (DB-backed)."""
 
     # Save the configuration
-    config = rp_save_config(
+    _ = rp_save_config(
         name,
         api_key,
         allowed_gpu_types,
         max_instances,
         config_key,
         allowed_team_ids,
+        organization_id=organization_id,
+        user_id=user_id,
+        allowed_display_options=allowed_display_options,
     )
 
-    # Update display options if provided
-    if allowed_display_options:
-        config["allowed_display_options"] = allowed_display_options
-
-    # Set environment variable for RunPod
-    if api_key and not api_key.startswith("*"):
-        os.environ["RUNPOD_API_KEY"] = api_key
-    elif config.get("api_key"):
-        os.environ["RUNPOD_API_KEY"] = config["api_key"]
+    # Avoid global env mutation; fetch current for TOML/env scoping
+    current = None
+    try:
+        current = rp_get_current_config(organization_id)
+    except Exception:
+        current = None
 
     # Set the new config as default
-    config_key = name.lower().replace(" ", "_").replace("-", "_")
-    rp_set_default_config(config_key)
+    config_key = normalize_key(name)
+    rp_set_default_config(config_key, organization_id)
 
     # Create config.toml and run sky check for RunPod
     sky_check_result = None
-    if config.get("api_key"):
+    # Create config.toml using real key if known (fallback to current)
+    toml_key = None
+    if api_key and not api_key.startswith("*"):
+        toml_key = api_key
+    elif current and current.get("api_key"):
+        toml_key = current.get("api_key")
+    if toml_key:
         try:
-            if create_runpod_config_toml(config["api_key"]):
-                is_valid, output = rp_run_sky_check()
+            if create_runpod_config_toml(toml_key):
+                is_valid, output = rp_run_sky_check(organization_id)
                 sky_check_result = {
                     "valid": is_valid,
                     "output": output,
@@ -814,7 +923,7 @@ def rp_save_config_with_setup(
             }
 
     # Return the final result
-    result = rp_get_config_for_display()
+    result = rp_get_config_for_display(organization_id)
     if sky_check_result:
         result["sky_check_result"] = sky_check_result
 

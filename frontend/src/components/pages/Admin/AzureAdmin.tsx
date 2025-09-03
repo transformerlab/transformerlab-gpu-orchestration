@@ -61,15 +61,9 @@ const AzureAdmin: React.FC = () => {
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [skyChecking, setSkyChecking] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
   const [actualCredentials, setActualCredentials] =
     useState<AzureConfig | null>(null);
-  const [skyCheckResult, setSkyCheckResult] = useState<{
-    valid: boolean;
-    output: string;
-    message: string;
-  } | null>(null);
   const { addNotification } = useNotification();
 
   useEffect(() => {
@@ -220,7 +214,6 @@ const AzureAdmin: React.FC = () => {
   const saveConfig = async () => {
     try {
       setSaving(true);
-      setSkyCheckResult(null);
 
       const response = await apiFetch(buildApiUrl("clouds/azure/config"), {
         method: "POST",
@@ -243,28 +236,10 @@ const AzureAdmin: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setConfig(data);
-
-        // Handle sky check results if available
-        if (data.sky_check_result) {
-          setSkyCheckResult(data.sky_check_result);
-          if (data.sky_check_result.valid) {
-            addNotification({
-              type: "success",
-              message:
-                "Azure configuration saved successfully and sky check passed",
-            });
-          } else {
-            addNotification({
-              type: "danger",
-              message: `Azure configuration saved but sky check failed: ${data.sky_check_result.message}`,
-            });
-          }
-        } else {
-          addNotification({
-            type: "success",
-            message: "Azure configuration saved successfully",
-          });
-        }
+        addNotification({
+          type: "success",
+          message: "Azure configuration saved successfully",
+        });
       } else {
         const errorData = await response.json();
         addNotification({
@@ -322,47 +297,6 @@ const AzureAdmin: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const runSkyCheck = async () => {
-    try {
-      setSkyChecking(true);
-      setSkyCheckResult(null);
-
-      const response = await apiFetch(buildApiUrl("clouds/azure/sky-check"), {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSkyCheckResult(data);
-        if (data.valid) {
-          addNotification({
-            type: "success",
-            message: "Sky check azure completed successfully",
-          });
-        } else {
-          addNotification({
-            type: "danger",
-            message: "Sky check azure failed",
-          });
-        }
-      } else {
-        const errorData = await response.json();
-        addNotification({
-          type: "danger",
-          message: errorData.detail || "Sky check azure failed",
-        });
-      }
-    } catch (err) {
-      addNotification({
-        type: "danger",
-        message: "Error running sky check azure",
-      });
-    } finally {
-      setSkyChecking(false);
-    }
-  };
-
   if (loading) {
     return (
       <PageWithTitle
@@ -530,14 +464,7 @@ const AzureAdmin: React.FC = () => {
               >
                 Test Connection
               </Button>
-              <Button
-                variant="outlined"
-                onClick={runSkyCheck}
-                disabled={skyChecking || !config.is_configured}
-                loading={skyChecking}
-              >
-                Sky Check Azure
-              </Button>
+              
               <Button
                 variant="outlined"
                 onClick={async () => {
@@ -553,51 +480,7 @@ const AzureAdmin: React.FC = () => {
           </Stack>
         </Card>
 
-        {/* Sky Check Results */}
-        {skyCheckResult && (
-          <Card variant="outlined">
-            <Typography level="h4" sx={{ mb: 2 }}>
-              Sky Check Azure Results
-            </Typography>
-            <Stack spacing={2}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography>Validation Status</Typography>
-                <Chip
-                  variant="soft"
-                  color={skyCheckResult.valid ? "success" : "danger"}
-                  size="sm"
-                >
-                  {skyCheckResult.valid ? "Passed" : "Failed"}
-                </Chip>
-              </Box>
-              <Box>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Output:
-                </Typography>
-                <Box
-                  sx={{
-                    p: 2,
-                    bgcolor: "background.level1",
-                    borderRadius: 1,
-                    fontFamily: "monospace",
-                    fontSize: "0.875rem",
-                    whiteSpace: "pre-wrap",
-                    maxHeight: 200,
-                    overflowY: "auto",
-                  }}
-                >
-                  {skyCheckResult.output}
-                </Box>
-              </Box>
-            </Stack>
-          </Card>
-        )}
+        
 
         {/* Instance Types Configuration */}
         <Card variant="outlined">

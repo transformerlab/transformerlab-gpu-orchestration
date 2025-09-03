@@ -285,7 +285,7 @@ async def launch_instance(
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
             try:
-                rp_setup_config()
+                rp_setup_config(user.get("organization_id"))
                 # Map display string to instance type if accelerators is provided
                 if accelerators:
                     mapped_instance_type = map_runpod_display_to_instance_type(
@@ -306,6 +306,7 @@ async def launch_instance(
         # Setup Azure if cloud is azure
         if cloud == "azure":
             try:
+<<<<<<< HEAD
                 # az_setup_config()
                 az_config = az_get_config_for_display()
                 az_config_dict = az_config["configs"][az_config["default_config"]]
@@ -319,6 +320,9 @@ async def launch_instance(
                         }
                     }
                 }
+=======
+                az_setup_config(user.get("organization_id"))
+>>>>>>> e474b1eda1ebf11d3b489169883beb1cce8d30d9
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
@@ -372,9 +376,9 @@ async def launch_instance(
                 pool_key = None
                 try:
                     if cloud == "azure":
-                        cfg = load_azure_config()
+                        cfg = load_azure_config(user.get("organization_id"), db)
                     else:
-                        cfg = load_runpod_config()
+                        cfg = load_runpod_config(user.get("organization_id"), db)
                     pool_key = cfg.get("default_config")
                 except Exception:
                     pool_key = None

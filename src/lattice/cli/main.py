@@ -15,7 +15,9 @@ from lattice.cli.commands.node_pools import list_node_pools_command
 from lattice.cli.commands.login import login_command, logout_command
 from lattice.cli.commands.instances import (
     list_instances_command,
-    request_instance_command,
+    start_instance_command,
+    destroy_instance_command,
+    info_instance_command,
 )
 import typer
 from rich.console import Console
@@ -88,15 +90,29 @@ def list_instances():
 
 
 @instances_app.command("request")
-def request_instance(
-    name: str = typer.Option(..., help="Name of the instance"),
-    instance_type: str = typer.Option(
-        "gpu-a100", help="Type of instance (cpu, gpu-a100, gpu-h100)"
-    ),
-    region: str = typer.Option("us-west-2", help="Region to deploy the instance"),
+def start_instance(
+    yaml_file: str = typer.Argument(..., help="Path to YAML configuration file"),
 ):
-    """Request a new Transformer Lab instance."""
-    request_instance_command(console, name, instance_type, region)
+    """Start a new lab instance using a YAML configuration file."""
+    start_instance_command(console, yaml_file)
+
+
+@instances_app.command("destroy")
+def destroy_instance(
+    cluster_name: Optional[str] = typer.Argument(
+        None, help="Cluster name to destroy. If omitted, you'll be prompted to select."
+    ),
+):
+    """Destroy (terminate) a lab instance."""
+    destroy_instance_command(console, cluster_name)
+
+
+@instances_app.command("info")
+def info_instance(
+    instance_name: str = typer.Argument(..., help="Name of the instance to get information about"),
+):
+    """Get comprehensive information about a specific instance instance."""
+    info_instance_command(console, instance_name)
 
 
 @node_pools_app.command("list")

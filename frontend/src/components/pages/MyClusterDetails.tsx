@@ -574,17 +574,15 @@ const MyClusterDetails: React.FC = () => {
       backButton={true}
       onBack={() => navigate("/dashboard/my-instances")}
       button={
-        clusterData.status.toLowerCase().includes("up") && (
-          <Button
-            variant="outlined"
-            color="danger"
-            startDecorator={<Trash2 />}
-            loading={operationLoading.down}
-            onClick={handleDownClusterWithConfirmation}
-          >
-            Terminate Cluster
-          </Button>
-        )
+        <Button
+          variant="outlined"
+          color="danger"
+          startDecorator={<Trash2 />}
+          loading={operationLoading.down}
+          onClick={handleDownClusterWithConfirmation}
+        >
+          Terminate Cluster
+        </Button>
       }
     >
       <Stack spacing={2}>

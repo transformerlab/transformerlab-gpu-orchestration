@@ -17,6 +17,7 @@ def api_request(
     endpoint: str,
     headers: Optional[Dict] = None,
     json_data: Optional[Dict] = None,
+    files: Optional[Dict] = None,
     auth_needed: bool = True,
 ) -> requests.Response:
     """
@@ -27,6 +28,7 @@ def api_request(
         endpoint: API endpoint (without base URL)
         headers: Optional headers dict
         json_data: Optional JSON data for POST requests
+        files: Optional files dict for multipart form data
         auth_needed: Whether to automatically add authentication headers
 
     Returns:
@@ -54,8 +56,19 @@ def api_request(
             print(f"[DEBUG] Headers: {json.dumps(safe_headers, indent=2)}")
         if json_data:
             print(f"[DEBUG] JSON data: {json.dumps(json_data, indent=2)}")
+        if files:
+            print(f"[DEBUG] Files: {list(files.keys())}")
 
-    response = requests.request(method, url, headers=headers, json=json_data)
+    # Handle different request types
+    if files:
+        # Multipart form data with files
+        response = requests.request(method, url, headers=headers, files=files)
+    elif json_data:
+        # JSON data
+        response = requests.request(method, url, headers=headers, json=json_data)
+    else:
+        # No data
+        response = requests.request(method, url, headers=headers)
 
     if DEBUG:
         print(f"[DEBUG] Response status: {response.status_code}")
@@ -90,6 +103,19 @@ def get_saved_api_key():
 
     with open(CREDENTIALS_FILE, "r") as f:
         return f.read().strip()
+
+
+def get_saved_api_key_metadata():
+    """Get the saved API key metadata (including ID) if it exists."""
+    api_key_json_file = os.path.join(CLI_CONFIG_DIR, "api_key.json")
+    if not os.path.exists(api_key_json_file):
+        return None
+
+    try:
+        with open(api_key_json_file, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
 
 
 def status() -> Union[Dict, None]:
