@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -19,6 +19,8 @@ import {
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
 import { useNotification } from "../NotificationSystem";
+import { useAuth } from "../../context/AuthContext";
+import CostCreditsDisplay from "../CostCreditsDisplay";
 
 interface DockerImage {
   id: string;
@@ -49,6 +51,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   onClusterLaunched,
 }) => {
   const { addNotification } = useNotification();
+  const { user } = useAuth();
   const [customClusterName, setCustomClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
@@ -57,6 +60,8 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [accelerators, setAccelerators] = useState("");
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
   // Docker images state
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
@@ -66,8 +71,53 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   React.useEffect(() => {
     if (open) {
       fetchDockerImages();
+      // Fetch current user's remaining credits
+      if (user?.organization_id) {
+        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
+          credentials: "include",
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = await res.json();
+            setAvailableCredits(Number(data.credits_remaining || 0));
+          })
+          .catch(() => {});
+      }
     }
-  }, [open]);
+  }, [open, user?.organization_id]);
+
+  // Calculate estimated cost based on resource selection
+  useEffect(() => {
+    let baseCost = 0;
+
+    // Base cost for SSH instance (minimal cost)
+    if (cpus || memory || accelerators) {
+      baseCost = 0.1; // Base hourly cost for SSH instances
+
+      // Add cost for CPU cores
+      if (cpus) {
+        const cpuCount = parseInt(cpus) || 0;
+        baseCost += cpuCount * 0.05; // $0.05 per CPU core per hour
+      }
+
+      // Add cost for memory
+      if (memory) {
+        const memoryGB = parseInt(memory) || 0;
+        baseCost += memoryGB * 0.01; // $0.01 per GB per hour
+      }
+
+      // Add cost for accelerators (GPUs)
+      if (accelerators) {
+        const gpuCount = accelerators.split(",").reduce((total, acc) => {
+          const parts = acc.trim().split(":");
+          return total + (parseInt(parts[1]) || 1);
+        }, 0);
+        baseCost += gpuCount * 0.5; // $0.50 per GPU per hour
+      }
+    }
+
+    setEstimatedCost(baseCost);
+  }, [cpus, memory, accelerators]);
 
   const fetchDockerImages = async () => {
     try {
@@ -354,6 +404,25 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                 />
               </FormControl>
             </Box>
+
+            {/* Cost & Credits Display */}
+            {availableCredits !== null && (
+              <Box sx={{ mt: 2 }}>
+                <CostCreditsDisplay
+                  estimatedCost={estimatedCost}
+                  availableCredits={availableCredits}
+                  variant="card"
+                  showWarning={true}
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+                >
+                  Note: Cost estimates are approximate and may vary based on
+                  actual usage and resource allocation.
+                </Typography>
+              </Box>
+            )}
           </form>
         </Box>
 
@@ -373,7 +442,11 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           <Button
             type="submit"
             loading={loading}
-            disabled={!command || loading}
+            disabled={
+              !command ||
+              loading ||
+              (availableCredits !== null && estimatedCost > availableCredits)
+            }
             color="success"
             onClick={handleSubmit}
           >
