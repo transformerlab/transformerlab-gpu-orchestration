@@ -57,7 +57,7 @@ const RunPodConfigPage: React.FC = () => {
     api_key: "",
     allowed_gpu_types: [],
     is_configured: false,
-    max_instances: 0,
+    max_instances: 1,
   });
   const [poolName, setPoolName] = useState(initialPoolName);
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
@@ -116,7 +116,7 @@ const RunPodConfigPage: React.FC = () => {
             api_key: specificConfig.api_key || "",
             allowed_gpu_types: specificConfig.allowed_gpu_types || [],
             is_configured: data.is_configured || false,
-            max_instances: specificConfig.max_instances || 0,
+            max_instances: specificConfig.max_instances || 1,
           });
           setPoolName(specificConfig.name || initialPoolName);
           setAllowedTeamIds(specificConfig.allowed_team_ids || []);
@@ -132,7 +132,7 @@ const RunPodConfigPage: React.FC = () => {
             api_key: defaultConfig.api_key || "",
             allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
             is_configured: data.is_configured || false,
-            max_instances: defaultConfig.max_instances || 0,
+            max_instances: defaultConfig.max_instances || 1,
           });
           setPoolName(defaultConfig.name || initialPoolName);
           setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
@@ -173,12 +173,9 @@ const RunPodConfigPage: React.FC = () => {
 
   const fetchAvailableGpuTypes = async () => {
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/runpod/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/runpod/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         console.log("RunPod display options data:", data);
@@ -284,7 +281,7 @@ const RunPodConfigPage: React.FC = () => {
             api_key: defaultConfig.api_key || "",
             allowed_gpu_types: defaultConfig.allowed_gpu_types || [],
             is_configured: data.is_configured || false,
-            max_instances: defaultConfig.max_instances || 0,
+            max_instances: defaultConfig.max_instances || 1,
           });
           setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
         } else {
@@ -326,7 +323,8 @@ const RunPodConfigPage: React.FC = () => {
       if (config.api_key && config.api_key.includes("...")) {
         addNotification({
           type: "warning",
-          message: "Please enter your full RunPod API key to test the connection.",
+          message:
+            "Please enter your full RunPod API key to test the connection.",
         });
         return;
       }
@@ -364,8 +362,6 @@ const RunPodConfigPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  
 
   if (loading && isConfigureMode) {
     return (
@@ -451,7 +447,9 @@ const RunPodConfigPage: React.FC = () => {
               <Button
                 size="sm"
                 variant="outlined"
-                onClick={() => setAllowedTeamIds(availableTeams.map((t) => t.id))}
+                onClick={() =>
+                  setAllowedTeamIds(availableTeams.map((t) => t.id))
+                }
               >
                 Allow All Teams
               </Button>
@@ -506,7 +504,7 @@ const RunPodConfigPage: React.FC = () => {
               >
                 Test Connection
               </Button>
-              
+
               <Button
                 variant="outlined"
                 onClick={() => setShowApiKey(!showApiKey)}
@@ -516,8 +514,6 @@ const RunPodConfigPage: React.FC = () => {
             </Box>
           </Stack>
         </Card>
-
-        
 
         {/* GPU Types Configuration */}
         <Card variant="outlined">
@@ -659,14 +655,14 @@ const RunPodConfigPage: React.FC = () => {
                 onChange={(e) =>
                   setConfig((prev) => ({
                     ...prev,
-                    max_instances: parseInt(e.target.value) || 0,
+                    max_instances: parseInt(e.target.value) || 1,
                   }))
                 }
-                placeholder="0 for unlimited"
+                placeholder="Please set a minimum of 1"
                 slotProps={{
                   input: {
                     type: "number",
-                    min: 0,
+                    min: 1,
                   },
                 }}
                 sx={{ maxWidth: 200 }}
@@ -675,11 +671,8 @@ const RunPodConfigPage: React.FC = () => {
                 level="body-xs"
                 sx={{ color: "neutral.500", mt: 0.5 }}
               >
-                {config.max_instances === 0
-                  ? "Unlimited instances allowed"
-                  : `Maximum ${config.max_instances} instance${
-                      config.max_instances !== 1 ? "s" : ""
-                    } allowed`}
+                Maximum {config.max_instances} instance
+                {config.max_instances !== 1 ? "s" : ""} allowed
               </Typography>
             </FormControl>
           </Stack>
@@ -728,9 +721,7 @@ const RunPodConfigPage: React.FC = () => {
             >
               <Typography>Maximum Instances</Typography>
               <Chip variant="soft" color="primary" size="sm">
-                {config.max_instances === 0
-                  ? "Unlimited"
-                  : config.max_instances}
+                {config.max_instances}
               </Chip>
             </Box>
           </Stack>
