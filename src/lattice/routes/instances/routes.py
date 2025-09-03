@@ -137,6 +137,7 @@ async def launch_instance(
     cpus: Optional[str] = Form(None),
     memory: Optional[str] = Form(None),
     accelerators: Optional[str] = Form(None),
+    disk_space: Optional[str] = Form(None),
     region: Optional[str] = Form(None),
     zone: Optional[str] = Form(None),
     use_spot: Optional[bool] = Form(False),
@@ -188,6 +189,7 @@ async def launch_instance(
             'cpus': cpus,
             'memory': memory,
             'accelerators': accelerators,
+            'disk_space': disk_space,
             'region': region,
             'zone': zone,
             'use_spot': use_spot,
@@ -218,6 +220,7 @@ async def launch_instance(
         cpus = final_config['cpus']
         memory = final_config['memory']
         accelerators = final_config['accelerators']
+        disk_space = final_config['disk_space']
         region = final_config['region']
         zone = final_config['zone']
         use_spot = final_config['use_spot'] or False
@@ -285,7 +288,16 @@ async def launch_instance(
                     )
                     if mapped_instance_type.lower().startswith("cpu"):
                         # Using skypilot logic to have disk size lesser than 10x vCPUs
-                        disk_size = 5 * int(mapped_instance_type.split("-")[1])
+                            disk_size = 5 * int(mapped_instance_type.split("-")[1])
+                    else:
+                        # For GPU instances, only set disk_size if disk_space is provided
+                        if disk_space:
+                            try:
+                                disk_size = int(disk_space)
+                            except ValueError:
+                                # If disk_space is not a valid integer, ignore it
+                                disk_size = None
+                                pass
                     if mapped_instance_type != accelerators:
                         instance_type = mapped_instance_type
                         # Clear accelerators for RunPod since we're using instance_type
@@ -430,6 +442,15 @@ async def launch_instance(
             user_info=cluster_user_info,
         )
 
+
+        # Handle disk_space parameter for all cloud providers
+        if disk_space and not disk_size:
+            try:
+                disk_size = int(disk_space)
+            except ValueError:
+                # If disk_space is not a valid integer, ignore it
+                disk_size = None
+                pass
 
         # Launch cluster using the actual cluster name
         request_id = launch_cluster_with_skypilot(

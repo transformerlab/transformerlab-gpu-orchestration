@@ -58,6 +58,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [cpus, setCpus] = useState("");
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
@@ -207,6 +208,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
+      if (diskSpace) formData.append("disk_space", diskSpace);
       if (selectedDockerImageId)
         formData.append("docker_image_id", selectedDockerImageId);
       formData.append("use_spot", "false");
@@ -401,6 +403,20 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   value={accelerators}
                   onChange={(e) => setAccelerators(e.target.value)}
                   placeholder="e.g., V100, V100:2, A100:4"
+                />
+              </FormControl>
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Disk Space (GB)</FormLabel>
+                <Input
+                  value={diskSpace}
+                  onChange={(e) => setDiskSpace(e.target.value)}
+                  placeholder="e.g., 100, 200, 500"
+                  slotProps={{
+                    input: {
+                      type: "number",
+                      min: 1,
+                    },
+                  }}
                 />
               </FormControl>
             </Box>

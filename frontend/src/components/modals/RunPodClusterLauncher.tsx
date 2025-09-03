@@ -90,6 +90,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
 
@@ -203,6 +204,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSetup("");
     setSelectedGpuType("");
     setSelectedGpuFullString("");
+    setDiskSpace("");
 
     setSelectedDockerImageId("");
   };
@@ -230,6 +232,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       formData.append("cloud", "runpod");
       if (selectedGpuFullString)
         formData.append("accelerators", selectedGpuFullString);
+      if (diskSpace) formData.append("disk_space", diskSpace);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
@@ -417,6 +420,28 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
                     Please configure allowed GPU/CPU types in the Admin section.
                   </span>
                 )}
+            </Typography>
+          </FormControl>
+
+          <FormControl>
+            <FormLabel>Disk Space (GB) - Optional</FormLabel>
+            <Input
+              value={diskSpace}
+              onChange={(e) => setDiskSpace(e.target.value)}
+              placeholder="e.g., 100, 200, 500 (leave empty for default)"
+              slotProps={{
+                input: {
+                  type: "number",
+                  min: 1,
+                },
+              }}
+            />
+            <Typography
+              level="body-xs"
+              sx={{ mt: 0.5, color: "text.secondary" }}
+            >
+              Only used for CPU instances. GPU instances use default disk
+              sizing.
             </Typography>
           </FormControl>
 
