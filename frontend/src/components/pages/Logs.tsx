@@ -189,7 +189,6 @@ const Logs: React.FC = () => {
               <th>Task Type</th>
               <th>Cluster</th>
               <th>Created</th>
-              <th>Completed</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -197,7 +196,7 @@ const Logs: React.FC = () => {
             {requests.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={4}
                   style={{ textAlign: "center", padding: "2rem" }}
                 >
                   <Typography level="body-sm" color="neutral">
@@ -226,13 +225,6 @@ const Logs: React.FC = () => {
                   <td>
                     <Typography level="body-sm">
                       {formatDate(request.created_at)}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography level="body-sm">
-                      {request.completed_at
-                        ? formatDate(request.completed_at)
-                        : "—"}
                     </Typography>
                   </td>
                   <td>
