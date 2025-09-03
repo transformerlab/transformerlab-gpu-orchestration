@@ -54,7 +54,12 @@ import {
   MoreHorizontal,
   ChevronDown,
   X,
+  DollarSign,
 } from "lucide-react";
+
+// Import SVG icons
+import RunPodIcon from "../widgets/icons/runpod.svg";
+import AzureIcon from "../widgets/icons/azure.svg";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   buildApiUrl,
@@ -118,6 +123,16 @@ interface ClusterData {
   last_use?: string;
   autostop?: number;
   to_down?: boolean;
+}
+
+interface CostInfo {
+  total_cost: number;
+  duration: number;
+  cost_per_hour: number;
+  launched_at?: number;
+  status?: string;
+  cloud?: string;
+  region?: string;
 }
 
 const MyClusterDetails: React.FC = () => {
@@ -191,6 +206,7 @@ const MyClusterDetails: React.FC = () => {
   const clusterData = clusterInfoData?.cluster;
   const clusterTypeInfo = clusterInfoData?.cluster_type;
   const sshNodeInfo = clusterInfoData?.ssh_node_info;
+  const costInfo = clusterInfoData?.cost_info;
   const jobs = clusterInfoData?.jobs || [];
   const clusterPlatform = clusterInfoData?.platform?.platform || "unknown";
   const clusterTemplate = clusterInfoData?.template;
@@ -510,6 +526,15 @@ const MyClusterDetails: React.FC = () => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
   if (!clusterName) {
     return (
       <PageWithTitle
@@ -701,9 +726,16 @@ const MyClusterDetails: React.FC = () => {
             </Card>
           </Grid>
 
-          {/* Timing Info Card */}
+          {/* Usage & Credits Info Card */}
           <Grid xs={12} md={6}>
             <Card>
+              <Typography
+                level="title-sm"
+                sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+              >
+                <Clock size={16} />
+                Usage & Credits Information
+              </Typography>
               <Stack spacing={1}>
                 {clusterData.launched_at && (
                   <Box
@@ -718,19 +750,6 @@ const MyClusterDetails: React.FC = () => {
                   </Box>
                 )}
 
-                {clusterData.last_use && (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <Typography level="body-sm" color="neutral">
-                      Last Use:
-                    </Typography>
-                    <Typography level="body-sm">
-                      {clusterData.last_use}
-                    </Typography>
-                  </Box>
-                )}
-
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography level="body-sm" color="neutral">
                     Auto-stop:
@@ -739,6 +758,120 @@ const MyClusterDetails: React.FC = () => {
                     {formatAutostop(clusterData.autostop, clusterData.to_down)}
                   </Typography>
                 </Box>
+
+                {costInfo && (
+                  <>
+                    <Divider sx={{ my: 1 }} />
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography level="body-sm" color="neutral">
+                        Total Credits Used:
+                      </Typography>
+                      <Typography
+                        level="body-sm"
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
+                        {costInfo.total_cost.toFixed(2)}
+                      </Typography>
+                    </Box>
+
+                    {costInfo.duration > 0 && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Typography level="body-sm" color="neutral">
+                          Duration:
+                        </Typography>
+                        <Typography level="body-sm">
+                          {formatDuration(costInfo.duration)}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {costInfo.cost_per_hour > 0 && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Typography level="body-sm" color="neutral">
+                          Credits/Hour:
+                        </Typography>
+                        <Typography level="body-sm">
+                          {costInfo.cost_per_hour.toFixed(2)}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {costInfo.cloud && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography level="body-sm" color="neutral">
+                          Cloud Provider:
+                        </Typography>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          {costInfo.cloud.toLowerCase() === "runpod" && (
+                            <img
+                              src={RunPodIcon}
+                              alt="RunPod"
+                              style={{
+                                width: 20,
+                                height: 20,
+                              }}
+                            />
+                          )}
+                          {costInfo.cloud.toLowerCase() === "azure" && (
+                            <img
+                              src={AzureIcon}
+                              alt="Azure"
+                              style={{
+                                width: 20,
+                                height: 20,
+                              }}
+                            />
+                          )}
+                          <Typography level="body-sm">
+                            {costInfo.cloud.charAt(0).toUpperCase() +
+                              costInfo.cloud.slice(1)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {costInfo.region && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Typography level="body-sm" color="neutral">
+                          Region:
+                        </Typography>
+                        <Typography level="body-sm">
+                          {costInfo.region}
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
+                )}
               </Stack>
             </Card>
           </Grid>
