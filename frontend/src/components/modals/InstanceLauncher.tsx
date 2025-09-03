@@ -16,8 +16,8 @@ import {
   Alert,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
-import { buildApiUrl, apiFetch } from "../utils/api";
-import { useNotification } from "./NotificationSystem";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useNotification } from "../NotificationSystem";
 
 interface InstanceLauncherProps {
   open: boolean;
