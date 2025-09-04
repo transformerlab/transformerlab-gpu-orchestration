@@ -44,14 +44,14 @@ def ssh_command(console: Console, instance_name: str):
 
     # Map display name to actual cluster name for SSH connection
     actual_cluster_name = _get_actual_cluster_name(instance_name)
-    if actual_cluster_name != instance_name:
-        console.print(
-            f"[dim]Using actual cluster name: [cyan]{actual_cluster_name}[/cyan][/dim]"
-        )
 
     # SSH command using actual cluster name
     ssh_command = f"ssh -p 2222 {actual_cluster_name}@{SSH_PROXY_URL}"
-    console.print(f"[bold blue]Running command: [cyan]{ssh_command}[/cyan][/bold blue]")
+    # This is done to not show the actual cluster name to the user
+    display_command = f"ssh -p 2222 {instance_name}@{SSH_PROXY_URL}"
+    console.print(
+        f"[bold blue]Running command: [cyan]{display_command}[/cyan][/bold blue]"
+    )
 
     # Execute the SSH command
     os.system(ssh_command)
