@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -19,6 +19,8 @@ import {
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
 import { useNotification } from "../NotificationSystem";
+import { useAuth } from "../../context/AuthContext";
+import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 
 interface DockerImage {
   id: string;
@@ -49,16 +51,18 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   onClusterLaunched,
 }) => {
   const { addNotification } = useNotification();
+  const { user } = useAuth();
   const [customClusterName, setCustomClusterName] = useState("");
   const [command, setCommand] = useState('echo "Welcome to Lattice"');
   const [setup, setSetup] = useState("");
   const [cpus, setCpus] = useState("");
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
-  const [region, setRegion] = useState("");
-  const [zone, setZone] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0.0);
 
   // Docker images state
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
@@ -68,8 +72,20 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   React.useEffect(() => {
     if (open) {
       fetchDockerImages();
+      // Fetch current user's remaining credits
+      if (user?.organization_id) {
+        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
+          credentials: "include",
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = await res.json();
+            setAvailableCredits(Number(data.credits_remaining || 0));
+          })
+          .catch(() => {});
+      }
     }
-  }, [open]);
+  }, [open, user?.organization_id]);
 
   const fetchDockerImages = async () => {
     try {
@@ -159,8 +175,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
-      if (region) formData.append("region", region);
-      if (zone) formData.append("zone", zone);
+      if (diskSpace) formData.append("disk_space", diskSpace);
       if (selectedDockerImageId)
         formData.append("docker_image_id", selectedDockerImageId);
       formData.append("use_spot", "false");
@@ -358,24 +373,39 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                 />
               </FormControl>
               <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Region</FormLabel>
+                <FormLabel>Disk Space (GB)</FormLabel>
                 <Input
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  placeholder="Not applicable for SSH"
-                  disabled
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Zone</FormLabel>
-                <Input
-                  value={zone}
-                  onChange={(e) => setZone(e.target.value)}
-                  placeholder="Not applicable for SSH"
-                  disabled
+                  value={diskSpace}
+                  onChange={(e) => setDiskSpace(e.target.value)}
+                  placeholder="e.g., 100, 200, 500"
+                  slotProps={{
+                    input: {
+                      type: "number",
+                      min: 1,
+                    },
+                  }}
                 />
               </FormControl>
             </Box>
+
+            {/* Cost & Credits Display */}
+            {availableCredits !== null && (
+              <Box sx={{ mt: 2 }}>
+                <CostCreditsDisplay
+                  estimatedCost={estimatedCost}
+                  availableCredits={availableCredits}
+                  variant="card"
+                  showWarning={true}
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+                >
+                  Note: Cost estimates are approximate and may vary based on
+                  actual usage and resource allocation.
+                </Typography>
+              </Box>
+            )}
           </form>
         </Box>
 
@@ -395,7 +425,11 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           <Button
             type="submit"
             loading={loading}
-            disabled={!command || loading}
+            disabled={
+              !command ||
+              loading ||
+              (availableCredits !== null && estimatedCost > availableCredits)
+            }
             color="success"
             onClick={handleSubmit}
           >

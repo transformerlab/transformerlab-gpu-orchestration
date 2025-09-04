@@ -19,9 +19,10 @@ import {
   CircularProgress,
 } from "@mui/joy";
 import { Rocket, Zap } from "lucide-react";
-import { buildApiUrl, apiFetch } from "../utils/api";
-import { useAuth } from "../context/AuthContext";
-import { useNotification } from "./NotificationSystem";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../NotificationSystem";
+import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 
 interface RunPodConfig {
   api_key: string;
@@ -89,6 +90,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
 
@@ -202,6 +204,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     setSetup("");
     setSelectedGpuType("");
     setSelectedGpuFullString("");
+    setDiskSpace("");
 
     setSelectedDockerImageId("");
   };
@@ -229,6 +232,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       formData.append("cloud", "runpod");
       if (selectedGpuFullString)
         formData.append("accelerators", selectedGpuFullString);
+      if (diskSpace) formData.append("disk_space", diskSpace);
       formData.append("use_spot", "false");
       formData.append("launch_mode", "custom");
 
@@ -419,6 +423,28 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             </Typography>
           </FormControl>
 
+          <FormControl>
+            <FormLabel>Disk Space (GB) - Optional</FormLabel>
+            <Input
+              value={diskSpace}
+              onChange={(e) => setDiskSpace(e.target.value)}
+              placeholder="e.g., 100, 200, 500 (leave empty for default)"
+              slotProps={{
+                input: {
+                  type: "number",
+                  min: 1,
+                },
+              }}
+            />
+            <Typography
+              level="body-xs"
+              sx={{ mt: 0.5, color: "text.secondary" }}
+            >
+              Only used for CPU instances. GPU instances use default disk
+              sizing.
+            </Typography>
+          </FormControl>
+
           <Card variant="soft" sx={{ p: 2 }}>
             <Typography level="title-sm" sx={{ mb: 1 }}>
               RunPod Configuration Status
@@ -471,6 +497,25 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
           </Card>
         </Stack>
 
+        {/* Cost & Credits Display */}
+        {availableCredits !== null && (
+          <Box sx={{ mt: 2 }}>
+            <CostCreditsDisplay
+              estimatedCost={estimatedCost}
+              availableCredits={availableCredits}
+              variant="card"
+              showWarning={true}
+            />
+            <Typography
+              level="body-xs"
+              sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+            >
+              Note: Cost estimates are approximate and may vary based on actual
+              usage and resource allocation.
+            </Typography>
+          </Box>
+        )}
+
         <Box
           sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 3 }}
         >
@@ -494,13 +539,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             Reserve a RunPod Node
           </Button>
         </Box>
-        {availableCredits !== null && (
-          <Typography level="body-xs" sx={{ mt: 1, color: "text.secondary" }}>
-            Estimated cost (1h):{" "}
-            {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"}
-            {"  "}| Remaining credits: {availableCredits.toFixed(2)}
-          </Typography>
-        )}
+
         {!isLoadingGpuTypes &&
           availableGpuTypes.filter((gpu) =>
             runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
@@ -511,11 +550,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
               clusters.
             </Alert>
           )}
-        {availableCredits !== null && estimatedCost > availableCredits && (
-          <Alert color="warning" sx={{ mt: 1 }}>
-            Insufficient credits for this selection.
-          </Alert>
-        )}
       </ModalDialog>
     </Modal>
   );

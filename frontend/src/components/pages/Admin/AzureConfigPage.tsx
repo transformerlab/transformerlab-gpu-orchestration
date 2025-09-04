@@ -62,7 +62,7 @@ const AzureConfigPage: React.FC = () => {
     allowed_regions: [],
     is_configured: false,
     auth_method: "service_principal",
-    max_instances: 0,
+    max_instances: 1,
   });
   const [poolName, setPoolName] = useState(initialPoolName);
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<
@@ -142,7 +142,7 @@ const AzureConfigPage: React.FC = () => {
             allowed_regions: specificConfig.allowed_regions || [],
             is_configured: data.is_configured || false,
             auth_method: "service_principal",
-            max_instances: specificConfig.max_instances || 0,
+            max_instances: specificConfig.max_instances || 1,
           });
           setPoolName(specificConfig.name || initialPoolName);
           setAllowedTeamIds(specificConfig.allowed_team_ids || []);
@@ -158,7 +158,7 @@ const AzureConfigPage: React.FC = () => {
             allowed_regions: data.allowed_regions || [],
             is_configured: true,
             auth_method: "service_principal",
-            max_instances: data.max_instances || 0,
+            max_instances: data.max_instances || 1,
           });
           setPoolName(data.name || initialPoolName);
           setAllowedTeamIds(data.allowed_team_ids || []);
@@ -179,7 +179,7 @@ const AzureConfigPage: React.FC = () => {
             allowed_regions: defaultConfig.allowed_regions || [],
             is_configured: data.is_configured || false,
             auth_method: "service_principal",
-            max_instances: defaultConfig.max_instances || 0,
+            max_instances: defaultConfig.max_instances || 1,
           });
           setPoolName(defaultConfig.name || initialPoolName);
           setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
@@ -220,12 +220,9 @@ const AzureConfigPage: React.FC = () => {
 
   const fetchAvailableInstanceTypes = async () => {
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/azure/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         const instanceTypes = (data.instance_types || []).map(
@@ -358,7 +355,7 @@ const AzureConfigPage: React.FC = () => {
             allowed_regions: defaultConfig.allowed_regions || [],
             is_configured: data.is_configured || false,
             auth_method: "service_principal",
-            max_instances: defaultConfig.max_instances || 0,
+            max_instances: defaultConfig.max_instances || 1,
           });
           setAllowedTeamIds(defaultConfig.allowed_team_ids || []);
         } else {
@@ -432,8 +429,6 @@ const AzureConfigPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  
 
   if (loading && isConfigureMode) {
     return (
@@ -632,7 +627,7 @@ const AzureConfigPage: React.FC = () => {
               >
                 Test Connection
               </Button>
-              
+
               <Button
                 variant="outlined"
                 onClick={async () => {
@@ -647,8 +642,6 @@ const AzureConfigPage: React.FC = () => {
             </Box>
           </Stack>
         </Card>
-
-        
 
         {/* Instance Types Configuration */}
         <Card variant="outlined">
@@ -878,14 +871,14 @@ const AzureConfigPage: React.FC = () => {
                 onChange={(e) =>
                   setConfig((prev) => ({
                     ...prev,
-                    max_instances: parseInt(e.target.value) || 0,
+                    max_instances: parseInt(e.target.value) || 1,
                   }))
                 }
-                placeholder="0 for unlimited"
+                placeholder="Please set a minimum of 1"
                 slotProps={{
                   input: {
                     type: "number",
-                    min: 0,
+                    min: 1,
                   },
                 }}
                 sx={{ maxWidth: 200 }}
@@ -894,11 +887,8 @@ const AzureConfigPage: React.FC = () => {
                 level="body-xs"
                 sx={{ color: "neutral.500", mt: 0.5 }}
               >
-                {config.max_instances === 0
-                  ? "Unlimited instances allowed"
-                  : `Maximum ${config.max_instances} instance${
-                      config.max_instances !== 1 ? "s" : ""
-                    } allowed`}
+                Maximum {config.max_instances} instance
+                {config.max_instances !== 1 ? "s" : ""} allowed
               </Typography>
             </FormControl>
           </Stack>
@@ -935,7 +925,9 @@ const AzureConfigPage: React.FC = () => {
               <Button
                 size="sm"
                 variant="outlined"
-                onClick={() => setAllowedTeamIds(availableTeams.map((t) => t.id))}
+                onClick={() =>
+                  setAllowedTeamIds(availableTeams.map((t) => t.id))
+                }
               >
                 Allow All Teams
               </Button>
@@ -993,9 +985,7 @@ const AzureConfigPage: React.FC = () => {
             >
               <Typography>Maximum Instances</Typography>
               <Chip variant="soft" color="primary" size="sm">
-                {config.max_instances === 0
-                  ? "Unlimited"
-                  : config.max_instances}
+                {config.max_instances}
               </Chip>
             </Box>
           </Stack>

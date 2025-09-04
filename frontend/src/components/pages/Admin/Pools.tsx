@@ -59,8 +59,12 @@ const Pools: React.FC = () => {
     return response.json();
   };
 
-  // Use SWR for data fetching
-  const { data, error, mutate } = useSWR(buildApiUrl("node-pools/"), fetcher);
+  // Use SWR for data fetching with optimized configuration
+  const { data, error, mutate } = useSWR(buildApiUrl("node-pools/"), fetcher, {
+    revalidateOnFocus: false, // Don't revalidate when window regains focus
+    dedupingInterval: 2000, // Dedupe requests within 2 seconds
+    refreshInterval: 7000, // Refresh every 5 seconds for real-time updates
+  });
 
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
@@ -136,19 +140,8 @@ const Pools: React.FC = () => {
               : "GCP"
           } config set as default successfully`,
         });
-        // Refresh the data
+        // Refresh the data using SWR mutate
         mutate();
-        // Refresh the specific config data
-        if (platform === "azure") {
-          // Trigger a refetch of Azure configs
-          window.location.reload();
-        } else if (platform === "runpod") {
-          // Trigger a refetch of RunPod configs
-          window.location.reload();
-        } else {
-          // Trigger a refetch of GCP configs
-          window.location.reload();
-        }
       } else {
         const errorData = await response.json();
         addNotification({
@@ -198,19 +191,8 @@ const Pools: React.FC = () => {
               : "GCP"
           } configuration deleted successfully`,
         });
-        // Refresh the data
+        // Refresh the data using SWR mutate
         mutate();
-        // Refresh the specific config data
-        if (platform === "azure") {
-          // Trigger a refetch of Azure configs
-          window.location.reload();
-        } else if (platform === "runpod") {
-          // Trigger a refetch of RunPod configs
-          window.location.reload();
-        } else {
-          // Trigger a refetch of GCP configs
-          window.location.reload();
-        }
       } else {
         const errorData = await response.json();
         addNotification({
@@ -272,11 +254,11 @@ const Pools: React.FC = () => {
       }
     >
       <>
-        {loading && nodePools.length === 0 ? (
+        {loading && nodePools.length === 0 && !showFakeData ? (
           <Alert color="primary" sx={{ mb: 2 }}>
             Loading node pools...
           </Alert>
-        ) : nodePools.length > 0 ? (
+        ) : nodePools.length > 0 || showFakeData ? (
           <Table
             className="node-pools-table"
             sx={{
@@ -395,7 +377,7 @@ const Pools: React.FC = () => {
                       >
                         Configure
                       </Button>
-                      {pool.provider === "direct" && (
+                      {pool.provider === "direct" ? (
                         <IconButton
                           size="sm"
                           color="danger"
@@ -404,7 +386,23 @@ const Pools: React.FC = () => {
                         >
                           <Trash2 size={14} />
                         </IconButton>
-                      )}
+                      ) : (pool.provider === "azure" ||
+                          pool.provider === "runpod") &&
+                        pool.config?.config_key ? (
+                        <IconButton
+                          size="sm"
+                          color="danger"
+                          variant="plain"
+                          onClick={() =>
+                            handleDeleteConfig(
+                              pool.provider!,
+                              pool.config!.config_key!
+                            )
+                          }
+                        >
+                          <Trash2 size={14} />
+                        </IconButton>
+                      ) : null}
                     </Box>
                   </td>
                 </tr>
@@ -471,6 +469,16 @@ const Pools: React.FC = () => {
                       >
                         Configure
                       </Button>
+                      <IconButton
+                        size="sm"
+                        color="danger"
+                        variant="plain"
+                        disabled
+                        sx={{ opacity: 0.6, cursor: "not-allowed" }}
+                        title="Cannot delete fake data"
+                      >
+                        <Trash2 size={14} />
+                      </IconButton>
                     </Box>
                   </td>
                 </tr>

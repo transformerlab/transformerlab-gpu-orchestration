@@ -54,6 +54,11 @@ from routes.node_pools.utils import (
 from routes.quota.utils import get_current_user_quota_info, get_user_team_id
 from routes.reports.utils import record_usage
 from sqlalchemy.orm import Session
+from config import get_db
+from db.db_models import (
+    NodePoolAccess as NodePoolAccessDB,
+    SSHNodePool as SSHNodePoolDB,
+)
 from utils.cluster_resolver import handle_cluster_name_param
 
 from utils.cluster_utils import get_cluster_platform_info as get_cluster_platform_data
@@ -138,6 +143,7 @@ async def launch_instance(
     cpus: Optional[str] = Form(None),
     memory: Optional[str] = Form(None),
     accelerators: Optional[str] = Form(None),
+    disk_space: Optional[str] = Form(None),
     region: Optional[str] = Form(None),
     zone: Optional[str] = Form(None),
     use_spot: Optional[bool] = Form(False),
@@ -190,6 +196,7 @@ async def launch_instance(
             "cpus": cpus,
             "memory": memory,
             "accelerators": accelerators,
+            "disk_space": disk_space,
             "region": region,
             "zone": zone,
             "use_spot": use_spot,
@@ -220,6 +227,7 @@ async def launch_instance(
         cpus = final_config["cpus"]
         memory = final_config["memory"]
         accelerators = final_config["accelerators"]
+        disk_space = final_config["disk_space"]
         region = final_config["region"]
         zone = final_config["zone"]
         use_spot = final_config["use_spot"] or False
@@ -294,6 +302,15 @@ async def launch_instance(
                     if mapped_instance_type.lower().startswith("cpu"):
                         # Using skypilot logic to have disk size lesser than 10x vCPUs
                         disk_size = 5 * int(mapped_instance_type.split("-")[1])
+                    else:
+                        # For GPU instances, only set disk_size if disk_space is provided
+                        if disk_space:
+                            try:
+                                disk_size = int(disk_space)
+                            except ValueError:
+                                # If disk_space is not a valid integer, ignore it
+                                disk_size = None
+                                pass
                     if mapped_instance_type != accelerators:
                         instance_type = mapped_instance_type
                         # Clear accelerators for RunPod since we're using instance_type
@@ -476,8 +493,17 @@ async def launch_instance(
             user_info=cluster_user_info,
         )
 
-        # Launch cluster using the actual cluster name (isolated process)
-        request_id = await launch_cluster_with_skypilot_isolated(
+        # Handle disk_space parameter for all cloud providers
+        if disk_space and not disk_size:
+            try:
+                disk_size = int(disk_space)
+            except ValueError:
+                # If disk_space is not a valid integer, ignore it
+                disk_size = None
+                pass
+
+        # Launch cluster using the actual cluster name
+        request_id = launch_cluster_with_skypilot(
             cluster_name=actual_cluster_name,
             command=command,
             setup=setup,
@@ -812,6 +838,30 @@ async def get_cost_report(
         )
 
 
+@router.get("/resolve-name/{cluster_name}")
+async def resolve_cluster_name(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Resolve a cluster display name to its actual cluster name.
+    Used by CLI tools to map user-friendly names to internal names.
+    """
+    try:
+        actual_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+        return {"display_name": cluster_name, "actual_name": actual_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to resolve cluster name: {str(e)}"
+        )
+
+
 @router.get("/{cluster_name}/info")
 async def get_cluster_info(
     cluster_name: str,
@@ -947,6 +997,36 @@ async def get_cluster_info(
                     f"Warning: Failed to get SSH node info for cluster {cluster_name}: {e}"
                 )
 
+        # Get cost information for this cluster
+        cost_info = None
+        try:
+            # Get the full cost report and find this cluster's cost data
+            report = generate_cost_report()
+            if report:
+                for cluster_cost_data in report:
+                    if cluster_cost_data.get("name") == actual_cluster_name:
+                        total_cost = cluster_cost_data.get("total_cost", 0)
+                        duration = cluster_cost_data.get("duration", 0)
+                        cost_per_hour = 0
+                        if duration and duration > 0:
+                            cost_per_hour = total_cost / (
+                                duration / 3600
+                            )  # Convert seconds to hours
+
+                        cost_info = {
+                            "total_cost": total_cost,
+                            "duration": duration,
+                            "cost_per_hour": cost_per_hour,
+                            "launched_at": cluster_cost_data.get("launched_at"),
+                            "status": cluster_cost_data.get("status"),
+                            "cloud": cluster_cost_data.get("cloud"),
+                            "region": cluster_cost_data.get("region"),
+                        }
+                        break
+        except Exception as e:
+            print(f"Warning: Failed to get cost info for cluster {cluster_name}: {e}")
+            # Continue without cost info if there's an error
+
         return {
             "cluster": cluster_data,
             "cluster_type": cluster_type_info,
@@ -954,6 +1034,7 @@ async def get_cluster_info(
             "state": state,
             "jobs": jobs,
             "ssh_node_info": ssh_node_info,
+            "cost_info": cost_info,
         }
 
     except HTTPException:

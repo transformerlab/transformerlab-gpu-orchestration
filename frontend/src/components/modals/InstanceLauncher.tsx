@@ -16,8 +16,8 @@ import {
   Alert,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
-import { buildApiUrl, apiFetch } from "../utils/api";
-import { useNotification } from "./NotificationSystem";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useNotification } from "../NotificationSystem";
 
 interface InstanceLauncherProps {
   open: boolean;
@@ -33,6 +33,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   const [vcpus, setVcpus] = useState("");
   const [memory, setMemory] = useState("");
   const [gpus, setGpus] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
   const [zone, setZone] = useState("");
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -69,6 +70,10 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
         formData.append("accelerators", gpus);
       }
 
+      if (diskSpace) {
+        formData.append("disk_space", diskSpace);
+      }
+
       if (region) {
         formData.append("region", region);
       }
@@ -96,6 +101,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
         setVcpus("");
         setMemory("");
         setGpus("");
+        setDiskSpace("");
         setZone("");
         setRegion("");
 
@@ -196,6 +202,20 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
                 value={gpus}
                 onChange={(e) => setGpus(e.target.value)}
                 placeholder="RTX3090:1, H100:4"
+              />
+            </FormControl>
+            <FormControl sx={{ mb: 1 }}>
+              <FormLabel>Disk Space (GB)</FormLabel>
+              <Input
+                value={diskSpace}
+                onChange={(e) => setDiskSpace(e.target.value)}
+                placeholder="e.g., 100, 200, 500"
+                slotProps={{
+                  input: {
+                    type: "number",
+                    min: 1,
+                  },
+                }}
               />
             </FormControl>
           </Card>

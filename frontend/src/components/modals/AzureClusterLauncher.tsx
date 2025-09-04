@@ -20,9 +20,10 @@ import {
   Switch,
 } from "@mui/joy";
 import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
-import { buildApiUrl, apiFetch } from "../utils/api";
-import { useAuth } from "../context/AuthContext";
-import { useNotification } from "./NotificationSystem";
+import { buildApiUrl, apiFetch } from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../NotificationSystem";
+import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 
 interface AzureClusterLauncherProps {
   open: boolean;
@@ -88,6 +89,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [setup, setSetup] = useState("");
   const [selectedInstanceType, setSelectedInstanceType] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("");
+  const [diskSpace, setDiskSpace] = useState("");
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<
     InstanceType[]
   >([]);
@@ -350,6 +352,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setSetup("");
     setSelectedInstanceType("");
     setSelectedRegion("");
+    setDiskSpace("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
 
@@ -396,6 +399,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       formData.append("cloud", "azure");
       formData.append("instance_type", selectedInstanceType);
       formData.append("region", selectedRegion);
+      if (diskSpace) formData.append("disk_space", diskSpace);
       formData.append("use_spot", useSpot.toString());
       if (idleMinutesToAutostop) {
         formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
@@ -556,24 +560,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   </FormControl>
                 </Stack>
               </Card>
-              {availableCredits !== null && (
-                <Card variant="soft">
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <DollarSign size={16} />
-                    <Typography level="body-sm">
-                      Estimated cost (1h):{" "}
-                      {estimatedCost ? `${estimatedCost.toFixed(2)}` : "-"} |
-                      Remaining credits:{" "}
-                      {availableCredits?.toFixed(2) || "0.00"}
-                    </Typography>
-                  </Stack>
-                  {estimatedCost > (availableCredits ?? 0) && (
-                    <Alert color="warning" sx={{ mt: 1 }}>
-                      Insufficient credits for this selection.
-                    </Alert>
-                  )}
-                </Card>
-              )}
 
               <Card variant="outlined">
                 <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -623,6 +609,27 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
                   </FormControl>
                 </Stack>
               </Card>
+
+              <FormControl>
+                <FormLabel>Disk Space (GB) - Optional</FormLabel>
+                <Input
+                  value={diskSpace}
+                  onChange={(e) => setDiskSpace(e.target.value)}
+                  placeholder="e.g., 100, 200, 500 (leave empty for default)"
+                  slotProps={{
+                    input: {
+                      type: "number",
+                      min: 1,
+                    },
+                  }}
+                />
+                <Typography
+                  level="body-xs"
+                  sx={{ mt: 0.5, color: "text.secondary" }}
+                >
+                  Custom disk size for the instance. Leave empty to use default.
+                </Typography>
+              </FormControl>
 
               <Card variant="outlined">
                 <Typography level="title-sm" sx={{ mb: 2 }}>
@@ -733,6 +740,25 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
             </Stack>
           </form>
         </Box>
+
+        {/* Cost & Credits Display */}
+        {availableCredits !== null && (
+          <Box sx={{ mt: 2 }}>
+            <CostCreditsDisplay
+              estimatedCost={estimatedCost}
+              availableCredits={availableCredits}
+              variant="card"
+              showWarning={true}
+            />
+            <Typography
+              level="body-xs"
+              sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+            >
+              Note: Cost estimates are approximate and may vary based on actual
+              usage and resource allocation.
+            </Typography>
+          </Box>
+        )}
 
         <Box
           sx={{

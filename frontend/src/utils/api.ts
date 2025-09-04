@@ -50,6 +50,15 @@ export interface ClusterInfoResponse {
   template: any;
   jobs: JobRecord[];
   ssh_node_info?: any;
+  cost_info?: {
+    total_cost: number;
+    duration: number;
+    cost_per_hour: number;
+    launched_at?: number;
+    status?: string;
+    cloud?: string;
+    region?: string;
+  };
 }
 
 // Consolidated cluster info API function
