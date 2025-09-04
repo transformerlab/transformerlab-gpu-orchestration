@@ -136,33 +136,6 @@ async def terminal_websocket(
         else None
     )
 
-    # Origin check against allowed CORS origins (normalized). If origin missing, require explicit opt-in.
-    from urllib.parse import urlsplit
-
-    def _normalize_origin(o: str | None) -> str | None:
-        if not o:
-            return None
-        u = urlsplit(o.strip())
-        host = (u.hostname or "").lower()
-        port = u.port
-        if port in (None, 80, 443):
-            netloc = host
-        else:
-            netloc = f"{host}:{port}"
-        scheme = (u.scheme or "").lower()
-        return f"{scheme}://{netloc}"
-
-    origin = _normalize_origin(websocket.headers.get("origin"))
-    allowed = {_normalize_origin(x) for x in (CORS_ALLOW_ORIGINS or [])}
-    if origin is None:
-        if not WS_ALLOW_NULL_ORIGIN:
-            await websocket.close(code=1008, reason="Missing Origin not allowed")
-            return
-    else:
-        if allowed and origin not in allowed:
-            await websocket.close(code=1008, reason="Origin not allowed")
-            return
-
     # Validate the session using auth utils
     if not session_cookie:
         await websocket.close(code=1008, reason="Authentication required")
