@@ -68,18 +68,25 @@ def list_node_pools_command(console: Console):
         d = _to_dict(it)
 
         name = d.get("name") or d.get("id") or d.get("pool_name") or "-"
-        ready = (
-            d.get("ready_nodes")
-            or d.get("ready")
-            or d.get("nodes_ready")
-            or d.get("available_nodes")
-        )
-        total = d.get("total_nodes") or d.get("nodes") or d.get("node_count")
-        nodes = (
-            f"{ready}/{total}"
-            if (ready is not None and total is not None)
-            else (str(total or ready) if (total or ready) is not None else "-")
-        )
+        # Check for current_instances/max_instances first (from API response)
+        max_instances = d.get("max_instances")
+
+        if max_instances is not None:
+            nodes = max_instances
+        else:
+            # Fallback to legacy field names for backward compatibility
+            ready = (
+                d.get("ready_nodes")
+                or d.get("ready")
+                or d.get("nodes_ready")
+                or d.get("available_nodes")
+            )
+            total = d.get("total_nodes") or d.get("nodes") or d.get("node_count")
+            nodes = (
+                f"{ready}/{total}"
+                if (ready is not None and total is not None)
+                else (str(total or ready) if (total or ready) is not None else "-")
+            )
 
         type_ = (
             d.get("type")
