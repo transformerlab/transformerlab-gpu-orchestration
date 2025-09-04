@@ -54,7 +54,10 @@ from routes.reports.utils import record_usage
 from routes.quota.utils import get_user_team_id, get_current_user_quota_info
 from sqlalchemy.orm import Session
 from config import get_db
-from db.db_models import NodePoolAccess as NodePoolAccessDB, SSHNodePool as SSHNodePoolDB
+from db.db_models import (
+    NodePoolAccess as NodePoolAccessDB,
+    SSHNodePool as SSHNodePoolDB,
+)
 from utils.cluster_resolver import handle_cluster_name_param
 from utils.cluster_utils import (
     create_cluster_platform_entry,
@@ -156,79 +159,80 @@ async def launch_instance(
         yaml_config = {}
         if yaml_file:
             # Validate file type
-            if not yaml_file.filename or not yaml_file.filename.lower().endswith(('.yaml', '.yml')):
+            if not yaml_file.filename or not yaml_file.filename.lower().endswith(
+                (".yaml", ".yml")
+            ):
                 raise HTTPException(
-                    status_code=400, 
-                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)"
+                    status_code=400,
+                    detail="Uploaded file must be a YAML file (.yaml or .yml extension)",
                 )
-            
+
             # Read and parse YAML content
             yaml_content = await yaml_file.read()
             try:
                 yaml_config = yaml.safe_load(yaml_content) or {}
             except yaml.YAMLError as e:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid YAML format: {str(e)}"
+                    status_code=400, detail=f"Invalid YAML format: {str(e)}"
                 )
-            
+
             # Validate YAML structure
             if not isinstance(yaml_config, dict):
                 raise HTTPException(
                     status_code=400,
-                    detail="YAML file must contain a valid configuration object"
+                    detail="YAML file must contain a valid configuration object",
                 )
-        
+
         # Merge YAML config with form parameters (form parameters take precedence)
         final_config = {
-            'cluster_name': cluster_name,
-            'command': command,
-            'setup': setup,
-            'cloud': cloud,
-            'instance_type': instance_type,
-            'cpus': cpus,
-            'memory': memory,
-            'accelerators': accelerators,
-            'disk_space': disk_space,
-            'region': region,
-            'zone': zone,
-            'use_spot': use_spot,
-            'idle_minutes_to_autostop': idle_minutes_to_autostop,
-            'storage_bucket_ids': storage_bucket_ids,
-            'node_pool_name': node_pool_name,
-            'docker_image_id': docker_image_id,
+            "cluster_name": cluster_name,
+            "command": command,
+            "setup": setup,
+            "cloud": cloud,
+            "instance_type": instance_type,
+            "cpus": cpus,
+            "memory": memory,
+            "accelerators": accelerators,
+            "disk_space": disk_space,
+            "region": region,
+            "zone": zone,
+            "use_spot": use_spot,
+            "idle_minutes_to_autostop": idle_minutes_to_autostop,
+            "storage_bucket_ids": storage_bucket_ids,
+            "node_pool_name": node_pool_name,
+            "docker_image_id": docker_image_id,
         }
-        
+
         # Override with YAML values where form parameters are None
         for key, value in yaml_config.items():
             if key in final_config and final_config[key] is None:
                 final_config[key] = value
-        
+
         # Validate required fields
-        if not final_config['cluster_name']:
+        if not final_config["cluster_name"]:
             raise HTTPException(
                 status_code=400,
-                detail="cluster_name is required (either in form parameters or YAML file)"
+                detail="cluster_name is required (either in form parameters or YAML file)",
             )
-        
+
         # Extract final values
-        cluster_name = final_config['cluster_name']
-        command = final_config['command'] or "echo 'Hello SkyPilot'"
-        setup = final_config['setup']
-        cloud = final_config['cloud']
-        instance_type = final_config['instance_type']
-        cpus = final_config['cpus']
-        memory = final_config['memory']
-        accelerators = final_config['accelerators']
-        disk_space = final_config['disk_space']
-        region = final_config['region']
-        zone = final_config['zone']
-        use_spot = final_config['use_spot'] or False
-        idle_minutes_to_autostop = final_config['idle_minutes_to_autostop']
-        storage_bucket_ids = final_config['storage_bucket_ids']
-        node_pool_name = final_config['node_pool_name']
-        docker_image_id = final_config['docker_image_id']
-        
+        cluster_name = final_config["cluster_name"]
+        command = final_config["command"] or "echo 'Hello SkyPilot'"
+        setup = final_config["setup"]
+        cloud = final_config["cloud"]
+        instance_type = final_config["instance_type"]
+        cpus = final_config["cpus"]
+        memory = final_config["memory"]
+        accelerators = final_config["accelerators"]
+        disk_space = final_config["disk_space"]
+        region = final_config["region"]
+        zone = final_config["zone"]
+        use_spot = final_config["use_spot"] or False
+        idle_minutes_to_autostop = final_config["idle_minutes_to_autostop"]
+        storage_bucket_ids = final_config["storage_bucket_ids"]
+        node_pool_name = final_config["node_pool_name"]
+        docker_image_id = final_config["docker_image_id"]
+
         file_mounts = None
         python_filename = None
         disk_size = None
@@ -250,18 +254,21 @@ async def launch_instance(
                 python_filename = "_".join(python_file_name.split("_")[1:])
             else:
                 python_filename = python_file_name
-            
+
             file_path = UPLOADS_DIR / python_file_name
             if not file_path.exists():
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Uploaded file '{python_file_name}' not found. Please upload the file first using /upload endpoint."
+                    detail=f"Uploaded file '{python_file_name}' not found. Please upload the file first using /upload endpoint.",
                 )
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
         # (RunPod mapping below may clear 'accelerators')
-        def _parse_requested_gpu_count(accel: Optional[str], cloud_name: Optional[str]) -> int:
+        def _parse_requested_gpu_count(
+            accel: Optional[str], cloud_name: Optional[str]
+        ) -> int:
             if not accel:
                 return 0
             s = str(accel).strip()
@@ -275,7 +282,9 @@ async def launch_instance(
             return 1
 
         _initial_requested_gpu_count = _parse_requested_gpu_count(accelerators, cloud)
-        _runpod_display_option_for_pricing = accelerators if (cloud or "").lower() == "runpod" else None
+        _runpod_display_option_for_pricing = (
+            accelerators if (cloud or "").lower() == "runpod" else None
+        )
 
         # Setup RunPod if cloud is runpod
         if cloud == "runpod":
@@ -288,7 +297,7 @@ async def launch_instance(
                     )
                     if mapped_instance_type.lower().startswith("cpu"):
                         # Using skypilot logic to have disk size lesser than 10x vCPUs
-                            disk_size = 5 * int(mapped_instance_type.split("-")[1])
+                        disk_size = 5 * int(mapped_instance_type.split("-")[1])
                     else:
                         # For GPU instances, only set disk_size if disk_space is provided
                         if disk_space:
@@ -318,14 +327,16 @@ async def launch_instance(
         # Get user info from the authenticated user (API key or session)
         user_id = user["id"]
         organization_id = user["organization_id"]
-        
 
         # Enforce team-based access to selected node pool/provider
         try:
             team_id = get_user_team_id(db, organization_id, user_id)
             if cloud == "ssh":
                 if not node_pool_name:
-                    raise HTTPException(status_code=400, detail="node_pool_name is required for SSH launches")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="node_pool_name is required for SSH launches",
+                    )
                 pool = (
                     db.query(SSHNodePoolDB)
                     .filter(
@@ -335,7 +346,10 @@ async def launch_instance(
                     .first()
                 )
                 if not pool:
-                    raise HTTPException(status_code=404, detail=f"SSH node pool '{node_pool_name}' not found")
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"SSH node pool '{node_pool_name}' not found",
+                    )
                 allowed_team_ids = []
                 try:
                     od = pool.other_data or {}
@@ -343,8 +357,13 @@ async def launch_instance(
                         allowed_team_ids = od.get("allowed_team_ids", []) or []
                 except Exception:
                     allowed_team_ids = []
-                if allowed_team_ids and (team_id is None or team_id not in allowed_team_ids):
-                    raise HTTPException(status_code=403, detail="Your team does not have access to this SSH node pool")
+                if allowed_team_ids and (
+                    team_id is None or team_id not in allowed_team_ids
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Your team does not have access to this SSH node pool",
+                    )
             elif cloud in ("azure", "runpod"):
                 # Determine default config key to identify pool
                 pool_key = None
@@ -367,9 +386,18 @@ async def launch_instance(
                         )
                         .first()
                     )
-                    allowed_team_ids = access_row.allowed_team_ids if access_row and access_row.allowed_team_ids else []
-                    if allowed_team_ids and (team_id is None or team_id not in allowed_team_ids):
-                        raise HTTPException(status_code=403, detail=f"Your team does not have access to the {cloud.title()} node pool")
+                    allowed_team_ids = (
+                        access_row.allowed_team_ids
+                        if access_row and access_row.allowed_team_ids
+                        else []
+                    )
+                    if allowed_team_ids and (
+                        team_id is None or team_id not in allowed_team_ids
+                    ):
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Your team does not have access to the {cloud.title()} node pool",
+                        )
         except HTTPException:
             raise
         except Exception as e:
@@ -400,7 +428,9 @@ async def launch_instance(
             # Apply price-based quota enforcement for non-SSH clouds when price is available
             if cloud_lower != "ssh" and price_per_hour is not None:
                 quota_info = get_current_user_quota_info(db, organization_id, user_id)
-                available_credits = float(quota_info.get("current_period_remaining", 0.0) or 0.0)
+                available_credits = float(
+                    quota_info.get("current_period_remaining", 0.0) or 0.0
+                )
                 # Default to at least 1 hour of usage for admission check
                 estimated_hours = 1.0
                 required_credits = float(price_per_hour) * estimated_hours
@@ -441,7 +471,6 @@ async def launch_instance(
             organization_id=organization_id,
             user_info=cluster_user_info,
         )
-
 
         # Handle disk_space parameter for all cloud providers
         if disk_space and not disk_size:
@@ -558,7 +587,7 @@ async def down_instance(
 
         # Update cluster state to terminating
         update_cluster_state(actual_cluster_name, "terminating")
-        
+
         request_id = down_cluster_with_skypilot(
             actual_cluster_name,
             display_name,
@@ -731,9 +760,6 @@ async def get_all_cluster_platforms(request: Request, response: Response):
         )
 
 
-
-
-
 @router.get("/cost-report")
 async def get_cost_report(
     request: Request, response: Response, user: dict = Depends(get_user_or_api_key)
@@ -788,7 +814,28 @@ async def get_cost_report(
         )
 
 
-
+@router.get("/resolve-name/{cluster_name}")
+async def resolve_cluster_name(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Resolve a cluster display name to its actual cluster name.
+    Used by CLI tools to map user-friendly names to internal names.
+    """
+    try:
+        actual_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+        return {"display_name": cluster_name, "actual_name": actual_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to resolve cluster name: {str(e)}"
+        )
 
 
 @router.get("/{cluster_name}/info")
@@ -938,8 +985,10 @@ async def get_cluster_info(
                         duration = cluster_cost_data.get("duration", 0)
                         cost_per_hour = 0
                         if duration and duration > 0:
-                            cost_per_hour = total_cost / (duration / 3600)  # Convert seconds to hours
-                        
+                            cost_per_hour = total_cost / (
+                                duration / 3600
+                            )  # Convert seconds to hours
+
                         cost_info = {
                             "total_cost": total_cost,
                             "duration": duration,
@@ -947,7 +996,7 @@ async def get_cluster_info(
                             "launched_at": cluster_cost_data.get("launched_at"),
                             "status": cluster_cost_data.get("status"),
                             "cloud": cluster_cost_data.get("cloud"),
-                            "region": cluster_cost_data.get("region")
+                            "region": cluster_cost_data.get("region"),
                         }
                         break
         except Exception as e:
@@ -1275,72 +1324,70 @@ async def upload_files(
     """
     try:
         uploaded_files = {}
-        
+
         # Handle single Python file upload
         if python_file and python_file.filename:
             python_filename = secure_filename(python_file.filename)
             unique_filename = f"{uuid.uuid4()}_{python_filename}"
             file_path = UPLOADS_DIR / unique_filename
-            
+
             with open(file_path, "wb") as f:
                 f.write(await python_file.read())
-            
+
             uploaded_files["python_file"] = {
                 "original_name": python_filename,
                 "uploaded_name": unique_filename,
-                "file_path": str(file_path)
+                "file_path": str(file_path),
             }
-        
+
         # Handle directory files upload
         if dir_files:
             # Sanitize provided dir_name, or derive from files
             base_name = dir_name or "project"
             base_name = os.path.basename(base_name.strip())
             base_name = secure_filename(base_name) or "project"
-            
+
             unique_dir = UPLOADS_DIR / f"{uuid.uuid4()}_{base_name}"
             unique_dir.mkdir(parents=True, exist_ok=True)
-            
+
             uploaded_files["dir_files"] = {
                 "dir_name": base_name,
                 "uploaded_dir": str(unique_dir),
-                "files": []
+                "files": [],
             }
-            
+
             for up_file in dir_files:
                 if up_file.filename:
                     # Filename includes relative path as sent by frontend
                     raw_rel = up_file.filename
                     # Normalize path, remove leading separators and traversal
-                    norm_rel = os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
+                    norm_rel = (
+                        os.path.normpath(raw_rel).lstrip(os.sep).replace("\\", "/")
+                    )
                     parts = [p for p in norm_rel.split("/") if p not in ("..", "")]
                     safe_rel = Path(*[secure_filename(p) for p in parts])
                     target_path = unique_dir / safe_rel
                     target_path.parent.mkdir(parents=True, exist_ok=True)
-                    
+
                     with open(target_path, "wb") as f:
                         f.write(await up_file.read())
-                    
-                    uploaded_files["dir_files"]["files"].append({
-                        "original_path": raw_rel,
-                        "uploaded_path": str(safe_rel)
-                    })
-        
+
+                    uploaded_files["dir_files"]["files"].append(
+                        {"original_path": raw_rel, "uploaded_path": str(safe_rel)}
+                    )
+
         if not uploaded_files:
             raise HTTPException(
-                status_code=400, 
-                detail="No files were uploaded. Please provide either python_file or dir_files."
+                status_code=400,
+                detail="No files were uploaded. Please provide either python_file or dir_files.",
             )
-        
+
         return {
             "uploaded_files": uploaded_files,
-            "message": "Files uploaded successfully"
+            "message": "Files uploaded successfully",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to upload files: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to upload files: {str(e)}")

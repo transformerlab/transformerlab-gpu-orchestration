@@ -6,6 +6,35 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 SSH_PROXY_URL = os.getenv("TLAB_SSH_PROXY_URL", "localhost")
 
 
+def resolve_cluster_name_via_api(display_name: str) -> str:
+    """
+    Resolve display name to actual cluster name using the API endpoint.
+    """
+    try:
+        resp = api_request(
+            "GET", f"/instances/resolve-name/{display_name}", auth_needed=True
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("actual_name", display_name)
+        elif resp.status_code == 404:
+            # Cluster not found, return original name
+            return display_name
+        else:
+            print(
+                f"Warning: Failed to resolve cluster name (status {resp.status_code})"
+            )
+            return display_name
+    except Exception as e:
+        print(f"Warning: API call failed: {e}")
+        return display_name
+
+
+def _get_actual_cluster_name(display_name: str) -> str:
+    """Map display name to actual cluster name for SSH connections."""
+    return resolve_cluster_name_via_api(display_name)
+
+
 def ssh_command(console: Console, instance_name: str):
     """SSH into a specific instance."""
     console.print("[bold blue]SSH into Transformer Lab instance[/bold blue]")
@@ -13,9 +42,16 @@ def ssh_command(console: Console, instance_name: str):
         f"[bold blue]Connecting to instance: [cyan]{instance_name}[/cyan][/bold blue]"
     )
 
-    # Simplified SSH command
-    ssh_command = f"ssh -p 2222 {instance_name}@{SSH_PROXY_URL}"
-    console.print(f"[bold blue]Running command: [cyan]{ssh_command}[/cyan][/bold blue]")
+    # Map display name to actual cluster name for SSH connection
+    actual_cluster_name = _get_actual_cluster_name(instance_name)
+
+    # SSH command using actual cluster name
+    ssh_command = f"ssh -p 2222 {actual_cluster_name}@{SSH_PROXY_URL}"
+    # This is done to not show the actual cluster name to the user
+    display_command = f"ssh -p 2222 {instance_name}@{SSH_PROXY_URL}"
+    console.print(
+        f"[bold blue]Running command: [cyan]{display_command}[/cyan][/bold blue]"
+    )
 
     # Execute the SSH command
     os.system(ssh_command)
@@ -35,7 +71,8 @@ def ssh_command_listing(console: Console):
         resp = api_request("GET", "/instances/status", auth_needed=True)
 
     resp_json = resp.json()
-    clusters = resp_json.get("node-pools/ssh-node-pools", [])
+    # The API returns { clusters: [...] } - use the correct field
+    clusters = resp_json.get("clusters", [])
     if not clusters:
         console.print("[yellow]No instances found.[/yellow]")
         return
@@ -43,7 +80,11 @@ def ssh_command_listing(console: Console):
     console.print("[bold blue]Available Transformer Lab Instances[/bold blue]")
     for idx, cluster in enumerate(clusters, start=1):
         cluster_name = cluster.get("cluster_name", str(cluster))
-        console.print(f"{idx}. [cyan]{cluster_name}[/cyan]")
+        status = cluster.get("status", "")
+        # Clean up status (remove "ClusterStatus." prefix if present)
+        if status and "ClusterStatus." in status:
+            status = status.replace("ClusterStatus.", "")
+        console.print(f"{idx}. [cyan]{cluster_name}[/cyan] - Status: {status}")
 
     choice = console.input(
         "[bold yellow]Select an instance by number (or type 'q' to cancel): [/bold yellow]"
@@ -56,10 +97,10 @@ def ssh_command_listing(console: Console):
     try:
         instance_index = int(choice) - 1
         if 0 <= instance_index < len(clusters):
-            cluster_name = clusters[instance_index].get(
+            display_name = clusters[instance_index].get(
                 "cluster_name", str(clusters[instance_index])
             )
-            ssh_command(console, cluster_name)
+            ssh_command(console, display_name)
         else:
             console.print("[bold red]Invalid selection.[/bold red]")
     except ValueError:
