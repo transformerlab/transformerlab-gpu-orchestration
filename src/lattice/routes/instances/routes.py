@@ -801,9 +801,10 @@ async def get_cost_report(
                 display_name = get_display_name_from_actual(cluster_name)
                 cluster_display_name = display_name if display_name else cluster_name
 
-                # Create a copy of cluster data with display name
+                # Create a copy of cluster data with display name and cloud provider
                 filtered_cluster_data = cluster_data.copy()
                 filtered_cluster_data["name"] = cluster_display_name
+                filtered_cluster_data["cloud_provider"] = platform_info.get("platform", "direct")
                 filtered_clusters.append(filtered_cluster_data)
 
         return filtered_clusters
