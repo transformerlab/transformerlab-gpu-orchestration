@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from config import SessionLocal
-from db.db_models import ClusterPlatform, validate_relationships_before_save, validate_relationships_before_delete
+from db.db_models import (
+    ClusterPlatform,
+    validate_relationships_before_save,
+    validate_relationships_before_delete,
+)
 
 
 def generate_unique_cluster_name(display_name: str) -> str:
@@ -376,9 +380,7 @@ def save_cluster_platforms(platforms_data):
     pass
 
 
-def set_cluster_platform(
-    cluster_name: str, platform: str, user_info: dict = None
-):
+def set_cluster_platform(cluster_name: str, platform: str, user_info: dict = None):
     """
     Legacy function updated to use database storage.
     Note: This function doesn't handle display names since legacy code doesn't provide user context.
@@ -419,15 +421,17 @@ def get_cluster_state(cluster_name: str) -> str:
     return info["state"] if info else "active"
 
 
-def update_cluster_state(cluster_name: str, state: str, db: Optional[Session] = None) -> bool:
+def update_cluster_state(
+    cluster_name: str, state: str, db: Optional[Session] = None
+) -> bool:
     """
     Update cluster state in the database.
-    
+
     Args:
         cluster_name: The actual cluster name
         state: The new state (e.g., 'active', 'terminating')
         db: Optional database session
-        
+
     Returns:
         True if updated successfully, False if cluster not found
     """
