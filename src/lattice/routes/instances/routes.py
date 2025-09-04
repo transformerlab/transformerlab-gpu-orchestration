@@ -502,7 +502,7 @@ async def launch_instance(
                 pass
 
         # Launch cluster using the actual cluster name
-        request_id = launch_cluster_with_skypilot_isolated(
+        request_id = await launch_cluster_with_skypilot_isolated(
             cluster_name=actual_cluster_name,
             command=command,
             setup=setup,
