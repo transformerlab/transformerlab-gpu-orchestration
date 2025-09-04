@@ -17,7 +17,6 @@ from lattice.routes.auth.api_key_auth import get_user_or_api_key
 from lattice.routes.auth.utils import (
     get_user_from_sealed_session,
 )
-from lattice.config import CORS_ALLOW_ORIGINS, WS_ALLOW_NULL_ORIGIN
 from lattice.utils.cluster_utils import get_cluster_platform_info
 from lattice.utils.cluster_resolver import handle_cluster_name_param
 import pty
