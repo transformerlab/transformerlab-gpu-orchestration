@@ -25,6 +25,7 @@ import useSWR, { mutate } from "swr";
 import PageWithTitle from "../templates/PageWithTitle";
 import { buildApiUrl, apiFetch, teamsQuotaApi } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
+import CloudServiceIcon from "../../widgets/CloudServiceIcon";
 
 interface OrganizationQuotaData {
   organization_quota: {
@@ -846,6 +847,7 @@ const OrgQuota: React.FC = () => {
             <thead>
               <tr>
                 <th>Cluster</th>
+                <th>Cloud Provider</th>
                 <th>User</th>
                 <th>GPUs</th>
                 <th>Instance Type</th>
@@ -858,6 +860,11 @@ const OrgQuota: React.FC = () => {
               {recent_usage.map((usage) => (
                 <tr key={usage.id}>
                   <td>{usage.cluster_name}</td>
+                  <td>
+                    <CloudServiceIcon
+                      platform={usage.cloud_provider || "direct"}
+                    />
+                  </td>
                   <td>
                     {usage.user_name || usage.user_email || usage.user_id}
                   </td>

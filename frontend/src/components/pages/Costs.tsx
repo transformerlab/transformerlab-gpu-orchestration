@@ -15,6 +15,7 @@ import { useFakeData } from "../../context/FakeDataContext";
 import { useAuth } from "../../context/AuthContext";
 import { CircularProgress } from "@mui/joy";
 import ResourceDisplay from "../widgets/ResourceDisplay";
+import CloudServiceIcon from "../widgets/CloudServiceIcon";
 import {
   ResponsiveContainer,
   BarChart,
@@ -44,6 +45,7 @@ interface CostReportJob {
   resources_str_full?: string;
   status?: string;
   total_cost: number;
+  cloud_provider?: string;
 }
 
 const Reports: React.FC = () => {
@@ -53,6 +55,29 @@ const Reports: React.FC = () => {
   const [quotaLimit, setQuotaLimit] = useState<number>(100); // Default fallback
   const [quotaLoading, setQuotaLoading] = useState(false);
   const { user } = useAuth();
+
+  const formatCloudProvider = (provider: string | undefined): string => {
+    if (!provider) return "Unknown";
+    if (provider === "direct") return "Direct";
+
+    // Handle specific cloud providers
+    const knownProviders: { [key: string]: string } = {
+      azure: "Azure",
+      runpod: "RunPod",
+      gcp: "Google Cloud",
+      aws: "AWS",
+    };
+
+    if (knownProviders[provider.toLowerCase()]) {
+      return knownProviders[provider.toLowerCase()];
+    }
+
+    // Format unknown providers: capitalize first letter of each word
+    return provider
+      .split(/[\s_-]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
 
   const fetchQuotaData = async () => {
     if (!user?.organization_id) return;
@@ -272,6 +297,7 @@ const Reports: React.FC = () => {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Cloud Provider</th>
                 <th>Launched</th>
                 <th>Duration</th>
                 <th>Resources</th>
@@ -284,6 +310,25 @@ const Reports: React.FC = () => {
               {dataToRender.map((job, index) => (
                 <tr key={index}>
                   <td>{job.name}</td>
+                  <td>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <CloudServiceIcon
+                        platform={job.cloud_provider || "direct"}
+                      />
+                      <Typography
+                        level="body-sm"
+                        sx={{
+                          maxWidth: 120,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={formatCloudProvider(job.cloud_provider)}
+                      >
+                        {formatCloudProvider(job.cloud_provider)}
+                      </Typography>
+                    </Box>
+                  </td>
                   <td>
                     {job.launched_at ? formatLaunchedAt(job.launched_at) : "-"}
                   </td>
