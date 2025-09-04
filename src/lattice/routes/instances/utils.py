@@ -9,7 +9,7 @@ from sqlalchemy import or_
 import sky
 from fastapi import HTTPException
 from routes.clouds.azure.utils import az_get_current_config
-from routes.jobs.utils import save_cluster_jobs
+from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
@@ -654,9 +654,7 @@ def down_cluster_with_skypilot(
 
         # First, get all jobs from the cluster before tearing down
         try:
-            # job_records = get_cluster_job_queue(cluster_name)
-            # DISABLE TEMPORARILY as sky.queue requires active azure accounts, which we don't have in our dev skypilot
-            job_records = None
+            job_records = get_cluster_job_queue(cluster_name, credentials=credentials)
             # Extract jobs from the job records
             if job_records and hasattr(job_records, "jobs"):
                 jobs = job_records.jobs

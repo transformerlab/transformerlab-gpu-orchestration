@@ -7,11 +7,15 @@ from typing import Optional
 from config import SessionLocal
 from db.db_models import ClusterPlatform
 from utils.cluster_resolver import handle_cluster_name_param
+from routes.clouds.azure.utils import az_get_current_config
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_info_util,
+)
 
 
-def get_cluster_job_queue(cluster_name: str):
+def get_cluster_job_queue(cluster_name: str, credentials: Optional[dict] = None):
     try:
-        request_id = sky.queue(cluster_name)
+        request_id = sky.queue(cluster_name, credentials=credentials)
         job_records = sky.get(request_id)
         return job_records
     except Exception as e:
@@ -40,7 +44,35 @@ def get_job_logs(
                 # If mapping fails, use the original cluster_name (might be actual name already)
                 actual_cluster_name = cluster_name
 
-        log_paths = sky.download_logs(actual_cluster_name, [str(job_id)])
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(actual_cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config_dict = az_get_current_config(
+                        organization_id=organization_id
+                    )
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
+        log_paths = sky.download_logs(
+            actual_cluster_name, [str(job_id)], credentials=credentials
+        )
         log_path = log_paths.get(str(job_id))
         log_path = os.path.expanduser(log_path)
         if not log_path or (

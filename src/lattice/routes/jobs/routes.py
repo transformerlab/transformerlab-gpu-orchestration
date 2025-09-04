@@ -30,6 +30,10 @@ from routes.jobs.vscode_parser import get_vscode_tunnel_info
 from utils.cluster_resolver import (
     handle_cluster_name_param,
 )
+from routes.clouds.azure.utils import az_get_current_config
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_info_util,
+)
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.reports.utils import record_usage
@@ -47,15 +51,12 @@ router = APIRouter(
 
 @router.get("/past-jobs")
 async def get_past_jobs_endpoint(
-    request: Request,
-    response: Response,
-    user: dict = Depends(get_user_or_api_key)
+    request: Request, response: Response, user: dict = Depends(get_user_or_api_key)
 ):
     """Get past jobs from saved files for the current user and organization."""
     try:
         past_jobs = get_past_jobs(
-            user_id=user["id"],
-            organization_id=user["organization_id"]
+            user_id=user["id"], organization_id=user["organization_id"]
         )
         return {"past_jobs": past_jobs}
     except Exception as e:
@@ -115,7 +116,35 @@ async def get_cluster_jobs(
             cluster_name, user["id"], user["organization_id"]
         )
 
-        job_records = get_cluster_job_queue(actual_cluster_name)
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(actual_cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config_dict = az_get_current_config(
+                        organization_id=user["organization_id"]
+                    )
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
+        job_records = get_cluster_job_queue(
+            actual_cluster_name, credentials=credentials
+        )
         jobs = []
         for record in job_records:
             jobs.append(
@@ -183,6 +212,32 @@ async def stream_job_logs(
             cluster_name, user["id"], user["organization_id"]
         )
 
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(actual_cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config_dict = az_get_current_config(
+                        organization_id=user["organization_id"]
+                    )
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
         def generate_logs():
             try:
                 import sky
@@ -216,6 +271,7 @@ async def stream_job_logs(
                             tail=tail,
                             follow=follow,
                             output_stream=capture_stream,
+                            credentials=credentials,
                         )
                         # Signal that streaming is complete
                         streaming_complete.set()

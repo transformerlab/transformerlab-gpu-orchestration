@@ -961,7 +961,37 @@ async def get_cluster_info(
 
         # Get jobs for this cluster
         try:
-            job_records = get_cluster_job_queue(actual_cluster_name)
+            # Fetch credentials for the cluster based on the platform
+            platform_info_jobs = get_cluster_platform_info_util(actual_cluster_name)
+            credentials = None
+            if platform_info_jobs and platform_info_jobs.get("platform"):
+                platform = platform_info_jobs["platform"]
+                if platform == "azure":
+                    try:
+                        azure_config_dict = az_get_current_config(
+                            organization_id=user.get("organization_id")
+                        )
+                        credentials = {
+                            "azure": {
+                                "service_principal": {
+                                    "tenant_id": azure_config_dict["tenant_id"],
+                                    "client_id": azure_config_dict["client_id"],
+                                    "client_secret": azure_config_dict["client_secret"],
+                                    "subscription_id": azure_config_dict[
+                                        "subscription_id"
+                                    ],
+                                },
+                            }
+                        }
+                    except Exception as e:
+                        print(f"Failed to get Azure credentials: {e}")
+                        credentials = None
+                else:
+                    credentials = None
+
+            job_records = get_cluster_job_queue(
+                actual_cluster_name, credentials=credentials
+            )
             jobs = []
             for record in job_records:
                 jobs.append(
