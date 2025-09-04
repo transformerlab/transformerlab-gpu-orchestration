@@ -9,8 +9,10 @@ from typing import List, Optional
 
 import yaml
 from config import UPLOADS_DIR, get_db
-from db.db_models import NodePoolAccess as NodePoolAccessDB
-from db.db_models import SSHNodePool as SSHNodePoolDB
+from db.db_models import (
+    NodePoolAccess as NodePoolAccessDB,
+    SSHNodePool as SSHNodePoolDB,
+)
 from fastapi import (
     APIRouter,
     Depends,
@@ -36,7 +38,6 @@ from routes.clouds.azure.utils import (
     az_get_current_config,
     az_get_price_per_hour,
     az_infer_gpu_count,
-    az_setup_config,
     load_azure_config,
 )
 from routes.clouds.runpod.utils import (
@@ -54,11 +55,7 @@ from routes.node_pools.utils import (
 from routes.quota.utils import get_current_user_quota_info, get_user_team_id
 from routes.reports.utils import record_usage
 from sqlalchemy.orm import Session
-from config import get_db
-from db.db_models import (
-    NodePoolAccess as NodePoolAccessDB,
-    SSHNodePool as SSHNodePoolDB,
-)
+
 from utils.cluster_resolver import handle_cluster_name_param
 
 from utils.cluster_utils import get_cluster_platform_info as get_cluster_platform_data
@@ -324,7 +321,9 @@ async def launch_instance(
         if cloud == "azure":
             try:
                 # az_setup_config()
-                az_config_dict = az_get_current_config(organization_id=user.get("organization_id"), db=db)
+                az_config_dict = az_get_current_config(
+                    organization_id=user.get("organization_id"), db=db
+                )
                 # az_config_dict = az_config["configs"][az_config["default_config"]]
                 credentials = {
                     "azure": {
@@ -503,7 +502,7 @@ async def launch_instance(
                 pass
 
         # Launch cluster using the actual cluster name
-        request_id = launch_cluster_with_skypilot(
+        request_id = launch_cluster_with_skypilot_isolated(
             cluster_name=actual_cluster_name,
             command=command,
             setup=setup,
@@ -560,6 +559,7 @@ async def stop_instance(
     response: Response,
     stop_request: StopClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
@@ -580,6 +580,7 @@ async def stop_instance(
             user_id=user["id"],
             organization_id=user["organization_id"],
             display_name=display_name,  # Pass the display name for database storage
+            db=db,
         )
         return StopClusterResponse(
             request_id=request_id,

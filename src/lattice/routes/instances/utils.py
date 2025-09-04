@@ -9,7 +9,7 @@ from sqlalchemy import or_
 import sky
 from fastapi import HTTPException
 from routes.clouds.azure.utils import az_get_current_config
-from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
+from routes.jobs.utils import save_cluster_jobs
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
@@ -564,6 +564,7 @@ def stop_cluster_with_skypilot(
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
+    db: Optional[Session] = None,
 ):
     try:
         # Fetch credentials for the cluster based on the platform
@@ -573,10 +574,9 @@ def stop_cluster_with_skypilot(
             platform = platform_info["platform"]
             if platform == "azure":
                 try:
-                    azure_config = az_get_config_for_display()
-                    azure_config_dict = azure_config["configs"][
-                        azure_config["default_config"]
-                    ]
+                    azure_config_dict = az_get_current_config(
+                        organization_id=organization_id, db=db
+                    )
                     credentials = {
                         "azure": {
                             "service_principal": {
@@ -633,7 +633,9 @@ def down_cluster_with_skypilot(
             platform = platform_info["platform"]
             if platform == "azure":
                 try:
-                    azure_config_dict = az_get_current_config(organization_id=organization_id, db=db)
+                    azure_config_dict = az_get_current_config(
+                        organization_id=organization_id, db=db
+                    )
                     credentials = {
                         "azure": {
                             "service_principal": {
