@@ -711,20 +711,11 @@ async def get_cluster_type(
         )
 
         is_ssh = is_ssh_cluster(actual_cluster_name)
-        is_down_only = is_down_only_cluster(actual_cluster_name)
         cluster_type = "ssh" if is_ssh else "cloud"
-        available_operations = ["down"]
-        if not is_down_only:
-            available_operations.append("stop")
         return {
             "cluster_name": cluster_name,  # Return display name to user
             "cluster_type": cluster_type,
             "is_ssh": is_ssh,
-            "available_operations": available_operations,
-            "recommendations": {
-                "stop": "Stops the cluster while preserving disk data (AWS, GCP, Azure clusters only)",
-                "down": "Tears down the cluster and deletes all resources (SSH, RunPod, and cloud clusters)",
-            },
         }
     except Exception as e:
         raise HTTPException(
@@ -857,7 +848,7 @@ async def get_cluster_info(
 
     This endpoint consolidates data from multiple sources:
     - Cluster status and basic information
-    - Cluster type and available operations
+    - Cluster type
     - Platform information
     - Template information
     - Jobs associated with the cluster
@@ -866,7 +857,7 @@ async def get_cluster_info(
     Returns:
         dict: A comprehensive object containing all cluster information
             - cluster: Basic cluster status and metadata
-            - cluster_type: Type information and available operations
+            - cluster_type: Type information 
             - platform: Platform-specific information
             - template: Template information
             - jobs: List of jobs associated with the cluster
@@ -918,21 +909,12 @@ async def get_cluster_info(
 
         # Get cluster type information
         is_ssh = is_ssh_cluster(actual_cluster_name)
-        is_down_only = is_down_only_cluster(actual_cluster_name)
         cluster_type = "ssh" if is_ssh else "cloud"
-        available_operations = ["down"]
-        if not is_down_only:
-            available_operations.append("stop")
 
         cluster_type_info = {
             "cluster_name": cluster_name,
             "cluster_type": cluster_type,
             "is_ssh": is_ssh,
-            "available_operations": available_operations,
-            "recommendations": {
-                "stop": "Stops the cluster while preserving disk data (AWS, GCP, Azure clusters only)",
-                "down": "Tears down the cluster and deletes all resources (SSH, RunPod, and cloud clusters)",
-            },
         }
 
         # Get platform information
