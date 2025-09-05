@@ -337,18 +337,24 @@ async def launch_instance(
                         status_code=400,
                         detail="node_pool_name is required for SSH launches",
                     )
+                
+                # First check if the node pool exists
                 pool = (
                     db.query(SSHNodePoolDB)
-                    .filter(
-                        SSHNodePoolDB.name == node_pool_name,
-                        SSHNodePoolDB.organization_id == organization_id,
-                    )
+                    .filter(SSHNodePoolDB.name == node_pool_name)
                     .first()
                 )
                 if not pool:
                     raise HTTPException(
                         status_code=404,
                         detail=f"SSH node pool '{node_pool_name}' not found",
+                    )
+                
+                # Explicitly verify that the org ID of the submitter matches the org ID that the node_pool_name belongs to
+                if pool.organization_id != organization_id:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"SSH node pool '{node_pool_name}' is not accessible to the current user's organization.",
                     )
                 allowed_team_ids = []
                 try:
