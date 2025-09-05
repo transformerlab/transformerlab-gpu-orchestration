@@ -375,7 +375,7 @@ def info_instance_command(console: Console, cluster_name: str):
             console.print(f"[bold]Error:[/bold] {resp.text}")
         return
 
-    # Extract the data we want (excluding available operations and SSH node info)
+    # Extract the data we want (excluding SSH node info)
     cluster = data.get("cluster", {})
     platform = data.get("platform", {})
     cluster_state = data.get("state")

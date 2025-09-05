@@ -85,11 +85,6 @@ interface ClusterTypeInfo {
   cluster_name: string;
   cluster_type: string;
   is_ssh: boolean;
-  available_operations: string[];
-  recommendations: {
-    stop: string;
-    down: string;
-  };
 }
 
 interface SSHNodeInfo {
