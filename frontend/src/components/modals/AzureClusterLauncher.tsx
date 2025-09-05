@@ -591,8 +591,8 @@ disk_space: 100`}
                           </Typography>
                         ) : dockerImages.length === 0 ? (
                           <Typography level="body-sm" color="warning">
-                            No docker images configured. You can add them in Admin
-                            &gt; Private Container Registry.
+                            No docker images configured. You can add them in
+                            Admin &gt; Private Container Registry.
                           </Typography>
                         ) : (
                           <Select
@@ -613,9 +613,9 @@ disk_space: 100`}
                           level="body-xs"
                           sx={{ mt: 0.5, color: "text.secondary" }}
                         >
-                          Use a Docker image as runtime environment. Leave empty to
-                          use default VM image. Configure images in Admin &gt;
-                          Private Container Registry.
+                          Use a Docker image as runtime environment. Leave empty
+                          to use default VM image. Configure images in Admin
+                          &gt; Private Container Registry.
                         </Typography>
                       </FormControl>
                     </Stack>
@@ -638,7 +638,9 @@ disk_space: 100`}
                         >
                           {availableInstanceTypes
                             .filter((type) =>
-                              azureConfig.allowed_instance_types.includes(type.name)
+                              azureConfig.allowed_instance_types.includes(
+                                type.name
+                              )
                             )
                             .map((type) => (
                               <Option key={type.name} value={type.name}>
@@ -652,7 +654,9 @@ disk_space: 100`}
                         <FormLabel>Region</FormLabel>
                         <Select
                           value={selectedRegion}
-                          onChange={(_, value) => setSelectedRegion(value || "")}
+                          onChange={(_, value) =>
+                            setSelectedRegion(value || "")
+                          }
                           placeholder="Select region"
                           required
                         >
@@ -687,7 +691,8 @@ disk_space: 100`}
                       level="body-xs"
                       sx={{ mt: 0.5, color: "text.secondary" }}
                     >
-                      Custom disk size for the instance. Leave empty to use default.
+                      Custom disk size for the instance. Leave empty to use
+                      default.
                     </Typography>
                   </FormControl>
 
@@ -715,7 +720,8 @@ disk_space: 100`}
                             level="body-xs"
                             sx={{ color: "text.secondary" }}
                           >
-                            Use spot instances for cost savings (may be interrupted)
+                            Use spot instances for cost savings (may be
+                            interrupted)
                           </Typography>
                         </Box>
                         <Switch
@@ -734,7 +740,9 @@ disk_space: 100`}
                         </FormLabel>
                         <Input
                           value={idleMinutesToAutostop}
-                          onChange={(e) => setIdleMinutesToAutostop(e.target.value)}
+                          onChange={(e) =>
+                            setIdleMinutesToAutostop(e.target.value)
+                          }
                           placeholder="e.g., 30 (leave empty for no auto-stop)"
                           type="number"
                         />
@@ -742,8 +750,8 @@ disk_space: 100`}
                           level="body-xs"
                           sx={{ color: "text.secondary", mt: 0.5 }}
                         >
-                          Cluster will automatically stop after being idle for this
-                          many minutes
+                          Cluster will automatically stop after being idle for
+                          this many minutes
                         </Typography>
                       </FormControl>
                     </Stack>
@@ -763,8 +771,8 @@ disk_space: 100`}
                           </Typography>
                         ) : storageBuckets.length === 0 ? (
                           <Typography level="body-sm" color="warning">
-                            No storage buckets available. Create storage buckets in
-                            the "Object Storage" tab first.
+                            No storage buckets available. Create storage buckets
+                            in the "Object Storage" tab first.
                           </Typography>
                         ) : (
                           <Select
@@ -777,7 +785,8 @@ disk_space: 100`}
                           >
                             {storageBuckets.map((bucket) => (
                               <Option key={bucket.id} value={bucket.id}>
-                                {bucket.name} ({bucket.remote_path}) - {bucket.mode}
+                                {bucket.name} ({bucket.remote_path}) -{" "}
+                                {bucket.mode}
                               </Option>
                             ))}
                           </Select>
@@ -791,8 +800,8 @@ disk_space: 100`}
                           level="body-xs"
                           sx={{ color: "text.secondary", mt: 0.5 }}
                         >
-                          Selected storage buckets will be mounted to your cluster
-                          for data access
+                          Selected storage buckets will be mounted to your
+                          cluster for data access
                         </Typography>
                       </FormControl>
                     </Stack>
