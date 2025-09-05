@@ -152,21 +152,7 @@ def launch_cluster_with_skypilot(
     credentials: Optional[dict] = None,
 ):
     try:
-        # Handle RunPod setup
-        if cloud and cloud.lower() == "runpod":
-            from routes.clouds.runpod.utils import rp_setup_config, rp_verify_setup
-
-            try:
-                rp_setup_config(organization_id)
-                if not rp_verify_setup(organization_id=organization_id):
-                    raise HTTPException(
-                        status_code=500,
-                        detail="RunPod setup verification failed. Please check your RUNPOD_API_KEY.",
-                    )
-            except Exception as e:
-                raise HTTPException(
-                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
-                )
+        # RunPod no longer requires global setup; credentials are passed directly to SkyPilot
 
         if cloud and cloud.lower() == "ssh":
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
@@ -466,6 +452,17 @@ async def launch_cluster_with_skypilot_isolated(
             params_file = f.name
 
         try:
+            # Prepare environment for the child process (propagate provider creds if needed)
+            self_env = os.environ.copy()
+            try:
+                if credentials and isinstance(credentials, dict):
+                    rp = credentials.get("runpod") or {}
+                    api_key = rp.get("api_key") if isinstance(rp, dict) else None
+                    if api_key:
+                        self_env["RUNPOD_API_KEY"] = str(api_key)
+            except Exception:
+                pass
+
             # Get the current working directory and Python path
             current_dir = os.path.dirname(os.path.abspath(__file__))
             lattice_root = os.path.dirname(os.path.dirname(current_dir))
@@ -491,6 +488,20 @@ with open("{params_file}", "r") as f:
 
 # Execute the launch
 try:
+    # Ensure RunPod credentials are visible to SkyPilot and SDK in this process
+    try:
+        rp = (params.get('credentials') or {{}}).get('runpod') or {{}}
+        api_key = rp.get('api_key')
+        if api_key:
+            os.environ['RUNPOD_API_KEY'] = str(api_key)
+            try:
+                import runpod
+                runpod.api_key = str(api_key)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     result = _launch_cluster_worker(**params)
     print(json.dumps({{"success": True, "request_id": result}}))
 except Exception as e:
@@ -505,6 +516,7 @@ except Exception as e:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=lattice_root,
+                env=self_env,
             )
 
             stdout, stderr = await process.communicate()
@@ -516,26 +528,39 @@ except Exception as e:
                     detail=f"Launch process failed with code {process.returncode}: {error_msg}",
                 )
 
-            # Parse the result
-            try:
-                result_data = json.loads(stdout.decode().strip())
-                if result_data.get("success"):
-                    return result_data.get("request_id")
-                else:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Launch failed: {result_data.get('error', 'Unknown error')}",
-                    )
-            except json.JSONDecodeError:
-                # Fallback to original output if JSON parsing fails
-                output = stdout.decode().strip()
-                if output:
-                    return output
-                else:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Launch process returned invalid output: {stderr.decode() if stderr else 'No output'}",
-                    )
+            # Parse the result: handle noisy stdout before JSON
+            output_text = stdout.decode().strip() if stdout else ""
+            # Try to parse the last JSON-looking line
+            if output_text:
+                lines = [ln.strip() for ln in output_text.splitlines() if ln.strip()]
+                for ln in reversed(lines):
+                    if ln.startswith("{") and ln.endswith("}"):
+                        try:
+                            result_data = json.loads(ln)
+                            if result_data.get("success"):
+                                return result_data.get("request_id")
+                            else:
+                                raise HTTPException(
+                                    status_code=500,
+                                    detail=f"Launch failed: {result_data.get('error', 'Unknown error')}",
+                                )
+                        except Exception:
+                            continue
+                # Fallback: extract request id from 'REQUEST ID: <id>' line
+                try:
+                    import re
+                    m = re.search(r"REQUEST ID:\s*([0-9a-fA-F\-]{36}|[A-Za-z0-9_\-]{8,})", output_text)
+                    if m:
+                        return m.group(1)
+                except Exception:
+                    pass
+                # Last resort: return the raw output to aid debugging
+                return output_text
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Launch process returned invalid output: {stderr.decode() if stderr else 'No output'}",
+                )
         finally:
             # Clean up the temporary file
             try:
@@ -597,11 +622,9 @@ def stop_cluster_with_skypilot(
                         organization_id=organization_id
                     )
                     if rp_config and rp_config.get("api_key"):
-                        from pathlib import Path
                         credentials = {
                             "runpod": {
                                 "api_key": rp_config.get("api_key"),
-                                "config_dir": str(Path.home() / ".runpod"),
                             }
                         }
                 except Exception as e:
@@ -673,11 +696,9 @@ def down_cluster_with_skypilot(
                         organization_id=organization_id
                     )
                     if rp_config and rp_config.get("api_key"):
-                        from pathlib import Path
                         credentials = {
                             "runpod": {
                                 "api_key": rp_config.get("api_key"),
-                                "config_dir": str(Path.home() / ".runpod"),
                             }
                         }
                 except Exception as e:

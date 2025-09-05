@@ -74,11 +74,9 @@ def get_job_logs(
                         organization_id=organization_id
                     )
                     if rp_config and rp_config.get("api_key"):
-                        from pathlib import Path
                         credentials = {
                             "runpod": {
                                 "api_key": rp_config.get("api_key"),
-                                "config_dir": str(Path.home() / ".runpod"),
                             }
                         }
                 except Exception as e:

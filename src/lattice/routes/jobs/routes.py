@@ -146,11 +146,9 @@ async def get_cluster_jobs(
                         organization_id=user["organization_id"]
                     )
                     if rp_config and rp_config.get("api_key"):
-                        from pathlib import Path
                         credentials = {
                             "runpod": {
                                 "api_key": rp_config.get("api_key"),
-                                "config_dir": str(Path.home() / ".runpod"),
                             }
                         }
                 except Exception as e:
@@ -259,11 +257,9 @@ async def stream_job_logs(
                         organization_id=user["organization_id"]
                     )
                     if rp_config and rp_config.get("api_key"):
-                        from pathlib import Path
                         credentials = {
                             "runpod": {
                                 "api_key": rp_config.get("api_key"),
-                                "config_dir": str(Path.home() / ".runpod"),
                             }
                         }
                 except Exception as e:

@@ -1,4 +1,3 @@
-import os
 from typing import Dict
 
 import pytest
@@ -210,7 +209,6 @@ def test_runpod_save_load_set_default_and_delete(db_session, monkeypatch, tmp_pa
         load_runpod_config,
         rp_set_default_config,
         rp_delete_config,
-        RUNPOD_CONFIG_TOML,
     )
 
     org = "org_rp_1"
@@ -239,15 +237,11 @@ def test_runpod_save_load_set_default_and_delete(db_session, monkeypatch, tmp_pa
         db=db_session,
     )
 
-    # Switch default to second; this should also write TOML
+    # Switch default to second; TOML writing was removed
     res = rp_set_default_config("runpod_two", organization_id=org, db=db_session)
     assert res["message"].startswith("RunPod config 'runpod_two' set as default")
     cfg_loaded = load_runpod_config(organization_id=org, db=db_session)
     assert cfg_loaded["default_config"] == "runpod_two"
-    assert os.path.exists(RUNPOD_CONFIG_TOML)
-    with open(RUNPOD_CONFIG_TOML, "r") as f:
-        s = f.read()
-        assert "api_key = \"rk_ABCDEFGH\"" in s
 
     # Delete default; remaining becomes default
     after = rp_delete_config("runpod_two", organization_id=org, db=db_session)

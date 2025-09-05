@@ -44,7 +44,6 @@ from routes.clouds.runpod.utils import (
     load_runpod_config,
     map_runpod_display_to_instance_type,
     rp_get_price_per_hour,
-    rp_setup_config,
 )
 from routes.jobs.utils import get_cluster_job_queue
 from routes.node_pools.utils import (
@@ -287,35 +286,28 @@ async def launch_instance(
             accelerators if (cloud or "").lower() == "runpod" else None
         )
 
-        # Setup RunPod if cloud is runpod
+        # RunPod: map display string to instance type if accelerators is provided
         if cloud == "runpod":
-            try:
-                rp_setup_config(user.get("organization_id"))
-                # Map display string to instance type if accelerators is provided
-                if accelerators:
-                    mapped_instance_type = map_runpod_display_to_instance_type(
-                        accelerators
-                    )
-                    if mapped_instance_type.lower().startswith("cpu"):
-                        # Using skypilot logic to have disk size lesser than 10x vCPUs
-                        disk_size = 5 * int(mapped_instance_type.split("-")[1])
-                    else:
-                        # For GPU instances, only set disk_size if disk_space is provided
-                        if disk_space:
-                            try:
-                                disk_size = int(disk_space)
-                            except ValueError:
-                                # If disk_space is not a valid integer, ignore it
-                                disk_size = None
-                                pass
-                    if mapped_instance_type != accelerators:
-                        instance_type = mapped_instance_type
-                        # Clear accelerators for RunPod since we're using instance_type
-                        accelerators = None
-            except Exception as e:
-                raise HTTPException(
-                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+            if accelerators:
+                mapped_instance_type = map_runpod_display_to_instance_type(
+                    accelerators
                 )
+                if mapped_instance_type.lower().startswith("cpu"):
+                    # Using skypilot logic to have disk size lesser than 10x vCPUs
+                    disk_size = 5 * int(mapped_instance_type.split("-")[1])
+                else:
+                    # For GPU instances, only set disk_size if disk_space is provided
+                    if disk_space:
+                        try:
+                            disk_size = int(disk_space)
+                        except ValueError:
+                            # If disk_space is not a valid integer, ignore it
+                            disk_size = None
+                            pass
+                if mapped_instance_type != accelerators:
+                    instance_type = mapped_instance_type
+                    # Clear accelerators for RunPod since we're using instance_type
+                    accelerators = None
 
         # Setup credentials for Azure or RunPod, depending on cloud
         if cloud == "azure":
@@ -345,11 +337,9 @@ async def launch_instance(
                 from routes.clouds.runpod.utils import rp_get_current_config
                 rp_config = rp_get_current_config(organization_id=user.get("organization_id"))
                 if rp_config and rp_config.get("api_key"):
-                    from pathlib import Path
                     credentials = {
                         "runpod": {
                             "api_key": rp_config.get("api_key"),
-                            "config_dir": str(Path.home() / ".runpod"),
                         }
                     }
             except Exception as e:
@@ -1009,11 +999,9 @@ async def get_cluster_info(
                             organization_id=user.get("organization_id")
                         )
                         if rp_config and rp_config.get("api_key"):
-                            from pathlib import Path
                             credentials = {
                                 "runpod": {
                                     "api_key": rp_config.get("api_key"),
-                                    "config_dir": str(Path.home() / ".runpod"),
                                 }
                             }
                     except Exception as e:
