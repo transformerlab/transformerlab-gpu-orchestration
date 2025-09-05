@@ -67,6 +67,23 @@ def get_job_logs(
                 except Exception as e:
                     print(f"Failed to get Azure credentials: {e}")
                     credentials = None
+            elif platform == "runpod":
+                try:
+                    from routes.clouds.runpod.utils import rp_get_current_config
+                    rp_config = rp_get_current_config(
+                        organization_id=organization_id
+                    )
+                    if rp_config and rp_config.get("api_key"):
+                        from pathlib import Path
+                        credentials = {
+                            "runpod": {
+                                "api_key": rp_config.get("api_key"),
+                                "config_dir": str(Path.home() / ".runpod"),
+                            }
+                        }
+                except Exception as e:
+                    print(f"Failed to get RunPod credentials: {e}")
+                    credentials = None
             else:
                 credentials = None
 

@@ -317,7 +317,7 @@ async def launch_instance(
                     status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
                 )
 
-        # Setup Azure if cloud is azure
+        # Setup credentials for Azure or RunPod, depending on cloud
         if cloud == "azure":
             try:
                 # az_setup_config()
@@ -339,6 +339,22 @@ async def launch_instance(
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
+                )
+        elif cloud == "runpod":
+            try:
+                from routes.clouds.runpod.utils import rp_get_current_config
+                rp_config = rp_get_current_config(organization_id=user.get("organization_id"))
+                if rp_config and rp_config.get("api_key"):
+                    from pathlib import Path
+                    credentials = {
+                        "runpod": {
+                            "api_key": rp_config.get("api_key"),
+                            "config_dir": str(Path.home() / ".runpod"),
+                        }
+                    }
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup RunPod credentials: {str(e)}"
                 )
         # print(f"az_config: {az_config}")
         # raise Exception("test")
@@ -985,6 +1001,23 @@ async def get_cluster_info(
                         }
                     except Exception as e:
                         print(f"Failed to get Azure credentials: {e}")
+                        credentials = None
+                elif platform == "runpod":
+                    try:
+                        from routes.clouds.runpod.utils import rp_get_current_config
+                        rp_config = rp_get_current_config(
+                            organization_id=user.get("organization_id")
+                        )
+                        if rp_config and rp_config.get("api_key"):
+                            from pathlib import Path
+                            credentials = {
+                                "runpod": {
+                                    "api_key": rp_config.get("api_key"),
+                                    "config_dir": str(Path.home() / ".runpod"),
+                                }
+                            }
+                    except Exception as e:
+                        print(f"Failed to get RunPod credentials: {e}")
                         credentials = None
                 else:
                     credentials = None
