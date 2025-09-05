@@ -15,12 +15,14 @@ import {
   Textarea,
   Select,
   Option,
+  Stack,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
 import { useNotification } from "../NotificationSystem";
 import { useAuth } from "../../context/AuthContext";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
+import YamlConfigurationSection from "./YamlConfigurationSection";
 
 interface DockerImage {
   id: string;
@@ -63,6 +65,11 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number>(0.0);
+
+  // YAML configuration state
+  const [useYaml, setUseYaml] = useState(false);
+  const [yamlContent, setYamlContent] = useState("");
+  const [yamlFile, setYamlFile] = useState<File | null>(null);
 
   // Docker images state
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
@@ -136,50 +143,77 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
     e.preventDefault();
     setLoading(true);
 
-    // Validate resource limits
-    if (maxResources.maxVcpus && cpus) {
-      const requestedCpus = parseInt(cpus);
-      const maxCpus = parseInt(maxResources.maxVcpus);
-      if (requestedCpus > maxCpus) {
-        addNotification({
-          type: "danger",
-          message: `Requested vCPUs (${requestedCpus}) exceeds maximum available (${maxCpus})`,
-        });
-        setLoading(false);
-        return;
-      }
+    // Validate YAML mode
+    if (useYaml && !yamlContent.trim()) {
+      addNotification({
+        type: "danger",
+        message: "YAML content is required when using YAML configuration",
+      });
+      setLoading(false);
+      return;
     }
 
-    if (maxResources.maxMemory && memory) {
-      const requestedMemory = parseInt(memory);
-      const maxMemory = parseInt(maxResources.maxMemory);
-      if (requestedMemory > maxMemory) {
-        addNotification({
-          type: "danger",
-          message: `Requested memory (${requestedMemory}GB) exceeds maximum available (${maxMemory}GB)`,
-        });
-        setLoading(false);
-        return;
+    // Validate form mode
+    if (!useYaml) {
+      // Validate resource limits
+      if (maxResources.maxVcpus && cpus) {
+        const requestedCpus = parseInt(cpus);
+        const maxCpus = parseInt(maxResources.maxVcpus);
+        if (requestedCpus > maxCpus) {
+          addNotification({
+            type: "danger",
+            message: `Requested vCPUs (${requestedCpus}) exceeds maximum available (${maxCpus})`,
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (maxResources.maxMemory && memory) {
+        const requestedMemory = parseInt(memory);
+        const maxMemory = parseInt(maxResources.maxMemory);
+        if (requestedMemory > maxMemory) {
+          addNotification({
+            type: "danger",
+            message: `Requested memory (${requestedMemory}GB) exceeds maximum available (${maxMemory}GB)`,
+          });
+          setLoading(false);
+          return;
+        }
       }
     }
 
     try {
       const formData = new FormData();
-      // Use custom cluster name if provided, otherwise use node pool name
-      const finalClusterName = customClusterName.trim() || clusterName;
-      formData.append("cluster_name", finalClusterName);
-      formData.append("node_pool_name", clusterName); // Pass the node pool name separately
-      formData.append("command", command);
-      if (setup) formData.append("setup", setup);
-      formData.append("cloud", "ssh"); // Always use SSH mode
-      if (cpus) formData.append("cpus", cpus);
-      if (memory) formData.append("memory", memory);
-      if (accelerators) formData.append("accelerators", accelerators);
-      if (diskSpace) formData.append("disk_space", diskSpace);
-      if (selectedDockerImageId)
-        formData.append("docker_image_id", selectedDockerImageId);
-      formData.append("use_spot", "false");
-      formData.append("launch_mode", "custom");
+
+      if (useYaml) {
+        // YAML mode: create a blob from the YAML content
+        const yamlBlob = new Blob([yamlContent], {
+          type: "application/x-yaml",
+        });
+        formData.append("yaml_file", yamlBlob, "config.yaml");
+
+        // Still append node_pool_name for SSH mode
+        formData.append("node_pool_name", clusterName);
+        formData.append("cloud", "ssh");
+      } else {
+        // Form mode: use regular form data
+        // Use custom cluster name if provided, otherwise use node pool name
+        const finalClusterName = customClusterName.trim() || clusterName;
+        formData.append("cluster_name", finalClusterName);
+        formData.append("node_pool_name", clusterName); // Pass the node pool name separately
+        formData.append("command", command);
+        if (setup) formData.append("setup", setup);
+        formData.append("cloud", "ssh"); // Always use SSH mode
+        if (cpus) formData.append("cpus", cpus);
+        if (memory) formData.append("memory", memory);
+        if (accelerators) formData.append("accelerators", accelerators);
+        if (diskSpace) formData.append("disk_space", diskSpace);
+        if (selectedDockerImageId)
+          formData.append("docker_image_id", selectedDockerImageId);
+        formData.append("use_spot", "false");
+        formData.append("launch_mode", "custom");
+      }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
@@ -194,6 +228,15 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           message: data.message || "Node reserved successfully",
         });
         setTimeout(() => {
+          const finalClusterName = useYaml
+            ? yamlContent.includes(`cluster_name:`)
+              ? yamlContent
+                  .split(`cluster_name:`)[1]
+                  .split("\n")[0]
+                  .trim()
+                  .replace(/['"]/g, "")
+              : clusterName
+            : customClusterName.trim() || clusterName;
           if (onClusterLaunched) onClusterLaunched(finalClusterName);
           onClose();
         }, 1200);
@@ -229,6 +272,16 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           Reserve an Instance - {clusterName}
         </Typography>
 
+        <YamlConfigurationSection
+          useYaml={useYaml}
+          setUseYaml={setUseYaml}
+          yamlContent={yamlContent}
+          setYamlContent={setYamlContent}
+          yamlFile={yamlFile}
+          setYamlFile={setYamlFile}
+          clusterName={clusterName}
+        />
+
         <Box
           sx={{
             flex: 1,
@@ -258,153 +311,163 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
               </Typography>
             </Alert>
 
-            <FormControl sx={{ mb: 2 }}>
-              <FormLabel>Cluster Name (optional)</FormLabel>
-              <Input
-                value={customClusterName}
-                onChange={(e) => setCustomClusterName(e.target.value)}
-                placeholder={`Leave empty to use node pool name: ${clusterName}`}
-              />
-              <Typography
-                level="body-xs"
-                sx={{ mt: 0.5, color: "text.secondary" }}
-              >
-                Custom name for this cluster instance. If empty, will use the
-                node pool name.
-              </Typography>
-            </FormControl>
-
-            <FormControl sx={{ mb: 2 }}>
-              <FormLabel>Setup Command (optional)</FormLabel>
-              <Textarea
-                value={setup}
-                onChange={(e) => setSetup(e.target.value)}
-                placeholder="pip install -r requirements.txt"
-                minRows={2}
-              />
-            </FormControl>
-
-            <FormControl sx={{ mb: 2 }}>
-              <FormLabel>Docker Image (optional)</FormLabel>
-              {loadingImages ? (
-                <Typography level="body-sm" color="neutral">
-                  Loading docker images...
-                </Typography>
-              ) : dockerImages.length === 0 ? (
-                <Typography level="body-sm" color="warning">
-                  No docker images configured. You can add them in Admin &gt;
-                  Private Container Registry.
-                </Typography>
-              ) : (
-                <Select
-                  value={selectedDockerImageId}
-                  onChange={(_, value) => setSelectedDockerImageId(value || "")}
-                  placeholder="Select a docker image (optional)"
-                >
-                  {dockerImages.map((image) => (
-                    <Option key={image.id} value={image.id}>
-                      {image.name} ({image.image_tag})
-                    </Option>
-                  ))}
-                </Select>
-              )}
-              <Typography
-                level="body-xs"
-                sx={{ mt: 0.5, color: "text.secondary" }}
-              >
-                Use a Docker image as runtime environment. Leave empty to use
-                default VM image. Images are managed by your admin.
-              </Typography>
-            </FormControl>
-
-            {/* Resource Configuration */}
-            <Box
-              sx={{
-                mb: 2,
-                mt: 2,
-                p: 2,
-                border: "1px solid var(--joy-palette-neutral-300)",
-                borderRadius: "var(--joy-radius-md)",
-                backgroundColor: "var(--joy-palette-neutral-50)",
-              }}
-            >
-              <Typography level="title-sm" sx={{ mb: 2 }}>
-                Resource Configuration
-              </Typography>
-              {maxResources.maxVcpus || maxResources.maxMemory ? (
-                <Alert color="primary" sx={{ mb: 2 }}>
-                  <Typography level="body-sm">
-                    <strong>Available Resources:</strong> Max vCPUs:{" "}
-                    {maxResources.maxVcpus || "Not specified"}, Max Memory:{" "}
-                    {maxResources.maxMemory || "Not specified"} GB
+            {!useYaml && (
+              <>
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Cluster Name (optional)</FormLabel>
+                  <Input
+                    value={customClusterName}
+                    onChange={(e) => setCustomClusterName(e.target.value)}
+                    placeholder={`Leave empty to use node pool name: ${clusterName}`}
+                  />
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Custom name for this cluster instance. If empty, will use
+                    the node pool name.
                   </Typography>
-                </Alert>
-              ) : null}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>CPUs</FormLabel>
-                <Input
-                  value={cpus}
-                  onChange={(e) => setCpus(e.target.value)}
-                  placeholder={
-                    maxResources.maxVcpus
-                      ? `Max: ${maxResources.maxVcpus}`
-                      : "e.g., 4, 8+"
-                  }
-                />
-              </FormControl>
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Memory (GB)</FormLabel>
-                <Input
-                  value={memory}
-                  onChange={(e) => setMemory(e.target.value)}
-                  placeholder={
-                    maxResources.maxMemory
-                      ? `Max: ${maxResources.maxMemory} GB`
-                      : "e.g., 16, 32+"
-                  }
-                />
-              </FormControl>
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Accelerators</FormLabel>
-                <Input
-                  value={accelerators}
-                  onChange={(e) => setAccelerators(e.target.value)}
-                  placeholder="e.g., V100, V100:2, A100:4"
-                />
-              </FormControl>
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Disk Space (GB)</FormLabel>
-                <Input
-                  value={diskSpace}
-                  onChange={(e) => setDiskSpace(e.target.value)}
-                  placeholder="e.g., 100, 200, 500"
-                  slotProps={{
-                    input: {
-                      type: "number",
-                      min: 1,
-                    },
-                  }}
-                />
-              </FormControl>
-            </Box>
+                </FormControl>
 
-            {/* Cost & Credits Display */}
-            {availableCredits !== null && (
-              <Box sx={{ mt: 2 }}>
-                <CostCreditsDisplay
-                  estimatedCost={estimatedCost}
-                  availableCredits={availableCredits}
-                  variant="card"
-                  showWarning={true}
-                />
-                <Typography
-                  level="body-xs"
-                  sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Setup Command (optional)</FormLabel>
+                  <Textarea
+                    value={setup}
+                    onChange={(e) => setSetup(e.target.value)}
+                    placeholder="pip install -r requirements.txt"
+                    minRows={2}
+                  />
+                </FormControl>
+
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Docker Image (optional)</FormLabel>
+                  {loadingImages ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading docker images...
+                    </Typography>
+                  ) : dockerImages.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No docker images configured. You can add them in Admin
+                      &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedDockerImageId}
+                      onChange={(_, value) =>
+                        setSelectedDockerImageId(value || "")
+                      }
+                      placeholder="Select a docker image (optional)"
+                    >
+                      {dockerImages.map((image) => (
+                        <Option key={image.id} value={image.id}>
+                          {image.name} ({image.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default VM image. Images are managed by your admin.
+                  </Typography>
+                </FormControl>
+
+                {/* Resource Configuration */}
+                <Box
+                  sx={{
+                    mb: 2,
+                    mt: 2,
+                    p: 2,
+                    border: "1px solid var(--joy-palette-neutral-300)",
+                    borderRadius: "var(--joy-radius-md)",
+                    backgroundColor: "var(--joy-palette-neutral-50)",
+                  }}
                 >
-                  Note: Cost estimates are approximate and may vary based on
-                  actual usage and resource allocation.
-                </Typography>
-              </Box>
+                  <Typography level="title-sm" sx={{ mb: 2 }}>
+                    Resource Configuration
+                  </Typography>
+                  {maxResources.maxVcpus || maxResources.maxMemory ? (
+                    <Alert color="primary" sx={{ mb: 2 }}>
+                      <Typography level="body-sm">
+                        <strong>Available Resources:</strong> Max vCPUs:{" "}
+                        {maxResources.maxVcpus || "Not specified"}, Max Memory:{" "}
+                        {maxResources.maxMemory || "Not specified"} GB
+                      </Typography>
+                    </Alert>
+                  ) : null}
+                  <FormControl sx={{ mb: 2 }}>
+                    <FormLabel>CPUs</FormLabel>
+                    <Input
+                      value={cpus}
+                      onChange={(e) => setCpus(e.target.value)}
+                      placeholder={
+                        maxResources.maxVcpus
+                          ? `Max: ${maxResources.maxVcpus}`
+                          : "e.g., 4, 8+"
+                      }
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 2 }}>
+                    <FormLabel>Memory (GB)</FormLabel>
+                    <Input
+                      value={memory}
+                      onChange={(e) => setMemory(e.target.value)}
+                      placeholder={
+                        maxResources.maxMemory
+                          ? `Max: ${maxResources.maxMemory} GB`
+                          : "e.g., 16, 32+"
+                      }
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 2 }}>
+                    <FormLabel>Accelerators</FormLabel>
+                    <Input
+                      value={accelerators}
+                      onChange={(e) => setAccelerators(e.target.value)}
+                      placeholder="e.g., V100, V100:2, A100:4"
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 2 }}>
+                    <FormLabel>Disk Space (GB)</FormLabel>
+                    <Input
+                      value={diskSpace}
+                      onChange={(e) => setDiskSpace(e.target.value)}
+                      placeholder="e.g., 100, 200, 500"
+                      slotProps={{
+                        input: {
+                          type: "number",
+                          min: 1,
+                        },
+                      }}
+                    />
+                  </FormControl>
+                </Box>
+
+                {/* Cost & Credits Display */}
+                {availableCredits !== null && (
+                  <Box sx={{ mt: 2 }}>
+                    <CostCreditsDisplay
+                      estimatedCost={estimatedCost}
+                      availableCredits={availableCredits}
+                      variant="card"
+                      showWarning={true}
+                    />
+                    <Typography
+                      level="body-xs"
+                      sx={{
+                        mt: 1,
+                        color: "text.secondary",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      Note: Cost estimates are approximate and may vary based on
+                      actual usage and resource allocation.
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
           </form>
         </Box>
@@ -426,7 +489,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
             type="submit"
             loading={loading}
             disabled={
-              !command ||
+              (useYaml ? !yamlContent.trim() : !command) ||
               loading ||
               (availableCredits !== null && estimatedCost > availableCredits)
             }
