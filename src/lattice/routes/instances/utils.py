@@ -496,6 +496,58 @@ def launch_cluster_with_skypilot(
         )
 
 
+def determine_actual_cloud_from_skypilot_status(cluster_name: str) -> Optional[str]:
+    """
+    Determine which cloud was actually selected by SkyPilot by examining the cluster status.
+    This is useful for multi-cloud deployments where the actual cloud is determined after launch.
+
+    Args:
+        cluster_name: The actual cluster name
+
+    Returns:
+        The actual cloud platform that was selected, or None if not found
+    """
+    try:
+        # Get SkyPilot status for this specific cluster
+        status_result = get_skypilot_status([cluster_name])
+
+        if not status_result:
+            return None
+
+        cluster_info = status_result[0] if status_result else None
+        if not cluster_info:
+            return None
+
+        # Get the cloud type from the structured data
+        cloud = cluster_info.get("cloud", "").lower()
+
+        if cloud == "ssh":
+            # For SSH clusters, the region field contains "ssh-{node_pool_name}"
+            # We need to extract just the node pool name
+            region = cluster_info.get("region", "")
+            if region and region.startswith("ssh-"):
+                # Extract node pool name by removing "ssh-" prefix
+                node_pool_name = region[4:]  # Remove "ssh-" prefix
+                return node_pool_name
+            elif region:
+                # Fallback: return the region as-is if it doesn't start with "ssh-"
+                return region
+            return "ssh"
+        elif cloud == "runpod":
+            return "runpod"
+        elif cloud == "azure":
+            return "azure"
+        else:
+            # Fallback: try to extract from other fields
+            return cloud if cloud else None
+
+        return None
+
+    except Exception as e:
+        print(f"Error determining actual cloud for cluster {cluster_name}: {e}")
+        return None
+
+
 def stop_cluster_with_skypilot(
     cluster_name: str,
     user_id: Optional[str] = None,
