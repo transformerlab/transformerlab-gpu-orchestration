@@ -290,7 +290,6 @@ async def launch_instance(
             if file_mounts is None:
                 file_mounts = {}
             file_mounts[f"~/{base_name}"] = uploaded_dir_path
-            print(f"FILE MOUNTS: {file_mounts}")
 
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
         # (RunPod mapping below may clear 'accelerators')
