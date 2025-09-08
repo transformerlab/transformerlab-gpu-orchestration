@@ -23,6 +23,7 @@ import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../NotificationSystem";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
+import YamlConfigurationSection from "./YamlConfigurationSection";
 
 interface RunPodConfig {
   api_key: string;
@@ -93,6 +94,11 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [diskSpace, setDiskSpace] = useState("");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
+
+  // YAML configuration state
+  const [useYaml, setUseYaml] = useState(false);
+  const [yamlContent, setYamlContent] = useState("");
+  const [yamlFile, setYamlFile] = useState<File | null>(null);
 
   const [availableGpuTypes, setAvailableGpuTypes] = useState<GpuType[]>([]);
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
@@ -218,26 +224,56 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     // Close modal immediately and reset form
     handleClose();
 
+    // Validate YAML mode
+    if (useYaml && !yamlContent.trim()) {
+      addNotification({
+        type: "danger",
+        message: "YAML content is required when using YAML configuration",
+      });
+      return;
+    }
+
     // Show immediate notification that request is being processed
+    const finalClusterName = useYaml
+      ? yamlContent.includes(`cluster_name:`)
+        ? yamlContent
+            .split(`cluster_name:`)[1]
+            .split("\n")[0]
+            .trim()
+            .replace(/['"]/g, "")
+        : clusterName
+      : clusterName;
+
     addNotification({
       type: "success",
-      message: `Launching RunPod cluster "${clusterName}"...`,
+      message: `Launching RunPod cluster "${finalClusterName}"...`,
     });
 
     try {
       const formData = new FormData();
-      formData.append("cluster_name", clusterName);
-      formData.append("command", command);
-      if (setup) formData.append("setup", setup);
-      formData.append("cloud", "runpod");
-      if (selectedGpuFullString)
-        formData.append("accelerators", selectedGpuFullString);
-      if (diskSpace) formData.append("disk_space", diskSpace);
-      formData.append("use_spot", "false");
-      formData.append("launch_mode", "custom");
 
-      if (selectedDockerImageId)
-        formData.append("docker_image_id", selectedDockerImageId);
+      if (useYaml) {
+        // YAML mode: create a blob from the YAML content
+        const yamlBlob = new Blob([yamlContent], {
+          type: "application/x-yaml",
+        });
+        formData.append("yaml_file", yamlBlob, "config.yaml");
+        formData.append("cloud", "runpod");
+      } else {
+        // Form mode: use regular form data
+        formData.append("cluster_name", clusterName);
+        formData.append("command", command);
+        if (setup) formData.append("setup", setup);
+        formData.append("cloud", "runpod");
+        if (selectedGpuFullString)
+          formData.append("accelerators", selectedGpuFullString);
+        if (diskSpace) formData.append("disk_space", diskSpace);
+        formData.append("use_spot", "false");
+        formData.append("launch_mode", "custom");
+
+        if (selectedDockerImageId)
+          formData.append("docker_image_id", selectedDockerImageId);
+      }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
         method: "POST",
@@ -254,7 +290,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 
         // Trigger cluster list refresh
         if (onClusterLaunched) {
-          onClusterLaunched(clusterName);
+          onClusterLaunched(finalClusterName);
         }
       } else {
         const errorData = await response.json();
@@ -280,222 +316,245 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
           Reserve an Instance on RunPod
         </Typography>
 
-        <Stack spacing={3}>
-          <FormControl required>
-            <FormLabel>Cluster Name</FormLabel>
-            <Input
-              value={clusterName}
-              onChange={(e) => setClusterName(e.target.value)}
-              placeholder="my-runpod-cluster"
-            />
-          </FormControl>
+        <YamlConfigurationSection
+          useYaml={useYaml}
+          setUseYaml={setUseYaml}
+          yamlContent={yamlContent}
+          setYamlContent={setYamlContent}
+          yamlFile={yamlFile}
+          setYamlFile={setYamlFile}
+          placeholder={`# Example YAML configuration:
+cluster_name: my-runpod-cluster
+command: echo "Hello World"
+setup: pip install torch
+cloud: runpod
+accelerators: RTX4090
+disk_space: 100`}
+        />
 
-          <FormControl>
-            <FormLabel>Setup Command (optional)</FormLabel>
-            <Textarea
-              value={setup}
-              onChange={(e) => setSetup(e.target.value)}
-              placeholder="pip install torch transformers"
-              minRows={2}
-            />
-          </FormControl>
+        {!useYaml && (
+          <Stack spacing={3}>
+            <FormControl required>
+              <FormLabel>Cluster Name</FormLabel>
+              <Input
+                value={clusterName}
+                onChange={(e) => setClusterName(e.target.value)}
+                placeholder="my-runpod-cluster"
+              />
+            </FormControl>
 
-          <Card variant="outlined">
-            <Typography level="title-sm" sx={{ mb: 2 }}>
-              Docker Configuration (Optional)
-            </Typography>
-            <Stack spacing={2}>
-              <FormControl>
-                <FormLabel>Docker Image</FormLabel>
-                {loadingDockerImages ? (
-                  <Typography level="body-sm" color="neutral">
-                    Loading docker images...
-                  </Typography>
-                ) : dockerImages.length === 0 ? (
-                  <Typography level="body-sm" color="warning">
-                    No docker images configured. You can add them in Admin &gt;
+            <FormControl>
+              <FormLabel>Setup Command (optional)</FormLabel>
+              <Textarea
+                value={setup}
+                onChange={(e) => setSetup(e.target.value)}
+                placeholder="pip install torch transformers"
+                minRows={2}
+              />
+            </FormControl>
+
+            <Card variant="outlined">
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Docker Configuration (Optional)
+              </Typography>
+              <Stack spacing={2}>
+                <FormControl>
+                  <FormLabel>Docker Image</FormLabel>
+                  {loadingDockerImages ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading docker images...
+                    </Typography>
+                  ) : dockerImages.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No docker images configured. You can add them in Admin
+                      &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedDockerImageId}
+                      onChange={(_, value) =>
+                        setSelectedDockerImageId(value || "")
+                      }
+                      placeholder="Select a docker image (optional)"
+                    >
+                      {dockerImages.map((image) => (
+                        <Option key={image.id} value={image.id}>
+                          {image.name} ({image.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default RunPod image. Configure images in Admin &gt;
                     Private Container Registry.
                   </Typography>
-                ) : (
-                  <Select
-                    value={selectedDockerImageId}
-                    onChange={(_, value) =>
-                      setSelectedDockerImageId(value || "")
-                    }
-                    placeholder="Select a docker image (optional)"
-                  >
-                    {dockerImages.map((image) => (
-                      <Option key={image.id} value={image.id}>
-                        {image.name} ({image.image_tag})
-                      </Option>
-                    ))}
-                  </Select>
-                )}
-                <Typography
-                  level="body-xs"
-                  sx={{ mt: 0.5, color: "text.secondary" }}
-                >
-                  Use a Docker image as runtime environment. Leave empty to use
-                  default RunPod image. Configure images in Admin &gt; Private
-                  Container Registry.
-                </Typography>
-              </FormControl>
-            </Stack>
-          </Card>
+                </FormControl>
+              </Stack>
+            </Card>
 
-          <FormControl required>
-            <FormLabel>GPU Type</FormLabel>
-            <Select
-              value={selectedGpuFullString}
-              onChange={(_, value) => {
-                setSelectedGpuFullString(value || "");
-                // Extract the GPU name from the full string for the backend
-                if (value) {
-                  const [name] = value.split(":");
-                  setSelectedGpuType(name);
-                } else {
-                  setSelectedGpuType("");
-                }
-              }}
-              placeholder={
-                isLoadingGpuTypes
-                  ? "Loading available GPU types..."
-                  : availableGpuTypes.length === 0
-                  ? "No GPU types available"
-                  : "Select GPU type"
-              }
-              disabled={isLoadingGpuTypes}
-            >
-              {(() => {
-                if (isLoadingGpuTypes) {
-                  return (
-                    <Option value="" disabled>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <CircularProgress size="sm" />
-                        Loading GPU types...
-                      </Box>
-                    </Option>
-                  );
-                }
-
-                // Only filter if we have both config and GPU types loaded
-                if (
-                  !runpodConfig.allowed_gpu_types ||
-                  availableGpuTypes.length === 0
-                ) {
-                  return [];
-                }
-
-                const filteredGpus = availableGpuTypes.filter((gpu) => {
-                  // Check if the GPU is in the allowed list
-                  // Both config and API now use "GPU_NAME:COUNT" format with integer counts
-                  const isAllowed = runpodConfig.allowed_gpu_types?.includes(
-                    gpu.full_string
-                  );
-                  return isAllowed;
-                });
-
-                // Only show allowed GPUs, don't fallback to all available GPUs
-                return filteredGpus.map((gpu) => (
-                  <Option key={gpu.full_string} value={gpu.full_string}>
-                    {gpu.display_name}
-                  </Option>
-                ));
-              })()}
-            </Select>
-            <Typography
-              level="body-xs"
-              sx={{ mt: 0.5, color: "text.secondary" }}
-            >
-              {!isLoadingGpuTypes &&
-                availableGpuTypes.length > 0 &&
-                availableGpuTypes.filter((gpu) =>
-                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-                ).length === 0 && (
-                  <span style={{ color: "orange" }}>
-                    {" "}
-                    No GPU types are allowed in the current configuration.
-                    Please configure allowed GPU/CPU types in the Admin section.
-                  </span>
-                )}
-            </Typography>
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Disk Space (GB) - Optional</FormLabel>
-            <Input
-              value={diskSpace}
-              onChange={(e) => setDiskSpace(e.target.value)}
-              placeholder="e.g., 100, 200, 500 (leave empty for default)"
-              slotProps={{
-                input: {
-                  type: "number",
-                  min: 1,
-                },
-              }}
-            />
-            <Typography
-              level="body-xs"
-              sx={{ mt: 0.5, color: "text.secondary" }}
-            >
-              Only used for CPU instances. GPU instances use default disk
-              sizing.
-            </Typography>
-          </FormControl>
-
-          <Card variant="soft" sx={{ p: 2 }}>
-            <Typography level="title-sm" sx={{ mb: 1 }}>
-              RunPod Configuration Status
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <Chip size="sm" variant="soft" color="success">
-                Configured
-              </Chip>
-              <Chip
-                size="sm"
-                variant="soft"
-                color={
+            <FormControl required>
+              <FormLabel>GPU Type</FormLabel>
+              <Select
+                value={selectedGpuFullString}
+                onChange={(_, value) => {
+                  setSelectedGpuFullString(value || "");
+                  // Extract the GPU name from the full string for the backend
+                  if (value) {
+                    const [name] = value.split(":");
+                    setSelectedGpuType(name);
+                  } else {
+                    setSelectedGpuType("");
+                  }
+                }}
+                placeholder={
                   isLoadingGpuTypes
-                    ? "neutral"
-                    : availableGpuTypes.filter((gpu) =>
+                    ? "Loading available GPU types..."
+                    : availableGpuTypes.length === 0
+                    ? "No GPU types available"
+                    : "Select GPU type"
+                }
+                disabled={isLoadingGpuTypes}
+              >
+                {(() => {
+                  if (isLoadingGpuTypes) {
+                    return (
+                      <Option value="" disabled>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <CircularProgress size="sm" />
+                          Loading GPU types...
+                        </Box>
+                      </Option>
+                    );
+                  }
+
+                  // Only filter if we have both config and GPU types loaded
+                  if (
+                    !runpodConfig.allowed_gpu_types ||
+                    availableGpuTypes.length === 0
+                  ) {
+                    return [];
+                  }
+
+                  const filteredGpus = availableGpuTypes.filter((gpu) => {
+                    // Check if the GPU is in the allowed list
+                    // Both config and API now use "GPU_NAME:COUNT" format with integer counts
+                    const isAllowed = runpodConfig.allowed_gpu_types?.includes(
+                      gpu.full_string
+                    );
+                    return isAllowed;
+                  });
+
+                  // Only show allowed GPUs, don't fallback to all available GPUs
+                  return filteredGpus.map((gpu) => (
+                    <Option key={gpu.full_string} value={gpu.full_string}>
+                      {gpu.display_name}
+                    </Option>
+                  ));
+                })()}
+              </Select>
+              <Typography
+                level="body-xs"
+                sx={{ mt: 0.5, color: "text.secondary" }}
+              >
+                {!isLoadingGpuTypes &&
+                  availableGpuTypes.length > 0 &&
+                  availableGpuTypes.filter((gpu) =>
+                    runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                  ).length === 0 && (
+                    <span style={{ color: "orange" }}>
+                      {" "}
+                      No GPU types are allowed in the current configuration.
+                      Please configure allowed GPU/CPU types in the Admin
+                      section.
+                    </span>
+                  )}
+              </Typography>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Disk Space (GB) - Optional</FormLabel>
+              <Input
+                value={diskSpace}
+                onChange={(e) => setDiskSpace(e.target.value)}
+                placeholder="e.g., 100, 200, 500 (leave empty for default)"
+                slotProps={{
+                  input: {
+                    type: "number",
+                    min: 1,
+                  },
+                }}
+              />
+              <Typography
+                level="body-xs"
+                sx={{ mt: 0.5, color: "text.secondary" }}
+              >
+                Only used for CPU instances. GPU instances use default disk
+                sizing.
+              </Typography>
+            </FormControl>
+
+            <Card variant="soft" sx={{ p: 2 }}>
+              <Typography level="title-sm" sx={{ mb: 1 }}>
+                RunPod Configuration Status
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <Chip size="sm" variant="soft" color="success">
+                  Configured
+                </Chip>
+                <Chip
+                  size="sm"
+                  variant="soft"
+                  color={
+                    isLoadingGpuTypes
+                      ? "neutral"
+                      : availableGpuTypes.filter((gpu) =>
+                          runpodConfig.allowed_gpu_types?.includes(
+                            gpu.full_string
+                          )
+                        ).length > 0
+                      ? "primary"
+                      : "warning"
+                  }
+                >
+                  {isLoadingGpuTypes ? (
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      <CircularProgress size="sm" />
+                      Loading...
+                    </Box>
+                  ) : (
+                    `${
+                      availableGpuTypes.filter((gpu) =>
                         runpodConfig.allowed_gpu_types?.includes(
                           gpu.full_string
                         )
-                      ).length > 0
-                    ? "primary"
-                    : "warning"
-                }
-              >
-                {isLoadingGpuTypes ? (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <CircularProgress size="sm" />
-                    Loading...
-                  </Box>
-                ) : (
-                  `${
-                    availableGpuTypes.filter((gpu) =>
-                      runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-                    ).length || 0
-                  } GPU types allowed`
+                      ).length || 0
+                    } GPU types allowed`
+                  )}
+                </Chip>
+              </Stack>
+              {!isLoadingGpuTypes &&
+                availableGpuTypes.filter((gpu) =>
+                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                ).length === 0 && (
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 1, color: "warning.500" }}
+                  >
+                    No GPU types are configured as allowed. Please configure
+                    allowed GPU types in the Admin section.
+                  </Typography>
                 )}
-              </Chip>
-            </Stack>
-            {!isLoadingGpuTypes &&
-              availableGpuTypes.filter((gpu) =>
-                runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-              ).length === 0 && (
-                <Typography
-                  level="body-xs"
-                  sx={{ mt: 1, color: "warning.500" }}
-                >
-                  No GPU types are configured as allowed. Please configure
-                  allowed GPU types in the Admin section.
-                </Typography>
-              )}
-          </Card>
-        </Stack>
+            </Card>
+          </Stack>
+        )}
 
         {/* Cost & Credits Display */}
         {availableCredits !== null && (
@@ -526,12 +585,13 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             startDecorator={<Rocket size={16} />}
             onClick={launchCluster}
             disabled={
-              !clusterName ||
-              !selectedGpuType ||
-              isLoadingGpuTypes ||
-              availableGpuTypes.filter((gpu) =>
-                runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
-              ).length === 0 ||
+              (useYaml ? !yamlContent.trim() : !clusterName) ||
+              (!useYaml && !selectedGpuType) ||
+              (!useYaml && isLoadingGpuTypes) ||
+              (!useYaml &&
+                availableGpuTypes.filter((gpu) =>
+                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                ).length === 0) ||
               (availableCredits !== null && estimatedCost > availableCredits)
             }
             color="success"
