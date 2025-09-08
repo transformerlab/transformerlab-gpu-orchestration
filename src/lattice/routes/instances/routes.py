@@ -133,7 +133,7 @@ async def launch_instance(
     request: Request,
     response: Response,
     cluster_name: Optional[str] = Form(None),
-    command: Optional[str] = Form("echo 'Hello SkyPilot'"),
+    command: Optional[str] = Form("echo 'Hello World'"),
     setup: Optional[str] = Form(None),
     cloud: Optional[str] = Form(None),
     instance_type: Optional[str] = Form(None),
@@ -146,6 +146,8 @@ async def launch_instance(
     use_spot: Optional[bool] = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file_name: Optional[str] = Form(None),
+    uploaded_dir_path: Optional[str] = Form(None),
+    dir_name: Optional[str] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
@@ -248,6 +250,7 @@ async def launch_instance(
                 print(f"Warning: Failed to parse storage bucket IDs: {e}")
 
         # Handle uploaded file name from upload route
+        file_mounts = None
         if python_file_name:
             # Extract original filename from uploaded name (remove UUID prefix)
             if "_" in python_file_name:
@@ -263,6 +266,31 @@ async def launch_instance(
                 )
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+
+        # Handle uploaded directory path from upload route
+        if uploaded_dir_path:
+            # Validate the uploaded directory exists
+            if not os.path.exists(uploaded_dir_path):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Uploaded directory '{uploaded_dir_path}' not found. Please upload the files first using /upload endpoint.",
+                )
+
+            # Extract base name from the uploaded directory path
+            base_name = os.path.basename(uploaded_dir_path)
+            if "_" in base_name:
+                # Remove UUID prefix if present
+                base_name = "_".join(base_name.split("_")[1:])
+
+            # Use provided dir_name if available, otherwise use extracted base_name
+            if dir_name:
+                base_name = secure_filename(dir_name) or base_name
+
+            # Mount the entire directory at ~/<base_name>
+            if file_mounts is None:
+                file_mounts = {}
+            file_mounts[f"~/{base_name}"] = uploaded_dir_path
+            print(f"FILE MOUNTS: {file_mounts}")
 
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
         # (RunPod mapping below may clear 'accelerators')

@@ -1,9 +1,11 @@
-import React from "react";
-import { Box, Card, Typography, Stack, Chip } from "@mui/joy";
+import React, { useState } from "react";
+import { Box, Card, Typography, Stack, Chip, Button } from "@mui/joy";
+import { Rocket } from "lucide-react";
 import PageWithTitle from "./templates/PageWithTitle";
 import { apiFetch, buildApiUrl } from "../../utils/api";
 import useSWR from "swr";
 import Jobs from "./MyNodes/Jobs";
+import JobLauncher from "../modals/JobLauncher";
 
 interface Node {
   id: string;
@@ -137,6 +139,8 @@ const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
 };
 
 const JobsPage: React.FC = () => {
+  const [showJobLauncher, setShowJobLauncher] = useState(false);
+
   const skypilotFetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
   const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
@@ -150,12 +154,35 @@ const JobsPage: React.FC = () => {
       (c.status.toLowerCase().includes("init") ||
         c.status.toLowerCase().includes("up"))
   );
+
+  const handleJobLaunched = () => {
+    console.log("Job launched - data will refresh automatically");
+  };
+
   return (
     <PageWithTitle
       title="My Jobs"
       subtitle="A job is a workload that runs on a cluster, such as a training job."
+      button={
+        <Button
+          onClick={() => setShowJobLauncher(true)}
+          color="success"
+          variant="solid"
+          sx={{ minWidth: 180 }}
+          size="lg"
+        >
+          Launch Job
+        </Button>
+      }
     >
       <Jobs skypilotLoading={skypilotLoading} myClusters={myClusters} />
+
+      {/* Job Launcher Modal */}
+      <JobLauncher
+        open={showJobLauncher}
+        onClose={() => setShowJobLauncher(false)}
+        onJobLaunched={handleJobLaunched}
+      />
     </PageWithTitle>
   );
 };
