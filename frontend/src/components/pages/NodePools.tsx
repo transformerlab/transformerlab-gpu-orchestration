@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Typography } from "@mui/joy";
+import { Box, Button, Typography, Stack } from "@mui/joy";
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import useSWR from "swr";
 import RunPodClusterLauncher from "../modals/RunPodClusterLauncher";
 import AzureClusterLauncher from "../modals/AzureClusterLauncher";
 import InstanceLauncher from "../modals/InstanceLauncher";
+import JobLauncher from "../modals/JobLauncher";
 import PageWithTitle from "./templates/PageWithTitle";
 import { useAuth } from "../../context/AuthContext";
 import { useFakeData } from "../../context/FakeDataContext";
@@ -287,10 +288,16 @@ const Nodes: React.FC = () => {
     console.log("Cluster launched - data will refresh automatically");
   };
 
+  const handleJobLaunched = () => {
+    // useSWR will automatically refresh the data, no need to reload the page
+    console.log("Job launched - data will refresh automatically");
+  };
+
   const [showRunPodLauncher, setShowRunPodLauncher] = useState(false);
   const [showAzureLauncher, setShowAzureLauncher] = useState(false);
   const [showGcpLauncher, setShowGcpLauncher] = useState(false);
   const [showInstanceLauncher, setShowInstanceLauncher] = useState(false);
+  const [showJobLauncher, setShowJobLauncher] = useState(false);
 
   const currentUserName =
     user?.first_name || user?.email?.split("@")[0] || "ali";
@@ -305,15 +312,26 @@ const Nodes: React.FC = () => {
       title={`${user?.organization_name}'s Node Pools`}
       subtitle="View all the nodes, across all clouds, available in your organization. From here you can see each node's status and what is available to you."
       button={
-        <Button
-          onClick={() => setShowInstanceLauncher(true)}
-          color="success"
-          variant="solid"
-          sx={{ minWidth: 180 }}
-          size="lg"
-        >
-          Request Instance
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            onClick={() => setShowInstanceLauncher(true)}
+            color="success"
+            variant="solid"
+            sx={{ minWidth: 180 }}
+            size="lg"
+          >
+            Request Instance
+          </Button>
+          <Button
+            onClick={() => setShowJobLauncher(true)}
+            color="primary"
+            variant="solid"
+            sx={{ minWidth: 180 }}
+            size="lg"
+          >
+            Launch Job
+          </Button>
+        </Stack>
       }
     >
       {/* Existing Node Pools/Clusters UI */}
@@ -497,6 +515,13 @@ const Nodes: React.FC = () => {
       <InstanceLauncher
         open={showInstanceLauncher}
         onClose={() => setShowInstanceLauncher(false)}
+      />
+
+      {/* Job Launcher Modal */}
+      <JobLauncher
+        open={showJobLauncher}
+        onClose={() => setShowJobLauncher(false)}
+        onJobLaunched={handleJobLaunched}
       />
     </PageWithTitle>
   );

@@ -216,14 +216,17 @@ def launch_cluster_with_skypilot(
                 # Fetch docker image and its associated container registry (if any)
                 image = (
                     db.query(DockerImage)
-                    .outerjoin(ContainerRegistry, DockerImage.container_registry_id == ContainerRegistry.id)
+                    .outerjoin(
+                        ContainerRegistry,
+                        DockerImage.container_registry_id == ContainerRegistry.id,
+                    )
                     .filter(
                         DockerImage.id == docker_image_id,
                         DockerImage.is_active,
                         or_(
-                            ContainerRegistry.is_active == True, #noqa: E712
-                            DockerImage.container_registry_id.is_(None)
-                        )
+                            ContainerRegistry.is_active == True,  # noqa: E712
+                            DockerImage.container_registry_id.is_(None),
+                        ),
                     )
                     .first()
                 )
@@ -231,7 +234,7 @@ def launch_cluster_with_skypilot(
                 if image:
                     # Set the docker image tag for SkyPilot
                     docker_image_tag = image.image_tag
-                    
+
                     # Set Docker authentication environment variables only if image has a registry
                     if image.container_registry_id and image.container_registry:
                         task_envs = {
@@ -326,8 +329,106 @@ def launch_cluster_with_skypilot(
         if file_mounts:
             task.set_file_mounts(file_mounts)
 
-        resources_kwargs = {}
-        if cloud:
+        # If no cloud is specified, create a list of resources for all available clouds
+        if not cloud:
+            resources_list = []
+
+            # Get available clouds and node pools for the organization
+            if organization_id:
+                from config import get_db
+                from routes.clouds.runpod.utils import rp_get_current_config
+                from routes.clouds.azure.utils import az_get_current_config
+                from routes.node_pools.utils import list_cluster_names_from_db_by_org
+
+                db = next(get_db())
+                try:
+                    # Get SSH node pools
+                    ssh_node_pools = list_cluster_names_from_db_by_org(organization_id)
+                    for node_pool in ssh_node_pools:
+                        ssh_resources_kwargs = {"infra": f"ssh/{node_pool}"}
+                        if cpus:
+                            ssh_resources_kwargs["cpus"] = cpus
+                        if memory:
+                            ssh_resources_kwargs["memory"] = memory
+                        if accelerators:
+                            ssh_resources_kwargs["accelerators"] = accelerators
+                        if region:
+                            ssh_resources_kwargs["region"] = region
+                        if zone:
+                            ssh_resources_kwargs["zone"] = zone
+                        if disk_size:
+                            ssh_resources_kwargs["disk_size"] = disk_size
+                        if docker_image_tag:
+                            ssh_resources_kwargs["image_id"] = (
+                                f"docker:{docker_image_tag}"
+                            )
+
+                        resources_list.append(sky.Resources(**ssh_resources_kwargs))
+
+                    # Get RunPod configuration
+                    runpod_config = rp_get_current_config(organization_id, db)
+                    if runpod_config:
+                        runpod_resources_kwargs = {"cloud": "runpod"}
+                        if instance_type:
+                            runpod_resources_kwargs["instance_type"] = instance_type
+                        if cpus:
+                            runpod_resources_kwargs["cpus"] = cpus
+                        if memory:
+                            runpod_resources_kwargs["memory"] = memory
+                        if accelerators:
+                            runpod_resources_kwargs["accelerators"] = accelerators
+                        if region:
+                            runpod_resources_kwargs["region"] = region
+                        if zone:
+                            runpod_resources_kwargs["zone"] = zone
+                        if disk_size:
+                            runpod_resources_kwargs["disk_size"] = disk_size
+                        if docker_image_tag:
+                            runpod_resources_kwargs["image_id"] = (
+                                f"docker:{docker_image_tag}"
+                            )
+
+                        resources_list.append(sky.Resources(**runpod_resources_kwargs))
+
+                    # Get Azure configuration
+                    azure_config = az_get_current_config(organization_id, db)
+                    if azure_config:
+                        azure_resources_kwargs = {"cloud": "azure"}
+                        if instance_type:
+                            azure_resources_kwargs["instance_type"] = instance_type
+                        if cpus:
+                            azure_resources_kwargs["cpus"] = cpus
+                        if memory:
+                            azure_resources_kwargs["memory"] = memory
+                        if accelerators:
+                            azure_resources_kwargs["accelerators"] = accelerators
+                        if region:
+                            azure_resources_kwargs["region"] = region
+                        if zone:
+                            azure_resources_kwargs["zone"] = zone
+                        if use_spot:
+                            azure_resources_kwargs["use_spot"] = use_spot
+                        if disk_size:
+                            azure_resources_kwargs["disk_size"] = disk_size
+                        if docker_image_tag:
+                            azure_resources_kwargs["image_id"] = (
+                                f"docker:{docker_image_tag}"
+                            )
+
+                        resources_list.append(sky.Resources(**azure_resources_kwargs))
+
+                finally:
+                    db.close()
+
+            # Set the list of resources on the task
+            if resources_list:
+                task.set_resources(resources_list)
+                print(
+                    f"Set {len(resources_list)} resources for multi-cloud deployment: {resources_list}"
+                )
+        else:
+            # Original single cloud logic
+            resources_kwargs = {}
             if cloud.lower() == "ssh":
                 resources_kwargs["infra"] = f"ssh/{node_pool_name}"
             elif cloud.lower() == "runpod":
@@ -337,31 +438,30 @@ def launch_cluster_with_skypilot(
             else:
                 resources_kwargs["infra"] = cloud
 
-        if instance_type:
-            resources_kwargs["instance_type"] = instance_type
-        if cpus:
-            resources_kwargs["cpus"] = cpus
-        if memory:
-            resources_kwargs["memory"] = memory
-        if accelerators:
-            resources_kwargs["accelerators"] = accelerators
-        if region:
-            resources_kwargs["region"] = region
-        if zone:
-            resources_kwargs["zone"] = zone
-        if use_spot and cloud and cloud.lower() not in ["ssh", "runpod"]:
-            resources_kwargs["use_spot"] = use_spot
-        if disk_size:
-            resources_kwargs["disk_size"] = disk_size
+            if instance_type:
+                resources_kwargs["instance_type"] = instance_type
+            if cpus:
+                resources_kwargs["cpus"] = cpus
+            if memory:
+                resources_kwargs["memory"] = memory
+            if accelerators:
+                resources_kwargs["accelerators"] = accelerators
+            if region:
+                resources_kwargs["region"] = region
+            if zone:
+                resources_kwargs["zone"] = zone
+            if use_spot and cloud and cloud.lower() not in ["ssh", "runpod"]:
+                resources_kwargs["use_spot"] = use_spot
+            if disk_size:
+                resources_kwargs["disk_size"] = disk_size
 
-        # Add Docker image support
-        if docker_image_tag:
-            resources_kwargs["image_id"] = f"docker:{docker_image_tag}"
-            print(f"DOCKER IMAGE TAG: {resources_kwargs['image_id']}")
+            # Add Docker image support
+            if docker_image_tag:
+                resources_kwargs["image_id"] = f"docker:{docker_image_tag}"
 
-        if resources_kwargs:
-            resources = sky.Resources(**resources_kwargs)
-            task.set_resources(resources)
+            if resources_kwargs:
+                resources = sky.Resources(**resources_kwargs)
+                task.set_resources(resources)
 
         request_id = sky.launch(
             task,
@@ -394,6 +494,58 @@ def launch_cluster_with_skypilot(
         raise HTTPException(
             status_code=500, detail=f"Failed to launch cluster: {str(e)}"
         )
+
+
+def determine_actual_cloud_from_skypilot_status(cluster_name: str) -> Optional[str]:
+    """
+    Determine which cloud was actually selected by SkyPilot by examining the cluster status.
+    This is useful for multi-cloud deployments where the actual cloud is determined after launch.
+
+    Args:
+        cluster_name: The actual cluster name
+
+    Returns:
+        The actual cloud platform that was selected, or None if not found
+    """
+    try:
+        # Get SkyPilot status for this specific cluster
+        status_result = get_skypilot_status([cluster_name])
+
+        if not status_result:
+            return None
+
+        cluster_info = status_result[0] if status_result else None
+        if not cluster_info:
+            return None
+
+        # Get the cloud type from the structured data
+        cloud = cluster_info.get("cloud", "").lower()
+
+        if cloud == "ssh":
+            # For SSH clusters, the region field contains "ssh-{node_pool_name}"
+            # We need to extract just the node pool name
+            region = cluster_info.get("region", "")
+            if region and region.startswith("ssh-"):
+                # Extract node pool name by removing "ssh-" prefix
+                node_pool_name = region[4:]  # Remove "ssh-" prefix
+                return node_pool_name
+            elif region:
+                # Fallback: return the region as-is if it doesn't start with "ssh-"
+                return region
+            return "ssh"
+        elif cloud == "runpod":
+            return "runpod"
+        elif cloud == "azure":
+            return "azure"
+        else:
+            # Fallback: try to extract from other fields
+            return cloud if cloud else None
+
+        return None
+
+    except Exception as e:
+        print(f"Error determining actual cloud for cluster {cluster_name}: {e}")
+        return None
 
 
 def stop_cluster_with_skypilot(
@@ -496,13 +648,13 @@ def get_skypilot_status(cluster_names=None):
         for cluster in result_new:
             # Delete the credentials if they exist
             if "credentials" in cluster:
-                cluster['credentials'] = None
-            if 'last_creation_yaml' in cluster:
-                cluster['last_creation_yaml'] = ""
-            if 'last_update_yaml' in cluster:
-                cluster['last_update_yaml'] = ""
+                cluster["credentials"] = None
+            if "last_creation_yaml" in cluster:
+                cluster["last_creation_yaml"] = ""
+            if "last_update_yaml" in cluster:
+                cluster["last_update_yaml"] = ""
             if "handle" in cluster:
-                cluster['handle'] = ""
+                cluster["handle"] = ""
         return result_new
     except Exception as e:
         print(f"ERROR: {e}")

@@ -133,7 +133,7 @@ async def launch_instance(
     request: Request,
     response: Response,
     cluster_name: Optional[str] = Form(None),
-    command: Optional[str] = Form("echo 'Hello SkyPilot'"),
+    command: Optional[str] = Form("echo 'Hello World'"),
     setup: Optional[str] = Form(None),
     cloud: Optional[str] = Form(None),
     instance_type: Optional[str] = Form(None),
@@ -146,6 +146,8 @@ async def launch_instance(
     use_spot: Optional[bool] = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
     python_file_name: Optional[str] = Form(None),
+    uploaded_dir_path: Optional[str] = Form(None),
+    dir_name: Optional[str] = Form(None),
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
@@ -203,9 +205,9 @@ async def launch_instance(
             "docker_image_id": docker_image_id,
         }
 
-        # Override with YAML values where form parameters are None
+        # Override with YAML values for all form parameters
         for key, value in yaml_config.items():
-            if key in final_config and final_config[key] is None:
+            if key in final_config:
                 final_config[key] = value
 
         # Validate required fields
@@ -248,6 +250,7 @@ async def launch_instance(
                 print(f"Warning: Failed to parse storage bucket IDs: {e}")
 
         # Handle uploaded file name from upload route
+        file_mounts = None
         if python_file_name:
             # Extract original filename from uploaded name (remove UUID prefix)
             if "_" in python_file_name:
@@ -263,6 +266,30 @@ async def launch_instance(
                 )
             # Mount the file to workspace/<filename> in the cluster
             file_mounts = {f"workspace/{python_filename}": str(file_path)}
+
+        # Handle uploaded directory path from upload route
+        if uploaded_dir_path:
+            # Validate the uploaded directory exists
+            if not os.path.exists(uploaded_dir_path):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Uploaded directory '{uploaded_dir_path}' not found. Please upload the files first using /upload endpoint.",
+                )
+
+            # Extract base name from the uploaded directory path
+            base_name = os.path.basename(uploaded_dir_path)
+            if "_" in base_name:
+                # Remove UUID prefix if present
+                base_name = "_".join(base_name.split("_")[1:])
+
+            # Use provided dir_name if available, otherwise use extracted base_name
+            if dir_name:
+                base_name = secure_filename(dir_name) or base_name
+
+            # Mount the entire directory at ~/<base_name>
+            if file_mounts is None:
+                file_mounts = {}
+            file_mounts[f"~/{base_name}"] = uploaded_dir_path
 
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
         # (RunPod mapping below may clear 'accelerators')
@@ -337,7 +364,7 @@ async def launch_instance(
                         status_code=400,
                         detail="node_pool_name is required for SSH launches",
                     )
-                
+
                 # First check if the node pool exists
                 pool = (
                     db.query(SSHNodePoolDB)
@@ -349,7 +376,7 @@ async def launch_instance(
                         status_code=404,
                         detail=f"SSH node pool '{node_pool_name}' not found",
                     )
-                
+
                 # Explicitly verify that the org ID of the submitter matches the org ID that the node_pool_name belongs to
                 if pool.organization_id != organization_id:
                     raise HTTPException(
@@ -459,6 +486,9 @@ async def launch_instance(
         # For SSH clusters, use the node pool name as platform for easier mapping
         if cloud == "ssh" and node_pool_name is not None:
             platform = node_pool_name
+        elif cloud is None:
+            # Multi-cloud deployment - will be updated after launch when we know which cloud was selected
+            platform = "multi-cloud"
         else:
             platform = cloud or "unknown"
 
@@ -525,6 +555,44 @@ async def launch_instance(
         # Update GPU resources for SSH node pools when launching clusters (background thread)
         if node_pool_name and is_ssh_cluster(node_pool_name):
             update_gpu_resources_background(node_pool_name)
+
+        # For multi-cloud deployments, update platform information after launch
+        if cloud is None:
+
+            def update_platform_after_launch():
+                try:
+                    # Wait a bit for the cluster to be created
+                    import time
+
+                    time.sleep(5)
+
+                    # Determine which cloud was actually selected
+                    from routes.instances.utils import (
+                        determine_actual_cloud_from_skypilot_status,
+                    )
+                    from utils.cluster_utils import update_cluster_platform
+
+                    actual_cloud = determine_actual_cloud_from_skypilot_status(
+                        actual_cluster_name
+                    )
+                    if actual_cloud:
+                        update_cluster_platform(actual_cluster_name, actual_cloud)
+                        print(
+                            f"Updated cluster {actual_cluster_name} platform to: {actual_cloud}"
+                        )
+                    else:
+                        print(
+                            f"Could not determine actual cloud for cluster {actual_cluster_name}"
+                        )
+                except Exception as e:
+                    print(
+                        f"Error updating platform for cluster {actual_cluster_name}: {e}"
+                    )
+
+            # Run platform update in background thread
+            import threading
+
+            threading.Thread(target=update_platform_after_launch, daemon=True).start()
 
         return LaunchClusterResponse(
             request_id=request_id,
@@ -801,7 +869,9 @@ async def get_cost_report(
                 # Create a copy of cluster data with display name and cloud provider
                 filtered_cluster_data = cluster_data.copy()
                 filtered_cluster_data["name"] = cluster_display_name
-                filtered_cluster_data["cloud_provider"] = platform_info.get("platform", "direct")
+                filtered_cluster_data["cloud_provider"] = platform_info.get(
+                    "platform", "direct"
+                )
                 filtered_clusters.append(filtered_cluster_data)
 
         return filtered_clusters
@@ -857,7 +927,7 @@ async def get_cluster_info(
     Returns:
         dict: A comprehensive object containing all cluster information
             - cluster: Basic cluster status and metadata
-            - cluster_type: Type information 
+            - cluster_type: Type information
             - platform: Platform-specific information
             - template: Template information
             - jobs: List of jobs associated with the cluster
