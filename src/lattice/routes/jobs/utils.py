@@ -70,9 +70,8 @@ def get_job_logs(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
-                    rp_config = rp_get_current_config(
-                        organization_id=organization_id
-                    )
+
+                    rp_config = rp_get_current_config(organization_id=organization_id)
                     if rp_config and rp_config.get("api_key"):
                         credentials = {
                             "runpod": {
@@ -88,6 +87,7 @@ def get_job_logs(
         log_paths = sky.download_logs(
             actual_cluster_name, [str(job_id)], credentials=credentials
         )
+
         log_path = log_paths.get(str(job_id))
         log_path = os.path.expanduser(log_path)
         if not log_path or (
