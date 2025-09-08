@@ -18,6 +18,7 @@ import {
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
+import YamlConfigurationSection from "./YamlConfigurationSection";
 
 interface JobLauncherProps {
   open: boolean;
@@ -45,6 +46,11 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
   const [error, setError] = useState("");
   const { addNotification } = useNotification();
 
+  // YAML configuration state
+  const [useYaml, setUseYaml] = useState(false);
+  const [yamlContent, setYamlContent] = useState("");
+  const [yamlFile, setYamlFile] = useState<File | null>(null);
+
   const resetForm = () => {
     setJobName("");
     setCommand("");
@@ -57,6 +63,9 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
     setDiskSpace("");
     setZone("");
     setRegion("");
+    setUseYaml(false);
+    setYamlContent("");
+    setYamlFile(null);
   };
 
   const deriveDirName = (files: FileList | null): string | null => {
@@ -81,6 +90,16 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Validate YAML mode
+    if (useYaml && !yamlContent.trim()) {
+      addNotification({
+        type: "danger",
+        message: "YAML content is required when using YAML configuration",
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       // Use the job name from the form
@@ -125,39 +144,54 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
 
       // Step 2: Launch job with uploaded directory path
       const formData = new FormData();
-      formData.append("cluster_name", clusterName);
-      formData.append("command", command);
 
-      if (setupCommand) {
-        formData.append("setup", setupCommand);
-      }
+      if (useYaml) {
+        // YAML mode: create a blob from the YAML content
+        const yamlBlob = new Blob([yamlContent], {
+          type: "application/x-yaml",
+        });
+        formData.append("yaml_file", yamlBlob, "config.yaml");
 
-      if (uploadedDirPath) {
-        formData.append("uploaded_dir_path", uploadedDirPath);
-      }
+        // Add uploaded directory path if available
+        if (uploadedDirPath) {
+          formData.append("uploaded_dir_path", uploadedDirPath);
+        }
+      } else {
+        // Form mode: use regular form data
+        formData.append("cluster_name", clusterName);
+        formData.append("command", command);
 
-      if (vcpus) {
-        formData.append("cpus", vcpus);
-      }
+        if (setupCommand) {
+          formData.append("setup", setupCommand);
+        }
 
-      if (memory) {
-        formData.append("memory", memory);
-      }
+        if (uploadedDirPath) {
+          formData.append("uploaded_dir_path", uploadedDirPath);
+        }
 
-      if (gpus) {
-        formData.append("accelerators", gpus);
-      }
+        if (vcpus) {
+          formData.append("cpus", vcpus);
+        }
 
-      if (diskSpace) {
-        formData.append("disk_space", diskSpace);
-      }
+        if (memory) {
+          formData.append("memory", memory);
+        }
 
-      if (region) {
-        formData.append("region", region);
-      }
+        if (gpus) {
+          formData.append("accelerators", gpus);
+        }
 
-      if (zone) {
-        formData.append("zone", zone);
+        if (diskSpace) {
+          formData.append("disk_space", diskSpace);
+        }
+
+        if (region) {
+          formData.append("region", region);
+        }
+
+        if (zone) {
+          formData.append("zone", zone);
+        }
       }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
@@ -214,6 +248,27 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
         <Typography level="h4" sx={{ mb: 2, flexShrink: 0 }}>
           Launch a Job
         </Typography>
+
+        {/* YAML Configuration Section */}
+        <YamlConfigurationSection
+          useYaml={useYaml}
+          setUseYaml={setUseYaml}
+          yamlContent={yamlContent}
+          setYamlContent={setYamlContent}
+          yamlFile={yamlFile}
+          setYamlFile={setYamlFile}
+          placeholder={`# Example YAML configuration for Job Launcher:
+cluster_name: my-job
+command: python train.py --epochs 100
+setup: pip install -r requirements.txt
+cpus: 4
+memory: 16
+accelerators: RTX3090:1
+disk_space: 100
+region: us-west-2
+zone: us-west-2a`}
+        />
+
         <form
           onSubmit={handleLaunch}
           style={{
@@ -229,38 +284,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
             </Alert>
           )}
 
-          <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Job Name</FormLabel>
-            <Input
-              value={jobName}
-              onChange={(e) => setJobName(e.target.value)}
-              placeholder="e.g., my-job, training-task"
-              required
-            />
-          </FormControl>
-
-          <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Command *</FormLabel>
-            <Textarea
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder="python train.py --epochs 100"
-              minRows={2}
-              required
-            />
-          </FormControl>
-
-          <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Setup Command (optional)</FormLabel>
-            <Textarea
-              value={setupCommand}
-              onChange={(e) => setSetupCommand(e.target.value)}
-              placeholder="pip install -r requirements.txt"
-              minRows={2}
-            />
-          </FormControl>
-
-          {/* Directory Upload */}
+          {/* Directory Upload - show in both modes */}
           <Card variant="soft" sx={{ mb: 2 }}>
             <Typography level="title-sm" sx={{ mb: 1 }}>
               Directory Upload (optional)
@@ -290,75 +314,111 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
             </FormControl>
           </Card>
 
-          {/* Resource Configuration */}
-          <Card variant="soft" sx={{ mb: 2 }}>
-            <Typography level="title-sm" sx={{ mb: 1 }}>
-              Resource Configuration
-            </Typography>
-            <FormControl sx={{ mb: 1 }}>
-              <FormLabel>vCPUs</FormLabel>
-              <Input
-                value={vcpus}
-                onChange={(e) => setVcpus(e.target.value)}
-                placeholder="e.g., 4, 8, 16"
-                type="number"
-              />
-            </FormControl>
-            <FormControl sx={{ mb: 1 }}>
-              <FormLabel>Memory (GB)</FormLabel>
-              <Input
-                value={memory}
-                onChange={(e) => setMemory(e.target.value)}
-                placeholder="e.g., 16, 32, 64"
-                type="number"
-              />
-            </FormControl>
-            <FormControl sx={{ mb: 1 }}>
-              <FormLabel>GPUs</FormLabel>
-              <Input
-                value={gpus}
-                onChange={(e) => setGpus(e.target.value)}
-                placeholder="RTX3090:1, H100:4"
-              />
-            </FormControl>
-            <FormControl sx={{ mb: 1 }}>
-              <FormLabel>Disk Space (GB)</FormLabel>
-              <Input
-                value={diskSpace}
-                onChange={(e) => setDiskSpace(e.target.value)}
-                placeholder="e.g., 100, 200, 500"
-                slotProps={{
-                  input: {
-                    type: "number",
-                    min: 1,
-                  },
-                }}
-              />
-            </FormControl>
-          </Card>
+          {/* Form fields - only show when not in YAML mode */}
+          {!useYaml && (
+            <>
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Job Name</FormLabel>
+                <Input
+                  value={jobName}
+                  onChange={(e) => setJobName(e.target.value)}
+                  placeholder="e.g., my-job, training-task"
+                  required
+                />
+              </FormControl>
 
-          {/* Zone and Region Preferences */}
-          <Card variant="soft" sx={{ mb: 2 }}>
-            <Typography level="title-sm" sx={{ mb: 1 }}>
-              Zone and Region Preferences
-            </Typography>
-            <FormControl sx={{ mb: 1 }}>
-              <FormLabel>Region</FormLabel>
-              <Input
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                placeholder="e.g., us-west-2, us-central1"
-              />
-            </FormControl>
-            <FormControl sx={{ mb: 1 }}>
-              <FormLabel>Zone</FormLabel>
-              <Input
-                value={zone}
-                onChange={(e) => setZone(e.target.value)}
-                placeholder="e.g., us-west-2a, us-central1-a"
-              />
-            </FormControl>
-          </Card>
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Command *</FormLabel>
+                <Textarea
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  placeholder="python train.py --epochs 100"
+                  minRows={2}
+                  required
+                />
+              </FormControl>
+
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Setup Command (optional)</FormLabel>
+                <Textarea
+                  value={setupCommand}
+                  onChange={(e) => setSetupCommand(e.target.value)}
+                  placeholder="pip install -r requirements.txt"
+                  minRows={2}
+                />
+              </FormControl>
+
+              {/* Resource Configuration */}
+              <Card variant="soft" sx={{ mb: 2 }}>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Resource Configuration
+                </Typography>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>vCPUs</FormLabel>
+                  <Input
+                    value={vcpus}
+                    onChange={(e) => setVcpus(e.target.value)}
+                    placeholder="e.g., 4, 8, 16"
+                    type="number"
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Memory (GB)</FormLabel>
+                  <Input
+                    value={memory}
+                    onChange={(e) => setMemory(e.target.value)}
+                    placeholder="e.g., 16, 32, 64"
+                    type="number"
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>GPUs</FormLabel>
+                  <Input
+                    value={gpus}
+                    onChange={(e) => setGpus(e.target.value)}
+                    placeholder="RTX3090:1, H100:4"
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Disk Space (GB)</FormLabel>
+                  <Input
+                    value={diskSpace}
+                    onChange={(e) => setDiskSpace(e.target.value)}
+                    placeholder="e.g., 100, 200, 500"
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                </FormControl>
+              </Card>
+
+              {/* Zone and Region Preferences */}
+              <Card variant="soft" sx={{ mb: 2 }}>
+                <Typography level="title-sm" sx={{ mb: 1 }}>
+                  Zone and Region Preferences
+                </Typography>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Region</FormLabel>
+                  <Input
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    placeholder="e.g., us-west-2, us-central1"
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Zone</FormLabel>
+                  <Input
+                    value={zone}
+                    onChange={(e) => setZone(e.target.value)}
+                    placeholder="e.g., us-west-2a, us-central1-a"
+                  />
+                </FormControl>
+              </Card>
+            </>
+          )}
           <Box
             sx={{
               display: "flex",

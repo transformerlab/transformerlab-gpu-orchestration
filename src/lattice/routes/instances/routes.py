@@ -205,10 +205,15 @@ async def launch_instance(
             "docker_image_id": docker_image_id,
         }
 
-        # Override with YAML values where form parameters are None
+        print(f"INIT CONFIG: {final_config}")
+        print(f"YAML CONFIG: {yaml_config}")
+
+        # Override with YAML values for all form parameters
         for key, value in yaml_config.items():
-            if key in final_config and final_config[key] is None:
+            if key in final_config:
                 final_config[key] = value
+
+        print(f"FINAL FINAL CONFIG: {final_config}")
 
         # Validate required fields
         if not final_config["cluster_name"]:
