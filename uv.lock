@@ -5831,7 +5831,7 @@ wheels = [
 [[package]]
 name = "skypilot"
 version = "1.0.0.dev0"
-source = { git = "https://github.com/transformerlab/skypilot.git?rev=prod-2#48347925015499e591c6755a451f60c25e201a88" }
+source = { git = "https://github.com/transformerlab/skypilot.git?rev=prod-2#4c0171f80c856a84fd57876179dfc93b9feb2f6d" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
