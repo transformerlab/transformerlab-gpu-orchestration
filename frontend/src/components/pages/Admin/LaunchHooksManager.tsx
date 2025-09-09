@@ -18,6 +18,7 @@ import {
   Textarea,
   Divider,
   Badge,
+  Switch,
 } from "@mui/joy";
 import { Plus, Trash2, Edit, Upload, Download, File } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -151,6 +152,34 @@ const LaunchHooksManager: React.FC = () => {
       }
     } catch (err) {
       setError("Failed to update launch hook");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (hookId: string, currentStatus: boolean) => {
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("is_active", (!currentStatus).toString());
+
+      const response = await apiFetch(
+        buildApiUrl(`admin/launch-hooks/${hookId}`),
+        {
+          method: "PUT",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        await fetchLaunchHooks();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || "Failed to update hook status");
+      }
+    } catch (err) {
+      setError("Failed to update hook status");
     } finally {
       setLoading(false);
     }
@@ -318,8 +347,17 @@ const LaunchHooksManager: React.FC = () => {
     <PageWithTitle title="Launch Hooks">
       <Box sx={{ maxWidth: 1200, mx: "auto", p: 2 }}>
         {error && (
-          <Alert color="danger" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          <Alert color="danger" sx={{ mb: 2 }}>
             {error}
+            <Button
+              size="sm"
+              variant="plain"
+              color="danger"
+              onClick={() => setError(null)}
+              sx={{ ml: 2 }}
+            >
+              ×
+            </Button>
           </Alert>
         )}
 
@@ -344,7 +382,8 @@ const LaunchHooksManager: React.FC = () => {
         <Typography level="body-md" sx={{ mb: 3, color: "text.secondary" }}>
           Launch hooks allow you to automatically mount files and run setup
           commands when launching instances. Files will be mounted to ~/hooks/
-          and setup commands will be prepended to your launch command.
+          and setup commands will be prepended to your launch command. Only
+          active hooks (toggle on) are applied to new launches.
         </Typography>
 
         {launchHooks.length === 0 ? (
@@ -417,7 +456,20 @@ const LaunchHooksManager: React.FC = () => {
                       </Box>
                     )}
                   </Box>
-                  <Box sx={{ display: "flex", gap: 1 }}>
+                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Switch
+                        checked={hook.is_active}
+                        onChange={() =>
+                          handleToggleActive(hook.id, hook.is_active)
+                        }
+                        disabled={loading}
+                        color={hook.is_active ? "success" : "neutral"}
+                      />
+                      <Typography level="body-sm" color="neutral">
+                        {hook.is_active ? "Active" : "Inactive"}
+                      </Typography>
+                    </Box>
                     <IconButton
                       size="sm"
                       variant="outlined"

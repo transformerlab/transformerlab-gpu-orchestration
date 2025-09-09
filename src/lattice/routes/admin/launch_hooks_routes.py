@@ -28,16 +28,14 @@ async def list_launch_hooks(
         raise HTTPException(status_code=400, detail="Organization ID not found")
     
     hooks = db.query(LaunchHook).filter(
-        LaunchHook.organization_id == org_id,
-        LaunchHook.is_active == True # noqa: E712
+        LaunchHook.organization_id == org_id
     ).all()
     
     result = []
     for hook in hooks:
         # Get files for this hook
         files = db.query(LaunchHookFile).filter(
-            LaunchHookFile.launch_hook_id == hook.id,
-            LaunchHookFile.is_active == True # noqa: E712
+            LaunchHookFile.launch_hook_id == hook.id
         ).all()
         
         result.append({
@@ -127,8 +125,7 @@ async def get_launch_hook(
     
     hook = db.query(LaunchHook).filter(
         LaunchHook.id == hook_id,
-        LaunchHook.organization_id == org_id,
-        LaunchHook.is_active == True # noqa: E712
+        LaunchHook.organization_id == org_id
     ).first()
     
     if not hook:
@@ -136,8 +133,7 @@ async def get_launch_hook(
     
     # Get files for this hook
     files = db.query(LaunchHookFile).filter(
-        LaunchHookFile.launch_hook_id == hook.id,
-        LaunchHookFile.is_active == True # noqa: E712
+        LaunchHookFile.launch_hook_id == hook.id
     ).all()
     
     return {
