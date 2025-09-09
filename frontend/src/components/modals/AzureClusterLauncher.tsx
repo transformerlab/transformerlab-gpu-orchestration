@@ -808,28 +808,28 @@ disk_space: 100`}
                   </Card>
                 </>
               )}
+
+              {/* Cost & Credits Display */}
+              {availableCredits !== null && (
+                <Box sx={{ mt: 2 }}>
+                  <CostCreditsDisplay
+                    estimatedCost={estimatedCost}
+                    availableCredits={availableCredits}
+                    variant="card"
+                    showWarning={true}
+                  />
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+                  >
+                    Note: Cost estimates are approximate and may vary based on
+                    actual usage and resource allocation.
+                  </Typography>
+                </Box>
+              )}
             </Stack>
           </form>
         </Box>
-
-        {/* Cost & Credits Display */}
-        {availableCredits !== null && (
-          <Box sx={{ mt: 2 }}>
-            <CostCreditsDisplay
-              estimatedCost={estimatedCost}
-              availableCredits={availableCredits}
-              variant="card"
-              showWarning={true}
-            />
-            <Typography
-              level="body-xs"
-              sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
-            >
-              Note: Cost estimates are approximate and may vary based on actual
-              usage and resource allocation.
-            </Typography>
-          </Box>
-        )}
 
         <Box
           sx={{
