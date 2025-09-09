@@ -44,6 +44,7 @@ async def list_launch_hooks(
             "description": hook.description,
             "setup_commands": hook.setup_commands,
             "is_active": hook.is_active,
+            "allowed_team_ids": hook.allowed_team_ids,
             "created_at": hook.created_at,
             "updated_at": hook.updated_at,
             "files": [
@@ -60,11 +61,41 @@ async def list_launch_hooks(
     return {"hooks": result}
 
 
+@router.get("/teams")
+async def get_organization_teams(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    _: dict = Depends(requires_admin),
+):
+    """Get all teams in the organization for team selection"""
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization ID not found")
+    
+    from db.db_models import Team
+    
+    teams = db.query(Team).filter(
+        Team.organization_id == org_id
+    ).all()
+    
+    return {
+        "teams": [
+            {
+                "id": team.id,
+                "name": team.name,
+                "created_at": team.created_at,
+            }
+            for team in teams
+        ]
+    }
+
+
 @router.post("")
 async def create_launch_hook(
     name: str = Form(...),
     description: Optional[str] = Form(None),
     setup_commands: Optional[str] = Form(None),
+    allowed_team_ids: Optional[str] = Form(None),  # JSON string of team IDs
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
     _: dict = Depends(requires_admin),
@@ -86,6 +117,17 @@ async def create_launch_hook(
     if existing_hook:
         raise HTTPException(status_code=400, detail=f"Launch hook with name '{name}' already exists")
     
+    # Parse allowed team IDs
+    parsed_team_ids = None
+    if allowed_team_ids:
+        try:
+            import json
+            parsed_team_ids = json.loads(allowed_team_ids)
+            if not isinstance(parsed_team_ids, list):
+                raise ValueError("allowed_team_ids must be a list")
+        except (json.JSONDecodeError, ValueError) as e:
+            raise HTTPException(status_code=400, detail=f"Invalid allowed_team_ids format: {str(e)}")
+
     # Create new hook
     hook = LaunchHook(
         organization_id=org_id,
@@ -93,6 +135,7 @@ async def create_launch_hook(
         name=name,
         description=description,
         setup_commands=setup_commands,
+        allowed_team_ids=parsed_team_ids,
     )
     
     db.add(hook)
@@ -105,6 +148,7 @@ async def create_launch_hook(
         "description": hook.description,
         "setup_commands": hook.setup_commands,
         "is_active": hook.is_active,
+        "allowed_team_ids": hook.allowed_team_ids,
         "created_at": hook.created_at,
         "updated_at": hook.updated_at,
         "files": []
@@ -142,6 +186,7 @@ async def get_launch_hook(
         "description": hook.description,
         "setup_commands": hook.setup_commands,
         "is_active": hook.is_active,
+        "allowed_team_ids": hook.allowed_team_ids,
         "created_at": hook.created_at,
         "updated_at": hook.updated_at,
         "files": [
@@ -163,6 +208,7 @@ async def update_launch_hook(
     description: Optional[str] = Form(None),
     setup_commands: Optional[str] = Form(None),
     is_active: Optional[bool] = Form(None),
+    allowed_team_ids: Optional[str] = Form(None),  # JSON string of team IDs
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
     _: dict = Depends(requires_admin),
@@ -192,6 +238,21 @@ async def update_launch_hook(
         if existing_hook:
             raise HTTPException(status_code=400, detail=f"Launch hook with name '{name}' already exists")
     
+    # Parse allowed team IDs if provided
+    if allowed_team_ids is not None:
+        if allowed_team_ids == "":
+            # Empty string means no teams (all teams)
+            hook.allowed_team_ids = None
+        else:
+            try:
+                import json
+                parsed_team_ids = json.loads(allowed_team_ids)
+                if not isinstance(parsed_team_ids, list):
+                    raise ValueError("allowed_team_ids must be a list")
+                hook.allowed_team_ids = parsed_team_ids
+            except (json.JSONDecodeError, ValueError) as e:
+                raise HTTPException(status_code=400, detail=f"Invalid allowed_team_ids format: {str(e)}")
+
     # Update fields
     if name is not None:
         hook.name = name
@@ -211,6 +272,7 @@ async def update_launch_hook(
         "description": hook.description,
         "setup_commands": hook.setup_commands,
         "is_active": hook.is_active,
+        "allowed_team_ids": hook.allowed_team_ids,
         "created_at": hook.created_at,
         "updated_at": hook.updated_at,
     }

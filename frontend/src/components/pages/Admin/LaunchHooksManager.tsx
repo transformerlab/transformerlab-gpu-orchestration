@@ -19,6 +19,12 @@ import {
   Divider,
   Badge,
   Switch,
+  Checkbox,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemDecorator,
+  ListItemContent,
 } from "@mui/joy";
 import { Plus, Trash2, Edit, Upload, Download, File } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -31,12 +37,19 @@ interface LaunchHookFile {
   created_at: string;
 }
 
+interface Team {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 interface LaunchHook {
   id: string;
   name: string;
   description: string | null;
   setup_commands: string | null;
   is_active: boolean;
+  allowed_team_ids: string[] | null;
   created_at: string;
   updated_at: string;
   files: LaunchHookFile[];
@@ -44,6 +57,7 @@ interface LaunchHook {
 
 const LaunchHooksManager: React.FC = () => {
   const [launchHooks, setLaunchHooks] = useState<LaunchHook[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFileUploadModal, setShowFileUploadModal] = useState(false);
@@ -56,10 +70,12 @@ const LaunchHooksManager: React.FC = () => {
   const [hookDescription, setHookDescription] = useState("");
   const [hookSetupCommands, setHookSetupCommands] = useState("");
   const [hookIsActive, setHookIsActive] = useState(true);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchLaunchHooks();
+    fetchTeams();
   }, []);
 
   const fetchLaunchHooks = async () => {
@@ -83,6 +99,23 @@ const LaunchHooksManager: React.FC = () => {
     }
   };
 
+  const fetchTeams = async () => {
+    try {
+      const response = await apiFetch(buildApiUrl("admin/launch-hooks/teams"), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTeams(data.teams || []);
+      } else {
+        console.error("Failed to fetch teams");
+      }
+    } catch (err) {
+      console.error("Failed to fetch teams", err);
+    }
+  };
+
   const handleCreateHook = async () => {
     if (!hookName.trim()) {
       setError("Hook name is required");
@@ -96,6 +129,9 @@ const LaunchHooksManager: React.FC = () => {
       if (hookDescription) formData.append("description", hookDescription);
       if (hookSetupCommands)
         formData.append("setup_commands", hookSetupCommands);
+      if (selectedTeamIds.length > 0) {
+        formData.append("allowed_team_ids", JSON.stringify(selectedTeamIds));
+      }
 
       const response = await apiFetch(buildApiUrl("admin/launch-hooks"), {
         method: "POST",
@@ -132,6 +168,11 @@ const LaunchHooksManager: React.FC = () => {
       if (hookSetupCommands)
         formData.append("setup_commands", hookSetupCommands);
       formData.append("is_active", hookIsActive.toString());
+      if (selectedTeamIds.length > 0) {
+        formData.append("allowed_team_ids", JSON.stringify(selectedTeamIds));
+      } else {
+        formData.append("allowed_team_ids", ""); // Empty string means all teams
+      }
 
       const response = await apiFetch(
         buildApiUrl(`admin/launch-hooks/${selectedHook.id}`),
@@ -317,6 +358,7 @@ const LaunchHooksManager: React.FC = () => {
     setHookDescription("");
     setHookSetupCommands("");
     setHookIsActive(true);
+    setSelectedTeamIds([]);
     setSelectedHook(null);
     setError(null);
   };
@@ -327,6 +369,7 @@ const LaunchHooksManager: React.FC = () => {
     setHookDescription(hook.description || "");
     setHookSetupCommands(hook.setup_commands || "");
     setHookIsActive(hook.is_active);
+    setSelectedTeamIds(hook.allowed_team_ids || []);
     setShowEditModal(true);
   };
 
@@ -341,6 +384,16 @@ const LaunchHooksManager: React.FC = () => {
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const getTeamNames = (teamIds: string[] | null) => {
+    if (!teamIds || teamIds.length === 0) {
+      return ["All Teams"];
+    }
+    return teamIds.map((id) => {
+      const team = teams.find((t) => t.id === id);
+      return team ? team.name : `Unknown Team (${id})`;
+    });
   };
 
   return (
@@ -431,6 +484,31 @@ const LaunchHooksManager: React.FC = () => {
                         {hook.description}
                       </Typography>
                     )}
+                    <Box sx={{ mb: 1 }}>
+                      <Typography
+                        level="body-sm"
+                        fontWeight="lg"
+                        sx={{ mb: 0.5 }}
+                      >
+                        Team Access:
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        {getTeamNames(hook.allowed_team_ids).map(
+                          (teamName, index) => (
+                            <Chip
+                              key={index}
+                              size="sm"
+                              variant="outlined"
+                              color={
+                                teamName === "All Teams" ? "primary" : "neutral"
+                              }
+                            >
+                              {teamName}
+                            </Chip>
+                          )
+                        )}
+                      </Box>
+                    </Box>
                     {hook.setup_commands && (
                       <Box sx={{ mb: 2 }}>
                         <Typography
@@ -603,6 +681,38 @@ const LaunchHooksManager: React.FC = () => {
                   minRows={4}
                 />
               </FormControl>
+              <FormControl>
+                <FormLabel>Team Access</FormLabel>
+                <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
+                  Select teams that can use this hook. Leave empty for all
+                  teams.
+                </Typography>
+                <List size="sm" sx={{ maxHeight: 200, overflow: "auto" }}>
+                  {teams.map((team) => (
+                    <ListItem key={team.id}>
+                      <ListItemButton
+                        onClick={() => {
+                          if (selectedTeamIds.includes(team.id)) {
+                            setSelectedTeamIds(
+                              selectedTeamIds.filter((id) => id !== team.id)
+                            );
+                          } else {
+                            setSelectedTeamIds([...selectedTeamIds, team.id]);
+                          }
+                        }}
+                      >
+                        <ListItemDecorator>
+                          <Checkbox
+                            checked={selectedTeamIds.includes(team.id)}
+                            onChange={() => {}}
+                          />
+                        </ListItemDecorator>
+                        <ListItemContent>{team.name}</ListItemContent>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </FormControl>
               <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
                 <Button
                   variant="outlined"
@@ -650,6 +760,38 @@ const LaunchHooksManager: React.FC = () => {
                   placeholder="Commands to run before the main command (e.g., pip install -r requirements.txt)"
                   minRows={4}
                 />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Team Access</FormLabel>
+                <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
+                  Select teams that can use this hook. Leave empty for all
+                  teams.
+                </Typography>
+                <List size="sm" sx={{ maxHeight: 200, overflow: "auto" }}>
+                  {teams.map((team) => (
+                    <ListItem key={team.id}>
+                      <ListItemButton
+                        onClick={() => {
+                          if (selectedTeamIds.includes(team.id)) {
+                            setSelectedTeamIds(
+                              selectedTeamIds.filter((id) => id !== team.id)
+                            );
+                          } else {
+                            setSelectedTeamIds([...selectedTeamIds, team.id]);
+                          }
+                        }}
+                      >
+                        <ListItemDecorator>
+                          <Checkbox
+                            checked={selectedTeamIds.includes(team.id)}
+                            onChange={() => {}}
+                          />
+                        </ListItemDecorator>
+                        <ListItemContent>{team.name}</ListItemContent>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
               </FormControl>
               <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
                 <Button
