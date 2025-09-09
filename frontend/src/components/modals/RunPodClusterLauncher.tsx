@@ -285,7 +285,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         const data: LaunchClusterResponse = await response.json();
         addNotification({
           type: "success",
-          message: `${data.message} (Request ID: ${data.request_id})`,
+          message: data.message,
         });
 
         // Trigger cluster list refresh
