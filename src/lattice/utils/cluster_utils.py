@@ -273,6 +273,49 @@ def get_cluster_platform_info(
             db.close()
 
 
+def update_cluster_platform(
+    cluster_name: str, new_platform: str, db: Optional[Session] = None
+) -> bool:
+    """
+    Update the platform information for a cluster after launch.
+    This is useful for multi-cloud deployments where the actual cloud
+    is determined after SkyPilot selects the best option.
+
+    Args:
+        cluster_name: The actual cluster name
+        new_platform: The new platform to set
+        db: Optional database session
+
+    Returns:
+        True if update was successful, False otherwise
+    """
+    should_close_db = db is None
+    if db is None:
+        db = SessionLocal()
+
+    try:
+        cluster = (
+            db.query(ClusterPlatform)
+            .filter(ClusterPlatform.cluster_name == cluster_name)
+            .first()
+        )
+
+        if not cluster:
+            return False
+
+        cluster.platform = new_platform
+        db.commit()
+        return True
+
+    except Exception as e:
+        print(f"Error updating cluster platform: {e}")
+        db.rollback()
+        return False
+    finally:
+        if should_close_db:
+            db.close()
+
+
 def get_user_clusters(
     user_id: str, organization_id: str, db: Optional[Session] = None
 ) -> list[Dict[str, Any]]:
