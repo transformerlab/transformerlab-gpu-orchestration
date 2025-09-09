@@ -294,7 +294,14 @@ async def launch_instance(
         # Handle launch hooks for the organization
         organization_id = user.get("organization_id")
         if organization_id:
-            from db.db_models import LaunchHook, LaunchHookFile
+            from db.db_models import LaunchHook, LaunchHookFile, TeamMembership
+            
+            # Get user's team ID
+            user_team = db.query(TeamMembership).filter(
+                TeamMembership.organization_id == organization_id,
+                TeamMembership.user_id == user.get("id")
+            ).first()
+            user_team_id = user_team.team_id if user_team else None
             
             # Get all active launch hooks for the organization
             active_hooks = db.query(LaunchHook).filter(
@@ -302,15 +309,28 @@ async def launch_instance(
                 LaunchHook.is_active == True # noqa: E712
             ).all()
             
-            if active_hooks:
+            # Filter hooks based on team access
+            accessible_hooks = []
+            for hook in active_hooks:
+                # If no team restrictions (allowed_team_ids is None), hook is accessible to all
+                if hook.allowed_team_ids is None:
+                    accessible_hooks.append(hook)
+                # If user has no team, they can't access team-restricted hooks
+                elif user_team_id is None:
+                    continue
+                # If user's team is in the allowed list, they can access the hook
+                elif user_team_id in hook.allowed_team_ids:
+                    accessible_hooks.append(hook)
+            
+            if accessible_hooks:
                 # Initialize file_mounts if not already set
                 if file_mounts is None:
                     file_mounts = {}
                 
-                # Collect all setup commands from active hooks
+                # Collect all setup commands from accessible hooks
                 hook_setup_commands = []
                 
-                for hook in active_hooks:
+                for hook in accessible_hooks:
                     # Add setup commands from this hook
                     if hook.setup_commands:
                         hook_setup_commands.append(hook.setup_commands)
