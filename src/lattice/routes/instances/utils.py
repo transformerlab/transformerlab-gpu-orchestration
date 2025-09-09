@@ -1,12 +1,21 @@
-from fastapi import HTTPException
-import sky
-from typing import Optional
-from werkzeug.utils import secure_filename
 import asyncio
+import json
+import os
+import sys
+import tempfile
+from typing import Optional
 from sqlalchemy import or_
 
-from ..jobs.utils import save_cluster_jobs, get_cluster_job_queue
+import sky
+from fastapi import HTTPException
+from routes.clouds.azure.utils import az_get_current_config
+from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
+from utils.cluster_utils import (
+    get_cluster_platform_info as get_cluster_platform_info_util,
+)
+from sqlalchemy.orm import Session
 from utils.skypilot_tracker import skypilot_tracker
+from werkzeug.utils import secure_filename
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -140,26 +149,10 @@ def launch_cluster_with_skypilot(
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
+    credentials: Optional[dict] = None,
 ):
     try:
-        # Handle RunPod setup
-        if cloud and cloud.lower() == "runpod":
-            from routes.clouds.runpod.utils import (
-                rp_setup_config,
-                rp_verify_setup,
-            )
-
-            try:
-                rp_setup_config(organization_id)
-                if not rp_verify_setup(organization_id=organization_id):
-                    raise HTTPException(
-                        status_code=500,
-                        detail="RunPod setup verification failed. Please check your RUNPOD_API_KEY.",
-                    )
-            except Exception as e:
-                raise HTTPException(
-                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
-                )
+        # RunPod no longer requires global setup; credentials are passed directly to SkyPilot
 
         if cloud and cloud.lower() == "ssh":
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
@@ -467,6 +460,7 @@ def launch_cluster_with_skypilot(
             task,
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
+            credentials=credentials,
         )
         print(f"REQUEST ID: {request_id}")
 
@@ -496,6 +490,173 @@ def launch_cluster_with_skypilot(
         )
 
 
+async def launch_cluster_with_skypilot_isolated(
+    cluster_name: str,
+    command: str,
+    setup=None,
+    cloud=None,
+    instance_type=None,
+    cpus=None,
+    memory=None,
+    accelerators=None,
+    region=None,
+    zone=None,
+    use_spot=False,
+    idle_minutes_to_autostop=None,
+    file_mounts: Optional[dict] = None,
+    disk_size: Optional[int] = None,
+    storage_bucket_ids: Optional[list] = None,
+    node_pool_name: Optional[str] = None,
+    docker_image_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    display_name: Optional[str] = None,
+    credentials: Optional[dict] = None,
+):
+    """
+    Launch cluster in a separate process to avoid thread-local storage leakage.
+    This prevents SkyPilot's thread-local variables from interfering between launches.
+    """
+    try:
+        # Serialize the launch parameters
+        launch_params = {
+            "cluster_name": cluster_name,
+            "command": command,
+            "setup": setup,
+            "cloud": cloud,
+            "instance_type": instance_type,
+            "cpus": cpus,
+            "memory": memory,
+            "accelerators": accelerators,
+            "region": region,
+            "zone": zone,
+            "use_spot": use_spot,
+            "idle_minutes_to_autostop": idle_minutes_to_autostop,
+            "file_mounts": file_mounts,
+            "disk_size": disk_size,
+            "storage_bucket_ids": storage_bucket_ids,
+            "node_pool_name": node_pool_name,
+            "docker_image_id": docker_image_id,
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "display_name": display_name,
+            "credentials": credentials,
+        }
+
+        # Create a temporary file to pass parameters
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(launch_params, f, default=str)
+            params_file = f.name
+
+        try:
+            # Prepare environment for the child process
+            self_env = os.environ.copy()
+
+            # Get the current working directory and Python path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            lattice_root = os.path.dirname(os.path.dirname(current_dir))
+
+            # Create the worker script content
+            worker_script = f'''
+import sys
+import os
+import json
+
+# Add the lattice directory to Python path
+sys.path.insert(0, "{lattice_root}")
+
+# Change to the correct working directory
+os.chdir("{lattice_root}")
+
+# Import the worker function
+from lattice.routes.instances.utils import _launch_cluster_worker
+
+# Load parameters
+with open("{params_file}", "r") as f:
+    params = json.load(f)
+
+# Execute the launch
+try:
+    result = _launch_cluster_worker(**params)
+    print(json.dumps({{"success": True, "request_id": result}}))
+except Exception as e:
+    print(json.dumps({{"success": False, "error": str(e)}}))
+'''
+
+            # Run the launch in a separate process
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-c",
+                worker_script,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=lattice_root,
+                env=self_env,
+            )
+
+            stdout, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                error_msg = stderr.decode() if stderr else "Unknown error"
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Launch process failed with code {process.returncode}: {error_msg}",
+                )
+
+            # Parse the result: handle noisy stdout before JSON
+            output_text = stdout.decode().strip() if stdout else ""
+            # Try to parse the last JSON-looking line
+            if output_text:
+                lines = [ln.strip() for ln in output_text.splitlines() if ln.strip()]
+                for ln in reversed(lines):
+                    if ln.startswith("{") and ln.endswith("}"):
+                        try:
+                            result_data = json.loads(ln)
+                            if result_data.get("success"):
+                                return result_data.get("request_id")
+                            else:
+                                raise HTTPException(
+                                    status_code=500,
+                                    detail=f"Launch failed: {result_data.get('error', 'Unknown error')}",
+                                )
+                        except Exception:
+                            continue
+                # Fallback: extract request id from 'REQUEST ID: <id>' line
+                try:
+                    import re
+                    m = re.search(r"REQUEST ID:\s*([0-9a-fA-F\-]{36}|[A-Za-z0-9_\-]{8,})", output_text)
+                    if m:
+                        return m.group(1)
+                except Exception:
+                    pass
+                # Last resort: return the raw output to aid debugging
+                return output_text
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Launch process returned invalid output: {stderr.decode() if stderr else 'No output'}",
+                )
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(params_file)
+            except FileNotFoundError:
+                pass
+
+    except Exception as e:
+        print(f"Error in isolated launch: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to launch cluster in isolated process: {str(e)}",
+        )
+
+
+def _launch_cluster_worker(**params):
+    """
+    Worker function that runs the actual sky.launch in a separate process.
+    This ensures complete isolation from thread-local storage.
+    """
+    return launch_cluster_with_skypilot(**params)
 def determine_actual_cloud_from_skypilot_status(cluster_name: str) -> Optional[str]:
     """
     Determine which cloud was actually selected by SkyPilot by examining the cluster status.
@@ -553,9 +714,51 @@ def stop_cluster_with_skypilot(
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
+    db: Optional[Session] = None,
 ):
     try:
-        request_id = sky.stop(cluster_name=cluster_name)
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config_dict = az_get_current_config(
+                        organization_id=organization_id, db=db
+                    )
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            elif platform == "runpod":
+                try:
+                    from routes.clouds.runpod.utils import rp_get_current_config
+                    rp_config = rp_get_current_config(
+                        organization_id=organization_id
+                    )
+                    if rp_config and rp_config.get("api_key"):
+                        credentials = {
+                            "runpod": {
+                                "api_key": rp_config.get("api_key"),
+                            }
+                        }
+                except Exception as e:
+                    print(f"Failed to get RunPod credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
+        request_id = sky.stop(cluster_name=cluster_name, credentials=credentials)
 
         # Store the request in the database if user info is provided
         if user_id and organization_id:
@@ -585,11 +788,53 @@ def down_cluster_with_skypilot(
     display_name: Optional[str] = None,
     user_id: Optional[str] = None,
     organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
 ):
     try:
+        # Fetch credentials for the cluster based on the platform
+        platform_info = get_cluster_platform_info_util(cluster_name)
+        credentials = None
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "azure":
+                try:
+                    azure_config_dict = az_get_current_config(
+                        organization_id=organization_id, db=db
+                    )
+                    credentials = {
+                        "azure": {
+                            "service_principal": {
+                                "tenant_id": azure_config_dict["tenant_id"],
+                                "client_id": azure_config_dict["client_id"],
+                                "client_secret": azure_config_dict["client_secret"],
+                                "subscription_id": azure_config_dict["subscription_id"],
+                            },
+                        }
+                    }
+                except Exception as e:
+                    print(f"Failed to get Azure credentials: {e}")
+                    credentials = None
+            elif platform == "runpod":
+                try:
+                    from routes.clouds.runpod.utils import rp_get_current_config
+                    rp_config = rp_get_current_config(
+                        organization_id=organization_id
+                    )
+                    if rp_config and rp_config.get("api_key"):
+                        credentials = {
+                            "runpod": {
+                                "api_key": rp_config.get("api_key"),
+                            }
+                        }
+                except Exception as e:
+                    print(f"Failed to get RunPod credentials: {e}")
+                    credentials = None
+            else:
+                credentials = None
+
         # First, get all jobs from the cluster before tearing down
         try:
-            job_records = get_cluster_job_queue(cluster_name)
+            job_records = get_cluster_job_queue(cluster_name, credentials=credentials)
             # Extract jobs from the job records
             if job_records and hasattr(job_records, "jobs"):
                 jobs = job_records.jobs
@@ -611,7 +856,7 @@ def down_cluster_with_skypilot(
         except Exception as e:
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
-        request_id = sky.down(cluster_name=cluster_name)
+        request_id = sky.down(cluster_name=cluster_name, credentials=credentials)
 
         # Store the request in the database if user info is provided
         if user_id and organization_id:

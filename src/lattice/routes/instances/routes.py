@@ -1,15 +1,18 @@
 import json
+import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 # Removed load_ssh_node_info import as we now use database-based approach
-from typing import Optional, List
-import yaml
-import os
-from pathlib import Path
-from werkzeug.utils import secure_filename
+from typing import List, Optional
 
-from config import UPLOADS_DIR
+import yaml
+from config import UPLOADS_DIR, get_db
+from db.db_models import (
+    NodePoolAccess as NodePoolAccessDB,
+    SSHNodePool as SSHNodePoolDB,
+)
 from fastapi import (
     APIRouter,
     Depends,
@@ -31,17 +34,15 @@ from models import (
     StopClusterResponse,
 )
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope
-from routes.auth.api_key_auth import enforce_csrf
 from routes.clouds.azure.utils import (
-    az_setup_config,
-    load_azure_config,
-    az_infer_gpu_count,
+    az_get_current_config,
     az_get_price_per_hour,
+    az_infer_gpu_count,
+    load_azure_config,
 )
 from routes.clouds.runpod.utils import (
-    map_runpod_display_to_instance_type,
-    rp_setup_config,
     load_runpod_config,
+    map_runpod_display_to_instance_type,
     rp_get_price_per_hour,
 )
 from routes.jobs.utils import get_cluster_job_queue
@@ -50,38 +51,36 @@ from routes.node_pools.utils import (
     is_ssh_cluster,
     update_gpu_resources_for_node_pool,
 )
+from routes.quota.utils import get_current_user_quota_info, get_user_team_id
 from routes.reports.utils import record_usage
-from routes.quota.utils import get_user_team_id, get_current_user_quota_info
 from sqlalchemy.orm import Session
-from config import get_db
-from db.db_models import (
-    NodePoolAccess as NodePoolAccessDB,
-    SSHNodePool as SSHNodePoolDB,
-)
+
 from utils.cluster_resolver import handle_cluster_name_param
-from utils.cluster_utils import (
-    create_cluster_platform_entry,
-    get_actual_cluster_name,
-    get_cluster_platform,
-)
+
 from utils.cluster_utils import get_cluster_platform_info as get_cluster_platform_data
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
 from utils.cluster_utils import (
     get_cluster_state,
-    update_cluster_state,
     get_cluster_user_info,
     get_display_name_from_actual,
     load_cluster_platforms,
+    update_cluster_state,
+    create_cluster_platform_entry,
+    get_actual_cluster_name,
+    get_cluster_platform,
 )
 from utils.skypilot_tracker import skypilot_tracker
+from werkzeug.utils import secure_filename
+
+from routes.auth.api_key_auth import enforce_csrf
 
 from .utils import (
     down_cluster_with_skypilot,
     generate_cost_report,
     get_skypilot_status,
-    launch_cluster_with_skypilot,
+    launch_cluster_with_skypilot_isolated,
     stop_cluster_with_skypilot,
 )
 
@@ -238,6 +237,7 @@ async def launch_instance(
         file_mounts = None
         python_filename = None
         disk_size = None
+        credentials = None
 
         # Parse storage bucket IDs
         parsed_storage_bucket_ids = None
@@ -377,44 +377,70 @@ async def launch_instance(
             accelerators if (cloud or "").lower() == "runpod" else None
         )
 
-        # Setup RunPod if cloud is runpod
+        # RunPod: map display string to instance type if accelerators is provided
         if cloud == "runpod":
-            try:
-                rp_setup_config(user.get("organization_id"))
-                # Map display string to instance type if accelerators is provided
-                if accelerators:
-                    mapped_instance_type = map_runpod_display_to_instance_type(
-                        accelerators
-                    )
-                    if mapped_instance_type.lower().startswith("cpu"):
-                        # Using skypilot logic to have disk size lesser than 10x vCPUs
-                        disk_size = 5 * int(mapped_instance_type.split("-")[1])
-                    else:
-                        # For GPU instances, only set disk_size if disk_space is provided
-                        if disk_space:
-                            try:
-                                disk_size = int(disk_space)
-                            except ValueError:
-                                # If disk_space is not a valid integer, ignore it
-                                disk_size = None
-                                pass
-                    if mapped_instance_type != accelerators:
-                        instance_type = mapped_instance_type
-                        # Clear accelerators for RunPod since we're using instance_type
-                        accelerators = None
-            except Exception as e:
-                raise HTTPException(
-                    status_code=500, detail=f"Failed to setup RunPod: {str(e)}"
+            if accelerators:
+                mapped_instance_type = map_runpod_display_to_instance_type(
+                    accelerators
                 )
+                if mapped_instance_type.lower().startswith("cpu"):
+                    # Using skypilot logic to have disk size lesser than 10x vCPUs
+                    disk_size = 5 * int(mapped_instance_type.split("-")[1])
+                else:
+                    # For GPU instances, only set disk_size if disk_space is provided
+                    if disk_space:
+                        try:
+                            disk_size = int(disk_space)
+                        except ValueError:
+                            # If disk_space is not a valid integer, ignore it
+                            disk_size = None
+                            pass
+                if mapped_instance_type != accelerators:
+                    instance_type = mapped_instance_type
+                    # Clear accelerators for RunPod since we're using instance_type
+                    accelerators = None
 
-        # Setup Azure if cloud is azure
+        # Setup credentials for Azure or RunPod, depending on cloud
         if cloud == "azure":
             try:
-                az_setup_config(user.get("organization_id"))
+                # az_setup_config()
+                az_config_dict = az_get_current_config(
+                    organization_id=user.get("organization_id"), db=db
+                )
+                # az_config_dict = az_config["configs"][az_config["default_config"]]
+                credentials = {
+                    "azure": {
+                        "service_principal": {
+                            "tenant_id": az_config_dict["tenant_id"],
+                            "client_id": az_config_dict["client_id"],
+                            "client_secret": az_config_dict["client_secret"],
+                            "subscription_id": az_config_dict["subscription_id"],
+                        }
+                    }
+                }
+
             except Exception as e:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to setup Azure: {str(e)}"
                 )
+        elif cloud == "runpod":
+            try:
+                from routes.clouds.runpod.utils import rp_get_current_config
+                rp_config = rp_get_current_config(organization_id=user.get("organization_id"))
+                if rp_config and rp_config.get("api_key"):
+                    credentials = {
+                        "runpod": {
+                            "api_key": rp_config.get("api_key"),
+                        }
+                    }
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup RunPod credentials: {str(e)}"
+                )
+        # print(f"az_config: {az_config}")
+        # raise Exception("test")
+        print(f"credentials: {credentials}")
+
         # Get user info from the authenticated user (API key or session)
         user_id = user["id"]
         organization_id = user["organization_id"]
@@ -582,7 +608,7 @@ async def launch_instance(
                 pass
 
         # Launch cluster using the actual cluster name
-        request_id = launch_cluster_with_skypilot(
+        request_id = await launch_cluster_with_skypilot_isolated(
             cluster_name=actual_cluster_name,
             command=command,
             setup=setup,
@@ -602,7 +628,8 @@ async def launch_instance(
             docker_image_id=docker_image_id,
             user_id=user_id,
             organization_id=organization_id,
-            display_name=cluster_name,  # Pass the display name for database storage
+            display_name=cluster_name,
+            credentials=credentials,
         )
 
         # Record usage event for cluster launch
@@ -676,6 +703,7 @@ async def stop_instance(
     response: Response,
     stop_request: StopClusterRequest,
     user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
@@ -696,6 +724,7 @@ async def stop_instance(
             user_id=user["id"],
             organization_id=user["organization_id"],
             display_name=display_name,  # Pass the display name for database storage
+            db=db,
         )
         return StopClusterResponse(
             request_id=request_id,
@@ -715,6 +744,7 @@ async def down_instance(
     down_request: DownClusterRequest,
     user: dict = Depends(get_user_or_api_key),
     scope_check: dict = Depends(require_scope("compute:write")),
+    db: Session = Depends(get_db),
 ):
     try:
         # Resolve display name to actual cluster name
@@ -731,6 +761,7 @@ async def down_instance(
             display_name,
             user_id=user["id"],
             organization_id=user["organization_id"],
+            db=db,
         )
 
         # Check if this cluster uses an SSH node pool as its platform (background thread)
@@ -1059,7 +1090,52 @@ async def get_cluster_info(
 
         # Get jobs for this cluster
         try:
-            job_records = get_cluster_job_queue(actual_cluster_name)
+            # Fetch credentials for the cluster based on the platform
+            platform_info_jobs = get_cluster_platform_info_util(actual_cluster_name)
+            credentials = None
+            if platform_info_jobs and platform_info_jobs.get("platform"):
+                platform = platform_info_jobs["platform"]
+                if platform == "azure":
+                    try:
+                        azure_config_dict = az_get_current_config(
+                            organization_id=user.get("organization_id")
+                        )
+                        credentials = {
+                            "azure": {
+                                "service_principal": {
+                                    "tenant_id": azure_config_dict["tenant_id"],
+                                    "client_id": azure_config_dict["client_id"],
+                                    "client_secret": azure_config_dict["client_secret"],
+                                    "subscription_id": azure_config_dict[
+                                        "subscription_id"
+                                    ],
+                                },
+                            }
+                        }
+                    except Exception as e:
+                        print(f"Failed to get Azure credentials: {e}")
+                        credentials = None
+                elif platform == "runpod":
+                    try:
+                        from routes.clouds.runpod.utils import rp_get_current_config
+                        rp_config = rp_get_current_config(
+                            organization_id=user.get("organization_id")
+                        )
+                        if rp_config and rp_config.get("api_key"):
+                            credentials = {
+                                "runpod": {
+                                    "api_key": rp_config.get("api_key"),
+                                }
+                            }
+                    except Exception as e:
+                        print(f"Failed to get RunPod credentials: {e}")
+                        credentials = None
+                else:
+                    credentials = None
+
+            job_records = get_cluster_job_queue(
+                actual_cluster_name, credentials=credentials
+            )
             jobs = []
             for record in job_records:
                 jobs.append(
