@@ -299,7 +299,7 @@ async def launch_instance(
             # Get all active launch hooks for the organization
             active_hooks = db.query(LaunchHook).filter(
                 LaunchHook.organization_id == organization_id,
-                LaunchHook.is_active == True
+                LaunchHook.is_active == True # noqa: E712
             ).all()
             
             if active_hooks:
@@ -318,7 +318,7 @@ async def launch_instance(
                     # Get files for this hook
                     hook_files = db.query(LaunchHookFile).filter(
                         LaunchHookFile.launch_hook_id == hook.id,
-                        LaunchHookFile.is_active == True
+                        LaunchHookFile.is_active == True # noqa: E712
                     ).all()
                     
                     # Mount each file to ~/hooks/<filename>

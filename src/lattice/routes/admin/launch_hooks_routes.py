@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 import os
 import secrets
-import shutil
-from pathlib import Path
 
 from db.db_models import LaunchHook, LaunchHookFile
 from routes.auth.utils import get_current_user, requires_admin
@@ -31,7 +29,7 @@ async def list_launch_hooks(
     
     hooks = db.query(LaunchHook).filter(
         LaunchHook.organization_id == org_id,
-        LaunchHook.is_active == True
+        LaunchHook.is_active == True # noqa: E712
     ).all()
     
     result = []
@@ -39,7 +37,7 @@ async def list_launch_hooks(
         # Get files for this hook
         files = db.query(LaunchHookFile).filter(
             LaunchHookFile.launch_hook_id == hook.id,
-            LaunchHookFile.is_active == True
+            LaunchHookFile.is_active == True # noqa: E712
         ).all()
         
         result.append({
@@ -84,7 +82,7 @@ async def create_launch_hook(
     existing_hook = db.query(LaunchHook).filter(
         LaunchHook.organization_id == org_id,
         LaunchHook.name == name,
-        LaunchHook.is_active == True
+        LaunchHook.is_active == True # noqa: E712
     ).first()
     
     if existing_hook:
@@ -130,7 +128,7 @@ async def get_launch_hook(
     hook = db.query(LaunchHook).filter(
         LaunchHook.id == hook_id,
         LaunchHook.organization_id == org_id,
-        LaunchHook.is_active == True
+        LaunchHook.is_active == True # noqa: E712
     ).first()
     
     if not hook:
@@ -139,7 +137,7 @@ async def get_launch_hook(
     # Get files for this hook
     files = db.query(LaunchHookFile).filter(
         LaunchHookFile.launch_hook_id == hook.id,
-        LaunchHookFile.is_active == True
+        LaunchHookFile.is_active == True # noqa: E712
     ).all()
     
     return {
@@ -192,7 +190,7 @@ async def update_launch_hook(
             LaunchHook.organization_id == org_id,
             LaunchHook.name == name,
             LaunchHook.id != hook_id,
-            LaunchHook.is_active == True
+            LaunchHook.is_active == True # noqa: E712
         ).first()
         
         if existing_hook:
@@ -296,7 +294,7 @@ async def upload_hook_file(
     existing_file = db.query(LaunchHookFile).filter(
         LaunchHookFile.launch_hook_id == hook_id,
         LaunchHookFile.original_filename == file.filename,
-        LaunchHookFile.is_active == True
+        LaunchHookFile.is_active == True # noqa: E712
     ).first()
     
     if existing_file:
