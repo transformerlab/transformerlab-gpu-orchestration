@@ -540,6 +540,46 @@ class CloudAccount(Base, ValidationMixin):
     )
 
 
+class LaunchHook(Base, ValidationMixin):
+    __tablename__ = "launch_hooks"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    organization_id = Column(String, nullable=False)
+    user_id = Column(String, nullable=False)  # User who created this hook
+    name = Column(String, nullable=False)  # Human-readable name for the hook
+    description = Column(Text, nullable=True)  # Optional description
+    setup_commands = Column(Text, nullable=True)  # Commands to run before the main command
+    is_active = Column(Boolean, default=True)  # Whether the hook is active
+    allowed_team_ids = Column(JSON, nullable=True)  # List of team IDs that can use this hook (null = all teams)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Hook name must be unique within an organization
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", name="uq_launch_hooks_org_name"),
+    )
+
+
+class LaunchHookFile(Base, ValidationMixin):
+    __tablename__ = "launch_hook_files"
+
+    id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
+    launch_hook_id = Column(String, nullable=False)  # Reference to LaunchHook
+    organization_id = Column(String, nullable=False)  # Denormalized for easier querying
+    user_id = Column(String, nullable=False)  # User who uploaded the file
+    original_filename = Column(String, nullable=False)  # Original filename when uploaded
+    file_path = Column(String, nullable=False)  # Path to the file on disk
+    file_size = Column(Integer, nullable=False)  # File size in bytes
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)  # Whether the file is active
+
+    # File name must be unique within a launch hook
+    __table_args__ = (
+        UniqueConstraint("launch_hook_id", "original_filename", name="uq_launch_hook_files_hook_filename"),
+    )
+
+
 # Utility functions for application-level foreign key validation
 def validate_relationships_before_save(model_instance, session):
     """

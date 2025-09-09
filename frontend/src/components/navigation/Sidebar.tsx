@@ -113,6 +113,10 @@ const adminSubItemsGroup2 = [
     content: "SSH Identity Files",
     path: "/dashboard/admin/identity",
   },
+  {
+    content: "Launch Hooks",
+    path: "/dashboard/admin/launch-hooks",
+  },
 ];
 
 const adminSubItemsRest = [
