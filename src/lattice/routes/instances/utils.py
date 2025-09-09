@@ -549,16 +549,8 @@ async def launch_cluster_with_skypilot_isolated(
             params_file = f.name
 
         try:
-            # Prepare environment for the child process (propagate provider creds if needed)
+            # Prepare environment for the child process
             self_env = os.environ.copy()
-            try:
-                if credentials and isinstance(credentials, dict):
-                    rp = credentials.get("runpod") or {}
-                    api_key = rp.get("api_key") if isinstance(rp, dict) else None
-                    if api_key:
-                        self_env["RUNPOD_API_KEY"] = str(api_key)
-            except Exception:
-                pass
 
             # Get the current working directory and Python path
             current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -585,20 +577,6 @@ with open("{params_file}", "r") as f:
 
 # Execute the launch
 try:
-    # Ensure RunPod credentials are visible to SkyPilot and SDK in this process
-    try:
-        rp = (params.get('credentials') or {{}}).get('runpod') or {{}}
-        api_key = rp.get('api_key')
-        if api_key:
-            os.environ['RUNPOD_API_KEY'] = str(api_key)
-            try:
-                import runpod
-                runpod.api_key = str(api_key)
-            except Exception:
-                pass
-    except Exception:
-        pass
-
     result = _launch_cluster_worker(**params)
     print(json.dumps({{"success": True, "request_id": result}}))
 except Exception as e:
