@@ -23,6 +23,7 @@ import NodeDetails from "../pages/MyNodes/NodeDetails";
 import Teams from "../pages/Admin/Teams";
 
 import IdentityFileManager from "../pages/Admin/IdentityFileManager";
+import LaunchHooksManager from "../pages/Admin/LaunchHooksManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PrivateContainerRegistry from "../pages/Admin/PrivateContainerRegistry";
 import PageWithTitle from "../pages/templates/PageWithTitle";
@@ -98,6 +99,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/runpod-config" element={<RunPodConfigPage />} />
           <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
+          <Route path="admin/launch-hooks" element={<LaunchHooksManager />} />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route
             path="admin/container-registry"
