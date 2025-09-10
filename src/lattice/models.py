@@ -583,8 +583,6 @@ class MachineSizeTemplateResponse(BaseModel):
     id: str
     name: Optional[str] = None
     description: Optional[str] = None
-    cloud_type: str
-    cloud_identifier: Optional[str] = None
     resources_json: Dict[str, Any]
     organization_id: str
     created_by: str
@@ -595,16 +593,12 @@ class MachineSizeTemplateResponse(BaseModel):
 class CreateMachineSizeTemplateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    cloud_type: str  # runpod | azure | ssh
-    cloud_identifier: Optional[str] = None  # for ssh: node pool name
-    resources_json: Dict[str, Any]
+    resources_json: Dict[str, Any]  # Contains cpus, memory, accelerators, disk_space
 
 
 class UpdateMachineSizeTemplateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    cloud_type: Optional[str] = None
-    cloud_identifier: Optional[str] = None
     resources_json: Optional[Dict[str, Any]] = None
 
 
