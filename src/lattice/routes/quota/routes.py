@@ -39,7 +39,6 @@ from routes.quota.utils import (
     get_current_user_quota_info,
     refresh_quota_periods_for_organization,
     refresh_quota_periods_for_user,
-    get_organization_user_usage_summary_by_cluster
 )
 from routes.quota.team_quota_routes import router as team_quota_router
 from routes.auth.api_key_auth import enforce_csrf
