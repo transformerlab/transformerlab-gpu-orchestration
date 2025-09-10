@@ -67,6 +67,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [estimatedCost, setEstimatedCost] = useState<number>(0.0);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId]
@@ -358,20 +359,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
             {!useYaml && (
               <>
                 <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Template (optional)</FormLabel>
-                  <Select
-                    value={selectedTemplateId}
-                    onChange={(_, v) => setSelectedTemplateId(v || "")}
-                    placeholder="Select a template"
-                  >
-                    {(templates || []).map((t: any) => (
-                      <Option key={t.id} value={t.id}>
-                        {t.name || t.id}
-                      </Option>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl sx={{ mb: 2 }}>
                   <FormLabel>Cluster Name (optional)</FormLabel>
                   <Input
                     value={customClusterName}
@@ -387,147 +374,186 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   </Typography>
                 </FormControl>
 
+                {/* Template selector - moved down */}
                 <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setup}
-                    onChange={(e) => setSetup(e.target.value)}
-                    placeholder="pip install -r requirements.txt"
-                    minRows={2}
-                  />
-                </FormControl>
-
-                <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Docker Image (optional)</FormLabel>
-                  {loadingImages ? (
-                    <Typography level="body-sm" color="neutral">
-                      Loading docker images...
-                    </Typography>
-                  ) : dockerImages.length === 0 ? (
-                    <Typography level="body-sm" color="warning">
-                      No docker images configured. You can add them in Admin
-                      &gt; Private Container Registry.
-                    </Typography>
-                  ) : (
-                    <Select
-                      value={selectedDockerImageId}
-                      onChange={(_, value) =>
-                        setSelectedDockerImageId(value || "")
-                      }
-                      placeholder="Select a docker image (optional)"
-                    >
-                      {dockerImages.map((image) => (
-                        <Option key={image.id} value={image.id}>
-                          {image.name} ({image.image_tag})
-                        </Option>
-                      ))}
-                    </Select>
-                  )}
-                  <Typography
-                    level="body-xs"
-                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  <FormLabel>Template (optional)</FormLabel>
+                  <Select
+                    value={selectedTemplateId}
+                    onChange={(_, v) => setSelectedTemplateId(v || "")}
+                    placeholder="Select a template"
                   >
-                    Use a Docker image as runtime environment. Leave empty to
-                    use default VM image. Images are managed by your admin.
-                  </Typography>
+                    {(templates || []).map((t: any) => (
+                      <Option key={t.id} value={t.id}>
+                        {t.name || t.id}
+                      </Option>
+                    ))}
+                  </Select>
                 </FormControl>
 
-                {/* Resource Configuration */}
-                <Box
-                  sx={{
-                    mb: 2,
-                    mt: 2,
-                    p: 2,
-                    border: "1px solid var(--joy-palette-neutral-300)",
-                    borderRadius: "var(--joy-radius-md)",
-                    backgroundColor: "var(--joy-palette-neutral-50)",
-                  }}
-                >
-                  <Typography level="title-sm" sx={{ mb: 2 }}>
-                    Resource Configuration
-                  </Typography>
-                  {maxResources.maxVcpus || maxResources.maxMemory ? (
-                    <Alert color="primary" sx={{ mb: 2 }}>
-                      <Typography level="body-sm">
-                        <strong>Available Resources:</strong> Max vCPUs:{" "}
-                        {maxResources.maxVcpus || "Not specified"}, Max Memory:{" "}
-                        {maxResources.maxMemory || "Not specified"} GB
-                      </Typography>
-                    </Alert>
-                  ) : null}
-                  <FormControl sx={{ mb: 2 }}>
-                    <FormLabel>CPUs</FormLabel>
-                    <Input
-                      value={cpus}
-                      onChange={(e) => setCpus(e.target.value)}
-                      placeholder={
-                        maxResources.maxVcpus
-                          ? `Max: ${maxResources.maxVcpus}`
-                          : "e.g., 4, 8+"
-                      }
-                      disabled={typeof tpl.cpus !== "undefined"}
-                    />
-                  </FormControl>
-                  <FormControl sx={{ mb: 2 }}>
-                    <FormLabel>Memory (GB)</FormLabel>
-                    <Input
-                      value={memory}
-                      onChange={(e) => setMemory(e.target.value)}
-                      placeholder={
-                        maxResources.maxMemory
-                          ? `Max: ${maxResources.maxMemory} GB`
-                          : "e.g., 16, 32+"
-                      }
-                      disabled={typeof tpl.memory !== "undefined"}
-                    />
-                  </FormControl>
-                  <FormControl sx={{ mb: 2 }}>
-                    <FormLabel>Accelerators</FormLabel>
-                    <Input
-                      value={accelerators}
-                      onChange={(e) => setAccelerators(e.target.value)}
-                      placeholder="e.g., V100, V100:2, A100:4"
-                      disabled={typeof tpl.accelerators !== "undefined"}
-                    />
-                  </FormControl>
-                  <FormControl sx={{ mb: 2 }}>
-                    <FormLabel>Disk Space (GB)</FormLabel>
-                    <Input
-                      value={diskSpace}
-                      onChange={(e) => setDiskSpace(e.target.value)}
-                      placeholder="e.g., 100, 200, 500"
-                      slotProps={{
-                        input: {
-                          type: "number",
-                          min: 1,
-                        },
-                      }}
-                      disabled={typeof tpl.disk_space !== "undefined"}
-                    />
-                  </FormControl>
+                {/* Advanced button - always show but disable when template is selected */}
+                <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    color={showAdvanced ? "primary" : "neutral"}
+                    disabled={!!selectedTemplateId}
+                  >
+                    {selectedTemplateId
+                      ? "Advanced Options (Template Selected)"
+                      : showAdvanced
+                      ? "Hide Advanced Options"
+                      : "Show Advanced Options"}
+                  </Button>
                 </Box>
 
-                {/* Cost & Credits Display */}
-                {availableCredits !== null && (
-                  <Box sx={{ mt: 2 }}>
-                    <CostCreditsDisplay
-                      estimatedCost={estimatedCost}
-                      availableCredits={availableCredits}
-                      variant="card"
-                      showWarning={true}
-                    />
-                    <Typography
-                      level="body-xs"
+                {/* Advanced fields - only show when advanced button is clicked and no template is selected */}
+                {showAdvanced && !selectedTemplateId && (
+                  <>
+                    <FormControl sx={{ mb: 2 }}>
+                      <FormLabel>Setup Command (optional)</FormLabel>
+                      <Textarea
+                        value={setup}
+                        onChange={(e) => setSetup(e.target.value)}
+                        placeholder="pip install -r requirements.txt"
+                        minRows={2}
+                      />
+                    </FormControl>
+
+                    <FormControl sx={{ mb: 2 }}>
+                      <FormLabel>Docker Image (optional)</FormLabel>
+                      {loadingImages ? (
+                        <Typography level="body-sm" color="neutral">
+                          Loading docker images...
+                        </Typography>
+                      ) : dockerImages.length === 0 ? (
+                        <Typography level="body-sm" color="warning">
+                          No docker images configured. You can add them in Admin
+                          &gt; Private Container Registry.
+                        </Typography>
+                      ) : (
+                        <Select
+                          value={selectedDockerImageId}
+                          onChange={(_, value) =>
+                            setSelectedDockerImageId(value || "")
+                          }
+                          placeholder="Select a docker image (optional)"
+                        >
+                          {dockerImages.map((image) => (
+                            <Option key={image.id} value={image.id}>
+                              {image.name} ({image.image_tag})
+                            </Option>
+                          ))}
+                        </Select>
+                      )}
+                      <Typography
+                        level="body-xs"
+                        sx={{ mt: 0.5, color: "text.secondary" }}
+                      >
+                        Use a Docker image as runtime environment. Leave empty
+                        to use default VM image. Images are managed by your
+                        admin.
+                      </Typography>
+                    </FormControl>
+
+                    {/* Resource Configuration */}
+                    <Box
                       sx={{
-                        mt: 1,
-                        color: "text.secondary",
-                        fontStyle: "italic",
+                        mb: 2,
+                        mt: 2,
+                        p: 2,
+                        border: "1px solid var(--joy-palette-neutral-300)",
+                        borderRadius: "var(--joy-radius-md)",
+                        backgroundColor: "var(--joy-palette-neutral-50)",
                       }}
                     >
-                      Note: Cost estimates are approximate and may vary based on
-                      actual usage and resource allocation.
-                    </Typography>
-                  </Box>
+                      <Typography level="title-sm" sx={{ mb: 2 }}>
+                        Resource Configuration
+                      </Typography>
+                      {maxResources.maxVcpus || maxResources.maxMemory ? (
+                        <Alert color="primary" sx={{ mb: 2 }}>
+                          <Typography level="body-sm">
+                            <strong>Available Resources:</strong> Max vCPUs:{" "}
+                            {maxResources.maxVcpus || "Not specified"}, Max
+                            Memory: {maxResources.maxMemory || "Not specified"}{" "}
+                            GB
+                          </Typography>
+                        </Alert>
+                      ) : null}
+                      <FormControl sx={{ mb: 2 }}>
+                        <FormLabel>CPUs</FormLabel>
+                        <Input
+                          value={cpus}
+                          onChange={(e) => setCpus(e.target.value)}
+                          placeholder={
+                            maxResources.maxVcpus
+                              ? `Max: ${maxResources.maxVcpus}`
+                              : "e.g., 4, 8+"
+                          }
+                          disabled={typeof tpl.cpus !== "undefined"}
+                        />
+                      </FormControl>
+                      <FormControl sx={{ mb: 2 }}>
+                        <FormLabel>Memory (GB)</FormLabel>
+                        <Input
+                          value={memory}
+                          onChange={(e) => setMemory(e.target.value)}
+                          placeholder={
+                            maxResources.maxMemory
+                              ? `Max: ${maxResources.maxMemory} GB`
+                              : "e.g., 16, 32+"
+                          }
+                          disabled={typeof tpl.memory !== "undefined"}
+                        />
+                      </FormControl>
+                      <FormControl sx={{ mb: 2 }}>
+                        <FormLabel>Accelerators</FormLabel>
+                        <Input
+                          value={accelerators}
+                          onChange={(e) => setAccelerators(e.target.value)}
+                          placeholder="e.g., V100, V100:2, A100:4"
+                          disabled={typeof tpl.accelerators !== "undefined"}
+                        />
+                      </FormControl>
+                      <FormControl sx={{ mb: 2 }}>
+                        <FormLabel>Disk Space (GB)</FormLabel>
+                        <Input
+                          value={diskSpace}
+                          onChange={(e) => setDiskSpace(e.target.value)}
+                          placeholder="e.g., 100, 200, 500"
+                          slotProps={{
+                            input: {
+                              type: "number",
+                              min: 1,
+                            },
+                          }}
+                          disabled={typeof tpl.disk_space !== "undefined"}
+                        />
+                      </FormControl>
+                    </Box>
+
+                    {/* Cost & Credits Display */}
+                    {availableCredits !== null && (
+                      <Box sx={{ mt: 2 }}>
+                        <CostCreditsDisplay
+                          estimatedCost={estimatedCost}
+                          availableCredits={availableCredits}
+                          variant="card"
+                          showWarning={true}
+                        />
+                        <Typography
+                          level="body-xs"
+                          sx={{
+                            mt: 1,
+                            color: "text.secondary",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Note: Cost estimates are approximate and may vary
+                          based on actual usage and resource allocation.
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
                 )}
               </>
             )}
