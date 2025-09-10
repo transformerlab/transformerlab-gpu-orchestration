@@ -31,6 +31,7 @@ import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
 import MyClusterDetails from "../pages/MyClusterDetails";
 import ClusterDetails from "../pages/ClusterDetails";
+import OrgOverviewPage from "../pages/OrgOverviewPage";
 import Logs from "../pages/Logs";
 
 import Pools from "../pages/Admin/Pools";
@@ -81,6 +82,10 @@ const Dashboard: React.FC = () => {
           <Route path="/my-instances" element={<MyClusters />} />
           <Route path="/nodes/node/:nodeId" element={<NodeDetails />} />
           <Route path="/node-pools/:clusterName" element={<ClusterDetails />} />
+          <Route
+            path="/node-pools/:clusterName/org-overview"
+            element={<OrgOverviewPage />}
+          />
           <Route
             path="/my-instance-info/:clusterName"
             element={<MyClusterDetails />}

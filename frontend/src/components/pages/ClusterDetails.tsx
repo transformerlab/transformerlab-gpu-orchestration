@@ -10,27 +10,14 @@ import {
   CircularProgress,
   Table,
   Sheet,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanel,
 } from "@mui/joy";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  Server,
-  Terminal,
-  Cloud,
-  Zap,
-  Globe,
-  Users,
-} from "lucide-react";
+import { ArrowLeft, Server, Terminal, Cloud, Zap, Globe } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import useSWR from "swr";
 import { useFakeData } from "../../context/FakeDataContext";
 import { useAuth } from "../../context/AuthContext";
 import PageWithTitle from "./templates/PageWithTitle";
-import OrgOverview from "./OrgOverview";
 import mockClusterData from "./mockData/mockClusters.json";
 
 interface Node {
@@ -59,14 +46,12 @@ interface CloudConfig {
 const ClusterDetails: React.FC = () => {
   const { clusterName } = useParams<{ clusterName: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { showFakeData } = useFakeData();
   const { user } = useAuth();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [cloudConfig, setCloudConfig] = useState<CloudConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
 
   // Fetch cluster platform information
   const { data: clusterPlatforms } = useSWR(
@@ -78,14 +63,6 @@ const ClusterDetails: React.FC = () => {
 
   const platforms = clusterPlatforms?.platforms || {};
   const clusterPlatform = platforms[clusterName || ""] || "unknown";
-
-  // Handle tab parameter from URL
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    if (tabParam === "org-overview" && user?.organization_id) {
-      setActiveTab(1);
-    }
-  }, [searchParams, user?.organization_id]);
 
   useEffect(() => {
     if (!clusterName) return;
@@ -288,85 +265,97 @@ const ClusterDetails: React.FC = () => {
       backButton={true}
       onBack={handleBack}
     >
-      <Tabs
-        value={activeTab}
-        onChange={(event, value) => setActiveTab(value as number)}
-        sx={{ mb: 4 }}
-      >
-        <TabList>
-          <Tab>
-            <Server size={16} style={{ marginRight: 8 }} />
-            Cluster Info
-          </Tab>
-          {user?.organization_id && (
-            <Tab>
-              <Users size={16} style={{ marginRight: 8 }} />
-              Org Overview
-            </Tab>
-          )}
-        </TabList>
+      <Sheet sx={{ p: 2, borderRadius: "md", boxShadow: "sm" }}>
+        {isCloudCluster && cloudConfig ? (
+          // Show cloud configuration table
+          <Box sx={{ mb: 2 }}>
+            <Typography level="h3" sx={{ mb: 1 }}>
+              {clusterName} - Cloud Configuration
+            </Typography>
 
-        <TabPanel value={0}>
-          <Sheet sx={{ p: 2, borderRadius: "md", boxShadow: "sm" }}>
-            {isCloudCluster && cloudConfig ? (
-              // Show cloud configuration table
-              <Box sx={{ mb: 2 }}>
-                <Typography level="h3" sx={{ mb: 1 }}>
-                  {clusterName} - Cloud Configuration
-                </Typography>
+            <Box sx={{ mb: 3 }}>
+              <Typography level="title-lg" sx={{ mb: 2 }}>
+                Instance Limits
+              </Typography>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Current Instances</td>
+                    <td>{cloudConfig.current_instances}</td>
+                  </tr>
+                  <tr>
+                    <td>Maximum Instances</td>
+                    <td>{cloudConfig.max_instances}</td>
+                  </tr>
+                  <tr>
+                    <td>Available Instances</td>
+                    <td>
+                      {cloudConfig.max_instances -
+                        cloudConfig.current_instances}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Can Launch New Instances</td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        variant="soft"
+                        color={cloudConfig.can_launch ? "success" : "warning"}
+                      >
+                        {cloudConfig.can_launch ? "Yes" : "No"}
+                      </Chip>
+                    </td>
+                  </tr>
+                </tbody>
+              </Table>
+            </Box>
 
+            <Box sx={{ mb: 3 }}>
+              <Typography level="title-lg" sx={{ mb: 2 }}>
+                Allowed GPU/Instance Types (
+                {cloudConfig.allowed_gpu_types?.length ||
+                  cloudConfig.allowed_instance_types?.length ||
+                  0}
+                )
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                }}
+              >
+                {(
+                  cloudConfig.allowed_gpu_types ||
+                  cloudConfig.allowed_instance_types ||
+                  []
+                ).map((type: string, index: number) => (
+                  <Chip key={index} size="sm" variant="soft" color="primary">
+                    {type}
+                  </Chip>
+                ))}
+                {(!cloudConfig.allowed_gpu_types ||
+                  cloudConfig.allowed_gpu_types.length === 0) &&
+                  (!cloudConfig.allowed_instance_types ||
+                    cloudConfig.allowed_instance_types.length === 0) && (
+                    <Typography level="body-sm" color="neutral">
+                      No GPU/instance types configured
+                    </Typography>
+                  )}
+              </Box>
+            </Box>
+
+            {cloudConfig.allowed_regions &&
+              cloudConfig.allowed_regions.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography level="title-lg" sx={{ mb: 2 }}>
-                    Instance Limits
-                  </Typography>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <th>Metric</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Current Instances</td>
-                        <td>{cloudConfig.current_instances}</td>
-                      </tr>
-                      <tr>
-                        <td>Maximum Instances</td>
-                        <td>{cloudConfig.max_instances}</td>
-                      </tr>
-                      <tr>
-                        <td>Available Instances</td>
-                        <td>
-                          {cloudConfig.max_instances -
-                            cloudConfig.current_instances}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Can Launch New Instances</td>
-                        <td>
-                          <Chip
-                            size="sm"
-                            variant="soft"
-                            color={
-                              cloudConfig.can_launch ? "success" : "warning"
-                            }
-                          >
-                            {cloudConfig.can_launch ? "Yes" : "No"}
-                          </Chip>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </Table>
-                </Box>
-
-                <Box sx={{ mb: 3 }}>
-                  <Typography level="title-lg" sx={{ mb: 2 }}>
-                    Allowed GPU/Instance Types (
-                    {cloudConfig.allowed_gpu_types?.length ||
-                      cloudConfig.allowed_instance_types?.length ||
-                      0}
-                    )
+                    Allowed Regions ({cloudConfig.allowed_regions.length})
                   </Typography>
                   <Box
                     sx={{
@@ -375,169 +364,120 @@ const ClusterDetails: React.FC = () => {
                       gap: 1,
                     }}
                   >
-                    {(
-                      cloudConfig.allowed_gpu_types ||
-                      cloudConfig.allowed_instance_types ||
-                      []
-                    ).map((type: string, index: number) => (
-                      <Chip
-                        key={index}
-                        size="sm"
-                        variant="soft"
-                        color="primary"
-                      >
-                        {type}
-                      </Chip>
-                    ))}
-                    {(!cloudConfig.allowed_gpu_types ||
-                      cloudConfig.allowed_gpu_types.length === 0) &&
-                      (!cloudConfig.allowed_instance_types ||
-                        cloudConfig.allowed_instance_types.length === 0) && (
-                        <Typography level="body-sm" color="neutral">
-                          No GPU/instance types configured
-                        </Typography>
-                      )}
+                    {cloudConfig.allowed_regions.map(
+                      (region: string, index: number) => (
+                        <Chip
+                          key={index}
+                          size="sm"
+                          variant="soft"
+                          color="neutral"
+                        >
+                          {region}
+                        </Chip>
+                      )
+                    )}
                   </Box>
                 </Box>
+              )}
+          </Box>
+        ) : (
+          // Show regular cluster nodes table
+          <>
+            <Box sx={{ mb: 2 }}>
+              <Typography level="h3" sx={{ mb: 1 }}>
+                {clusterName} - Cluster Details
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <Chip size="sm" color="primary" variant="soft">
+                  {nodes.length} Total Nodes
+                </Chip>
+              </Stack>
+            </Box>
 
-                {cloudConfig.allowed_regions &&
-                  cloudConfig.allowed_regions.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography level="title-lg" sx={{ mb: 2 }}>
-                        Allowed Regions ({cloudConfig.allowed_regions.length})
-                      </Typography>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 1,
+            <Box sx={{ overflowX: "auto" }}>
+              <Table stickyHeader sx={{ tableLayout: "fixed" }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "15%", wordWrap: "break-word" }}>
+                      Node ID
+                    </th>
+                    <th style={{ width: "20%", wordWrap: "break-word" }}>
+                      IP Address
+                    </th>
+                    <th style={{ width: "30%", wordWrap: "break-word" }}>
+                      Identity File
+                    </th>
+                    <th style={{ width: "25%", wordWrap: "break-word" }}>
+                      GPU Info
+                    </th>
+                    <th style={{ width: "10%", wordWrap: "break-word" }}>
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nodes.map((node) => (
+                    <tr key={node.id}>
+                      <td
+                        style={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
                         }}
                       >
-                        {cloudConfig.allowed_regions.map(
-                          (region: string, index: number) => (
-                            <Chip
-                              key={index}
-                              size="sm"
-                              variant="soft"
-                              color="neutral"
-                            >
-                              {region}
-                            </Chip>
-                          )
-                        )}
-                      </Box>
-                    </Box>
-                  )}
-              </Box>
-            ) : (
-              // Show regular cluster nodes table
-              <>
-                <Box sx={{ mb: 2 }}>
-                  <Typography level="h3" sx={{ mb: 1 }}>
-                    {clusterName} - Cluster Details
-                  </Typography>
-                  <Stack direction="row" spacing={1}>
-                    <Chip size="sm" color="primary" variant="soft">
-                      {nodes.length} Total Nodes
-                    </Chip>
-                  </Stack>
-                </Box>
-
-                <Box sx={{ overflowX: "auto" }}>
-                  <Table stickyHeader sx={{ tableLayout: "fixed" }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: "15%", wordWrap: "break-word" }}>
-                          Node ID
-                        </th>
-                        <th style={{ width: "20%", wordWrap: "break-word" }}>
-                          IP Address
-                        </th>
-                        <th style={{ width: "30%", wordWrap: "break-word" }}>
-                          Identity File
-                        </th>
-                        <th style={{ width: "25%", wordWrap: "break-word" }}>
-                          GPU Info
-                        </th>
-                        <th style={{ width: "10%", wordWrap: "break-word" }}>
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {nodes.map((node) => (
-                        <tr key={node.id}>
-                          <td
-                            style={{
-                              wordWrap: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            {node.id}
-                          </td>
-                          <td
-                            style={{
-                              wordWrap: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            {node.ip}
-                          </td>
-                          <td
-                            style={{
-                              wordWrap: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            {node.identity_file}
-                          </td>
-                          <td
-                            style={{
-                              wordWrap: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            {node.gpu_info}
-                          </td>
-                          <td
-                            style={{
-                              wordWrap: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            <Chip
-                              size="sm"
-                              variant="soft"
-                              color={
-                                node.status === "active"
-                                  ? "success"
-                                  : node.status === "inactive"
-                                  ? "neutral"
-                                  : "warning"
-                              }
-                            >
-                              {node.status}
-                            </Chip>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </Box>
-              </>
-            )}
-          </Sheet>
-        </TabPanel>
-
-        {user?.organization_id && (
-          <TabPanel value={1}>
-            <OrgOverview
-              clusterName={clusterName || ""}
-              organizationId={user.organization_id}
-            />
-          </TabPanel>
+                        {node.id}
+                      </td>
+                      <td
+                        style={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {node.ip}
+                      </td>
+                      <td
+                        style={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {node.identity_file}
+                      </td>
+                      <td
+                        style={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {node.gpu_info}
+                      </td>
+                      <td
+                        style={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        <Chip
+                          size="sm"
+                          variant="soft"
+                          color={
+                            node.status === "active"
+                              ? "success"
+                              : node.status === "inactive"
+                              ? "neutral"
+                              : "warning"
+                          }
+                        >
+                          {node.status}
+                        </Chip>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Box>
+          </>
         )}
-      </Tabs>
+      </Sheet>
     </PageWithTitle>
   );
 };

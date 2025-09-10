@@ -173,7 +173,7 @@ const OrgOverview: React.FC<OrgOverviewProps> = ({
     period_end,
   } = orgUsageData;
 
-  // Filter users who have active clusters
+  // Filter users who have active instances
   const activeUsers = user_breakdown.filter((user) => user.active_clusters > 0);
   const totalActiveUsers = activeUsers.length;
 
@@ -217,7 +217,7 @@ const OrgOverview: React.FC<OrgOverviewProps> = ({
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Server size={20} />
                   <Typography level="body-sm" color="success">
-                    Active Clusters
+                    Active Instances
                   </Typography>
                 </Box>
                 <Typography level="h3" color="success">
@@ -236,7 +236,7 @@ const OrgOverview: React.FC<OrgOverviewProps> = ({
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Activity size={20} />
                   <Typography level="body-sm" color="warning">
-                    Avg Clusters
+                    Avg Instances
                   </Typography>
                 </Box>
                 <Typography level="h3" color="warning">
@@ -295,7 +295,7 @@ const OrgOverview: React.FC<OrgOverviewProps> = ({
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Active Clusters</th>
+                  <th>Active Instances</th>
                   <th>Total CPUs</th>
                   <th>Total GPUs</th>
                   <th>Total Memory (GB)</th>

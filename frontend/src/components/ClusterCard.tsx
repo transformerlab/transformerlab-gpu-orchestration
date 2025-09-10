@@ -190,8 +190,8 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
   };
 
   const handleOrgOverview = () => {
-    // Navigate to cluster details with org overview tab
-    navigate(`/dashboard/node-pools/${clusterId}?tab=org-overview`);
+    // Navigate to the standalone org overview page
+    navigate(`/dashboard/node-pools/${clusterId}/org-overview`);
   };
 
   // Determine which nodes to show based on cluster type
@@ -238,96 +238,123 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
         }}
       >
         <Box sx={{ mb: 2 }}>
-          <Button
-            onClick={() => navigate(`/dashboard/node-pools/${clusterId}`)}
+          <Box
             sx={{
-              width: "100%",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: 0,
-              margin: 0,
               mb: 1,
-              "&:hover": {
-                backgroundColor: "unset",
-              },
             }}
-            variant="plain"
           >
-            <Box
+            <Button
+              onClick={() => navigate(`/dashboard/node-pools/${clusterId}`)}
               sx={{
+                flex: 1,
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                padding: 0,
+                margin: 0,
+                "&:hover": {
+                  backgroundColor: "unset",
+                },
               }}
+              variant="plain"
             >
-              <Typography level="h4" mb={0.5}>
-                <CloudServiceIcon platform={provider} /> {displayName}
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
-                <Chip size="sm" color="primary" variant="soft">
-                  {assignedToYouCount} Nodes Assigned To You
-                </Chip>
-                <Chip size="sm" color="success" variant="soft">
-                  {(() => {
-                    // Calculate GPU usage if nodeGpuInfo is available
-                    if (nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0) {
-                      let totalGpus = 0;
-                      let usedGpus = 0;
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                }}
+              >
+                <Typography level="h4" mb={0.5}>
+                  <CloudServiceIcon platform={provider} /> {displayName}
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ mb: 0 }}>
+                  <Chip size="sm" color="primary" variant="soft">
+                    {assignedToYouCount} Nodes Assigned To You
+                  </Chip>
+                  <Chip size="sm" color="success" variant="soft">
+                    {(() => {
+                      // Calculate GPU usage if nodeGpuInfo is available
+                      if (nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0) {
+                        let totalGpus = 0;
+                        let usedGpus = 0;
 
-                      // Helper to parse strings like "1 of 2 free"
-                      const parseUtilization = (
-                        s?: string
-                      ): { free?: number; total?: number } => {
-                        if (!s) return {};
-                        const m = s.match(/(\d+)\s*of\s*(\d+)/i);
-                        if (!m) return {};
-                        return {
-                          free: Number.parseInt(m[1], 10),
-                          total: Number.parseInt(m[2], 10),
+                        // Helper to parse strings like "1 of 2 free"
+                        const parseUtilization = (
+                          s?: string
+                        ): { free?: number; total?: number } => {
+                          if (!s) return {};
+                          const m = s.match(/(\d+)\s*of\s*(\d+)/i);
+                          if (!m) return {};
+                          return {
+                            free: Number.parseInt(m[1], 10),
+                            total: Number.parseInt(m[2], 10),
+                          };
                         };
-                      };
 
-                      // Calculate GPU usage across all nodes
-                      Object.entries(nodeGpuInfo).forEach(([ip, gpuInfo]) => {
-                        const entries = gpuInfo?.gpu_resources?.gpus ?? [];
-                        entries.forEach((e: any) => {
-                          const util = parseUtilization(e.utilization);
-                          const totalParsed = Number.parseInt(
-                            e.total ?? "",
-                            10
-                          );
-                          const freeParsed = Number.parseInt(e.free ?? "", 10);
-                          const total = Number.isFinite(totalParsed)
-                            ? totalParsed
-                            : util.total ?? 0;
-                          const free = Number.isFinite(freeParsed)
-                            ? freeParsed
-                            : util.free ?? 0;
+                        // Calculate GPU usage across all nodes
+                        Object.entries(nodeGpuInfo).forEach(([ip, gpuInfo]) => {
+                          const entries = gpuInfo?.gpu_resources?.gpus ?? [];
+                          entries.forEach((e: any) => {
+                            const util = parseUtilization(e.utilization);
+                            const totalParsed = Number.parseInt(
+                              e.total ?? "",
+                              10
+                            );
+                            const freeParsed = Number.parseInt(
+                              e.free ?? "",
+                              10
+                            );
+                            const total = Number.isFinite(totalParsed)
+                              ? totalParsed
+                              : util.total ?? 0;
+                            const free = Number.isFinite(freeParsed)
+                              ? freeParsed
+                              : util.free ?? 0;
 
-                          totalGpus += total;
-                          usedGpus += Math.max(0, total - free);
+                            totalGpus += total;
+                            usedGpus += Math.max(0, total - free);
+                          });
                         });
-                      });
 
-                      return totalGpus > 0
-                        ? Math.round((usedGpus / totalGpus) * 100)
-                        : 0;
-                    } else {
-                      // Fall back to capacity calculation for non-SSH clusters
-                      return Math.round(
-                        (activeCount / processedNodes.length) * 100
-                      );
-                    }
-                  })()}
-                  %
-                  {nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0
-                    ? " GPU Capacity in Use"
-                    : " Total Capacity In Use"}
-                </Chip>
-              </Stack>
-            </Box>
-          </Button>
+                        return totalGpus > 0
+                          ? Math.round((usedGpus / totalGpus) * 100)
+                          : 0;
+                      } else {
+                        // Fall back to capacity calculation for non-SSH clusters
+                        return Math.round(
+                          (activeCount / processedNodes.length) * 100
+                        );
+                      }
+                    })()}
+                    %
+                    {nodeGpuInfo && Object.keys(nodeGpuInfo).length > 0
+                      ? " GPU Capacity in Use"
+                      : " Total Capacity In Use"}
+                  </Chip>
+                </Stack>
+              </Box>
+            </Button>
+            {user?.organization_id && (
+              <Button
+                variant="soft"
+                color="neutral"
+                size="sm"
+                onClick={handleOrgOverview}
+                sx={{
+                  minWidth: "auto",
+                  width: 32,
+                  height: 32,
+                  padding: 0,
+                }}
+              >
+                <Users size={16} />
+              </Button>
+            )}
+          </Box>
         </Box>
 
         {/* Show Nodes in detail for SSH Node Pools*/}
@@ -415,16 +442,6 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
           >
             {launchButtonText}
           </Button>
-          {user?.organization_id && (
-            <Button
-              variant="soft"
-              color="neutral"
-              startDecorator={<Users size={16} />}
-              onClick={handleOrgOverview}
-            >
-              Org Overview
-            </Button>
-          )}
         </Stack>
       </Card>
 
