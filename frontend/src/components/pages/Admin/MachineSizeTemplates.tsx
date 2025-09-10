@@ -13,6 +13,9 @@ import {
   Select,
   Option,
   Table,
+  Modal,
+  ModalDialog,
+  ModalClose,
 } from "@mui/joy";
 import Switch from "@mui/joy/Switch";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
@@ -57,6 +60,8 @@ const MachineSizeTemplates: React.FC = () => {
   // Shared metadata
   const [dockerImages, setDockerImages] = React.useState<any[]>([]);
   const [storageBuckets, setStorageBuckets] = React.useState<any[]>([]);
+
+  const [createOpen, setCreateOpen] = React.useState(false);
 
   React.useEffect(() => {
     // Docker images
@@ -166,6 +171,7 @@ const MachineSizeTemplates: React.FC = () => {
       setSshDiskSpace("");
       setSshDockerImageId("");
       mutate();
+      setCreateOpen(false);
     } catch (e: any) {
       addNotification({ type: "danger", message: String(e.message || e) });
     }
@@ -193,224 +199,261 @@ const MachineSizeTemplates: React.FC = () => {
         Machine Size Templates
       </Typography>
 
-      <Card sx={{ mb: 3, p: 2 }}>
-        <Typography level="title-md" sx={{ mb: 2 }}>
-          Create Template
-        </Typography>
-        <Stack direction="column" spacing={2}>
-          <FormControl>
-            <FormLabel>Name</FormLabel>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Description</FormLabel>
-            <Textarea
-              minRows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Cloud Type</FormLabel>
-            <Select
-              value={cloudType}
-              onChange={(_, v) => setCloudType(v || "runpod")}
-            >
-              <Option value="runpod">RunPod</Option>
-              <Option value="azure">Azure</Option>
-              <Option value="ssh">SSH</Option>
-            </Select>
-          </FormControl>
-          {/* Field-based forms per cloud */}
-          {cloudType === "runpod" && (
-            <>
+      <Card
+        sx={{
+          mb: 3,
+          p: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography level="title-md">Create Template</Typography>
+        <Button onClick={() => setCreateOpen(true)}>New Template</Button>
+      </Card>
+
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)}>
+        <ModalDialog
+          sx={{
+            maxWidth: 700,
+            width: "90%",
+            maxHeight: "85vh",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <ModalClose />
+          <Typography level="h4" sx={{ mb: 1 }}>
+            New Machine Size Template
+          </Typography>
+          <Box sx={{ overflowY: "auto", pr: 1 }}>
+            <Stack direction="column" spacing={2}>
               <FormControl>
-                <FormLabel>Accelerators</FormLabel>
+                <FormLabel>Name</FormLabel>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Description</FormLabel>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Cloud Type</FormLabel>
                 <Select
-                  value={rpAccelerators}
-                  onChange={(_, v) => setRpAccelerators(v || "")}
-                  placeholder="Select accelerator"
+                  value={cloudType}
+                  onChange={(_, v) => setCloudType(v || "runpod")}
                 >
-                  {(rpGpuTypes || []).map((gpu: any) => (
-                    <Option key={gpu.name} value={gpu.name}>
-                      {gpu.display_name}
-                    </Option>
-                  ))}
+                  <Option value="runpod">RunPod</Option>
+                  <Option value="azure">Azure</Option>
+                  <Option value="ssh">SSH</Option>
                 </Select>
               </FormControl>
-              <FormControl>
-                <FormLabel>Disk Space (GB) - Optional</FormLabel>
-                <Input
-                  value={rpDiskSpace}
-                  onChange={(e) => setRpDiskSpace(e.target.value)}
-                  placeholder="e.g. 100"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Docker Image (optional)</FormLabel>
-                <Select
-                  value={rpDockerImageId}
-                  onChange={(_, v) => setRpDockerImageId(v || "")}
-                  placeholder="Select docker image"
-                >
-                  {(dockerImages || []).map((img: any) => (
-                    <Option key={img.id} value={img.id}>
-                      {img.name} ({img.image_tag})
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-            </>
-          )}
-          {cloudType === "azure" && (
-            <>
-              <FormControl>
-                <FormLabel>Instance Type</FormLabel>
-                <Select
-                  value={azInstanceType}
-                  onChange={(_, v) => setAzInstanceType(v || "")}
-                  placeholder="Select instance type"
-                >
-                  {(azInstanceTypes || []).map((t) => (
-                    <Option key={t} value={t}>
-                      {t}
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Region</FormLabel>
-                <Select
-                  value={azRegion}
-                  onChange={(_, v) => setAzRegion(v || "")}
-                  placeholder="Select region"
-                >
-                  {(azRegions || []).map((r) => (
-                    <Option key={r} value={r}>
-                      {r}
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Disk Space (GB) - Optional</FormLabel>
-                <Input
-                  value={azDiskSpace}
-                  onChange={(e) => setAzDiskSpace(e.target.value)}
-                  placeholder="e.g. 100"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Use Spot Instances</FormLabel>
-                <Switch
-                  checked={azUseSpot}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setAzUseSpot(e.target.checked)
-                  }
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Auto-stop after idle (minutes)</FormLabel>
-                <Input
-                  value={azIdleAutostop}
-                  onChange={(e) => setAzIdleAutostop(e.target.value)}
-                  placeholder="e.g. 30"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Docker Image (optional)</FormLabel>
-                <Select
-                  value={azDockerImageId}
-                  onChange={(_, v) => setAzDockerImageId(v || "")}
-                  placeholder="Select docker image"
-                >
-                  {(dockerImages || []).map((img: any) => (
-                    <Option key={img.id} value={img.id}>
-                      {img.name} ({img.image_tag})
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Storage Buckets (optional)</FormLabel>
-                <Select
-                  multiple
-                  value={azBucketIds}
-                  onChange={(_, v) => setAzBucketIds(v || [])}
-                  placeholder="Select buckets"
-                >
-                  {(storageBuckets || []).map((b: any) => (
-                    <Option key={b.id} value={b.id}>
-                      {b.name} ({b.remote_path}) - {b.mode}
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-            </>
-          )}
-          {cloudType === "ssh" && (
-            <>
-              <FormControl>
-                <FormLabel>Node Pool Name</FormLabel>
-                <Input
-                  value={sshNodePoolName}
-                  onChange={(e) => setSshNodePoolName(e.target.value)}
-                  placeholder="ssh node pool name"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>CPUs</FormLabel>
-                <Input
-                  value={sshCpus}
-                  onChange={(e) => setSshCpus(e.target.value)}
-                  placeholder="e.g. 4"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Memory (GB)</FormLabel>
-                <Input
-                  value={sshMemory}
-                  onChange={(e) => setSshMemory(e.target.value)}
-                  placeholder="e.g. 16"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Accelerators</FormLabel>
-                <Input
-                  value={sshAccelerators}
-                  onChange={(e) => setSshAccelerators(e.target.value)}
-                  placeholder="e.g. V100:2"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Disk Space (GB) - Optional</FormLabel>
-                <Input
-                  value={sshDiskSpace}
-                  onChange={(e) => setSshDiskSpace(e.target.value)}
-                  placeholder="e.g. 100"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Docker Image (optional)</FormLabel>
-                <Select
-                  value={sshDockerImageId}
-                  onChange={(_, v) => setSshDockerImageId(v || "")}
-                  placeholder="Select docker image"
-                >
-                  {(dockerImages || []).map((img: any) => (
-                    <Option key={img.id} value={img.id}>
-                      {img.name} ({img.image_tag})
-                    </Option>
-                  ))}
-                </Select>
-              </FormControl>
-            </>
-          )}
-          <Box sx={{ textAlign: "right" }}>
+              {/* Field-based forms per cloud */}
+              {cloudType === "runpod" && (
+                <>
+                  <FormControl>
+                    <FormLabel>Accelerators</FormLabel>
+                    <Select
+                      value={rpAccelerators}
+                      onChange={(_, v) => setRpAccelerators(v || "")}
+                      placeholder="Select accelerator"
+                    >
+                      {(rpGpuTypes || []).map((gpu: any) => (
+                        <Option key={gpu.name} value={gpu.name}>
+                          {gpu.display_name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Disk Space (GB) - Optional</FormLabel>
+                    <Input
+                      value={rpDiskSpace}
+                      onChange={(e) => setRpDiskSpace(e.target.value)}
+                      placeholder="e.g. 100"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Docker Image (optional)</FormLabel>
+                    <Select
+                      value={rpDockerImageId}
+                      onChange={(_, v) => setRpDockerImageId(v || "")}
+                      placeholder="Select docker image"
+                    >
+                      {(dockerImages || []).map((img: any) => (
+                        <Option key={img.id} value={img.id}>
+                          {img.name} ({img.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </>
+              )}
+              {cloudType === "azure" && (
+                <>
+                  <FormControl>
+                    <FormLabel>Instance Type</FormLabel>
+                    <Select
+                      value={azInstanceType}
+                      onChange={(_, v) => setAzInstanceType(v || "")}
+                      placeholder="Select instance type"
+                    >
+                      {(azInstanceTypes || []).map((t) => (
+                        <Option key={t} value={t}>
+                          {t}
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Region</FormLabel>
+                    <Select
+                      value={azRegion}
+                      onChange={(_, v) => setAzRegion(v || "")}
+                      placeholder="Select region"
+                    >
+                      {(azRegions || []).map((r) => (
+                        <Option key={r} value={r}>
+                          {r}
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Disk Space (GB) - Optional</FormLabel>
+                    <Input
+                      value={azDiskSpace}
+                      onChange={(e) => setAzDiskSpace(e.target.value)}
+                      placeholder="e.g. 100"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Use Spot Instances</FormLabel>
+                    <Switch
+                      checked={azUseSpot}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setAzUseSpot(e.target.checked)
+                      }
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Auto-stop after idle (minutes)</FormLabel>
+                    <Input
+                      value={azIdleAutostop}
+                      onChange={(e) => setAzIdleAutostop(e.target.value)}
+                      placeholder="e.g. 30"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Docker Image (optional)</FormLabel>
+                    <Select
+                      value={azDockerImageId}
+                      onChange={(_, v) => setAzDockerImageId(v || "")}
+                      placeholder="Select docker image"
+                    >
+                      {(dockerImages || []).map((img: any) => (
+                        <Option key={img.id} value={img.id}>
+                          {img.name} ({img.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Storage Buckets (optional)</FormLabel>
+                    <Select
+                      multiple
+                      value={azBucketIds}
+                      onChange={(_, v) => setAzBucketIds(v || [])}
+                      placeholder="Select buckets"
+                    >
+                      {(storageBuckets || []).map((b: any) => (
+                        <Option key={b.id} value={b.id}>
+                          {b.name} ({b.remote_path}) - {b.mode}
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </>
+              )}
+              {cloudType === "ssh" && (
+                <>
+                  <FormControl>
+                    <FormLabel>Node Pool Name</FormLabel>
+                    <Input
+                      value={sshNodePoolName}
+                      onChange={(e) => setSshNodePoolName(e.target.value)}
+                      placeholder="ssh node pool name"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>CPUs</FormLabel>
+                    <Input
+                      value={sshCpus}
+                      onChange={(e) => setSshCpus(e.target.value)}
+                      placeholder="e.g. 4"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Memory (GB)</FormLabel>
+                    <Input
+                      value={sshMemory}
+                      onChange={(e) => setSshMemory(e.target.value)}
+                      placeholder="e.g. 16"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Accelerators</FormLabel>
+                    <Input
+                      value={sshAccelerators}
+                      onChange={(e) => setSshAccelerators(e.target.value)}
+                      placeholder="e.g. V100:2"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Disk Space (GB) - Optional</FormLabel>
+                    <Input
+                      value={sshDiskSpace}
+                      onChange={(e) => setSshDiskSpace(e.target.value)}
+                      placeholder="e.g. 100"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Docker Image (optional)</FormLabel>
+                    <Select
+                      value={sshDockerImageId}
+                      onChange={(_, v) => setSshDockerImageId(v || "")}
+                      placeholder="Select docker image"
+                    >
+                      {(dockerImages || []).map((img: any) => (
+                        <Option key={img.id} value={img.id}>
+                          {img.name} ({img.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </>
+              )}
+            </Stack>
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 1,
+              pt: 2,
+              borderTop: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Button variant="plain" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={onCreate}>Create Template</Button>
           </Box>
-        </Stack>
-      </Card>
+        </ModalDialog>
+      </Modal>
 
       <Card sx={{ p: 2 }}>
         <Typography level="title-md" sx={{ mb: 2 }}>
