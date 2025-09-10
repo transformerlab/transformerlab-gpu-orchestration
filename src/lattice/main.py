@@ -29,6 +29,8 @@ from routes.quota.routes import router as quota_router
 from routes.storage_buckets.routes import router as storage_buckets_router
 from routes.ssh_config.routes import router as ssh_config_router
 from routes.container_registries.routes import router as container_registries_router
+from routes.admin.machine_size_templates_routes import router as mst_router
+
 
 
 @asynccontextmanager
@@ -61,7 +63,6 @@ app.include_router(auth_cli_router, prefix=api_v1_prefix)
 app.include_router(admin_router, prefix=api_v1_prefix)
 app.include_router(teams_admin_router, prefix=api_v1_prefix)
 app.include_router(launch_hooks_router, prefix=api_v1_prefix)
-from routes.admin.machine_size_templates_routes import router as mst_router
 app.include_router(mst_router, prefix=api_v1_prefix)
 app.include_router(clouds_router, prefix=api_v1_prefix)
 app.include_router(jobs_router, prefix=api_v1_prefix)
