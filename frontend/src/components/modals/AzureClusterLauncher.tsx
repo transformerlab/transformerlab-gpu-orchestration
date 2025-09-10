@@ -104,6 +104,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -132,6 +134,23 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       fetchAvailableRegions();
       fetchStorageBuckets();
       fetchDockerImages();
+      // Load templates for azure
+      (async () => {
+        try {
+          const resp = await apiFetch(
+            buildApiUrl("instances/templates?cloud_type=azure"),
+            { credentials: "include" }
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            setTemplates(data.templates || []);
+          } else {
+            setTemplates([]);
+          }
+        } catch (e) {
+          setTemplates([]);
+        }
+      })();
       if (user?.organization_id) {
         apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
           credentials: "include",
@@ -443,6 +462,37 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
             selectedStorageBuckets.join(",")
           );
         }
+
+        // If a template is selected, apply its resources on top
+        const tpl = templates.find((t) => t.id === selectedTemplateId);
+        if (tpl && tpl.resources_json) {
+          const r = tpl.resources_json || {};
+          if (r.instance_type && !formData.get("instance_type"))
+            formData.append("instance_type", String(r.instance_type));
+          if (r.region && !formData.get("region"))
+            formData.append("region", String(r.region));
+          if (r.disk_space && !formData.get("disk_space"))
+            formData.append("disk_space", String(r.disk_space));
+          if (typeof r.use_spot !== "undefined" && !formData.get("use_spot"))
+            formData.append("use_spot", String(!!r.use_spot));
+          if (
+            r.idle_minutes_to_autostop &&
+            !formData.get("idle_minutes_to_autostop")
+          )
+            formData.append(
+              "idle_minutes_to_autostop",
+              String(r.idle_minutes_to_autostop)
+            );
+          if (
+            r.storage_bucket_ids &&
+            Array.isArray(r.storage_bucket_ids) &&
+            !formData.get("storage_bucket_ids")
+          )
+            formData.append(
+              "storage_bucket_ids",
+              (r.storage_bucket_ids as any[]).join(",")
+            );
+        }
       }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
@@ -558,6 +608,20 @@ disk_space: 100`}
             <Stack spacing={3}>
               {!useYaml && (
                 <>
+                  <FormControl>
+                    <FormLabel>Template (optional)</FormLabel>
+                    <Select
+                      value={selectedTemplateId}
+                      onChange={(_, v) => setSelectedTemplateId(v || "")}
+                      placeholder="Select a template"
+                    >
+                      {(templates || []).map((t: any) => (
+                        <Option key={t.id} value={t.id}>
+                          {t.name || t.id}
+                        </Option>
+                      ))}
+                    </Select>
+                  </FormControl>
                   <Card variant="outlined">
                     <Typography level="title-sm" sx={{ mb: 2 }}>
                       Basic Configuration

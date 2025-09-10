@@ -570,3 +570,38 @@ class SendInvitationRequest(BaseModel):
 
 class UpdateMemberRoleRequest(BaseModel):
     role: str
+
+
+# Machine Size Template Models
+class MachineSizeTemplateResponse(BaseModel):
+    id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cloud_type: str
+    cloud_identifier: Optional[str] = None
+    resources_json: Dict[str, Any]
+    organization_id: str
+    created_by: str
+    created_at: str
+    updated_at: str
+
+
+class CreateMachineSizeTemplateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cloud_type: str  # runpod | azure | ssh
+    cloud_identifier: Optional[str] = None  # for ssh: node pool name
+    resources_json: Dict[str, Any]
+
+
+class UpdateMachineSizeTemplateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cloud_type: Optional[str] = None
+    cloud_identifier: Optional[str] = None
+    resources_json: Optional[Dict[str, Any]] = None
+
+
+class MachineSizeTemplateListResponse(BaseModel):
+    templates: List[MachineSizeTemplateResponse]
+    total_count: int

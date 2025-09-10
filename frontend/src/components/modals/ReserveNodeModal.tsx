@@ -65,6 +65,8 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number>(0.0);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -91,6 +93,27 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           })
           .catch(() => {});
       }
+      // Load SSH templates for this node pool
+      (async () => {
+        try {
+          const resp = await apiFetch(
+            buildApiUrl(
+              `instances/templates?cloud_type=ssh&cloud_identifier=${encodeURIComponent(
+                clusterName
+              )}`
+            ),
+            { credentials: "include" }
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            setTemplates(data.templates || []);
+          } else {
+            setTemplates([]);
+          }
+        } catch (e) {
+          setTemplates([]);
+        }
+      })();
     }
   }, [open, user?.organization_id]);
 
@@ -213,6 +236,22 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           formData.append("docker_image_id", selectedDockerImageId);
         formData.append("use_spot", "false");
         formData.append("launch_mode", "custom");
+
+        // Apply template if selected
+        const tpl = templates.find((t) => t.id === selectedTemplateId);
+        if (tpl && tpl.resources_json) {
+          const r = tpl.resources_json || {};
+          if (r.cpus && !formData.get("cpus"))
+            formData.append("cpus", String(r.cpus));
+          if (r.memory && !formData.get("memory"))
+            formData.append("memory", String(r.memory));
+          if (r.accelerators && !formData.get("accelerators"))
+            formData.append("accelerators", String(r.accelerators));
+          if (r.disk_space && !formData.get("disk_space"))
+            formData.append("disk_space", String(r.disk_space));
+          if (r.docker_image_id && !formData.get("docker_image_id"))
+            formData.append("docker_image_id", String(r.docker_image_id));
+        }
       }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
@@ -313,6 +352,20 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
 
             {!useYaml && (
               <>
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Template (optional)</FormLabel>
+                  <Select
+                    value={selectedTemplateId}
+                    onChange={(_, v) => setSelectedTemplateId(v || "")}
+                    placeholder="Select a template"
+                  >
+                    {(templates || []).map((t: any) => (
+                      <Option key={t.id} value={t.id}>
+                        {t.name || t.id}
+                      </Option>
+                    ))}
+                  </Select>
+                </FormControl>
                 <FormControl sx={{ mb: 2 }}>
                   <FormLabel>Cluster Name (optional)</FormLabel>
                   <Input

@@ -61,6 +61,8 @@ app.include_router(auth_cli_router, prefix=api_v1_prefix)
 app.include_router(admin_router, prefix=api_v1_prefix)
 app.include_router(teams_admin_router, prefix=api_v1_prefix)
 app.include_router(launch_hooks_router, prefix=api_v1_prefix)
+from routes.admin.machine_size_templates_routes import router as mst_router
+app.include_router(mst_router, prefix=api_v1_prefix)
 app.include_router(clouds_router, prefix=api_v1_prefix)
 app.include_router(jobs_router, prefix=api_v1_prefix)
 app.include_router(instances_router, prefix=api_v1_prefix)

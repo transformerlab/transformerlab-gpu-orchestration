@@ -26,6 +26,7 @@ import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import LaunchHooksManager from "../pages/Admin/LaunchHooksManager";
 import ObjectStorage from "../pages/Admin/ObjectStorage";
 import PrivateContainerRegistry from "../pages/Admin/PrivateContainerRegistry";
+import MachineSizeTemplates from "../pages/Admin/MachineSizeTemplates";
 import PageWithTitle from "../pages/templates/PageWithTitle";
 import { useFakeData } from "../../context/FakeDataContext";
 import MyClusterDetails from "../pages/MyClusterDetails";
@@ -100,6 +101,10 @@ const Dashboard: React.FC = () => {
           <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/launch-hooks" element={<LaunchHooksManager />} />
+          <Route
+            path="admin/machine-templates"
+            element={<MachineSizeTemplates />}
+          />
           <Route path="admin/object-storage" element={<ObjectStorage />} />
           <Route
             path="admin/container-registry"

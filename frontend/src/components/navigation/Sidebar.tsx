@@ -98,6 +98,10 @@ const adminSubItemsGroup2 = [
     path: "/dashboard/admin/pools",
   },
   {
+    content: "Machine Size Templates",
+    path: "/dashboard/admin/machine-templates",
+  },
+  {
     content: "Object Storage",
     path: "/dashboard/admin/object-storage",
   },
