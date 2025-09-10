@@ -11,11 +11,12 @@ import {
   Table,
   Sheet,
 } from "@mui/joy";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Server, Terminal, Cloud, Zap, Globe } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import useSWR from "swr";
 import { useFakeData } from "../../context/FakeDataContext";
+import { useAuth } from "../../context/AuthContext";
 import PageWithTitle from "./templates/PageWithTitle";
 import mockClusterData from "./mockData/mockClusters.json";
 
@@ -46,6 +47,7 @@ const ClusterDetails: React.FC = () => {
   const { clusterName } = useParams<{ clusterName: string }>();
   const navigate = useNavigate();
   const { showFakeData } = useFakeData();
+  const { user } = useAuth();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [cloudConfig, setCloudConfig] = useState<CloudConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -263,7 +265,7 @@ const ClusterDetails: React.FC = () => {
       backButton={true}
       onBack={handleBack}
     >
-      <Sheet sx={{ mb: 4, p: 2, borderRadius: "md", boxShadow: "sm" }}>
+      <Sheet sx={{ p: 2, borderRadius: "md", boxShadow: "sm" }}>
         {isCloudCluster && cloudConfig ? (
           // Show cloud configuration table
           <Box sx={{ mb: 2 }}>

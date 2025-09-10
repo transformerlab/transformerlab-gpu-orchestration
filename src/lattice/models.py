@@ -238,7 +238,11 @@ class UserUsageBreakdown(BaseModel):
     user_id: str
     user_email: Optional[str] = None
     user_name: Optional[str] = None
-    credits_used: float
+    active_clusters: int
+    total_cpus: int
+    total_gpus: int
+    total_memory: int
+    clusters: List[dict] = []  # List of cluster details
     credits_limit: float
     credits_remaining: float
     usage_percentage: float
@@ -246,11 +250,13 @@ class UserUsageBreakdown(BaseModel):
 
 class OrganizationUserUsageResponse(BaseModel):
     organization_id: str
+    cluster_name: str
+    node_pool_name: str
     period_start: str
     period_end: str
     quota_per_user: float
     total_users: int
-    total_organization_usage: float
+    total_active_clusters: int
     user_breakdown: List[UserUsageBreakdown]
 
 
