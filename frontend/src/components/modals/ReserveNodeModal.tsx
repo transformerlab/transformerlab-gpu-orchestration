@@ -67,6 +67,11 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [estimatedCost, setEstimatedCost] = useState<number>(0.0);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const selectedTemplate = React.useMemo(
+    () => templates.find((t) => t.id === selectedTemplateId),
+    [templates, selectedTemplateId]
+  );
+  const tpl = selectedTemplate?.resources_json || {};
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -460,6 +465,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                           ? `Max: ${maxResources.maxVcpus}`
                           : "e.g., 4, 8+"
                       }
+                      disabled={typeof tpl.cpus !== "undefined"}
                     />
                   </FormControl>
                   <FormControl sx={{ mb: 2 }}>
@@ -472,6 +478,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                           ? `Max: ${maxResources.maxMemory} GB`
                           : "e.g., 16, 32+"
                       }
+                      disabled={typeof tpl.memory !== "undefined"}
                     />
                   </FormControl>
                   <FormControl sx={{ mb: 2 }}>
@@ -480,6 +487,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                       value={accelerators}
                       onChange={(e) => setAccelerators(e.target.value)}
                       placeholder="e.g., V100, V100:2, A100:4"
+                      disabled={typeof tpl.accelerators !== "undefined"}
                     />
                   </FormControl>
                   <FormControl sx={{ mb: 2 }}>
@@ -494,6 +502,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                           min: 1,
                         },
                       }}
+                      disabled={typeof tpl.disk_space !== "undefined"}
                     />
                   </FormControl>
                 </Box>

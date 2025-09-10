@@ -20,6 +20,7 @@ import {
 import Switch from "@mui/joy/Switch";
 import { buildApiUrl, apiFetch } from "../../../utils/api";
 import { useNotification } from "../../NotificationSystem";
+import PageWithTitle from "../templates/PageWithTitle";
 
 const fetcher = (url: string) =>
   apiFetch(url, { credentials: "include" }).then((r) => r.json());
@@ -194,24 +195,11 @@ const MachineSizeTemplates: React.FC = () => {
   const templates = data?.templates || [];
 
   return (
-    <Box>
-      <Typography level="h3" sx={{ mb: 2 }}>
-        Machine Size Templates
-      </Typography>
-
-      <Card
-        sx={{
-          mb: 3,
-          p: 2,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography level="title-md">Create Template</Typography>
-        <Button onClick={() => setCreateOpen(true)}>New Template</Button>
-      </Card>
-
+    <PageWithTitle
+      title="Machine Size Templates"
+      button={<Button onClick={() => setCreateOpen(true)}>New Template</Button>}
+      sticky
+    >
       <Modal open={createOpen} onClose={() => setCreateOpen(false)}>
         <ModalDialog
           sx={{
@@ -469,7 +457,6 @@ const MachineSizeTemplates: React.FC = () => {
               <tr>
                 <th>Name</th>
                 <th>Cloud</th>
-                <th>Key</th>
                 <th>Description</th>
                 <th>Actions</th>
               </tr>
@@ -478,8 +465,10 @@ const MachineSizeTemplates: React.FC = () => {
               {templates.map((t: any) => (
                 <tr key={t.id}>
                   <td>{t.name || t.id}</td>
-                  <td>{t.cloud_type}</td>
-                  <td>{t.cloud_identifier || "-"}</td>
+                  <td>
+                    {t.cloud_type}
+                    {t.cloud_identifier ? `/${t.cloud_identifier}` : ""}
+                  </td>
                   <td>{t.description || ""}</td>
                   <td>
                     <Button
@@ -496,7 +485,7 @@ const MachineSizeTemplates: React.FC = () => {
           </Table>
         )}
       </Card>
-    </Box>
+    </PageWithTitle>
   );
 };
 

@@ -106,6 +106,11 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const selectedTemplate = React.useMemo(
+    () => templates.find((t) => t.id === selectedTemplateId),
+    [templates, selectedTemplateId]
+  );
+  const tpl = selectedTemplate?.resources_json || {};
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -699,6 +704,7 @@ disk_space: 100`}
                           }
                           placeholder="Select instance type"
                           required
+                          disabled={typeof tpl.instance_type !== "undefined"}
                         >
                           {availableInstanceTypes
                             .filter((type) =>
@@ -723,6 +729,7 @@ disk_space: 100`}
                           }
                           placeholder="Select region"
                           required
+                          disabled={typeof tpl.region !== "undefined"}
                         >
                           {availableRegions
                             .filter((region) =>
@@ -750,6 +757,7 @@ disk_space: 100`}
                           min: 1,
                         },
                       }}
+                      disabled={typeof tpl.disk_space !== "undefined"}
                     />
                     <Typography
                       level="body-xs"
@@ -791,6 +799,7 @@ disk_space: 100`}
                         <Switch
                           checked={useSpot}
                           onChange={(e) => setUseSpot(e.target.checked)}
+                          disabled={typeof tpl.use_spot !== "undefined"}
                         />
                       </Box>
 
@@ -808,6 +817,9 @@ disk_space: 100`}
                             setIdleMinutesToAutostop(e.target.value)
                           }
                           placeholder="e.g., 30 (leave empty for no auto-stop)"
+                          disabled={
+                            typeof tpl.idle_minutes_to_autostop !== "undefined"
+                          }
                           type="number"
                         />
                         <Typography

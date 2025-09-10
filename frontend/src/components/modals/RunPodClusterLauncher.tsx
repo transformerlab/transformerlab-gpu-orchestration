@@ -96,6 +96,11 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const selectedTemplate = React.useMemo(
+    () => templates.find((t) => t.id === selectedTemplateId),
+    [templates, selectedTemplateId]
+  );
+  const tpl = selectedTemplate?.resources_json || {};
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -461,7 +466,9 @@ disk_space: 100`}
                     ? "No GPU types available"
                     : "Select GPU type"
                 }
-                disabled={isLoadingGpuTypes}
+                disabled={
+                  isLoadingGpuTypes || typeof tpl.accelerators !== "undefined"
+                }
               >
                 {(() => {
                   if (isLoadingGpuTypes) {
@@ -533,6 +540,7 @@ disk_space: 100`}
                     min: 1,
                   },
                 }}
+                disabled={typeof tpl.disk_space !== "undefined"}
               />
               <Typography
                 level="body-xs"
