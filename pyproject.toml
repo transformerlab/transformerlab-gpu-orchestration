@@ -64,7 +64,12 @@ where = ["src"]
 "" = "src"
 
 [project.optional-dependencies]
-dev = ["openapi-client>=1.1.7", "ruff>=0.12.10", "pytest>=8.0.0"]
+dev = [
+    "openapi-client>=1.1.7",
+    "ruff>=0.12.10",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
 
 cli = [
     "typer", # A popular choice for creating CLIs

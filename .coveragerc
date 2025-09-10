@@ -1,0 +1,11 @@
+[run]
+branch = True
+source = src/lattice
+omit =
+    src/lattice/alembic/*
+    src/lattice/cli/*
+    src/lattice/ssh_proxy_server/*
+
+[report]
+show_missing = True
+skip_covered = True

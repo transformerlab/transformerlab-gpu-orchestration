@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,14 +25,16 @@ if url.get_backend_name() == "sqlite":
         dbapi_con.execute("pragma foreign_keys=ON")
 
     engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False},
-    )
+            DATABASE_URL,
+            connect_args={"check_same_thread": False},
+        )
     event.listen(engine, "connect", _fk_pragma_on_connect)
 else:
     engine = create_engine(DATABASE_URL)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Use a scoped_session so calls within the same thread share a session.
+# This helps ensure consistency when application code and tests access the DB concurrently.
+SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 
 def get_db():
@@ -40,7 +42,11 @@ def get_db():
     try:
         yield db
     finally:
-        db.close()
+        try:
+            db.close()
+        finally:
+            # Remove the session from the scoped registry for this context
+            SessionLocal.remove()
 
 
 AUTH_API_KEY = os.getenv("AUTH_API_KEY")

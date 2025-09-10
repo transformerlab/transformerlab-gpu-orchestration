@@ -52,6 +52,22 @@ def pytest_sessionstart(session):
     except Exception:
         pass
 
+    # Provide compatibility aliases for modules sometimes imported as 'routes.*'
+    # to avoid duplication/fragility across environments.
+    try:
+        _sys.modules.setdefault("routes", importlib.import_module("lattice.routes"))
+        _sys.modules.setdefault("routes.auth", importlib.import_module("lattice.routes.auth"))
+        _sys.modules.setdefault(
+            "routes.auth.api_key_auth",
+            importlib.import_module("lattice.routes.auth.api_key_auth"),
+        )
+        _sys.modules.setdefault(
+            "routes.auth.utils",
+            importlib.import_module("lattice.routes.auth.utils"),
+        )
+    except Exception:
+        pass
+
     # Apply Alembic migrations up front to ensure schema matches production
     try:
         from alembic.config import Config
@@ -65,3 +81,23 @@ def pytest_sessionstart(session):
     except Exception as e:
         # Surface schema issues early so tests don't behave inconsistently
         raise RuntimeError(f"Failed to run Alembic migrations for tests: {e}")
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _restore_dependency_overrides():
+    """Ensure FastAPI dependency overrides are restored after each test.
+
+    This reduces cross-test coupling when reusing the singleton app.
+    """
+    try:
+        from lattice.main import app as _app
+
+        orig = dict(_app.dependency_overrides)
+        yield
+        _app.dependency_overrides = orig
+    except Exception:
+        # If app import fails for any reason, don't block tests
+        yield

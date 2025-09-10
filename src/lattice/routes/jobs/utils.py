@@ -107,6 +107,9 @@ def get_job_logs(
             lines = f.readlines()
             logs = "".join(lines[-tail_lines:])
         return logs
+    except HTTPException:
+        # Propagate HTTPExceptions (e.g., explicit 404) without wrapping
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get job logs: {str(e)}")
 
