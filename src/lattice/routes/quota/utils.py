@@ -890,3 +890,165 @@ def get_organization_user_usage_summary(
             "total_organization_usage": 0.0,
             "user_breakdown": [],
         }
+
+
+
+def get_organization_user_usage_summary_by_cluster(
+    db: Session, organization_id: str, cluster_name: str
+) -> Dict[str, Any]:
+    """
+    Get a summary of active resource usage for all users in an organization filtered by node pool
+    Uses cluster_platforms table to find clusters belonging to the node pool
+    Shows current active resource usage (CPUs, GPUs, etc.) rather than historical costs
+    """
+    try:
+        # Get organization quota
+        org_quota = get_or_create_organization_quota(db, organization_id)
+        period_start, period_end = get_current_period_dates()
+
+        from db.db_models import ClusterPlatform
+        
+        # Find all clusters that belong to this node pool
+        # For SSH node pools, the platform field contains the node pool name
+        # For cloud providers, we need to map the node pool name to the platform
+        node_pool_name = cluster_name
+        
+        # Map node pool names to platform names
+        if cluster_name.endswith('-cluster'):
+            # Extract the provider from node pool names like "runpod-cluster"
+            provider = cluster_name.replace('-cluster', '')
+            if provider.lower() == 'runpod':
+                node_pool_name = 'runpod'
+            elif provider.lower() == 'azure':
+                node_pool_name = 'azure'
+            elif provider.lower() == 'gcp':
+                node_pool_name = 'gcp'
+        
+        # Get all clusters for this node pool/platform
+        clusters = (
+            db.query(ClusterPlatform)
+            .filter(
+                ClusterPlatform.organization_id == organization_id,
+                ClusterPlatform.platform == node_pool_name,
+                ClusterPlatform.state == 'active'  # Only active clusters
+            )
+            .all()
+        )
+
+        # Group clusters by user and collect resource usage
+        user_resources = {}
+        total_active_clusters = 0
+        
+        for cluster in clusters:
+            user_id = cluster.user_id
+            if user_id not in user_resources:
+                user_resources[user_id] = {
+                    'user_info': cluster.user_info or {},
+                    'clusters': [],
+                    'total_cpus': 0,
+                    'total_gpus': 0,
+                    'total_memory': 0,
+                    'cluster_count': 0
+                }
+            
+            # Get current cluster status to extract resource information
+            try:
+                from routes.instances.utils import get_skypilot_status
+                sky_status = get_skypilot_status()
+                
+                # Find this cluster in the status
+                cluster_status = None
+                for status_cluster in sky_status:
+                    if status_cluster.get('name') == cluster.cluster_name:
+                        cluster_status = status_cluster
+                        break
+                
+                if cluster_status:
+                    # Parse resources from resources_str_full
+                    resources_str = cluster_status.get('resources_str_full', '') or cluster_status.get('resources_str', '')
+                    if resources_str:
+                        parsed_resources = parse_resources_string(resources_str)
+                        
+                        user_resources[user_id]['clusters'].append({
+                            'cluster_name': cluster.display_name,
+                            'actual_name': cluster.cluster_name,
+                            'resources': parsed_resources,
+                            'status': cluster_status.get('status', 'unknown')
+                        })
+                        
+                        # Aggregate resources
+                        user_resources[user_id]['total_cpus'] += parsed_resources.get('cpus', 0)
+                        user_resources[user_id]['total_gpus'] += parsed_resources.get('gpu_count', 0)
+                        user_resources[user_id]['total_memory'] += parsed_resources.get('memory', 0)
+                        user_resources[user_id]['cluster_count'] += 1
+                        total_active_clusters += 1
+                        
+            except Exception as e:
+                print(f"Warning: Could not get status for cluster {cluster.cluster_name}: {e}")
+                continue
+
+        # Convert to user breakdown format
+        user_breakdown = []
+        for user_id, user_data in user_resources.items():
+            # Get user-specific effective quota limit (user > team > org)
+            user_quota_limit, _ = get_user_quota_limit(db, organization_id, user_id)
+            
+            user_breakdown.append({
+                "user_id": user_id,
+                "user_email": user_data['user_info'].get("email"),
+                "user_name": user_data['user_info'].get("name"),
+                "active_clusters": user_data['cluster_count'],
+                "total_cpus": user_data['total_cpus'],
+                "total_gpus": user_data['total_gpus'],
+                "total_memory": user_data['total_memory'],
+                "clusters": user_data['clusters'],
+                "credits_limit": user_quota_limit,
+                "credits_remaining": user_quota_limit,  # Not using cost-based quotas here
+                "usage_percentage": 0.0,  # Not applicable for resource-based view
+            })
+
+        return {
+            "organization_id": organization_id,
+            "cluster_name": cluster_name,
+            "node_pool_name": node_pool_name,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_per_user": org_quota.monthly_credits_per_user,
+            "total_users": len(user_breakdown),
+            "total_active_clusters": total_active_clusters,
+            "user_breakdown": user_breakdown,
+        }
+
+    except Exception as e:
+        print(
+            f"Failed to get organization user resource usage for {organization_id} and cluster {cluster_name}: {e}"
+        )
+        import traceback
+        traceback.print_exc()
+        
+        # Return a safe default response structure
+        try:
+            period_start, period_end = get_current_period_dates()
+        except Exception:
+            period_start = datetime.utcnow().date()
+            period_end = period_start
+
+        # Best-effort: attempt to read org default quota, but fall back to 0.0
+        quota_per_user = 0.0
+        try:
+            org_quota = get_organization_default_quota(db, organization_id)
+            quota_per_user = float(org_quota.monthly_credits_per_user or 0.0)
+        except Exception:
+            pass
+
+        return {
+            "organization_id": organization_id,
+            "cluster_name": cluster_name,
+            "node_pool_name": cluster_name,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "quota_per_user": quota_per_user,
+            "total_users": 0,
+            "total_active_clusters": 0,
+            "user_breakdown": [],
+        }

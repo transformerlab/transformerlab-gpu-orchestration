@@ -22,11 +22,12 @@ from lattice.models import (
 )
 from db.db_models import GPUUsageLog, OrganizationQuota
 from lattice.utils.cluster_utils import get_display_name_from_actual
-from lattice.routes.quota.utils import (
+from routes.quota.utils import (
     get_or_create_organization_quota,
     get_or_create_quota_period,
     get_gpu_usage_summary,
     get_organization_user_usage_summary,
+    get_organization_user_usage_summary_by_cluster,
     sync_gpu_usage_from_cost_report,
     get_current_period_dates,
     get_or_create_user_quota,
@@ -38,9 +39,10 @@ from lattice.routes.quota.utils import (
     get_current_user_quota_info,
     refresh_quota_periods_for_organization,
     refresh_quota_periods_for_user,
+    get_organization_user_usage_summary_by_cluster
 )
-from lattice.routes.quota.team_quota_routes import router as team_quota_router
-from lattice.routes.auth.api_key_auth import enforce_csrf
+from routes.quota.team_quota_routes import router as team_quota_router
+from routes.auth.api_key_auth import enforce_csrf
 
 router = APIRouter(prefix="/quota", tags=["quota"], dependencies=[Depends(enforce_csrf)])
 
@@ -299,6 +301,28 @@ async def get_organization_user_usage(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get organization user usage: {str(e)}"
+        )
+
+
+@router.get(
+    "/organization/{organization_id}/users/cluster/{cluster_name}",
+    response_model=OrganizationUserUsageResponse,
+)
+async def get_organization_user_usage_by_cluster(
+    organization_id: str,
+    cluster_name: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    __: dict = Depends(check_organization_admin),
+):
+    """Get GPU usage breakdown for all users in an organization filtered by cluster/node pool"""
+    try:
+        summary = get_organization_user_usage_summary_by_cluster(db, organization_id, cluster_name)
+        return summary
+    except Exception as e:
+        print(f"Failed to get organization user usage for cluster: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get organization user usage for cluster: {str(e)}"
         )
 
 

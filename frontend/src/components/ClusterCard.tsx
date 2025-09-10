@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Box, Button, Card, Typography, Stack, Chip } from "@mui/joy";
 import { useNavigate } from "react-router-dom";
-import { ChevronRightIcon, Cloud } from "lucide-react";
+import { ChevronRightIcon, Cloud, Users } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { buildApiUrl, apiFetch } from "../utils/api";
 import useSWR from "swr";
 import NodeSquare from "./widgets/NodeSquare";
@@ -72,6 +73,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
   provider = "direct",
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showReserveModal, setShowReserveModal] = useState(false);
 
   // Use clusterName if provided, otherwise use cluster.name
@@ -185,6 +187,11 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
   const handleClusterLaunched = () => {
     console.log("Cluster launched - data will refresh automatically");
     if (onClusterLaunched) onClusterLaunched(displayName);
+  };
+
+  const handleOrgOverview = () => {
+    // Navigate to cluster details with org overview tab
+    navigate(`/dashboard/node-pools/${clusterId}?tab=org-overview`);
   };
 
   // Determine which nodes to show based on cluster type
@@ -408,6 +415,16 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
           >
             {launchButtonText}
           </Button>
+          {user?.organization_id && (
+            <Button
+              variant="soft"
+              color="neutral"
+              startDecorator={<Users size={16} />}
+              onClick={handleOrgOverview}
+            >
+              Org Overview
+            </Button>
+          )}
         </Stack>
       </Card>
 
