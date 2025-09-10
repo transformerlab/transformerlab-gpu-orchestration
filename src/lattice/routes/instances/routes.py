@@ -133,8 +133,6 @@ router = APIRouter(
 
 @router.get("/templates", response_model=MachineSizeTemplateListResponse)
 async def list_machine_size_templates(
-    cloud_type: Optional[str] = None,
-    cloud_identifier: Optional[str] = None,
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
 ):
@@ -142,10 +140,6 @@ async def list_machine_size_templates(
         q = db.query(MachineSizeTemplate).filter(
             MachineSizeTemplate.organization_id == user.get("organization_id")
         )
-        if cloud_type:
-            q = q.filter(MachineSizeTemplate.cloud_type == cloud_type)
-        if cloud_identifier is not None:
-            q = q.filter(MachineSizeTemplate.cloud_identifier == cloud_identifier)
         rows = q.order_by(MachineSizeTemplate.updated_at.desc()).all()
         templates = []
         for m in rows:
@@ -154,8 +148,6 @@ async def list_machine_size_templates(
                     id=m.id,
                     name=m.name,
                     description=m.description,
-                    cloud_type=m.cloud_type,
-                    cloud_identifier=m.cloud_identifier,
                     resources_json=m.resources_json or {},
                     organization_id=m.organization_id,
                     created_by=m.created_by,

@@ -585,11 +585,8 @@ class MachineSizeTemplate(Base, ValidationMixin):
     __tablename__ = "machine_size_templates"
 
     id = Column(String, primary_key=True, default=lambda: secrets.token_urlsafe(16))
-    # Provider: 'runpod', 'azure', 'ssh'
-    cloud_type = Column(String, nullable=False)
-    # If SSH, we use node pool name as the cloud key; for others can be null
-    cloud_identifier = Column(String, nullable=True)
-    # Arbitrary resources JSON containing fields needed by launchers
+    # Cloud-agnostic template - can be used across all cloud providers
+    # Resources JSON containing cpus, memory, accelerators (like SSH templates)
     resources_json = Column(JSON, nullable=False, default=dict)
     # Optional metadata
     name = Column(String, nullable=True)
@@ -600,9 +597,9 @@ class MachineSizeTemplate(Base, ValidationMixin):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        # Ensure unique name per org for a given cloud key (nullable cloud_identifier allowed)
-        UniqueConstraint("organization_id", "cloud_type", "name", "cloud_identifier", name="uq_mst_org_cloud_name_key"),
-        Index("ix_mst_org_cloud", "organization_id", "cloud_type"),
+        # Ensure unique name per org (no cloud separation)
+        UniqueConstraint("organization_id", "name", name="uq_mst_org_name"),
+        Index("ix_mst_org", "organization_id"),
     )
 
 # Utility functions for application-level foreign key validation
