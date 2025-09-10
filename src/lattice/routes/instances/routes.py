@@ -29,6 +29,8 @@ from models import (
     DownClusterRequest,
     DownClusterResponse,
     LaunchClusterResponse,
+    MachineSizeTemplateListResponse,
+    MachineSizeTemplateResponse,
     StatusResponse,
     StopClusterRequest,
     StopClusterResponse,
@@ -54,6 +56,7 @@ from routes.node_pools.utils import (
 from routes.quota.utils import get_current_user_quota_info, get_user_team_id
 from routes.reports.utils import record_usage
 from sqlalchemy.orm import Session
+from db.db_models import MachineSizeTemplate
 
 from utils.cluster_resolver import handle_cluster_name_param
 
@@ -120,11 +123,49 @@ def update_gpu_resources_background(node_pool_name: str):
     _gpu_update_executor.submit(run_async_update)
 
 
+
+
 router = APIRouter(
     prefix="/instances",
     dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["instances"],
 )
+
+@router.get("/templates", response_model=MachineSizeTemplateListResponse)
+async def list_machine_size_templates(
+    cloud_type: Optional[str] = None,
+    cloud_identifier: Optional[str] = None,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    try:
+        q = db.query(MachineSizeTemplate).filter(
+            MachineSizeTemplate.organization_id == user.get("organization_id")
+        )
+        if cloud_type:
+            q = q.filter(MachineSizeTemplate.cloud_type == cloud_type)
+        if cloud_identifier is not None:
+            q = q.filter(MachineSizeTemplate.cloud_identifier == cloud_identifier)
+        rows = q.order_by(MachineSizeTemplate.updated_at.desc()).all()
+        templates = []
+        for m in rows:
+            templates.append(
+                MachineSizeTemplateResponse(
+                    id=m.id,
+                    name=m.name,
+                    description=m.description,
+                    cloud_type=m.cloud_type,
+                    cloud_identifier=m.cloud_identifier,
+                    resources_json=m.resources_json or {},
+                    organization_id=m.organization_id,
+                    created_by=m.created_by,
+                    created_at=m.created_at.isoformat() if m.created_at else "",
+                    updated_at=m.updated_at.isoformat() if m.updated_at else "",
+                )
+            )
+        return MachineSizeTemplateListResponse(templates=templates, total_count=len(templates))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list templates: {str(e)}")
 
 
 @router.post("/launch", response_model=LaunchClusterResponse)

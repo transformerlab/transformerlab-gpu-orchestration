@@ -94,6 +94,13 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [diskSpace, setDiskSpace] = useState("");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const selectedTemplate = React.useMemo(
+    () => templates.find((t) => t.id === selectedTemplateId),
+    [templates, selectedTemplateId]
+  );
+  const tpl = selectedTemplate?.resources_json || {};
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -114,6 +121,23 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
     if (open) {
       fetchAvailableGpuTypes();
       fetchDockerImages();
+      // Load templates for runpod
+      (async () => {
+        try {
+          const resp = await apiFetch(
+            buildApiUrl("instances/templates?cloud_type=runpod"),
+            { credentials: "include" }
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            setTemplates(data.templates || []);
+          } else {
+            setTemplates([]);
+          }
+        } catch (e) {
+          setTemplates([]);
+        }
+      })();
       // Set the first allowed GPU type as default when config is available
       if (
         runpodConfig.allowed_gpu_types &&
@@ -273,6 +297,16 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 
         if (selectedDockerImageId)
           formData.append("docker_image_id", selectedDockerImageId);
+
+        // If a template is selected, apply its resources on top (template wins for missing fields)
+        const tpl = templates.find((t) => t.id === selectedTemplateId);
+        if (tpl && tpl.resources_json) {
+          const r = tpl.resources_json || {};
+          if (r.accelerators && !formData.get("accelerators"))
+            formData.append("accelerators", String(r.accelerators));
+          if (r.disk_space && !formData.get("disk_space"))
+            formData.append("disk_space", String(r.disk_space));
+        }
       }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
@@ -334,6 +368,21 @@ disk_space: 100`}
 
         {!useYaml && (
           <Stack spacing={3}>
+            {/* Template selector */}
+            <FormControl>
+              <FormLabel>Template (optional)</FormLabel>
+              <Select
+                value={selectedTemplateId}
+                onChange={(_, v) => setSelectedTemplateId(v || "")}
+                placeholder="Select a template"
+              >
+                {(templates || []).map((t: any) => (
+                  <Option key={t.id} value={t.id}>
+                    {t.name || t.id}
+                  </Option>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl required>
               <FormLabel>Cluster Name</FormLabel>
               <Input
@@ -417,7 +466,9 @@ disk_space: 100`}
                     ? "No GPU types available"
                     : "Select GPU type"
                 }
-                disabled={isLoadingGpuTypes}
+                disabled={
+                  isLoadingGpuTypes || typeof tpl.accelerators !== "undefined"
+                }
               >
                 {(() => {
                   if (isLoadingGpuTypes) {
@@ -489,6 +540,7 @@ disk_space: 100`}
                     min: 1,
                   },
                 }}
+                disabled={typeof tpl.disk_space !== "undefined"}
               />
               <Typography
                 level="body-xs"
