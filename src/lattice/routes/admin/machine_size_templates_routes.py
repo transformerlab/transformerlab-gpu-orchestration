@@ -25,8 +25,6 @@ def _to_response(m: MachineSizeTemplate) -> MachineSizeTemplateResponse:
         id=m.id,
         name=m.name,
         description=m.description,
-        cloud_type=m.cloud_type,
-        cloud_identifier=m.cloud_identifier,
         resources_json=m.resources_json or {},
         organization_id=m.organization_id,
         created_by=m.created_by,
@@ -37,8 +35,6 @@ def _to_response(m: MachineSizeTemplate) -> MachineSizeTemplateResponse:
 
 @router.get("", response_model=MachineSizeTemplateListResponse)
 async def list_templates(
-    cloud_type: Optional[str] = None,
-    cloud_identifier: Optional[str] = None,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
     __: dict = Depends(requires_admin),
@@ -46,10 +42,6 @@ async def list_templates(
     q = db.query(MachineSizeTemplate).filter(
         MachineSizeTemplate.organization_id == user.get("organization_id")
     )
-    if cloud_type:
-        q = q.filter(MachineSizeTemplate.cloud_type == cloud_type)
-    if cloud_identifier is not None:
-        q = q.filter(MachineSizeTemplate.cloud_identifier == cloud_identifier)
     rows: List[MachineSizeTemplate] = q.order_by(MachineSizeTemplate.updated_at.desc()).all()
     return MachineSizeTemplateListResponse(templates=[_to_response(r) for r in rows], total_count=len(rows))
 
@@ -65,18 +57,18 @@ async def create_template(
     if not org_id:
         raise HTTPException(status_code=400, detail="Missing organization context")
 
-    # Basic validation by cloud_type
-    cloud = (req.cloud_type or "").lower()
-    if cloud not in ("runpod", "azure", "ssh"):
-        raise HTTPException(status_code=400, detail="cloud_type must be one of: runpod, azure, ssh")
-    if cloud == "ssh" and not req.cloud_identifier:
-        raise HTTPException(status_code=400, detail="cloud_identifier (node pool name) is required for ssh")
+    # Validate that resources_json contains the expected fields (cpus, memory, accelerators)
+    if not req.resources_json:
+        raise HTTPException(status_code=400, detail="resources_json is required")
+    
+    # Check for required fields (at least one of cpus, memory, accelerators, disk_space should be present)
+    required_fields = ["cpus", "memory", "accelerators", "disk_space"]
+    if not any(field in req.resources_json for field in required_fields):
+        raise HTTPException(status_code=400, detail="resources_json must contain at least one of: cpus, memory, accelerators, disk_space")
 
     m = MachineSizeTemplate(
         name=req.name,
         description=req.description,
-        cloud_type=cloud,
-        cloud_identifier=req.cloud_identifier,
         resources_json=req.resources_json or {},
         organization_id=org_id,
         created_by=user.get("id"),
@@ -124,14 +116,12 @@ async def update_template(
         m.name = req.name
     if req.description is not None:
         m.description = req.description
-    if req.cloud_type is not None:
-        cloud = (req.cloud_type or "").lower()
-        if cloud not in ("runpod", "azure", "ssh"):
-            raise HTTPException(status_code=400, detail="cloud_type must be one of: runpod, azure, ssh")
-        m.cloud_type = cloud
-    if req.cloud_identifier is not None:
-        m.cloud_identifier = req.cloud_identifier
     if req.resources_json is not None:
+        # Validate that resources_json contains the expected fields
+        if req.resources_json:
+            required_fields = ["cpus", "memory", "accelerators", "disk_space"]
+            if not any(field in req.resources_json for field in required_fields):
+                raise HTTPException(status_code=400, detail="resources_json must contain at least one of: cpus, memory, accelerators, disk_space")
         m.resources_json = req.resources_json
 
     db.commit()
