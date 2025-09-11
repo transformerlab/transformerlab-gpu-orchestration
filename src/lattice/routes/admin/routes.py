@@ -12,7 +12,7 @@ from lattice.routes.auth.utils import (
     check_organization_admin,
     check_organization_member,
 )
-from . import admin_service as svc
+from lattice.services.admin import admin_service as svc
 from lattice.routes.auth.api_key_auth import enforce_csrf
 
 router = APIRouter(prefix="/admin/orgs", tags=["admin"], dependencies=[Depends(enforce_csrf)])

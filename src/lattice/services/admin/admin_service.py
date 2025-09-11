@@ -290,3 +290,4 @@ def send_organization_invitation(
         raise HTTPException(
             status_code=500, detail=f"Failed to send invitation: {str(e)}"
         )
+

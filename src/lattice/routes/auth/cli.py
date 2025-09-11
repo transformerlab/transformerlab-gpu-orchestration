@@ -4,7 +4,7 @@ import traceback
 from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
-from ..api_keys.service import APIKeyService
+from lattice.services.api_keys.service import APIKeyService
 from .utils import get_current_user
 from .api_key_auth import get_db
 

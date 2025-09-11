@@ -5,7 +5,7 @@ from config import AUTH_COOKIE_PASSWORD, COOKIE_SECURE, COOKIE_SAMESITE
 import secrets
 from config import CSRF_ENABLED
 import os
-from .provider.work_os import provider as auth_provider
+from lattice.routes.auth.provider.work_os import provider as auth_provider
 
 def get_frontend_url(request: Request) -> str:
     """
@@ -231,3 +231,4 @@ async def refresh_user_session(request: Request, response: Response) -> dict:
             "organization_id": refreshed_session.organization_id,
         },
     }
+

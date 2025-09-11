@@ -4,7 +4,7 @@ from lattice.routes.auth.api_key_auth import enforce_csrf
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from lattice.routes.api_keys.service import APIKeyService
+from lattice.services.api_keys.service import APIKeyService
 
 
 class CreateAPIKeyRequest(BaseModel):

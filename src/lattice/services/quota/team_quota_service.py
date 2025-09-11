@@ -116,3 +116,4 @@ def team_quota_to_response(db: Session, team_quota: TeamQuota) -> TeamQuotaRespo
         created_at=team_quota.created_at.isoformat(),
         updated_at=team_quota.updated_at.isoformat(),
     )
+

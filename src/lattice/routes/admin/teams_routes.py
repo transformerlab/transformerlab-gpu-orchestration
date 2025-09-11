@@ -14,7 +14,7 @@ from models import (
 )
 from routes.auth.utils import get_current_user, requires_admin
 from lattice.routes.auth.api_key_auth import enforce_csrf
-from .teams_service import (
+from lattice.services.admin.teams_service import (
     list_teams as svc_list_teams,
     create_team as svc_create_team,
     update_team as svc_update_team,
