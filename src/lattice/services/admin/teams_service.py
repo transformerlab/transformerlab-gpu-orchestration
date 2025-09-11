@@ -302,3 +302,4 @@ def list_available_users(db: Session, organization_id: str) -> AvailableUsersRes
             )
 
     return AvailableUsersResponse(users=users)
+

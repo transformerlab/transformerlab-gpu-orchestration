@@ -4,12 +4,12 @@ from sqlalchemy.orm import Session
 from config import get_db
 from db.db_models import Team
 from lattice.models import TeamQuotaRequest, TeamQuotaResponse, TeamQuotaListResponse
-from lattice.routes.admin.teams_service import list_teams
+from lattice.services.admin.teams_service import list_teams
 from lattice.routes.auth.utils import (
     check_organization_admin,
     check_organization_member,
 )
-from lattice.routes.quota.team_quota_service import (
+from lattice.services.quota.team_quota_service import (
     list_team_quotas,
     get_team_quota_by_id,
     create_or_update_team_quota,
