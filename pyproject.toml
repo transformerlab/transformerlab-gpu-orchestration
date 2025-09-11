@@ -51,6 +51,8 @@ dependencies = [
     "openapi-client>=1.1.7",
     "nanoid==2.0.0",
     "skypilot[all] @ git+https://github.com/transformerlab/skypilot.git@prod-2",
+    "fsspec>=2025.9.0",
+    "adlfs>=2022.11.1",
 ]
 
 [project.scripts]
