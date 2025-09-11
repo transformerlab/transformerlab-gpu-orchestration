@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+import pytest
 
 
 def pytest_sessionstart(session):
@@ -65,3 +66,46 @@ def pytest_sessionstart(session):
     except Exception as e:
         # Surface schema issues early so tests don't behave inconsistently
         raise RuntimeError(f"Failed to run Alembic migrations for tests: {e}")
+
+
+@pytest.fixture()
+def db_session():
+    """Provide a database session for tests.
+
+    Uses the globally configured SessionLocal (pointing at the test DB set up in
+    pytest_sessionstart). Closes the session after the test.
+    """
+    from lattice.config import SessionLocal
+
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture(autouse=True)
+def _clean_database(db_session):
+    """Clean all tables before each test to keep isolation.
+
+    Uses SQLAlchemy metadata to delete from all tables in reverse dependency order.
+    For SQLite, temporarily disable FK enforcement during bulk deletes.
+    """
+    # Ensure models are imported so metadata is populated
+    import lattice.db.db_models  # noqa: F401
+    from lattice.db.base import Base
+    from sqlalchemy import text
+
+    try:
+        db_session.execute(text("PRAGMA foreign_keys=OFF"))
+    except Exception:
+        pass
+
+    for table in reversed(Base.metadata.sorted_tables):
+        db_session.execute(table.delete())
+    db_session.commit()
+
+    try:
+        db_session.execute(text("PRAGMA foreign_keys=ON"))
+    except Exception:
+        pass

@@ -121,6 +121,10 @@ class APIKeyService:
 
             return api_key, api_key_record
 
+        except HTTPException:
+            # Propagate expected client errors (e.g., invalid scopes)
+            db.rollback()
+            raise
         except Exception as e:
             db.rollback()
             raise HTTPException(
@@ -309,4 +313,3 @@ class APIKeyService:
         except Exception:
             return []
         return []
-
