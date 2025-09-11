@@ -243,58 +243,58 @@ async def list_files(
         # Combine the base path with the requested path
         full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
 
-        print("DEBUG INFO:")
-        print(f"Bucket ID: {bucket_id}")
-        print(f"Request path: {req.path}")
-        print(f"Base path: {base_path}")
-        print(f"Full path: {full_path}")
-        print(f"Protocol: {fs.protocol}")
-        print(f"Storage options: {req.storage_options}")
-        print(f"Bucket source: {bucket.source}")
+        # print("DEBUG INFO:")
+        # print(f"Bucket ID: {bucket_id}")
+        # print(f"Request path: {req.path}")
+        # print(f"Base path: {base_path}")
+        # print(f"Full path: {full_path}")
+        # print(f"Protocol: {fs.protocol}")
+        # print(f"Storage options: {req.storage_options}")
+        # print(f"Bucket source: {bucket.source}")
 
         # Additional Azure-specific debug info
-        if hasattr(fs, "account_name"):
-            print(f"Azure account name: {fs.account_name}")
-        if hasattr(fs, "container_name"):
-            print(f"Azure container name: {fs.container_name}")
+        # if hasattr(fs, "account_name"):
+        #     print(f"Azure account name: {fs.account_name}")
+        # if hasattr(fs, "container_name"):
+        #     print(f"Azure container name: {fs.container_name}")
 
-        print(f"Listing files in bucket {bucket_id} at path: {full_path}")
+        # print(f"Listing files in bucket {bucket_id} at path: {full_path}")
 
         try:
-            print(f"Attempting to list files at: {full_path}")
-            print(f"File exists: {fs.exists(full_path)}")
+            # print(f"Attempting to list files at: {full_path}")
+            # print(f"File exists: {fs.exists(full_path)}")
 
             # For Azure, verify we can list the container directly
-            if hasattr(fs, "account_name") and hasattr(fs, "container_name"):
-                container_path = f"azure://{fs.account_name}/{fs.container_name}"
-                try:
-                    print(f"Testing container listing at: {container_path}")
-                    container_listing = fs.ls(container_path, detail=True)
-                    print(
-                        f"Container contents: {[item.get('name', '') for item in container_listing]}"
-                    )
-                except Exception as e:
-                    print(f"Container listing error: {str(e)}")
+            # if hasattr(fs, "account_name") and hasattr(fs, "container_name"):
+            #     container_path = f"azure://{fs.account_name}/{fs.container_name}"
+            #     try:
+            #         print(f"Testing container listing at: {container_path}")
+            #         container_listing = fs.ls(container_path, detail=True)
+            #         print(
+            #             f"Container contents: {[item.get('name', '') for item in container_listing]}"
+            #         )
+            #     except Exception as e:
+            #         print(f"Container listing error: {str(e)}")
 
             # Try with and without trailing slash
-            try:
-                if full_path.endswith("/"):
-                    print(
-                        f"Also trying without trailing slash: {full_path.rstrip('/')}"
-                    )
-                    test_listing = fs.ls(full_path.rstrip("/"), detail=True)
-                    print(
-                        f"Without trailing slash works, found {len(test_listing)} items"
-                    )
-                else:
-                    print(f"Also trying with trailing slash: {full_path}/")
-                    test_listing = fs.ls(f"{full_path}/", detail=True)
-                    print(f"With trailing slash works, found {len(test_listing)} items")
-            except Exception as e:
-                print(f"Alternative path test error: {str(e)}")
+            # try:
+            #     if full_path.endswith("/"):
+            #         print(
+            #             f"Also trying without trailing slash: {full_path.rstrip('/')}"
+            #         )
+            #         test_listing = fs.ls(full_path.rstrip("/"), detail=True)
+            #         print(
+            #             f"Without trailing slash works, found {len(test_listing)} items"
+            #         )
+            #     else:
+            #         print(f"Also trying with trailing slash: {full_path}/")
+            #         test_listing = fs.ls(f"{full_path}/", detail=True)
+            #         print(f"With trailing slash works, found {len(test_listing)} items")
+            # except Exception as e:
+            #     print(f"Alternative path test error: {str(e)}")
 
             listing = fs.ls(full_path, detail=True)
-            print(f"Successfully listed path, found {len(listing)} items")
+            # print(f"Successfully listed path, found {len(listing)} items")
             # Transform the listing to ensure consistent output format
             items = []
             for item in listing:
