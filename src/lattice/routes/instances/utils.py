@@ -8,7 +8,7 @@ from sqlalchemy import or_
 
 import sky
 from fastapi import HTTPException
-from routes.clouds.azure.utils import az_get_current_config
+from lattice.services.clouds.azure.utils import az_get_current_config
 from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
@@ -329,8 +329,8 @@ def launch_cluster_with_skypilot(
             # Get available clouds and node pools for the organization
             if organization_id:
                 from config import get_db
-                from routes.clouds.runpod.utils import rp_get_current_config
-                from routes.clouds.azure.utils import az_get_current_config
+                from lattice.services.clouds.runpod.utils import rp_get_current_config
+                from lattice.services.clouds.azure.utils import az_get_current_config
                 from routes.node_pools.utils import list_cluster_names_from_db_by_org
 
                 db = next(get_db())
@@ -742,7 +742,7 @@ def stop_cluster_with_skypilot(
                     credentials = None
             elif platform == "runpod":
                 try:
-                    from routes.clouds.runpod.utils import rp_get_current_config
+                    from lattice.services.clouds.runpod.utils import rp_get_current_config
                     rp_config = rp_get_current_config(
                         organization_id=organization_id
                     )
@@ -816,7 +816,7 @@ def down_cluster_with_skypilot(
                     credentials = None
             elif platform == "runpod":
                 try:
-                    from routes.clouds.runpod.utils import rp_get_current_config
+                    from lattice.services.clouds.runpod.utils import rp_get_current_config
                     rp_config = rp_get_current_config(
                         organization_id=organization_id
                     )

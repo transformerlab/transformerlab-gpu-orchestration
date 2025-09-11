@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from config import get_db
 from db.db_models import CloudAccount
-from routes.clouds.utils import normalize_key, require_org_id
+from lattice.services.clouds.utils import normalize_key, require_org_id
 
 # Legacy config.toml path (no longer required)
 RUNPOD_CONFIG_TOML = Path.home() / ".runpod" / "config.toml"

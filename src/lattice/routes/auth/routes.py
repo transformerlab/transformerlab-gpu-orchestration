@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from models import UserResponse
-from . import auth_service
+from lattice.services.auth import auth_service
 from .api_key_auth import get_user_or_api_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -57,7 +57,7 @@ async def get_allowed_scopes():
     This serves as the single source of truth for the UI and clients.
     """
     try:
-        from lattice.routes.api_keys.service import ALLOWED_SCOPES
+        from lattice.services.api_keys.service import ALLOWED_SCOPES
 
         return {"scopes": sorted(list(ALLOWED_SCOPES))}
     except Exception as e:

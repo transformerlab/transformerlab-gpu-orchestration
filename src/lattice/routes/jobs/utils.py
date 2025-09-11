@@ -7,7 +7,7 @@ from typing import Optional
 from config import SessionLocal
 from db.db_models import ClusterPlatform
 from utils.cluster_resolver import handle_cluster_name_param
-from routes.clouds.azure.utils import az_get_current_config
+from lattice.services.clouds.azure.utils import az_get_current_config
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
@@ -69,7 +69,7 @@ def get_job_logs(
                     credentials = None
             elif platform == "runpod":
                 try:
-                    from routes.clouds.runpod.utils import rp_get_current_config
+                    from lattice.services.clouds.runpod.utils import rp_get_current_config
 
                     rp_config = rp_get_current_config(organization_id=organization_id)
                     if rp_config and rp_config.get("api_key"):

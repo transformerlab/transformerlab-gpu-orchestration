@@ -15,8 +15,8 @@ from models import ClusterResponse, ClustersListResponse, SSHNode, NodePoolGPURe
 from routes.auth.api_key_auth import get_user_or_api_key, require_scope
 from lattice.routes.auth.api_key_auth import enforce_csrf
 from routes.auth.utils import get_current_user
-from routes.clouds.azure.utils import az_get_current_config, load_azure_config
-from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
+from lattice.services.clouds.azure.utils import az_get_current_config, load_azure_config
+from lattice.services.clouds.runpod.utils import load_runpod_config, rp_get_current_config
 from routes.instances.utils import get_skypilot_status
 from routes.reports.utils import record_availability
 from utils.cluster_utils import get_cluster_platform_info, get_display_name_from_actual

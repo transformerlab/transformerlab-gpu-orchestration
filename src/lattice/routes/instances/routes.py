@@ -79,6 +79,25 @@ from werkzeug.utils import secure_filename
 
 from routes.auth.api_key_auth import enforce_csrf
 
+# Service layer imports
+from lattice.services.instances import (
+    get_instance_status as svc_get_instance_status,
+    get_cluster_type as svc_get_cluster_type,
+    get_platform_info as svc_get_platform_info,
+    get_all_platforms as svc_get_all_platforms,
+    get_cost_report_filtered as svc_get_cost_report_filtered,
+    resolve_cluster_name as svc_resolve_cluster_name,
+    get_cluster_info as svc_get_cluster_info,
+    get_user_requests as svc_get_user_requests,
+    get_request_details as svc_get_request_details,
+    get_request_status as svc_get_request_status,
+    stream_request_logs_generator as svc_stream_request_logs_generator,
+    cancel_request as svc_cancel_request,
+    list_machine_size_templates as svc_list_machine_size_templates,
+    stop_instance as svc_stop_instance,
+    down_instance as svc_down_instance,
+)
+
 from .utils import (
     down_cluster_with_skypilot,
     generate_cost_report,
@@ -137,27 +156,29 @@ async def list_machine_size_templates(
     db: Session = Depends(get_db),
 ):
     try:
-        q = db.query(MachineSizeTemplate).filter(
-            MachineSizeTemplate.organization_id == user.get("organization_id")
+        items = svc_list_machine_size_templates(
+            db=db, organization_id=user.get("organization_id")
         )
-        rows = q.order_by(MachineSizeTemplate.updated_at.desc()).all()
-        templates = []
-        for m in rows:
-            templates.append(
-                MachineSizeTemplateResponse(
-                    id=m.id,
-                    name=m.name,
-                    description=m.description,
-                    resources_json=m.resources_json or {},
-                    organization_id=m.organization_id,
-                    created_by=m.created_by,
-                    created_at=m.created_at.isoformat() if m.created_at else "",
-                    updated_at=m.updated_at.isoformat() if m.updated_at else "",
-                )
+        templates = [
+            MachineSizeTemplateResponse(
+                id=i.get("id"),
+                name=i.get("name"),
+                description=i.get("description"),
+                resources_json=i.get("resources_json", {}),
+                organization_id=i.get("organization_id"),
+                created_by=i.get("created_by"),
+                created_at=i.get("created_at", ""),
+                updated_at=i.get("updated_at", ""),
             )
-        return MachineSizeTemplateListResponse(templates=templates, total_count=len(templates))
+            for i in items
+        ]
+        return MachineSizeTemplateListResponse(
+            templates=templates, total_count=len(templates)
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list templates: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list templates: {str(e)}"
+        )
 
 
 @router.post("/launch", response_model=LaunchClusterResponse)
@@ -740,29 +761,16 @@ async def stop_instance(
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
-        # Resolve display name to actual cluster name
-        display_name = stop_request.cluster_name
-        actual_cluster_name = handle_cluster_name_param(
-            display_name, user["id"], user["organization_id"]
-        )
-
-        if is_down_only_cluster(actual_cluster_name):
-            cluster_type = "SSH" if is_ssh_cluster(actual_cluster_name) else "RunPod"
-            raise HTTPException(
-                status_code=400,
-                detail=f"{cluster_type} cluster '{display_name}' cannot be stopped. Use down operation instead.",
-            )
-        request_id = stop_cluster_with_skypilot(
-            actual_cluster_name,
-            user_id=user["id"],
-            organization_id=user["organization_id"],
-            display_name=display_name,  # Pass the display name for database storage
+        data = svc_stop_instance(
             db=db,
+            organization_id=user.get("organization_id"),
+            user_id=user.get("id"),
+            display_name=stop_request.cluster_name,
         )
         return StopClusterResponse(
-            request_id=request_id,
-            cluster_name=display_name,  # Return display name to user
-            message=f"Cluster '{display_name}' stop initiated successfully",
+            request_id=data["request_id"],
+            cluster_name=data["cluster_name"],
+            message=data["message"],
         )
     except HTTPException:
         raise
@@ -786,15 +794,14 @@ async def down_instance(
             display_name, user["id"], user["organization_id"]
         )
 
-        # Update cluster state to terminating
+        # Update cluster state to terminating for faster UI feedback
         update_cluster_state(actual_cluster_name, "terminating")
 
-        request_id = down_cluster_with_skypilot(
-            actual_cluster_name,
-            display_name,
-            user_id=user["id"],
-            organization_id=user["organization_id"],
+        data = svc_down_instance(
             db=db,
+            organization_id=user.get("organization_id"),
+            user_id=user.get("id"),
+            display_name=display_name,
         )
 
         # Check if this cluster uses an SSH node pool as its platform (background thread)
@@ -813,9 +820,9 @@ async def down_instance(
             )
 
         return DownClusterResponse(
-            request_id=request_id,
-            cluster_name=display_name,  # Return display name to user
-            message=f"Cluster '{display_name}' termination initiated successfully",
+            request_id=data["request_id"],
+            cluster_name=data["cluster_name"],
+            message=data["message"],
         )
     except Exception as e:
         raise HTTPException(
@@ -831,58 +838,27 @@ async def get_instance_status(
     user: dict = Depends(get_user_or_api_key),
 ):
     try:
-        # Get current user
-        # user = await get_user_or_api_key(request, response)
-
-        # Handle cluster names parameter - could be display names, need to resolve to actual names
-        actual_cluster_list = None
+        data = svc_get_instance_status(
+            user_id=user["id"], organization_id=user["organization_id"]
+        )
+        allowed = None
         if cluster_names:
-            display_names = [name.strip() for name in cluster_names.split(",")]
-            actual_cluster_list = []
-            for display_name in display_names:
-                actual_name = get_actual_cluster_name(
-                    display_name, user["id"], user["organization_id"]
-                )
-                if actual_name:
-                    actual_cluster_list.append(actual_name)
-
-        cluster_records = get_skypilot_status(actual_cluster_list)
+            allowed = {n.strip() for n in cluster_names.split(",") if n.strip()}
         clusters = []
-
-        for record in cluster_records:
-            user_info = get_cluster_user_info(record["name"])
-
-            # Skip clusters without user info (they might be from before user tracking was added)
-            if not user_info or not user_info.get("id"):
+        for item in data:
+            if allowed and item.get("cluster_name") not in allowed:
                 continue
-
-            # Only include clusters that belong to the current user and organization
-            if not (
-                user_info.get("id") == user["id"]
-                and user_info.get("organization_id") == user["organization_id"]
-            ):
-                continue
-
-            # Get display name for the response
-            display_name = get_display_name_from_actual(record["name"])
-            if not display_name:
-                display_name = record["name"]  # Fallback to actual name
-
-            # Get cluster state
-            state = get_cluster_state(record["name"])
-
             clusters.append(
                 ClusterStatusResponse(
-                    cluster_name=display_name,  # Return display name to user
-                    status=str(record["status"]),
-                    state=state,
-                    launched_at=record.get("launched_at"),
-                    last_use=record.get("last_use"),
-                    autostop=record.get("autostop"),
-                    to_down=record.get("to_down"),
-                    resources_str=record.get("resources_str_full")
-                    or record.get("resources_str"),
-                    user_info=user_info,
+                    cluster_name=item.get("cluster_name"),
+                    status=item.get("status"),
+                    state=item.get("state"),
+                    launched_at=item.get("launched_at"),
+                    last_use=item.get("last_use"),
+                    autostop=item.get("autostop"),
+                    to_down=item.get("to_down"),
+                    resources_str=item.get("resources_str"),
+                    user_info=item.get("user_info"),
                 )
             )
         return StatusResponse(clusters=clusters)
@@ -901,18 +877,9 @@ async def get_cluster_type(
     user: dict = Depends(get_user_or_api_key),
 ):
     try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
+        return svc_get_cluster_type(
+            user_id=user["id"], organization_id=user["organization_id"], display_name=cluster_name
         )
-
-        is_ssh = is_ssh_cluster(actual_cluster_name)
-        cluster_type = "ssh" if is_ssh else "cloud"
-        return {
-            "cluster_name": cluster_name,  # Return display name to user
-            "cluster_type": cluster_type,
-            "is_ssh": is_ssh,
-        }
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster type: {str(e)}"
@@ -928,13 +895,9 @@ async def get_cluster_platform_info(
 ):
     """Get platform information for a specific cluster."""
     try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
+        return svc_get_platform_info(
+            user_id=user["id"], organization_id=user["organization_id"], display_name=cluster_name
         )
-
-        platform_info = get_cluster_platform(actual_cluster_name)
-        return platform_info
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster platform info: {str(e)}"
@@ -945,8 +908,7 @@ async def get_cluster_platform_info(
 async def get_all_cluster_platforms(request: Request, response: Response):
     """Get platform information for all clusters."""
     try:
-        platforms = load_cluster_platforms()
-        return {"platforms": platforms}
+        return svc_get_all_platforms()
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get cluster platforms: {str(e)}"
@@ -959,50 +921,9 @@ async def get_cost_report(
 ):
     """Get cost report for clusters belonging to the current user within their organization."""
     try:
-        report = generate_cost_report()
-        if not report:
-            return []
-
-            # Filter clusters to include only those belonging to the current user within their organization
-        filtered_clusters = []
-        current_user_id = user.get("id")
-        current_user_org_id = user.get("organization_id")
-
-        if not current_user_id:
-            return []
-
-        for cluster_data in report:
-            cluster_name = cluster_data.get("name")
-            if not cluster_name:
-                continue
-
-            # Get platform info for this cluster to check ownership
-            platform_info = get_cluster_platform_data(cluster_name)
-            if not platform_info or not platform_info.get("user_id"):
-                continue
-
-            # Include clusters that belong to the current user AND are in the current user's organization
-            cluster_user_id = platform_info.get("user_id")
-            cluster_org_id = platform_info.get("organization_id")
-
-            if (
-                cluster_user_id == current_user_id
-                and current_user_org_id
-                and cluster_org_id == current_user_org_id
-            ):
-                # Get display name for user-facing response
-                display_name = get_display_name_from_actual(cluster_name)
-                cluster_display_name = display_name if display_name else cluster_name
-
-                # Create a copy of cluster data with display name and cloud provider
-                filtered_cluster_data = cluster_data.copy()
-                filtered_cluster_data["name"] = cluster_display_name
-                filtered_cluster_data["cloud_provider"] = platform_info.get(
-                    "platform", "direct"
-                )
-                filtered_clusters.append(filtered_cluster_data)
-
-        return filtered_clusters
+        return svc_get_cost_report_filtered(
+            user_id=user["id"], organization_id=user["organization_id"]
+        )
     except Exception as e:
         print(f"🔍 Error in /cost-report: {str(e)}")
         raise HTTPException(
@@ -1022,10 +943,9 @@ async def resolve_cluster_name(
     Used by CLI tools to map user-friendly names to internal names.
     """
     try:
-        actual_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
+        return svc_resolve_cluster_name(
+            user_id=user["id"], organization_id=user["organization_id"], display_name=cluster_name
         )
-        return {"display_name": cluster_name, "actual_name": actual_name}
     except HTTPException:
         raise
     except Exception as e:
@@ -1062,188 +982,9 @@ async def get_cluster_info(
             - ssh_node_info: SSH node information (only for SSH clusters)
     """
     try:
-        # Resolve display name to actual cluster name
-        actual_cluster_name = handle_cluster_name_param(
-            cluster_name, user["id"], user["organization_id"]
+        return svc_get_cluster_info(
+            user_id=user["id"], organization_id=user["organization_id"], display_name=cluster_name
         )
-
-        # Get cluster status information
-        cluster_records = get_skypilot_status([actual_cluster_name])
-        cluster_data = None
-
-        for record in cluster_records:
-            user_info = get_cluster_user_info(record["name"])
-
-            # Skip clusters without user info or not belonging to current user
-            if not user_info or not user_info.get("id"):
-                continue
-
-            if not (
-                user_info.get("id") == user["id"]
-                and user_info.get("organization_id") == user["organization_id"]
-            ):
-                continue
-
-            # Get display name for the response
-            display_name = get_display_name_from_actual(record["name"])
-            if not display_name:
-                display_name = record["name"]  # Fallback to actual name
-
-            cluster_data = {
-                "cluster_name": display_name,
-                "status": str(record["status"]),
-                "launched_at": record.get("launched_at"),
-                "last_use": record.get("last_use"),
-                "autostop": record.get("autostop"),
-                "to_down": record.get("to_down"),
-                "resources_str": record.get("resources_str_full")
-                or record.get("resources_str"),
-                "user_info": user_info,
-            }
-            break
-
-        if not cluster_data:
-            raise HTTPException(status_code=404, detail="Cluster not found")
-
-        # Get cluster type information
-        is_ssh = is_ssh_cluster(actual_cluster_name)
-        cluster_type = "ssh" if is_ssh else "cloud"
-
-        cluster_type_info = {
-            "cluster_name": cluster_name,
-            "cluster_type": cluster_type,
-            "is_ssh": is_ssh,
-        }
-
-        # Get platform information
-        platform_info = get_cluster_platform(actual_cluster_name)
-
-        # Get cluster state
-        state = get_cluster_state(actual_cluster_name)
-
-        # Get jobs for this cluster
-        try:
-            # Fetch credentials for the cluster based on the platform
-            platform_info_jobs = get_cluster_platform_info_util(actual_cluster_name)
-            credentials = None
-            if platform_info_jobs and platform_info_jobs.get("platform"):
-                platform = platform_info_jobs["platform"]
-                if platform == "azure":
-                    try:
-                        azure_config_dict = az_get_current_config(
-                            organization_id=user.get("organization_id")
-                        )
-                        credentials = {
-                            "azure": {
-                                "service_principal": {
-                                    "tenant_id": azure_config_dict["tenant_id"],
-                                    "client_id": azure_config_dict["client_id"],
-                                    "client_secret": azure_config_dict["client_secret"],
-                                    "subscription_id": azure_config_dict[
-                                        "subscription_id"
-                                    ],
-                                },
-                            }
-                        }
-                    except Exception as e:
-                        print(f"Failed to get Azure credentials: {e}")
-                        credentials = None
-                elif platform == "runpod":
-                    try:
-                        from routes.clouds.runpod.utils import rp_get_current_config
-                        rp_config = rp_get_current_config(
-                            organization_id=user.get("organization_id")
-                        )
-                        if rp_config and rp_config.get("api_key"):
-                            credentials = {
-                                "runpod": {
-                                    "api_key": rp_config.get("api_key"),
-                                }
-                            }
-                    except Exception as e:
-                        print(f"Failed to get RunPod credentials: {e}")
-                        credentials = None
-                else:
-                    credentials = None
-
-            job_records = get_cluster_job_queue(
-                actual_cluster_name, credentials=credentials
-            )
-            jobs = []
-            for record in job_records:
-                jobs.append(
-                    {
-                        "job_id": record["job_id"],
-                        "job_name": record["job_name"],
-                        "username": record["username"],
-                        "submitted_at": record["submitted_at"],
-                        "start_at": record.get("start_at"),
-                        "end_at": record.get("end_at"),
-                        "resources": record["resources"],
-                        "status": str(record["status"]),
-                        "log_path": record["log_path"],
-                    }
-                )
-        except Exception as e:
-            print(f"Warning: Failed to get jobs for cluster {cluster_name}: {e}")
-            jobs = []
-
-        # Get SSH node information if it's an SSH cluster
-        ssh_node_info = None
-        if is_ssh:
-            try:
-                # Get cached GPU resources from database instead of file
-                from routes.node_pools.utils import get_cached_gpu_resources
-
-                cached_gpu_resources = get_cached_gpu_resources(actual_cluster_name)
-                if cached_gpu_resources:
-                    ssh_node_info = {
-                        actual_cluster_name: {"gpu_resources": cached_gpu_resources}
-                    }
-            except Exception as e:
-                print(
-                    f"Warning: Failed to get SSH node info for cluster {cluster_name}: {e}"
-                )
-
-        # Get cost information for this cluster
-        cost_info = None
-        try:
-            # Get the full cost report and find this cluster's cost data
-            report = generate_cost_report()
-            if report:
-                for cluster_cost_data in report:
-                    if cluster_cost_data.get("name") == actual_cluster_name:
-                        total_cost = cluster_cost_data.get("total_cost", 0)
-                        duration = cluster_cost_data.get("duration", 0)
-                        cost_per_hour = 0
-                        if duration and duration > 0:
-                            cost_per_hour = total_cost / (
-                                duration / 3600
-                            )  # Convert seconds to hours
-
-                        cost_info = {
-                            "total_cost": total_cost,
-                            "duration": duration,
-                            "cost_per_hour": cost_per_hour,
-                            "launched_at": cluster_cost_data.get("launched_at"),
-                            "status": cluster_cost_data.get("status"),
-                            "cloud": cluster_cost_data.get("cloud"),
-                            "region": cluster_cost_data.get("region"),
-                        }
-                        break
-        except Exception as e:
-            print(f"Warning: Failed to get cost info for cluster {cluster_name}: {e}")
-            # Continue without cost info if there's an error
-
-        return {
-            "cluster": cluster_data,
-            "cluster_type": cluster_type_info,
-            "platform": platform_info,
-            "state": state,
-            "jobs": jobs,
-            "ssh_node_info": ssh_node_info,
-            "cost_info": cost_info,
-        }
 
     except HTTPException:
         raise
@@ -1265,37 +1006,9 @@ async def get_user_requests(
     Get SkyPilot requests for the current user
     """
     try:
-        requests = skypilot_tracker.get_user_requests(
-            user_id=user["id"],
-            organization_id=user["organization_id"],
-            task_type=task_type,
-            limit=limit,
+        return svc_get_user_requests(
+            user_id=user["id"], organization_id=user["organization_id"], task_type=task_type, limit=limit
         )
-
-        # Convert to dict for JSON serialization
-        result = []
-        for req in requests:
-            result.append(
-                {
-                    "id": req.id,
-                    "user_id": req.user_id,
-                    "organization_id": req.organization_id,
-                    "task_type": req.task_type,
-                    "request_id": req.request_id,
-                    "cluster_name": req.cluster_name,
-                    "status": req.status,
-                    "result": req.result,
-                    "error_message": req.error_message,
-                    "created_at": req.created_at.isoformat()
-                    if req.created_at
-                    else None,
-                    "completed_at": req.completed_at.isoformat()
-                    if req.completed_at
-                    else None,
-                }
-            )
-
-        return {"requests": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get requests: {str(e)}")
 
@@ -1309,35 +1022,9 @@ async def get_request_details(
     Get details of a specific SkyPilot request
     """
     try:
-        request = skypilot_tracker.get_request_by_id(request_id)
-
-        if not request:
-            raise HTTPException(status_code=404, detail="Request not found")
-
-        # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
-            raise HTTPException(status_code=403, detail="Access denied")
-
-        return {
-            "id": request.id,
-            "user_id": request.user_id,
-            "organization_id": request.organization_id,
-            "task_type": request.task_type,
-            "request_id": request.request_id,
-            "cluster_name": request.cluster_name,
-            "status": request.status,
-            "result": request.result,
-            "error_message": request.error_message,
-            "created_at": request.created_at.isoformat()
-            if request.created_at
-            else None,
-            "completed_at": request.completed_at.isoformat()
-            if request.completed_at
-            else None,
-        }
+        return svc_get_request_details(
+            user_id=user["id"], organization_id=user["organization_id"], request_id=request_id
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -1355,30 +1042,9 @@ async def get_request_status(
     Get the current status of a SkyPilot request (lightweight endpoint)
     """
     try:
-        request = skypilot_tracker.get_request_by_id(request_id)
-
-        if not request:
-            raise HTTPException(status_code=404, detail="Request not found")
-
-        # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
-            raise HTTPException(status_code=403, detail="Access denied")
-
-        return {
-            "request_id": request.request_id,
-            "status": request.status,
-            "task_type": request.task_type,
-            "cluster_name": request.cluster_name,
-            "created_at": request.created_at.isoformat()
-            if request.created_at
-            else None,
-            "completed_at": request.completed_at.isoformat()
-            if request.completed_at
-            else None,
-        }
+        return svc_get_request_status(
+            user_id=user["id"], organization_id=user["organization_id"], request_id=request_id
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -1398,89 +1064,14 @@ async def stream_request_logs(
     Stream logs for a specific SkyPilot request in real-time
     """
     try:
-        # First check if the request exists and user has access
-        request = skypilot_tracker.get_request_by_id(request_id)
-
-        if not request:
-            raise HTTPException(status_code=404, detail="Request not found")
-
-        # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
-            raise HTTPException(status_code=403, detail="Access denied")
-
-        def generate_logs():
-            try:
-                import queue
-                import threading
-
-                # Create a queue to pass log lines from the stream to the generator
-                log_queue = queue.Queue()
-                streaming_complete = threading.Event()
-
-                class LogCaptureStream:
-                    def __init__(self, log_queue):
-                        self.log_queue = log_queue
-
-                    def write(self, text):
-                        if text.strip():
-                            # Put the log line in the queue for immediate streaming
-                            self.log_queue.put(text.strip())
-
-                    def flush(self):
-                        pass
-
-                # Create the capture stream
-                capture_stream = LogCaptureStream(log_queue)
-
-                # Start the SkyPilot log streaming in a separate thread
-                def stream_logs():
-                    try:
-                        skypilot_tracker.get_request_logs(
-                            request_id=request_id,
-                            tail=tail,
-                            follow=follow,
-                            output_stream=capture_stream,
-                        )
-                        # Signal that streaming is complete
-                        streaming_complete.set()
-                    except Exception as e:
-                        # Put error in queue
-                        log_queue.put(f"ERROR: {str(e)}")
-                        streaming_complete.set()
-
-                # Start streaming in background thread
-                stream_thread = threading.Thread(target=stream_logs)
-                stream_thread.daemon = True
-                stream_thread.start()
-
-                # Yield log lines as they come in
-                while not streaming_complete.is_set() or not log_queue.empty():
-                    try:
-                        # Get log line with timeout to allow checking completion
-                        log_line = log_queue.get(timeout=0.1)
-                        yield f"data: {json.dumps({'log_line': str(log_line)})}\n\n"
-                    except queue.Empty:
-                        # No log line available, continue checking
-                        continue
-
-                # Update the request status to completed (don't store logs in DB)
-                skypilot_tracker.update_request_status(
-                    request_id=request_id, status="completed"
-                )
-                yield f"data: {json.dumps({'status': 'completed'})}\n\n"
-
-            except Exception as e:
-                # Update the request status if it failed
-                skypilot_tracker.update_request_status(
-                    request_id=request_id, status="failed", error_message=str(e)
-                )
-                yield f"data: {json.dumps({'error': str(e), 'status': 'failed'})}\n\n"
-
         return StreamingResponse(
-            generate_logs(),
+            svc_stream_request_logs_generator(
+                user_id=user["id"],
+                organization_id=user["organization_id"],
+                request_id=request_id,
+                tail=tail,
+                follow=follow,
+            ),
             media_type="text/plain",
             headers={
                 "Cache-Control": "no-cache",
@@ -1505,33 +1096,9 @@ async def cancel_request(
     Cancel a SkyPilot request
     """
     try:
-        # First check if the request exists and user has access
-        request = skypilot_tracker.get_request_by_id(request_id)
-
-        if not request:
-            raise HTTPException(status_code=404, detail="Request not found")
-
-        # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
-            raise HTTPException(status_code=403, detail="Access denied")
-
-        # Check if request can be cancelled
-        if request.status in ["completed", "failed", "cancelled"]:
-            raise HTTPException(
-                status_code=400, detail=f"Request is already {request.status}"
-            )
-
-        # Cancel the request
-        success = skypilot_tracker.cancel_request(request_id)
-
-        if success:
-            return {"message": f"Request {request_id} cancelled successfully"}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to cancel request")
-
+        return svc_cancel_request(
+            user_id=user["id"], organization_id=user["organization_id"], request_id=request_id
+        )
     except HTTPException:
         raise
     except Exception as e:

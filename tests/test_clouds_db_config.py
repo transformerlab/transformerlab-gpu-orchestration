@@ -74,7 +74,7 @@ def app_client(db_session) -> TestClient:
 
 
 def test_azure_save_load_set_default_and_delete(db_session):
-    from lattice.routes.clouds.azure.utils import (
+    from lattice.services.clouds.azure.utils import (
         az_save_config,
         load_azure_config,
         az_get_current_config,
@@ -137,7 +137,7 @@ def test_azure_save_load_set_default_and_delete(db_session):
 
 
 def test_azure_masked_update_and_rename(db_session):
-    from lattice.routes.clouds.azure.utils import az_save_config
+    from lattice.services.clouds.azure.utils import az_save_config
 
     org = "org_az_2"
 
@@ -180,7 +180,7 @@ def test_azure_masked_update_and_rename(db_session):
 
 
 def test_azure_verify_setup(db_session):
-    from lattice.routes.clouds.azure import utils as az
+    from lattice.services.clouds.azure import utils as az
 
     org = "org_az_verify"
     # Prepare a valid default config
@@ -204,7 +204,7 @@ def test_azure_verify_setup(db_session):
 
 
 def test_runpod_save_load_set_default_and_delete(db_session, monkeypatch, tmp_path):
-    from lattice.routes.clouds.runpod.utils import (
+    from lattice.services.clouds.runpod.utils import (
         rp_save_config,
         load_runpod_config,
         rp_set_default_config,
@@ -249,7 +249,7 @@ def test_runpod_save_load_set_default_and_delete(db_session, monkeypatch, tmp_pa
 
 
 def test_runpod_masked_update_and_display_mask(db_session):
-    from lattice.routes.clouds.runpod.utils import (
+    from lattice.services.clouds.runpod.utils import (
         rp_save_config,
         rp_get_config_for_display,
     )
@@ -282,15 +282,15 @@ def test_runpod_masked_update_and_display_mask(db_session):
 
 def test_cloud_routes_config_and_credentials(app_client, db_session, monkeypatch):
     # Use utils to create configs, then verify route GETs and default flips
-    from lattice.routes.clouds.runpod.utils import rp_save_config_with_setup
-    from lattice.routes.clouds.azure.utils import az_save_config_with_setup
+    from lattice.services.clouds.runpod.utils import rp_save_config_with_setup
+    from lattice.services.clouds.azure.utils import az_save_config_with_setup
     from lattice.db.db_models import NodePoolAccess
 
     org = _fake_user()["organization_id"]
 
     # Stub sky checks
-    import lattice.routes.clouds.runpod.utils as rp
-    import lattice.routes.clouds.azure.utils as az
+    import lattice.services.clouds.runpod.utils as rp
+    import lattice.services.clouds.azure.utils as az
     monkeypatch.setattr(rp, "rp_run_sky_check", lambda organization_id=None: (True, "ok"))
     monkeypatch.setattr(az, "az_run_sky_check", lambda: (True, "ok"))
 
@@ -410,7 +410,7 @@ def test_cloud_routes_config_and_credentials(app_client, db_session, monkeypatch
 
 
 def test_rp_setup_and_verify(monkeypatch, db_session):
-    from lattice.routes.clouds.runpod import utils as rp
+    from lattice.services.clouds.runpod import utils as rp
 
     org = "org_rp_setup"
 
@@ -440,7 +440,7 @@ def test_rp_setup_and_verify(monkeypatch, db_session):
 
 
 def test_azure_save_config_with_setup_runs_sky_check(monkeypatch, db_session):
-    from lattice.routes.clouds.azure import utils as az
+    from lattice.services.clouds.azure import utils as az
 
     org = "org_az_setup"
 
@@ -463,7 +463,7 @@ def test_azure_save_config_with_setup_runs_sky_check(monkeypatch, db_session):
 
 
 def test_azure_setup_config(monkeypatch, db_session):
-    from lattice.routes.clouds.azure import utils as az
+    from lattice.services.clouds.azure import utils as az
 
     org = "org_az_setup2"
     # Seed a valid default config

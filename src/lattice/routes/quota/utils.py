@@ -11,7 +11,7 @@ from db.db_models import (
     validate_relationships_before_save,
     validate_relationships_before_delete,
 )
-from routes.instances.utils import generate_cost_report
+from utils.core import generate_cost_report
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from utils.cluster_utils import get_cluster_platform_info
@@ -252,7 +252,7 @@ def get_current_user_quota_info(
 
             # Get team name via lazy import to avoid circular import
             try:
-                from lattice.routes.admin.teams_service import get_team
+                from lattice.services.admin.teams_service import get_team
 
                 team = get_team(db, team_id)
                 team_name = team.name if team else "Unknown Team"
