@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from typing import Optional
-from lattice.routes.auth.utils import get_current_user
-from lattice.routes.reports.utils import get_reports_summary
-from lattice.models import ReportsResponse
+from routes.auth.utils import get_current_user
+from routes.reports.utils import get_reports_summary
+from models import ReportsResponse
 
 router = APIRouter(
     prefix="/reports", dependencies=[Depends(get_current_user)], tags=["reports"]
@@ -44,7 +44,7 @@ async def get_usage_reports(
         user = get_current_user(request, response)
         user_id = user["id"]
 
-        from lattice.routes.reports.utils import get_usage_data
+        from routes.reports.utils import get_usage_data
 
         usage_data = get_usage_data(user_id, days)
 

@@ -12,8 +12,7 @@ from fastapi import (
     UploadFile,
 )
 from models import ClusterResponse, ClustersListResponse, SSHNode, NodePoolGPUResourcesResponse
-from routes.auth.api_key_auth import get_user_or_api_key, require_scope
-from lattice.routes.auth.api_key_auth import enforce_csrf
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
 from routes.auth.utils import get_current_user
 from routes.clouds.azure.utils import az_get_current_config, load_azure_config
 from routes.clouds.runpod.utils import load_runpod_config, rp_get_current_config
@@ -773,7 +772,7 @@ async def get_cluster(
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
 ):
-    from lattice.routes.node_pools.utils import get_cluster_config_from_db
+    from routes.node_pools.utils import get_cluster_config_from_db
 
     # Check if user has access to this node pool
     pool = (

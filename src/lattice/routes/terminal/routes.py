@@ -13,12 +13,12 @@ import base64
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from lattice.routes.auth.api_key_auth import get_user_or_api_key
-from lattice.routes.auth.utils import (
+from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.utils import (
     get_user_from_sealed_session,
 )
-from lattice.utils.cluster_utils import get_cluster_platform_info
-from lattice.utils.cluster_resolver import handle_cluster_name_param
+from utils.cluster_utils import get_cluster_platform_info
+from utils.cluster_resolver import handle_cluster_name_param
 import pty
 
 

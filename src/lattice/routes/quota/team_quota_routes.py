@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from config import get_db
 from db.db_models import Team
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from lattice.models import TeamQuotaRequest, TeamQuotaResponse, TeamQuotaListResponse
 from lattice.services.admin.teams_service import list_teams
 from lattice.routes.auth.utils import (
@@ -10,14 +12,32 @@ from lattice.routes.auth.utils import (
     check_organization_member,
 )
 from lattice.services.quota.team_quota_service import (
+=======
+from models import TeamQuotaRequest, TeamQuotaResponse, TeamQuotaListResponse
+from routes.admin.teams_service import list_teams
+from routes.auth.utils import (
+    check_organization_admin,
+    check_organization_member,
+)
+from routes.quota.team_quota_service import (
+>>>>>>> Stashed changes
+=======
+from models import TeamQuotaRequest, TeamQuotaResponse, TeamQuotaListResponse
+from routes.admin.teams_service import list_teams
+from routes.auth.utils import (
+    check_organization_admin,
+    check_organization_member,
+)
+from routes.quota.team_quota_service import (
+>>>>>>> Stashed changes
     list_team_quotas,
     get_team_quota_by_id,
     create_or_update_team_quota,
     delete_team_quota,
     team_quota_to_response,
 )
-from lattice.routes.quota.utils import get_organization_default_quota
-from lattice.routes.auth.api_key_auth import enforce_csrf
+from routes.quota.utils import get_organization_default_quota
+from routes.auth.api_key_auth import enforce_csrf
 
 router = APIRouter(dependencies=[Depends(enforce_csrf)])
 

@@ -11,8 +11,8 @@ from models import (
     CreateMachineSizeTemplateRequest,
     UpdateMachineSizeTemplateRequest,
 )
-from lattice.routes.auth.api_key_auth import enforce_csrf
-from lattice.routes.auth.utils import get_current_user, requires_admin
+from routes.auth.api_key_auth import enforce_csrf
+from routes.auth.utils import get_current_user, requires_admin
 
 
 router = APIRouter(

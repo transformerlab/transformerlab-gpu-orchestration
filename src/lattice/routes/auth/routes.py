@@ -57,7 +57,15 @@ async def get_allowed_scopes():
     This serves as the single source of truth for the UI and clients.
     """
     try:
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
         from lattice.services.api_keys.service import ALLOWED_SCOPES
+=======
+        from routes.api_keys.service import ALLOWED_SCOPES
+>>>>>>> Stashed changes
+=======
+        from routes.api_keys.service import ALLOWED_SCOPES
+>>>>>>> Stashed changes
 
         return {"scopes": sorted(list(ALLOWED_SCOPES))}
     except Exception as e:

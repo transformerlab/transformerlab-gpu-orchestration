@@ -15,8 +15,8 @@ from models import (
     AddTeamMemberRequest,
     AvailableUsersResponse,
 )
-from lattice.routes.auth.provider.work_os import provider as auth_provider
-from lattice.routes.quota.utils import refresh_quota_periods_for_user
+from routes.auth.provider.work_os import provider as auth_provider
+from routes.quota.utils import refresh_quota_periods_for_user
 
 
 def _team_to_response(db: Session, team: Team) -> TeamResponse:
