@@ -452,6 +452,8 @@ class ClusterPlatform(Base, ValidationMixin):
     platform = Column(String, nullable=False)
     # State of the cluster: active, terminating, etc.
     state = Column(String, nullable=True, default="active")
+    # Experiment ID from YAML submission (optional)
+    experiment_id = Column(String, nullable=True)
     # User who owns this cluster
     user_id = Column(String, nullable=False)
     # Organization the cluster belongs to
