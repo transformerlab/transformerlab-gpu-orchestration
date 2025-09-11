@@ -21,6 +21,7 @@ import Users from "../pages/Admin/Users";
 import APIKeys from "../pages/Admin/APIKeys";
 import NodeDetails from "../pages/MyNodes/NodeDetails";
 import Teams from "../pages/Admin/Teams";
+import StoragePage from "../pages/Storage";
 
 import IdentityFileManager from "../pages/Admin/IdentityFileManager";
 import LaunchHooksManager from "../pages/Admin/LaunchHooksManager";
@@ -91,6 +92,7 @@ const Dashboard: React.FC = () => {
             element={<MyClusterDetails />}
           />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/storage" element={<StoragePage />} />
           <Route path="/costs" element={<Costs />} />
           <Route path="/quota" element={<MyQuota />} />
           <Route path="/logs" element={<Logs />} />

@@ -30,7 +30,7 @@ from routes.storage_buckets.routes import router as storage_buckets_router
 from routes.ssh_config.routes import router as ssh_config_router
 from routes.container_registries.routes import router as container_registries_router
 from routes.admin.machine_size_templates_routes import router as mst_router
-
+from routes.storage_buckets.browse import router as storage_buckets_browse_router
 
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ async def lifespan(app: FastAPI):
             "COOKIE_SAMESITE=None requires COOKIE_SECURE=True for modern browsers."
         )
     yield
+
 
 # Create main app
 app = FastAPI(title="Lattice", version="1.0.0", lifespan=lifespan)
@@ -75,6 +76,7 @@ app.include_router(quota_router, prefix=api_v1_prefix)
 app.include_router(storage_buckets_router, prefix=api_v1_prefix)
 app.include_router(ssh_config_router, prefix=api_v1_prefix)
 app.include_router(container_registries_router, prefix=api_v1_prefix)
+app.include_router(storage_buckets_browse_router, prefix=api_v1_prefix)
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(

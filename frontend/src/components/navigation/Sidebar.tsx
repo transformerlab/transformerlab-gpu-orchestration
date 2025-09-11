@@ -17,8 +17,10 @@ import {
   ChartNoAxesColumnIncreasingIcon,
   BoltIcon,
   LoaderCircleIcon,
+  SquareIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
+import path from "path";
 
 interface ItemProps {
   icon: React.ReactNode;
@@ -69,7 +71,11 @@ const sidebarItems = [
     content: "My Jobs",
     path: "/dashboard/jobs",
   },
-
+  {
+    icon: <SquareIcon />,
+    content: "Storage",
+    path: "/dashboard/storage",
+  },
   {
     icon: <LoaderCircleIcon />,
     content: "Quota Report",
