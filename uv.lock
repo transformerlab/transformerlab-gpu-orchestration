@@ -28,6 +28,22 @@ wheels = [
 ]
 
 [[package]]
+name = "adlfs"
+version = "2022.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "azure-core" },
+    { name = "azure-identity" },
+    { name = "azure-storage-blob" },
+    { name = "fsspec" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2d/5a/90fcb46d2a1d1ecd1396b20f9cf51bbf6f826a2568410db8c75a07d350dc/adlfs-2022.11.1.tar.gz", hash = "sha256:ef2200244f7c4dd694bdb7e9ef346082250edb230dc2e43ebd00d3888b7ddf30", size = 42204, upload-time = "2022-11-24T02:45:16.863Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0a/e0/9c394324d76e1ee7fdffd38fc4751718e8d555ad3c901bcbce55bfa249ff/adlfs-2022.11.1-py3-none-any.whl", hash = "sha256:9e7f6ba4c262cbb19d376530ff60cf62fe43c5414aa8e74ba754f1c6a2875697", size = 25384, upload-time = "2022-11-24T02:45:14.952Z" },
+]
+
+[[package]]
 name = "aiodns"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2574,6 +2590,15 @@ wheels = [
 ]
 
 [[package]]
+name = "fsspec"
+version = "2025.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/e0/bab50af11c2d75c9c4a2a26a5254573c0bd97cea152254401510950486fa/fsspec-2025.9.0.tar.gz", hash = "sha256:19fd429483d25d28b65ec68f9f4adc16c17ea2c7c7bf54ec61360d478fb19c19", size = 304847, upload-time = "2025-09-02T19:10:49.215Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/47/71/70db47e4f6ce3e5c37a607355f80da8860a33226be640226ac52cb05ef2e/fsspec-2025.9.0-py3-none-any.whl", hash = "sha256:530dc2a2af60a414a832059574df4a6e10cce927f6f4a78209390fe38955cfb7", size = 199289, upload-time = "2025-09-02T19:10:47.708Z" },
+]
+
+[[package]]
 name = "gitdb"
 version = "4.0.12"
 source = { registry = "https://pypi.org/simple" }
@@ -3246,6 +3271,7 @@ name = "lattice"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "adlfs" },
     { name = "alembic" },
     { name = "azure-batch" },
     { name = "azure-cli" },
@@ -3272,6 +3298,7 @@ dependencies = [
     { name = "azure-mgmt-sqlvirtualmachine" },
     { name = "azure-mgmt-synapse" },
     { name = "fastapi" },
+    { name = "fsspec" },
     { name = "msal" },
     { name = "msrestazure" },
     { name = "nanoid" },
@@ -3303,6 +3330,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "adlfs", specifier = ">=2022.11.1" },
     { name = "alembic", specifier = ">=1.16.4" },
     { name = "azure-batch", specifier = "==15.0.0b2" },
     { name = "azure-cli", specifier = "==2.75.0" },
@@ -3329,6 +3357,7 @@ requires-dist = [
     { name = "azure-mgmt-sqlvirtualmachine", specifier = "==1.0.0b5" },
     { name = "azure-mgmt-synapse", specifier = "==2.1.0b5" },
     { name = "fastapi", specifier = "==0.115.7" },
+    { name = "fsspec", specifier = ">=2025.9.0" },
     { name = "msal", specifier = "==1.33.0b1" },
     { name = "msrestazure", specifier = "==0.6.4.post1" },
     { name = "nanoid", specifier = "==2.0.0" },

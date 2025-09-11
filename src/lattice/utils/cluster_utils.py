@@ -161,6 +161,7 @@ def create_cluster_platform_entry(
     user_id: str,
     organization_id: str,
     user_info: Optional[Dict[str, Any]] = None,
+    experiment_id: Optional[str] = None,
     db: Optional[Session] = None,
 ) -> str:
     """
@@ -172,6 +173,7 @@ def create_cluster_platform_entry(
         user_id: User ID
         organization_id: Organization ID
         user_info: Optional user info dictionary
+        experiment_id: Optional experiment ID from YAML submission
         db: Optional database session
 
     Returns:
@@ -210,6 +212,7 @@ def create_cluster_platform_entry(
             user_id=user_id,
             organization_id=organization_id,
             user_info=user_info or {},
+            experiment_id=experiment_id,
         )
 
         # Validate relationships before saving

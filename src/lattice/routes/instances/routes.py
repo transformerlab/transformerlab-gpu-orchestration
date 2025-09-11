@@ -183,6 +183,7 @@ async def launch_instance(
     storage_bucket_ids: Optional[str] = Form(None),
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
+    experiment_id: Optional[str] = Form(None),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
@@ -235,6 +236,7 @@ async def launch_instance(
             "storage_bucket_ids": storage_bucket_ids,
             "node_pool_name": node_pool_name,
             "docker_image_id": docker_image_id,
+            "experiment_id": experiment_id,
         }
 
         # Override with YAML values for all form parameters
@@ -266,6 +268,7 @@ async def launch_instance(
         storage_bucket_ids = final_config["storage_bucket_ids"]
         node_pool_name = final_config["node_pool_name"]
         docker_image_id = final_config["docker_image_id"]
+        experiment_id = final_config["experiment_id"]
 
         file_mounts = None
         python_filename = None
@@ -629,6 +632,7 @@ async def launch_instance(
             user_id=user_id,
             organization_id=organization_id,
             user_info=cluster_user_info,
+            experiment_id=experiment_id,
         )
 
         # Handle disk_space parameter for all cloud providers
