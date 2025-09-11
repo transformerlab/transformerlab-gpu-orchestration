@@ -78,3 +78,4 @@ frontend/src/sample_skypilot_script.py
 src/lattice/uploads/
 tests/.tmp_home
 test.yaml
+.coverage
