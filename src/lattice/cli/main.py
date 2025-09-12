@@ -111,7 +111,7 @@ def destroy_instance(
 def info_instance(
     instance_name: str = typer.Argument(..., help="Name of the instance to get information about"),
 ):
-    """Get comprehensive information about a specific instance instance."""
+    """Get comprehensive information about a specific instance."""
     info_instance_command(console, instance_name)
 
 
