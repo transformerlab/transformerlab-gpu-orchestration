@@ -63,14 +63,15 @@ const SSHConfigPage: React.FC = () => {
 
   // Check if this is for configuring an existing pool or adding a new one
   const isConfigureMode = searchParams.get("mode") === "configure";
-  const initialPoolName = searchParams.get("poolName") || "Node Pool";
+  const initialPoolName = isConfigureMode
+    ? searchParams.get("poolName") || "Node Pool"
+    : "";
 
   const [clusters, setClusters] = useState<string[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const [showAddNodeModal, setShowAddNodeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
 
   // Form states
   const [newClusterName, setNewClusterName] = useState(initialPoolName);
@@ -78,6 +79,12 @@ const SSHConfigPage: React.FC = () => {
   const [newClusterIdentityFile, setNewClusterIdentityFile] =
     useState<string>("");
   const [newClusterPassword, setNewClusterPassword] = useState("");
+
+  // Validation states
+  const [nameValidationError, setNameValidationError] = useState<string | null>(
+    null
+  );
+  const [isValidatingName, setIsValidatingName] = useState(false);
 
   const [newNodeIp, setNewNodeIp] = useState("");
   const [newNodeUser, setNewNodeUser] = useState("");
@@ -207,7 +214,98 @@ const SSHConfigPage: React.FC = () => {
     }
   };
 
+  // Validate pool name format
+  const validatePoolNameFormat = (name: string): string | null => {
+    if (!name || !name.trim()) {
+      return "Pool name cannot be empty";
+    }
+    if (name.includes(" ")) {
+      return "Pool name cannot contain spaces";
+    }
+    if (name[0] && name[0].match(/\d/)) {
+      return "Pool name cannot start with a number";
+    }
+    return null;
+  };
+
+  // Check if pool name exists in database
+  const validatePoolNameExists = async (
+    name: string
+  ): Promise<string | null> => {
+    if (!name || !name.trim()) {
+      return null; // Let format validation handle empty names
+    }
+
+    try {
+      setIsValidatingName(true);
+      const response = await apiFetch(
+        buildApiUrl(
+          `node-pools/ssh-node-pools/check-name/${encodeURIComponent(name)}`
+        ),
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        return null; // Name is available
+      } else {
+        const errorData = await response.json();
+        return errorData.detail || "Pool name is not available";
+      }
+    } catch (err) {
+      console.error("Error validating pool name:", err);
+      return "Error validating pool name";
+    } finally {
+      setIsValidatingName(false);
+    }
+  };
+
+  // Handle pool name change with validation
+  const handlePoolNameChange = async (name: string) => {
+    setNewClusterName(name);
+    setNameValidationError(null);
+
+    // First check format validation
+    const formatError = validatePoolNameFormat(name);
+    if (formatError) {
+      setNameValidationError(formatError);
+      return;
+    }
+
+    // If format is valid, check if name exists (with debounce)
+    if (name.trim()) {
+      const existsError = await validatePoolNameExists(name);
+      if (existsError) {
+        setNameValidationError(existsError);
+      }
+    }
+  };
+
   const createCluster = async () => {
+    // Validate name before submission
+    const formatError = validatePoolNameFormat(newClusterName);
+    if (formatError) {
+      setNameValidationError(formatError);
+      addNotification({
+        type: "danger",
+        message: formatError,
+      });
+      return;
+    }
+
+    // Check if name exists
+    const existsError = await validatePoolNameExists(newClusterName);
+    if (existsError) {
+      setNameValidationError(existsError);
+      addNotification({
+        type: "danger",
+        message: existsError,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       const formData = new FormData();
@@ -240,6 +338,7 @@ const SSHConfigPage: React.FC = () => {
         setNewClusterUser("");
         setNewClusterIdentityFile("");
         setNewClusterPassword("");
+        setNameValidationError(null);
       } else {
         const errorData = await response.json();
         addNotification({
@@ -414,7 +513,6 @@ const SSHConfigPage: React.FC = () => {
     }
   };
 
-
   if (loading) {
     return (
       <PageWithTitle
@@ -457,9 +555,21 @@ const SSHConfigPage: React.FC = () => {
                   <FormLabel>Node Pool Name</FormLabel>
                   <Input
                     value={newClusterName}
-                    onChange={(e) => setNewClusterName(e.target.value)}
+                    onChange={(e) => handlePoolNameChange(e.target.value)}
                     placeholder="my-node-pool"
+                    error={!!nameValidationError}
+                    endDecorator={
+                      isValidatingName ? <CircularProgress size="sm" /> : null
+                    }
                   />
+                  {nameValidationError && (
+                    <Typography
+                      level="body-xs"
+                      sx={{ color: "danger.500", mt: 0.5 }}
+                    >
+                      {nameValidationError}
+                    </Typography>
+                  )}
                 </FormControl>
                 <FormControl sx={{ flex: 1 }}>
                   <FormLabel>Default User (optional)</FormLabel>
@@ -503,7 +613,12 @@ const SSHConfigPage: React.FC = () => {
               <Button
                 startDecorator={<Save size={16} />}
                 onClick={createCluster}
-                disabled={!newClusterName || loading}
+                disabled={
+                  !newClusterName ||
+                  loading ||
+                  !!nameValidationError ||
+                  isValidatingName
+                }
               >
                 Create Node Pool
               </Button>
@@ -524,7 +639,6 @@ const SSHConfigPage: React.FC = () => {
               </Typography>
               {selectedCluster && (
                 <Box sx={{ display: "flex", gap: 1 }}>
-                  
                   <Button
                     startDecorator={<Plus size={16} />}
                     size="sm"
@@ -613,8 +727,6 @@ const SSHConfigPage: React.FC = () => {
             )}
           </Card>
         )}
-
-        
 
         {/* Add Node Modal */}
         <Modal
@@ -754,7 +866,9 @@ const SSHConfigPage: React.FC = () => {
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 <Button
                   variant="outlined"
-                  onClick={() => setAllowedTeamIds(availableTeams.map((t) => t.id))}
+                  onClick={() =>
+                    setAllowedTeamIds(availableTeams.map((t) => t.id))
+                  }
                 >
                   Allow All
                 </Button>

@@ -490,7 +490,45 @@ async def create_cluster(
     memory_gb: Optional[str] = Form(None),
     logged_user: dict = Depends(get_user_or_api_key),
     __: dict = Depends(require_scope("nodepools:write")),
+    db: Session = Depends(get_db),
 ):
+    # Validate name format
+    if not cluster_name or not cluster_name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Pool name cannot be empty"
+        )
+    
+    # Check for spaces
+    if " " in cluster_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Pool name cannot contain spaces"
+        )
+    
+    # Check if starts with number
+    if cluster_name[0].isdigit():
+        raise HTTPException(
+            status_code=400,
+            detail="Pool name cannot start with a number"
+        )
+    
+    # Normalize name for storage/uniqueness checks
+    normalized_name = secure_filename(cluster_name)
+
+    # Check if name already exists (global uniqueness)
+    existing_pool = (
+        db.query(SSHNodePoolDB)
+        .filter(SSHNodePoolDB.name == normalized_name)
+        .first()
+    )
+    
+    if existing_pool:
+        raise HTTPException(
+            status_code=409,
+            detail="Name not available. Please choose a different name."
+        )
+
     identity_file_path_final = None
     if identity_file and identity_file.filename:
         file_content = await identity_file.read()
@@ -510,7 +548,8 @@ async def create_cluster(
         if memory_gb:
             resources["memory_gb"] = memory_gb
 
-    cluster_name = secure_filename(cluster_name)
+    # Use normalized name for creation
+    cluster_name = normalized_name
     create_cluster_in_pools(
         cluster_name,
         user,
@@ -521,6 +560,50 @@ async def create_cluster(
         logged_user["organization_id"],
     )
     return ClusterResponse(cluster_name=cluster_name, nodes=[])
+
+
+@router.get("/ssh-node-pools/check-name/{pool_name}")
+async def check_pool_name_exists(
+    pool_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+    db: Session = Depends(get_db),
+):
+    """Check if a pool name already exists and validate name format."""
+    # Validate name format
+    if not pool_name or not pool_name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Pool name cannot be empty"
+        )
+    
+    # Check for spaces
+    if " " in pool_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Pool name cannot contain spaces"
+        )
+    
+    # Check if starts with number
+    if pool_name[0].isdigit():
+        raise HTTPException(
+            status_code=400,
+            detail="Pool name cannot start with a number"
+        )
+    
+    # Normalize and check if name already exists (global uniqueness)
+    normalized_name = secure_filename(pool_name)
+    existing_pool = (
+        db.query(SSHNodePoolDB)
+        .filter(SSHNodePoolDB.name == normalized_name)
+        .first()
+    )
+    
+    if existing_pool:
+        raise HTTPException(status_code=409, detail="Name not available. Please choose a different name.")
+    
+    return {"available": True, "message": "Pool name is available"}
 
 
 @router.get("/ssh-node-pools/identity-files")
