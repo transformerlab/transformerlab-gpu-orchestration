@@ -252,7 +252,7 @@ def get_current_user_quota_info(
 
             # Get team name via lazy import to avoid circular import
             try:
-                from lattice.services.admin.teams_service import get_team
+                from services.admin.teams_service import get_team
 
                 team = get_team(db, team_id)
                 team_name = team.name if team else "Unknown Team"
@@ -388,7 +388,7 @@ def get_organization_default_quota(
 
 def refresh_quota_periods_for_organization(db: Session, organization_id: str) -> None:
     """Refresh quota periods for all users in an organization with their current quota limits"""
-    from lattice.routes.auth.provider.work_os import provider as auth_provider
+    from routes.auth.provider.work_os import provider as auth_provider
 
     try:
         # Get all users in the organization
@@ -423,7 +423,7 @@ def populate_user_quotas_for_organization(
     db: Session, organization_id: str
 ) -> List[OrganizationQuota]:
     """Populate user quotas for all users in an organization"""
-    from lattice.routes.auth.provider.work_os import provider as auth_provider
+    from routes.auth.provider.work_os import provider as auth_provider
 
     try:
         # Get organization members

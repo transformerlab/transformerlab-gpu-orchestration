@@ -14,7 +14,7 @@ import json
 import queue
 import threading
 from werkzeug.utils import secure_filename
-from lattice.models import (
+from models import (
     JobQueueResponse,
     JobLogsResponse,
     JobRecord,

@@ -5,14 +5,14 @@ from datetime import datetime
 
 from config import get_db
 from db.db_models import StorageBucket, validate_relationships_before_save
-from lattice.models import (
+from models import (
     StorageBucketResponse,
     CreateStorageBucketRequest,
     UpdateStorageBucketRequest,
     StorageBucketListResponse,
 )
-from lattice.routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
-from lattice.routes.auth.utils import get_current_user
+from routes.auth.api_key_auth import get_user_or_api_key, require_scope, enforce_csrf
+from routes.auth.utils import get_current_user
 
 router = APIRouter(
     prefix="/storage-buckets",
