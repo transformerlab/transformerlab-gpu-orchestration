@@ -14,7 +14,6 @@ import {
   StretchHorizontalIcon,
   GripHorizontalIcon,
   CircleDotIcon,
-  ChartNoAxesColumnIncreasingIcon,
   BoltIcon,
   LoaderCircleIcon,
   SquareIcon,
@@ -80,11 +79,6 @@ const sidebarItems = [
     icon: <LoaderCircleIcon />,
     content: "Quota Report",
     path: "/dashboard/costs",
-  },
-  {
-    icon: <ChartNoAxesColumnIncreasingIcon />,
-    content: "Reports",
-    path: "/dashboard/reports",
   },
 ];
 

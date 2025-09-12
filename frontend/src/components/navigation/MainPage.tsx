@@ -15,7 +15,7 @@ import Nodes from "../pages/NodePools";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Jobs from "../pages/Jobs";
-import Reports from "../pages/Reports";
+// import Reports from "../pages/Reports";
 import MyClusters from "../pages/MyClusters";
 import Users from "../pages/Admin/Users";
 import APIKeys from "../pages/Admin/APIKeys";
@@ -97,7 +97,7 @@ const Dashboard: React.FC = () => {
           <Route path="/quota" element={<MyQuota />} />
           <Route path="/logs" element={<Logs />} />
 
-          <Route path="/reports" element={<Reports />} />
+          {/* <Route path="/reports" element={<Reports />} /> */}
           {/* Admin routes */}
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/api-keys" element={<APIKeys />} />
