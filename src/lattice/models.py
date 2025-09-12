@@ -260,6 +260,16 @@ class OrganizationUserUsageResponse(BaseModel):
     user_breakdown: List[UserUsageBreakdown]
 
 
+class OrganizationUserUsageSummaryResponse(BaseModel):
+    organization_id: str
+    period_start: str
+    period_end: str
+    quota_per_user: float
+    total_users: int
+    total_organization_usage: float
+    user_breakdown: List[UserUsageBreakdown]
+
+
 class GPUUsageLogResponse(BaseModel):
     id: str
     organization_id: str
