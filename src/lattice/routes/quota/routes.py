@@ -177,6 +177,31 @@ async def get_organization_usage(
             display_name = get_display_name_from_actual(log.cluster_name)
             cluster_display_name = display_name if display_name else log.cluster_name
 
+            # Calculate duration in hours
+            duration_hours = None
+            if log.duration_seconds is not None:
+                duration_hours = log.duration_seconds / 3600.0
+            elif log.end_time is not None:
+                # Calculate from start and end times if duration_seconds is not set
+                duration_seconds = (log.end_time - log.start_time).total_seconds()
+                duration_hours = duration_seconds / 3600.0
+
+            # Map cloud provider values to frontend-expected values
+            def map_cloud_provider(cloud_provider):
+                if not cloud_provider:
+                    return "direct"
+                cloud_lower = cloud_provider.lower()
+                if cloud_lower in ["azure"]:
+                    return "azure"
+                elif cloud_lower in ["runpod"]:
+                    return "runpod"
+                elif cloud_lower in ["gcp", "google", "googlecloud"]:
+                    return "gcp"
+                elif cloud_lower in ["aws", "amazon"]:
+                    return "aws"  # Frontend will show default icon for aws
+                else:
+                    return "direct"
+
             recent_usage.append(
                 GPUUsageLogResponse(
                     id=log.id,
@@ -190,8 +215,9 @@ async def get_organization_usage(
                     start_time=log.start_time.isoformat(),
                     end_time=log.end_time.isoformat() if log.end_time else None,
                     duration_seconds=log.duration_seconds,
+                    duration_hours=duration_hours,
                     instance_type=log.instance_type,
-                    cloud_provider=log.cloud_provider,
+                    cloud_provider=map_cloud_provider(log.cloud_provider),
                     region=log.region,
                     cost_estimate=log.cost_estimate,
                 )
@@ -390,6 +416,31 @@ async def get_all_organization_usage(
             display_name = get_display_name_from_actual(log.cluster_name)
             cluster_display_name = display_name if display_name else log.cluster_name
 
+            # Calculate duration in hours
+            duration_hours = None
+            if log.duration_seconds is not None:
+                duration_hours = log.duration_seconds / 3600.0
+            elif log.end_time is not None:
+                # Calculate from start and end times if duration_seconds is not set
+                duration_seconds = (log.end_time - log.start_time).total_seconds()
+                duration_hours = duration_seconds / 3600.0
+
+            # Map cloud provider values to frontend-expected values
+            def map_cloud_provider(cloud_provider):
+                if not cloud_provider:
+                    return "direct"
+                cloud_lower = cloud_provider.lower()
+                if cloud_lower in ["azure"]:
+                    return "azure"
+                elif cloud_lower in ["runpod"]:
+                    return "runpod"
+                elif cloud_lower in ["gcp", "google", "googlecloud"]:
+                    return "gcp"
+                elif cloud_lower in ["aws", "amazon"]:
+                    return "aws"  # Frontend will show default icon for aws
+                else:
+                    return "direct"
+
             recent_usage.append(
                 GPUUsageLogResponse(
                     id=log.id,
@@ -403,8 +454,9 @@ async def get_all_organization_usage(
                     start_time=log.start_time.isoformat(),
                     end_time=log.end_time.isoformat() if log.end_time else None,
                     duration_seconds=log.duration_seconds,
+                    duration_hours=duration_hours,
                     instance_type=log.instance_type,
-                    cloud_provider=log.cloud_provider,
+                    cloud_provider=map_cloud_provider(log.cloud_provider),
                     region=log.region,
                     cost_estimate=log.cost_estimate,
                 )
