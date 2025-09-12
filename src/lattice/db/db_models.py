@@ -13,7 +13,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.sql import func
-from db.base import Base
+from lattice.db.base import Base
 import secrets
 import hashlib
 from datetime import datetime
