@@ -248,7 +248,27 @@ class UserUsageBreakdown(BaseModel):
     usage_percentage: float
 
 
+class SimpleUserUsageBreakdown(BaseModel):
+    user_id: str
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    credits_used: float
+    credits_limit: float
+    credits_remaining: float
+    usage_percentage: float
+
+
 class OrganizationUserUsageResponse(BaseModel):
+    organization_id: str
+    period_start: str
+    period_end: str
+    quota_per_user: float
+    total_users: int
+    total_organization_usage: float
+    user_breakdown: List[SimpleUserUsageBreakdown]
+
+
+class OrganizationUserUsageByClusterResponse(BaseModel):
     organization_id: str
     cluster_name: str
     node_pool_name: str
@@ -257,16 +277,6 @@ class OrganizationUserUsageResponse(BaseModel):
     quota_per_user: float
     total_users: int
     total_active_clusters: int
-    user_breakdown: List[UserUsageBreakdown]
-
-
-class OrganizationUserUsageSummaryResponse(BaseModel):
-    organization_id: str
-    period_start: str
-    period_end: str
-    quota_per_user: float
-    total_users: int
-    total_organization_usage: float
     user_breakdown: List[UserUsageBreakdown]
 
 

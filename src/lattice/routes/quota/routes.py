@@ -15,7 +15,7 @@ from models import (
     GPUUsageLogResponse,
     QuotaUsageResponse,
     OrganizationUserUsageResponse,
-    OrganizationUserUsageSummaryResponse,
+    OrganizationUserUsageByClusterResponse,
     UserQuotaResponse,
     UpdateUserQuotaRequest,
     UserQuotaListResponse,
@@ -286,7 +286,7 @@ async def get_usage_summary(
 
 @router.get(
     "/organization/{organization_id}/users",
-    response_model=OrganizationUserUsageSummaryResponse,
+    response_model=OrganizationUserUsageResponse,
 )
 async def get_organization_user_usage(
     organization_id: str,
@@ -306,7 +306,7 @@ async def get_organization_user_usage(
 
 @router.get(
     "/organization/{organization_id}/users/cluster/{cluster_name}",
-    response_model=OrganizationUserUsageResponse,
+    response_model=OrganizationUserUsageByClusterResponse,
 )
 async def get_organization_user_usage_by_cluster(
     organization_id: str,
