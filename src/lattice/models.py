@@ -292,6 +292,7 @@ class GPUUsageLogResponse(BaseModel):
     start_time: str
     end_time: Optional[str] = None
     duration_seconds: Optional[float] = None
+    duration_hours: Optional[float] = None
     instance_type: Optional[str] = None
     cloud_provider: Optional[str] = None
     region: Optional[str] = None
