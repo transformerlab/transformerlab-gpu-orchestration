@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
-from lattice.routes.auth.api_key_auth import get_user_or_api_key
-from lattice.routes.auth.api_key_auth import enforce_csrf
+from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import enforce_csrf
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from lattice.services.api_keys.service import APIKeyService
+from services.api_keys.service import APIKeyService
 
 
 class CreateAPIKeyRequest(BaseModel):

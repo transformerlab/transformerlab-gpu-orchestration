@@ -7,13 +7,13 @@ from models import (
     SendInvitationRequest,
     UpdateMemberRoleRequest,
 )
-from lattice.routes.auth.utils import (
+from routes.auth.utils import (
     get_current_user,
     check_organization_admin,
     check_organization_member,
 )
-from lattice.services.admin import admin_service as svc
-from lattice.routes.auth.api_key_auth import enforce_csrf
+from services.admin import admin_service as svc
+from routes.auth.api_key_auth import enforce_csrf
 
 router = APIRouter(prefix="/admin/orgs", tags=["admin"], dependencies=[Depends(enforce_csrf)])
 

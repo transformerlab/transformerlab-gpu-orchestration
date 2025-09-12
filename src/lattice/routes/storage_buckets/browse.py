@@ -18,13 +18,13 @@ from pydantic import BaseModel, Field
 
 from config import get_db
 from db.db_models import StorageBucket
-from lattice.routes.auth.api_key_auth import (
+from routes.auth.api_key_auth import (
     get_user_or_api_key,
     require_scope,
     enforce_csrf,
 )
-from lattice.routes.auth.utils import get_current_user
-from lattice.routes.clouds.azure.utils import az_get_current_config
+from routes.auth.utils import get_current_user
+from routes.clouds.azure.utils import az_get_current_config
 
 router = APIRouter(
     prefix="/storage-buckets",

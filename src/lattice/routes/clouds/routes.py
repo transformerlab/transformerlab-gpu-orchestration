@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel
 
-from ..auth.api_key_auth import get_user_or_api_key
-from lattice.routes.auth.api_key_auth import enforce_csrf
+from routes.auth.api_key_auth import get_user_or_api_key
+from routes.auth.api_key_auth import enforce_csrf
 from .azure.utils import (
     az_verify_setup,
     az_get_instance_types,

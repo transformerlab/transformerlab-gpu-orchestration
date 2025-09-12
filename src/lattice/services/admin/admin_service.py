@@ -9,7 +9,7 @@ from models import (
     SendInvitationRequest,
     UpdateMemberRoleRequest,
 )
-from lattice.routes.auth.provider.work_os import provider as auth_provider
+from routes.auth.provider.work_os import provider as auth_provider
 
 
 def _is_user_admin(role) -> bool:

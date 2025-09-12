@@ -5,7 +5,7 @@ from config import AUTH_COOKIE_PASSWORD, COOKIE_SECURE, COOKIE_SAMESITE
 import secrets
 from config import CSRF_ENABLED
 import os
-from lattice.routes.auth.provider.work_os import provider as auth_provider
+from routes.auth.provider.work_os import provider as auth_provider
 
 def get_frontend_url(request: Request) -> str:
     """
