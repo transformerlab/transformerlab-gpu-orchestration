@@ -565,9 +565,7 @@ const Pools: React.FC = () => {
                 startDecorator={<Server size={16} />}
                 onClick={() => {
                   setOpenAdd(false);
-                  navigate(
-                    `/dashboard/admin/ssh-config?mode=add&poolName=new-node-pool`
-                  );
+                  navigate(`/dashboard/admin/ssh-config?mode=add`);
                 }}
               >
                 Create Direct Connect Node Pool
