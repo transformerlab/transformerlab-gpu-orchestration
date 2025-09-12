@@ -15,6 +15,7 @@ from lattice.models import (
     GPUUsageLogResponse,
     QuotaUsageResponse,
     OrganizationUserUsageResponse,
+    OrganizationUserUsageSummaryResponse,
     UserQuotaResponse,
     UpdateUserQuotaRequest,
     UserQuotaListResponse,
@@ -285,7 +286,7 @@ async def get_usage_summary(
 
 @router.get(
     "/organization/{organization_id}/users",
-    response_model=OrganizationUserUsageResponse,
+    response_model=OrganizationUserUsageSummaryResponse,
 )
 async def get_organization_user_usage(
     organization_id: str,
