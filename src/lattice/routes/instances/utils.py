@@ -152,8 +152,7 @@ def launch_cluster_with_skypilot(
     credentials: Optional[dict] = None,
 ):
     try:
-        # RunPod no longer requires global setup; credentials are passed directly to SkyPilot
-
+        storage_mounts = {}
         if cloud and cloud.lower() == "ssh":
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
             from routes.node_pools.utils import (
@@ -246,6 +245,13 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
+        if envs:
+            envs["AWS_PROFILE"] = os.getenv("AWS_PROFILE", "transformerlab-s3")
+        else:
+            envs = {
+                "AWS_PROFILE": os.getenv("AWS_PROFILE", "transformerlab-s3"),
+            }
+
         name = "lattice-task-setup"
 
         task = sky.Task(
@@ -271,7 +277,6 @@ def launch_cluster_with_skypilot(
                 )
 
                 # Convert buckets to sky.Storage objects
-                storage_mounts = {}
                 mode_map = {
                     "MOUNT": sky.StorageMode.MOUNT,
                     "COPY": sky.StorageMode.COPY,
@@ -311,6 +316,16 @@ def launch_cluster_with_skypilot(
 
                     storage_mounts[bucket.remote_path] = storage_obj
 
+                # Add mandatory transformerlab bucket
+                transformerlab_bucket = sky.Storage(
+                    name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+                    mode=sky.StorageMode.MOUNT,
+                    source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+                    persistent=True,
+                )
+                storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
+                    transformerlab_bucket
+                )
                 # Set storage mounts on the task
                 task.set_storage_mounts(storage_mounts)
 
@@ -318,6 +333,22 @@ def launch_cluster_with_skypilot(
                 print(f"[SkyPilot] Warning: Failed to process storage buckets: {e}")
             finally:
                 db.close()
+        else:
+            # Add mandatory transformerlab bucket
+            transformerlab_bucket = sky.Storage(
+                name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+                mode=sky.StorageMode.MOUNT,
+                source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+                persistent=True,
+            )
+            storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
+                transformerlab_bucket
+            )
+            # Set storage mounts on the task
+            task.set_storage_mounts(storage_mounts)
+            print(
+                f"[SkyPilot] Added mandatory transformerlab bucket: {transformerlab_bucket}"
+            )
 
         if file_mounts:
             task.set_file_mounts(file_mounts)
@@ -609,6 +640,7 @@ except Exception as e:
             if output_text:
                 lines = [ln.strip() for ln in output_text.splitlines() if ln.strip()]
                 for ln in reversed(lines):
+                    print(f"[SkyPilot] Output text: {ln}")
                     if ln.startswith("{") and ln.endswith("}"):
                         try:
                             result_data = json.loads(ln)
@@ -624,7 +656,11 @@ except Exception as e:
                 # Fallback: extract request id from 'REQUEST ID: <id>' line
                 try:
                     import re
-                    m = re.search(r"REQUEST ID:\s*([0-9a-fA-F\-]{36}|[A-Za-z0-9_\-]{8,})", output_text)
+
+                    m = re.search(
+                        r"REQUEST ID:\s*([0-9a-fA-F\-]{36}|[A-Za-z0-9_\-]{8,})",
+                        output_text,
+                    )
                     if m:
                         return m.group(1)
                 except Exception:
@@ -657,6 +693,8 @@ def _launch_cluster_worker(**params):
     This ensures complete isolation from thread-local storage.
     """
     return launch_cluster_with_skypilot(**params)
+
+
 def determine_actual_cloud_from_skypilot_status(cluster_name: str) -> Optional[str]:
     """
     Determine which cloud was actually selected by SkyPilot by examining the cluster status.
@@ -743,9 +781,8 @@ def stop_cluster_with_skypilot(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
-                    rp_config = rp_get_current_config(
-                        organization_id=organization_id
-                    )
+
+                    rp_config = rp_get_current_config(organization_id=organization_id)
                     if rp_config and rp_config.get("api_key"):
                         credentials = {
                             "runpod": {
@@ -817,9 +854,8 @@ def down_cluster_with_skypilot(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
-                    rp_config = rp_get_current_config(
-                        organization_id=organization_id
-                    )
+
+                    rp_config = rp_get_current_config(organization_id=organization_id)
                     if rp_config and rp_config.get("api_key"):
                         credentials = {
                             "runpod": {
