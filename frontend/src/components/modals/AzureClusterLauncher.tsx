@@ -102,6 +102,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   });
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [templates, setTemplates] = useState<any[]>([]);
@@ -386,6 +387,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setDiskSpace("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
+    setNumNodes("1");
     setSelectedTemplateId("");
     setShowAdvanced(false);
     setSelectedDockerImageId("");
@@ -457,6 +459,12 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         formData.append("use_spot", useSpot.toString());
         if (idleMinutesToAutostop) {
           formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
+        }
+
+        // Only include num_nodes if > 1
+        const parsedNumNodes = parseInt(numNodes || "1", 10);
+        if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+          formData.append("num_nodes", String(parsedNumNodes));
         }
 
         if (selectedDockerImageId)
@@ -627,6 +635,20 @@ disk_space: 100`}
                           onChange={(e) => setClusterName(e.target.value)}
                           placeholder="my-azure-cluster"
                           required
+                        />
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel>Number of Nodes</FormLabel>
+                        <Input
+                          value={numNodes}
+                          onChange={(e) => setNumNodes(e.target.value)}
+                          placeholder="1"
+                          slotProps={{
+                            input: {
+                              type: "number",
+                              min: 1,
+                            },
+                          }}
                         />
                       </FormControl>
 

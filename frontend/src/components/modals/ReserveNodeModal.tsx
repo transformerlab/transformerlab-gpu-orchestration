@@ -61,6 +61,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
   const [diskSpace, setDiskSpace] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
@@ -238,6 +239,11 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
         if (memory) formData.append("memory", memory);
         if (accelerators) formData.append("accelerators", accelerators);
         if (diskSpace) formData.append("disk_space", diskSpace);
+        // Only include num_nodes if > 1
+        const parsedNumNodes = parseInt(numNodes || "1", 10);
+        if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+          formData.append("num_nodes", String(parsedNumNodes));
+        }
         if (selectedDockerImageId)
           formData.append("docker_image_id", selectedDockerImageId);
         formData.append("use_spot", "false");
@@ -527,6 +533,20 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                             },
                           }}
                           disabled={typeof tpl.disk_space !== "undefined"}
+                        />
+                      </FormControl>
+                      <FormControl sx={{ mb: 2 }}>
+                        <FormLabel>Number of Nodes</FormLabel>
+                        <Input
+                          value={numNodes}
+                          onChange={(e) => setNumNodes(e.target.value)}
+                          placeholder="1"
+                          slotProps={{
+                            input: {
+                              type: "number",
+                              min: 1,
+                            },
+                          }}
                         />
                       </FormControl>
                     </Box>
