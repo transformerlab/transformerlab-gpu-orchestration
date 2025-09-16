@@ -379,6 +379,61 @@ disk_space: 100`}
               />
             </FormControl>
 
+            {/* Setup Command (moved out of Advanced) */}
+            <FormControl>
+              <FormLabel>Setup Command (optional)</FormLabel>
+              <Textarea
+                value={setup}
+                onChange={(e) => setSetup(e.target.value)}
+                placeholder="pip install torch transformers"
+                minRows={2}
+              />
+            </FormControl>
+
+            {/* Docker Image (moved out of Advanced) */}
+            <Card variant="outlined">
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Docker Configuration (Optional)
+              </Typography>
+              <Stack spacing={2}>
+                <FormControl>
+                  <FormLabel>Docker Image</FormLabel>
+                  {loadingDockerImages ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading docker images...
+                    </Typography>
+                  ) : dockerImages.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No docker images configured. You can add them in Admin
+                      &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedDockerImageId}
+                      onChange={(_, value) =>
+                        setSelectedDockerImageId(value || "")
+                      }
+                      placeholder="Select a docker image (optional)"
+                    >
+                      {dockerImages.map((image) => (
+                        <Option key={image.id} value={image.id}>
+                          {image.name} ({image.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default RunPod image. Configure images in Admin &gt;
+                    Private Container Registry.
+                  </Typography>
+                </FormControl>
+              </Stack>
+            </Card>
+
             {/* Template selector - moved down */}
             <FormControl>
               <FormLabel>Template (optional)</FormLabel>
@@ -414,58 +469,7 @@ disk_space: 100`}
             {/* Advanced fields - only show when advanced button is clicked and no template is selected */}
             {showAdvanced && !selectedTemplateId && (
               <>
-                <FormControl>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setup}
-                    onChange={(e) => setSetup(e.target.value)}
-                    placeholder="pip install torch transformers"
-                    minRows={2}
-                  />
-                </FormControl>
-
-                <Card variant="outlined">
-                  <Typography level="title-sm" sx={{ mb: 2 }}>
-                    Docker Configuration (Optional)
-                  </Typography>
-                  <Stack spacing={2}>
-                    <FormControl>
-                      <FormLabel>Docker Image</FormLabel>
-                      {loadingDockerImages ? (
-                        <Typography level="body-sm" color="neutral">
-                          Loading docker images...
-                        </Typography>
-                      ) : dockerImages.length === 0 ? (
-                        <Typography level="body-sm" color="warning">
-                          No docker images configured. You can add them in Admin
-                          &gt; Private Container Registry.
-                        </Typography>
-                      ) : (
-                        <Select
-                          value={selectedDockerImageId}
-                          onChange={(_, value) =>
-                            setSelectedDockerImageId(value || "")
-                          }
-                          placeholder="Select a docker image (optional)"
-                        >
-                          {dockerImages.map((image) => (
-                            <Option key={image.id} value={image.id}>
-                              {image.name} ({image.image_tag})
-                            </Option>
-                          ))}
-                        </Select>
-                      )}
-                      <Typography
-                        level="body-xs"
-                        sx={{ mt: 0.5, color: "text.secondary" }}
-                      >
-                        Use a Docker image as runtime environment. Leave empty
-                        to use default RunPod image. Configure images in Admin
-                        &gt; Private Container Registry.
-                      </Typography>
-                    </FormControl>
-                  </Stack>
-                </Card>
+                {/* Setup Command and Docker Image moved above */}
 
                 <FormControl required>
                   <FormLabel>GPU Type</FormLabel>
