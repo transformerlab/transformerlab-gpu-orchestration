@@ -172,7 +172,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     }
   }, [open, user?.organization_id]);
 
-  // Recompute estimated cost when instance type/region change
+  // Recompute estimated cost when instance type/region/nodes change
   useEffect(() => {
     const compute = async () => {
       if (!selectedInstanceType || !selectedRegion) {
@@ -192,13 +192,16 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         }
         const data = await res.json();
         const p = Number(data.price_per_hour || 0);
-        setEstimatedCost(!isNaN(p) ? p * 1.0 : 0); // 1h minimum
+        const numNodesValue = parseInt(numNodes || "1", 10);
+        const nodeCount =
+          isNaN(numNodesValue) || numNodesValue <= 0 ? 1 : numNodesValue;
+        setEstimatedCost(!isNaN(p) ? p * 1.0 * nodeCount : 0); // 1h minimum * number of nodes
       } catch (e) {
         setEstimatedCost(0);
       }
     };
     compute();
-  }, [selectedInstanceType, selectedRegion]);
+  }, [selectedInstanceType, selectedRegion, numNodes]);
 
   const fetchStorageBuckets = async () => {
     try {
