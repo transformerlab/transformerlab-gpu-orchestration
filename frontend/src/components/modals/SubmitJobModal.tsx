@@ -46,6 +46,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
   const [jobName, setJobName] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
 
@@ -60,6 +61,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setMemory("");
     setAccelerators("");
     setJobName("");
+    setNumNodes("1");
   };
 
   const validateResources = () => {
@@ -162,6 +164,11 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
       if (jobName) formData.append("job_name", jobName);
+      // Only include num_nodes if > 1
+      const parsedNumNodes = parseInt(numNodes || "1", 10);
+      if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+        formData.append("num_nodes", String(parsedNumNodes));
+      }
       if (uploadedDirPath) {
         formData.append("uploaded_dir_path", uploadedDirPath);
       }
@@ -387,6 +394,21 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                       Available: {available.gpu || "None"}
                     </Typography>
                   )}
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
+                    disabled={isClusterLaunching}
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
                 </FormControl>
               </Card>
             </CardContent>

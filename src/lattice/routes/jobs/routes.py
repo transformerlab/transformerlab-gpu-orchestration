@@ -387,6 +387,7 @@ async def submit_job_to_cluster(
     job_name: Optional[str] = Form(None),
     dir_name: Optional[str] = Form(None),
     uploaded_dir_path: Optional[str] = Form(None),
+    num_nodes: Optional[int] = Form(None),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     scope_check: dict = Depends(require_scope("compute:write")),
@@ -431,6 +432,7 @@ async def submit_job_to_cluster(
             "zone": zone,
             "job_name": job_name,
             "dir_name": dir_name,
+            "num_nodes": num_nodes,
         }
 
         # Override with YAML values where form parameters are None
@@ -455,6 +457,7 @@ async def submit_job_to_cluster(
         zone = final_config["zone"]
         job_name = final_config["job_name"]
         dir_name = final_config["dir_name"]
+        num_nodes = final_config["num_nodes"]
 
         file_mounts = None
 
@@ -493,6 +496,17 @@ async def submit_job_to_cluster(
             cluster_name, user["id"], user["organization_id"]
         )
 
+        # Default num_nodes to 1 if not provided or invalid
+        try:
+            if num_nodes is None:
+                effective_num_nodes = 1
+            else:
+                effective_num_nodes = int(num_nodes)
+                if effective_num_nodes <= 0:
+                    effective_num_nodes = 1
+        except Exception:
+            effective_num_nodes = 1
+
         request_id = submit_job_to_existing_cluster(
             cluster_name=actual_cluster_name,
             command=command,
@@ -504,6 +518,7 @@ async def submit_job_to_cluster(
             region=region,
             zone=zone,
             job_name=secure_job_name,
+            num_nodes=effective_num_nodes,
         )
 
         # Record usage event

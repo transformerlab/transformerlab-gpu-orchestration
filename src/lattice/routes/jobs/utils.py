@@ -122,15 +122,27 @@ def submit_job_to_existing_cluster(
     region: Optional[str] = None,
     zone: Optional[str] = None,
     job_name: Optional[str] = None,
+    num_nodes: Optional[int] = None,
 ):
     try:
         # Create job name with metadata if it's a special job type
         final_job_name = job_name if job_name else "lattice-job"
 
+        # Determine number of nodes (default to 1)
+        effective_num_nodes = 1
+        try:
+            if num_nodes is not None:
+                effective_num_nodes = int(num_nodes)
+                if effective_num_nodes <= 0:
+                    effective_num_nodes = 1
+        except Exception:
+            effective_num_nodes = 1
+
         task = sky.Task(
             name=final_job_name,
             run=command,
             setup=setup,
+            num_nodes=effective_num_nodes,
         )
         if file_mounts:
             task.set_file_mounts(file_mounts)

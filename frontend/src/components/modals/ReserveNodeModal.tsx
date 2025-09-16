@@ -396,6 +396,66 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   </Select>
                 </FormControl>
 
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Setup Command (optional)</FormLabel>
+                  <Textarea
+                    value={setup}
+                    onChange={(e) => setSetup(e.target.value)}
+                    placeholder="pip install -r requirements.txt"
+                    minRows={2}
+                  />
+                </FormControl>
+
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Docker Image (optional)</FormLabel>
+                  {loadingImages ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading docker images...
+                    </Typography>
+                  ) : dockerImages.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No docker images configured. You can add them in Admin
+                      &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedDockerImageId}
+                      onChange={(_, value) =>
+                        setSelectedDockerImageId(value || "")
+                      }
+                      placeholder="Select a docker image (optional)"
+                    >
+                      {dockerImages.map((image) => (
+                        <Option key={image.id} value={image.id}>
+                          {image.name} ({image.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default VM image. Images are managed by your admin.
+                  </Typography>
+                </FormControl>
+
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                </FormControl>
+
                 {/* Advanced button - always show but disable when template is selected */}
                 <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
                   <Button
@@ -412,54 +472,10 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   </Button>
                 </Box>
 
-                {/* Advanced fields - only show when advanced button is clicked and no template is selected */}
+                {/* Advanced fields - only remaining resource fields */}
                 {showAdvanced && !selectedTemplateId && (
                   <>
-                    <FormControl sx={{ mb: 2 }}>
-                      <FormLabel>Setup Command (optional)</FormLabel>
-                      <Textarea
-                        value={setup}
-                        onChange={(e) => setSetup(e.target.value)}
-                        placeholder="pip install -r requirements.txt"
-                        minRows={2}
-                      />
-                    </FormControl>
-
-                    <FormControl sx={{ mb: 2 }}>
-                      <FormLabel>Docker Image (optional)</FormLabel>
-                      {loadingImages ? (
-                        <Typography level="body-sm" color="neutral">
-                          Loading docker images...
-                        </Typography>
-                      ) : dockerImages.length === 0 ? (
-                        <Typography level="body-sm" color="warning">
-                          No docker images configured. You can add them in Admin
-                          &gt; Private Container Registry.
-                        </Typography>
-                      ) : (
-                        <Select
-                          value={selectedDockerImageId}
-                          onChange={(_, value) =>
-                            setSelectedDockerImageId(value || "")
-                          }
-                          placeholder="Select a docker image (optional)"
-                        >
-                          {dockerImages.map((image) => (
-                            <Option key={image.id} value={image.id}>
-                              {image.name} ({image.image_tag})
-                            </Option>
-                          ))}
-                        </Select>
-                      )}
-                      <Typography
-                        level="body-xs"
-                        sx={{ mt: 0.5, color: "text.secondary" }}
-                      >
-                        Use a Docker image as runtime environment. Leave empty
-                        to use default VM image. Images are managed by your
-                        admin.
-                      </Typography>
-                    </FormControl>
+                    {/* Setup, Docker Image, and Num Nodes moved above */}
 
                     {/* Resource Configuration */}
                     <Box
@@ -533,20 +549,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                             },
                           }}
                           disabled={typeof tpl.disk_space !== "undefined"}
-                        />
-                      </FormControl>
-                      <FormControl sx={{ mb: 2 }}>
-                        <FormLabel>Number of Nodes</FormLabel>
-                        <Input
-                          value={numNodes}
-                          onChange={(e) => setNumNodes(e.target.value)}
-                          placeholder="1"
-                          slotProps={{
-                            input: {
-                              type: "number",
-                              min: 1,
-                            },
-                          }}
                         />
                       </FormControl>
                     </Box>
