@@ -22,6 +22,7 @@ import SSHModal from "../../modals/SSHModal";
 import { useNavigate } from "react-router-dom";
 import NodeSquare from "../../widgets/NodeSquare";
 import { useFakeData } from "../../../context/FakeDataContext";
+import { useAuth } from "../../../context/AuthContext";
 import InstanceStatusChip from "../../widgets/InstanceStatusChip";
 import ResourceDisplay from "../../widgets/ResourceDisplay";
 import {
@@ -90,6 +91,13 @@ interface Cluster {
   last_use?: string;
   autostop?: number;
   to_down?: boolean;
+  user_info?: {
+    id?: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+  };
 }
 
 interface MyInstancesTableProps {
@@ -107,6 +115,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const { showFakeData } = useFakeData();
+  const { user: currentUser } = useAuth();
   const [operationLoading, setOperationLoading] = React.useState<{
     [key: string]: boolean;
   }>({});
@@ -485,7 +494,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
           <Table sx={{ minWidth: 650 }}>
             <thead>
               <tr>
-                <th>Cluster Name</th>
+                <th>Instance Name</th>
                 <th style={{ width: "120px" }}>Status</th>
                 <th>Resources</th>
                 <th>Launched At</th>
@@ -504,14 +513,23 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                     <td>
                       <Typography level="body-sm" fontWeight="bold">
                         <NodeSquare
-                          currentUser="Ali"
+                          currentUser={
+                            currentUser?.first_name ||
+                            currentUser?.email ||
+                            "Unknown"
+                          }
                           node={{
                             id: cluster.cluster_name,
-                            ip: "128.0.0.1",
-                            status: "active",
+                            ip: "demo-ip",
+                            status:
+                              cluster.status === "up"
+                                ? "active"
+                                : cluster.status === "stopped"
+                                ? "inactive"
+                                : "active",
                             type: "dedicated",
-                            user: "Ali",
-                            gpuType: "RTX3090",
+                            user: "Demo User",
+                            gpuType: "Demo GPU",
                           }}
                           variant="mock"
                         />
@@ -657,7 +675,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
       <Table sx={{ minWidth: 650 }}>
         <thead>
           <tr>
-            <th>Cluster Name</th>
+            <th>Instance Name</th>
             <th style={{ width: "120px" }}>Status</th>
             <th>Resources</th>
             <th>Launched At</th>
@@ -695,14 +713,26 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                 <td>
                   <Typography level="body-sm" fontWeight="bold">
                     <NodeSquare
-                      currentUser="Ali"
+                      currentUser={
+                        currentUser?.first_name ||
+                        currentUser?.email ||
+                        "Unknown"
+                      }
                       node={{
                         id: cluster.cluster_name,
-                        ip: "128.0.0.1",
-                        status: "active",
+                        ip: "unknown",
+                        status:
+                          cluster.status === "ClusterStatus.UP"
+                            ? "active"
+                            : cluster.status === "ClusterStatus.STOPPED"
+                            ? "inactive"
+                            : "active",
                         type: "dedicated",
-                        user: "Ali",
-                        gpuType: "RTX3090",
+                        user:
+                          (cluster as Cluster).user_info?.first_name ||
+                          (cluster as Cluster).user_info?.name ||
+                          "Unassigned",
+                        gpuType: "Unknown",
                       }}
                       variant="mock"
                     />
