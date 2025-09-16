@@ -40,6 +40,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
   const [memory, setMemory] = useState("");
   const [gpus, setGpus] = useState("");
   const [diskSpace, setDiskSpace] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [zone, setZone] = useState("");
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
     setMemory("");
     setGpus("");
     setDiskSpace("");
+    setNumNodes("1");
     setZone("");
     setRegion("");
     setUseYaml(false);
@@ -183,6 +185,12 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
 
         if (diskSpace) {
           formData.append("disk_space", diskSpace);
+        }
+
+        // Only include num_nodes if > 1
+        const parsedNumNodes = parseInt(numNodes || "1", 10);
+        if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+          formData.append("num_nodes", String(parsedNumNodes));
         }
 
         if (region) {
@@ -385,6 +393,20 @@ zone: us-west-2a`}
                     value={diskSpace}
                     onChange={(e) => setDiskSpace(e.target.value)}
                     placeholder="e.g., 100, 200, 500"
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
                     slotProps={{
                       input: {
                         type: "number",

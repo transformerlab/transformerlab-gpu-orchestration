@@ -150,6 +150,7 @@ def launch_cluster_with_skypilot(
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
     credentials: Optional[dict] = None,
+    num_nodes: Optional[int] = None,
 ):
     try:
         # RunPod no longer requires global setup; credentials are passed directly to SkyPilot
@@ -248,11 +249,22 @@ def launch_cluster_with_skypilot(
 
         name = "lattice-task-setup"
 
+        # Determine number of nodes (default to 1)
+        effective_num_nodes = 1
+        try:
+            if num_nodes is not None:
+                effective_num_nodes = int(num_nodes)
+                if effective_num_nodes <= 0:
+                    effective_num_nodes = 1
+        except Exception:
+            effective_num_nodes = 1
+
         task = sky.Task(
             name=name,
             run=command,
             setup=setup,
             envs=envs,
+            num_nodes=effective_num_nodes,
         )
 
         # Process storage buckets if provided
@@ -512,6 +524,7 @@ async def launch_cluster_with_skypilot_isolated(
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
     credentials: Optional[dict] = None,
+    num_nodes: Optional[int] = None,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -541,6 +554,7 @@ async def launch_cluster_with_skypilot_isolated(
             "organization_id": organization_id,
             "display_name": display_name,
             "credentials": credentials,
+            "num_nodes": num_nodes,
         }
 
         # Create a temporary file to pass parameters
@@ -624,7 +638,11 @@ except Exception as e:
                 # Fallback: extract request id from 'REQUEST ID: <id>' line
                 try:
                     import re
-                    m = re.search(r"REQUEST ID:\s*([0-9a-fA-F\-]{36}|[A-Za-z0-9_\-]{8,})", output_text)
+
+                    m = re.search(
+                        r"REQUEST ID:\s*([0-9a-fA-F\-]{36}|[A-Za-z0-9_\-]{8,})",
+                        output_text,
+                    )
                     if m:
                         return m.group(1)
                 except Exception:
@@ -657,6 +675,8 @@ def _launch_cluster_worker(**params):
     This ensures complete isolation from thread-local storage.
     """
     return launch_cluster_with_skypilot(**params)
+
+
 def determine_actual_cloud_from_skypilot_status(cluster_name: str) -> Optional[str]:
     """
     Determine which cloud was actually selected by SkyPilot by examining the cluster status.
@@ -743,9 +763,8 @@ def stop_cluster_with_skypilot(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
-                    rp_config = rp_get_current_config(
-                        organization_id=organization_id
-                    )
+
+                    rp_config = rp_get_current_config(organization_id=organization_id)
                     if rp_config and rp_config.get("api_key"):
                         credentials = {
                             "runpod": {
@@ -817,9 +836,8 @@ def down_cluster_with_skypilot(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
-                    rp_config = rp_get_current_config(
-                        organization_id=organization_id
-                    )
+
+                    rp_config = rp_get_current_config(organization_id=organization_id)
                     if rp_config and rp_config.get("api_key"):
                         credentials = {
                             "runpod": {
