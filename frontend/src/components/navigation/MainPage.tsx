@@ -38,6 +38,7 @@ import Logs from "../pages/Logs";
 import Pools from "../pages/Admin/Pools";
 import AzureConfigPage from "../pages/Admin/AzureConfigPage";
 import RunPodConfigPage from "../pages/Admin/RunPodConfigPage";
+import AWSConfigPage from "../pages/Admin/AWSConfigPage";
 import SSHConfigPage from "../pages/Admin/SSHConfigPage";
 import { Volume } from "lucide-react";
 import Volumes from "../pages/Admin/Volumes";
@@ -105,6 +106,7 @@ const Dashboard: React.FC = () => {
           <Route path="admin/pools" element={<Pools />} />
           <Route path="admin/azure-config" element={<AzureConfigPage />} />
           <Route path="admin/runpod-config" element={<RunPodConfigPage />} />
+          <Route path="admin/aws-config" element={<AWSConfigPage />} />
           <Route path="admin/ssh-config" element={<SSHConfigPage />} />
           <Route path="admin/identity" element={<IdentityFileManager />} />
           <Route path="admin/launch-hooks" element={<LaunchHooksManager />} />

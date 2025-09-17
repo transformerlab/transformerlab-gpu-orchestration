@@ -110,9 +110,18 @@ def get_filesystem(
                 ]:
                     if k in options:
                         options.pop(k, None)
-                # Hardcode AWS profile for s3 access unless explicitly provided
+                # Get AWS profile from cloud account settings if available
                 if not options.get("profile") and not options.get("profile_name"):
-                    options["profile"] = "transformerlab-s3"
+                    try:
+                        from routes.clouds.aws.utils import load_aws_config
+                        aws_config = load_aws_config(organization_id=bucket.organization_id)
+                        if aws_config.get("default_config"):
+                            default_config = aws_config["configs"].get(aws_config["default_config"], {})
+                            profile_name = default_config.get("profile_name")
+                            if profile_name:
+                                options["profile"] = profile_name
+                    except Exception as e:
+                        print(f"Failed to load AWS config; falling back to default AWS credential chain: {e}")
                 # Prefer 'profile' over 'profile_name' for aiobotocore compatibility
                 if options.get("profile_name") and not options.get("profile"):
                     options["profile"] = options.pop("profile_name")
