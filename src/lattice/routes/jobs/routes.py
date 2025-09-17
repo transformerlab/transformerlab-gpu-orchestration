@@ -483,8 +483,10 @@ async def submit_job_to_cluster(
             # Mount the entire directory at ~/<base_name>
             file_mounts = {f"~/{base_name}": uploaded_dir_path}
 
-        # For VSCode, we need to remove the carriage return
         command = command.replace("\r", "")
+        setup = setup.replace("\r", "")
+
+
 
         # Apply secure_filename to job_name if provided
         secure_job_name = None
