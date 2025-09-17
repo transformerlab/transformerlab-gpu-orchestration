@@ -333,6 +333,9 @@ async def launch_instance(
                 file_mounts = {}
             file_mounts[f"~/{base_name}"] = uploaded_dir_path
 
+        # Initialize hook environment variables
+        hook_env_vars = {}
+
         # Handle launch hooks for the organization
         organization_id = user.get("organization_id")
         if organization_id:
@@ -377,13 +380,18 @@ async def launch_instance(
                 if file_mounts is None:
                     file_mounts = {}
 
-                # Collect all setup commands from accessible hooks
+                # Collect all setup commands and environment variables from accessible hooks
                 hook_setup_commands = []
+                hook_env_vars = {}
 
                 for hook in accessible_hooks:
                     # Add setup commands from this hook
                     if hook.setup_commands:
                         hook_setup_commands.append(hook.setup_commands)
+
+                    # Collect environment variables from this hook
+                    if hook.env_vars and isinstance(hook.env_vars, dict):
+                        hook_env_vars.update(hook.env_vars)
 
                     # Get files for this hook
                     hook_files = (
@@ -699,6 +707,7 @@ async def launch_instance(
             organization_id=organization_id,
             display_name=cluster_name,
             credentials=credentials,
+            env_vars=hook_env_vars,
         )
 
         # Record usage event for cluster launch

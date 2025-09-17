@@ -48,6 +48,7 @@ interface LaunchHook {
   name: string;
   description: string | null;
   setup_commands: string | null;
+  env_vars?: Record<string, string> | null;
   is_active: boolean;
   allowed_team_ids: string[] | null;
   created_at: string;
@@ -72,6 +73,9 @@ const LaunchHooksManager: React.FC = () => {
   const [hookIsActive, setHookIsActive] = useState(true);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [hookEnvVars, setHookEnvVars] = useState<
+    Array<{ key: string; value: string }>
+  >([{ key: "", value: "" }]);
 
   useEffect(() => {
     fetchLaunchHooks();
@@ -129,6 +133,15 @@ const LaunchHooksManager: React.FC = () => {
       if (hookDescription) formData.append("description", hookDescription);
       if (hookSetupCommands)
         formData.append("setup_commands", hookSetupCommands);
+      // Append env vars if any non-empty key/value
+      const envDict: Record<string, string> = {};
+      hookEnvVars.forEach(({ key, value }) => {
+        const k = key.trim();
+        if (k.length > 0) envDict[k] = value ?? "";
+      });
+      if (Object.keys(envDict).length > 0) {
+        formData.append("env_vars", JSON.stringify(envDict));
+      }
       if (selectedTeamIds.length > 0) {
         formData.append("allowed_team_ids", JSON.stringify(selectedTeamIds));
       }
@@ -167,6 +180,17 @@ const LaunchHooksManager: React.FC = () => {
       if (hookDescription) formData.append("description", hookDescription);
       if (hookSetupCommands)
         formData.append("setup_commands", hookSetupCommands);
+      // Append env vars (empty string means clear)
+      const envDict: Record<string, string> = {};
+      hookEnvVars.forEach(({ key, value }) => {
+        const k = key.trim();
+        if (k.length > 0) envDict[k] = value ?? "";
+      });
+      if (Object.keys(envDict).length > 0) {
+        formData.append("env_vars", JSON.stringify(envDict));
+      } else {
+        formData.append("env_vars", "");
+      }
       formData.append("is_active", hookIsActive.toString());
       if (selectedTeamIds.length > 0) {
         formData.append("allowed_team_ids", JSON.stringify(selectedTeamIds));
@@ -361,6 +385,7 @@ const LaunchHooksManager: React.FC = () => {
     setSelectedTeamIds([]);
     setSelectedHook(null);
     setError(null);
+    setHookEnvVars([{ key: "", value: "" }]);
   };
 
   const openEditModal = (hook: LaunchHook) => {
@@ -370,6 +395,16 @@ const LaunchHooksManager: React.FC = () => {
     setHookSetupCommands(hook.setup_commands || "");
     setHookIsActive(hook.is_active);
     setSelectedTeamIds(hook.allowed_team_ids || []);
+    // Populate env vars rows from hook.env_vars
+    if (hook.env_vars && Object.keys(hook.env_vars).length > 0) {
+      const rows = Object.entries(hook.env_vars).map(([k, v]) => ({
+        key: k,
+        value: String(v ?? ""),
+      }));
+      setHookEnvVars(rows);
+    } else {
+      setHookEnvVars([{ key: "", value: "" }]);
+    }
     setShowEditModal(true);
   };
 
@@ -533,6 +568,32 @@ const LaunchHooksManager: React.FC = () => {
                         </Box>
                       </Box>
                     )}
+                    {hook.env_vars && Object.keys(hook.env_vars).length > 0 && (
+                      <Box sx={{ mb: 2 }}>
+                        <Typography
+                          level="body-sm"
+                          fontWeight="lg"
+                          sx={{ mb: 1 }}
+                        >
+                          Environment Variables:
+                        </Typography>
+                        <Box
+                          component="pre"
+                          sx={{
+                            p: 2,
+                            bgcolor: "neutral.100",
+                            borderRadius: "sm",
+                            fontSize: "sm",
+                            overflow: "auto",
+                            maxHeight: 200,
+                          }}
+                        >
+                          {Object.entries(hook.env_vars)
+                            .map(([k, v]) => `${k}=${v}`)
+                            .join("\n")}
+                        </Box>
+                      </Box>
+                    )}
                   </Box>
                   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -682,6 +743,60 @@ const LaunchHooksManager: React.FC = () => {
                 />
               </FormControl>
               <FormControl>
+                <FormLabel>Environment Variables</FormLabel>
+                <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
+                  Add key-value pairs to export into the environment during
+                  launch.
+                </Typography>
+                <Stack spacing={1}>
+                  {hookEnvVars.map((row, idx) => (
+                    <Box key={idx} sx={{ display: "flex", gap: 1 }}>
+                      <Input
+                        placeholder="KEY"
+                        value={row.key}
+                        onChange={(e) => {
+                          const next = [...hookEnvVars];
+                          next[idx] = { ...next[idx], key: e.target.value };
+                          setHookEnvVars(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="value"
+                        value={row.value}
+                        onChange={(e) => {
+                          const next = [...hookEnvVars];
+                          next[idx] = { ...next[idx], value: e.target.value };
+                          setHookEnvVars(next);
+                        }}
+                      />
+                      <IconButton
+                        size="sm"
+                        variant="outlined"
+                        color="danger"
+                        onClick={() => {
+                          const next = hookEnvVars.filter((_, i) => i !== idx);
+                          setHookEnvVars(
+                            next.length ? next : [{ key: "", value: "" }]
+                          );
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    startDecorator={<Plus size={14} />}
+                    onClick={() =>
+                      setHookEnvVars([...hookEnvVars, { key: "", value: "" }])
+                    }
+                  >
+                    Add Variable
+                  </Button>
+                </Stack>
+              </FormControl>
+              <FormControl>
                 <FormLabel>Team Access</FormLabel>
                 <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
                   Select teams that can use this hook. Leave empty for all
@@ -760,6 +875,60 @@ const LaunchHooksManager: React.FC = () => {
                   placeholder="Commands to run before the main command (e.g., pip install -r requirements.txt)"
                   minRows={4}
                 />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Environment Variables</FormLabel>
+                <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
+                  Add key-value pairs to export into the environment during
+                  launch.
+                </Typography>
+                <Stack spacing={1}>
+                  {hookEnvVars.map((row, idx) => (
+                    <Box key={idx} sx={{ display: "flex", gap: 1 }}>
+                      <Input
+                        placeholder="KEY"
+                        value={row.key}
+                        onChange={(e) => {
+                          const next = [...hookEnvVars];
+                          next[idx] = { ...next[idx], key: e.target.value };
+                          setHookEnvVars(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="value"
+                        value={row.value}
+                        onChange={(e) => {
+                          const next = [...hookEnvVars];
+                          next[idx] = { ...next[idx], value: e.target.value };
+                          setHookEnvVars(next);
+                        }}
+                      />
+                      <IconButton
+                        size="sm"
+                        variant="outlined"
+                        color="danger"
+                        onClick={() => {
+                          const next = hookEnvVars.filter((_, i) => i !== idx);
+                          setHookEnvVars(
+                            next.length ? next : [{ key: "", value: "" }]
+                          );
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    startDecorator={<Plus size={14} />}
+                    onClick={() =>
+                      setHookEnvVars([...hookEnvVars, { key: "", value: "" }])
+                    }
+                  >
+                    Add Variable
+                  </Button>
+                </Stack>
               </FormControl>
               <FormControl>
                 <FormLabel>Team Access</FormLabel>

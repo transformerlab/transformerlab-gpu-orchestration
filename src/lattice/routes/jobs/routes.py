@@ -486,8 +486,6 @@ async def submit_job_to_cluster(
         command = command.replace("\r", "")
         setup = setup.replace("\r", "")
 
-
-
         # Apply secure_filename to job_name if provided
         secure_job_name = None
         if job_name:
