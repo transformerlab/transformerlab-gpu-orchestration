@@ -188,6 +188,18 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
 
     // Validate form mode
     if (!useYaml) {
+      // Require CPUs and Memory when no template is selected
+      if (!selectedTemplateId) {
+        if (!cpus.trim() || !memory.trim()) {
+          addNotification({
+            type: "danger",
+            message:
+              "CPUs and Memory are required unless a template is selected",
+          });
+          setLoading(false);
+          return;
+        }
+      }
       // Validate resource limits
       if (maxResources.maxVcpus && cpus) {
         const requestedCpus = parseInt(cpus);
@@ -520,7 +532,9 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                         </Alert>
                       ) : null}
                       <FormControl sx={{ mb: 2 }}>
-                        <FormLabel>CPUs</FormLabel>
+                        <FormLabel>
+                          CPUs{!selectedTemplateId ? " (required)" : ""}
+                        </FormLabel>
                         <Input
                           value={cpus}
                           onChange={(e) => setCpus(e.target.value)}
@@ -530,10 +544,13 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                               : "e.g., 4, 8+"
                           }
                           disabled={typeof tpl.cpus !== "undefined"}
+                          required={!selectedTemplateId}
                         />
                       </FormControl>
                       <FormControl sx={{ mb: 2 }}>
-                        <FormLabel>Memory (GB)</FormLabel>
+                        <FormLabel>
+                          Memory (GB){!selectedTemplateId ? " (required)" : ""}
+                        </FormLabel>
                         <Input
                           value={memory}
                           onChange={(e) => setMemory(e.target.value)}
@@ -543,6 +560,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                               : "e.g., 16, 32+"
                           }
                           disabled={typeof tpl.memory !== "undefined"}
+                          required={!selectedTemplateId}
                         />
                       </FormControl>
                       <FormControl sx={{ mb: 2 }}>
