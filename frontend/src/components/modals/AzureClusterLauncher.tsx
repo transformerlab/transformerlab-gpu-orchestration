@@ -662,6 +662,13 @@ disk_space: 100`}
                             },
                           }}
                         />
+                        <Typography
+                          level="body-xs"
+                          sx={{ mt: 0.5, color: "text.secondary" }}
+                        >
+                          Number of worker nodes that will launch with the same
+                          machine specs
+                        </Typography>
                       </FormControl>
 
                       {/* Setup Command (moved out of Advanced) */}
