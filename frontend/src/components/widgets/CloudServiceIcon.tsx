@@ -2,6 +2,7 @@ import React from "react";
 import AzureIcon from "./icons/azure.svg"; // Adjust the path as needed
 import RunPodIcon from "./icons/runpod.svg"; // Adjust the path as needed
 import GcpIcon from "./icons/gcp.svg"; // Adjust the path as needed
+import AWSIcon from "./icons/aws.svg"; // Adjust the path as needed
 import { ServerIcon, Cloud } from "lucide-react";
 
 interface CloudServiceIconProps {
@@ -41,7 +42,13 @@ const CloudServiceIcon: React.FC<CloudServiceIconProps> = ({
         />
       );
     case "aws":
-      return <Cloud size={16} style={filterStyle} />;
+      return (
+        <img
+          src={AWSIcon}
+          alt="AWS"
+          style={{ width: 16, height: 16, ...filterStyle }}
+        />
+      );
     case "direct":
       return <ServerIcon size={16} style={filterStyle} />;
     default:

@@ -69,13 +69,14 @@ const Pools: React.FC = () => {
   const nodePools = data?.node_pools || [];
   const loading = !data && !error;
 
-  // Check if Azure, RunPod, or GCP configurations already exist
+  // Check if Azure, RunPod, AWS, or GCP configurations already exist
   const hasAzureConfig = nodePools.some(
     (pool: Pool) => pool.provider === "azure"
   );
   const hasRunPodConfig = nodePools.some(
     (pool: Pool) => pool.provider === "runpod"
   );
+  const hasAWSConfig = nodePools.some((pool: Pool) => pool.provider === "aws");
   const hasGcpConfig = nodePools.some((pool: Pool) => pool.provider === "gcp");
 
   const handleConfigurePool = (pool: Pool) => {
@@ -96,6 +97,11 @@ const Pools: React.FC = () => {
       case "runpod":
         navigate(
           `/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`
+        );
+        break;
+      case "aws":
+        navigate(
+          `/dashboard/admin/aws-config?mode=configure&poolName=${poolName}`
         );
         break;
       case "gcp":
@@ -499,10 +505,10 @@ const Pools: React.FC = () => {
           <Typography level="h4">Add Node Pool</Typography>
           <Stack spacing={2} direction="column" sx={{ mt: 1 }}>
             <Typography level="body-md">Choose a platform:</Typography>
-            {(hasAzureConfig || hasRunPodConfig) && (
+            {(hasAzureConfig || hasRunPodConfig || hasAWSConfig) && (
               <Alert color="primary" size="sm">
-                Note: Only one Azure and one RunPod configuration is allowed per
-                system.
+                Note: Only one Azure, one RunPod, and one AWS configuration is
+                allowed per system.
               </Alert>
             )}
             <Stack direction="column" spacing={1}>
@@ -541,6 +547,24 @@ const Pools: React.FC = () => {
                 }}
               >
                 RunPod {hasRunPodConfig && "(Already Configured)"}
+              </Button>
+              <Button
+                variant="outlined"
+                startDecorator={<CloudServiceIcon platform="aws" />}
+                disabled={hasAWSConfig}
+                sx={{
+                  opacity: hasAWSConfig ? 0.6 : 1,
+                  cursor: hasAWSConfig ? "not-allowed" : "pointer",
+                }}
+                onClick={() => {
+                  if (hasAWSConfig) return;
+                  setOpenAdd(false);
+                  navigate(
+                    `/dashboard/admin/aws-config?mode=add&poolName=new-aws-pool`
+                  );
+                }}
+              >
+                AWS {hasAWSConfig && "(Already Configured)"}
               </Button>
               <Button
                 variant="outlined"

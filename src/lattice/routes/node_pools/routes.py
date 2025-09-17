@@ -355,6 +355,93 @@ async def get_node_pools(
             except Exception as e:
                 print(f"Error loading RunPod config: {e}")
 
+            # Get AWS configs
+            try:
+                from routes.clouds.aws.utils import load_aws_config
+                aws_config_data = load_aws_config(user.get("organization_id"), db)
+                if aws_config_data.get("configs"):
+                    for config_key, config in aws_config_data["configs"].items():
+                        # Get current AWS instances for this config (filtered by user)
+                        aws_instances = 0
+                        for cluster in skyPilotStatus:
+                            cluster_name = cluster.get("name", "")
+                            platform_info = get_cluster_platform_info(cluster_name)
+                            if (
+                                platform_info
+                                and platform_info.get("platform") == "aws"
+                            ):
+                                # Only count clusters that belong to the current user and organization
+                                if (
+                                    platform_info.get("user_id") == user["id"]
+                                    and platform_info.get("organization_id")
+                                    == user["organization_id"]
+                                ):
+                                    aws_instances += 1
+
+                        # Determine access teams for display from DB
+                        access_team_ids = []
+                        try:
+                            access_row = (
+                                db.query(NodePoolAccessDB)
+                                .filter(
+                                    NodePoolAccessDB.organization_id
+                                    == user["organization_id"],
+                                    NodePoolAccessDB.provider == "aws",
+                                    NodePoolAccessDB.pool_key == config_key,
+                                )
+                                .first()
+                            )
+                            if access_row and access_row.allowed_team_ids:
+                                access_team_ids = access_row.allowed_team_ids
+                        except Exception:
+                            pass
+                        access_team_names = map_team_ids_to_names(access_team_ids)
+                        # team-based access evaluation
+                        user_team_id = (
+                            get_user_team_id(db, user["organization_id"], user["id"]) if db else None
+                        )
+                        access_allowed = True
+                        if access_team_ids:
+                            access_allowed = user_team_id is not None and user_team_id in access_team_ids
+
+                        node_pools.append(
+                            {
+                                "name": config.get("name", "AWS Pool"),
+                                "type": "cloud",
+                                "provider": "aws",
+                                "max_instances": config.get("max_instances", 0),
+                                "current_instances": aws_instances,
+                                "can_launch": (
+                                    (config.get("max_instances", 0) == 0
+                                     or aws_instances < config.get("max_instances", 0))
+                                    and access_allowed
+                                ),
+                                "status": "enabled"
+                                if aws_config_data.get("is_configured", False)
+                                else "disabled",
+                                "access": access_team_names if access_team_names else ["Admin"],
+                                "config": {
+                                    "is_configured": aws_config_data.get(
+                                        "is_configured", False
+                                    ),
+                                    "config_key": config_key,
+                                    "is_default": aws_config_data.get(
+                                        "default_config"
+                                    )
+                                    == config_key,
+                                    "allowed_instance_types": config.get(
+                                        "allowed_instance_types", []
+                                    ),
+                                    "allowed_regions": config.get(
+                                        "allowed_regions", []
+                                    ),
+                                    "allowed_team_ids": access_team_ids,
+                                },
+                            }
+                        )
+            except Exception as e:
+                print(f"Error loading AWS config: {e}")
+
             # Get SSH clusters
             try:
                 # Get SSH node pools that belong to the user's organization
