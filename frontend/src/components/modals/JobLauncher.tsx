@@ -14,6 +14,7 @@ import {
   FormLabel,
   Input,
   Alert,
+  Checkbox,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -46,6 +47,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { addNotification } = useNotification();
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -144,6 +146,35 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
         }
       }
 
+      // Utility: optionally append semicolons per line (best-effort, preserves here-docs)
+      const appendSemicolons = (text: string): string => {
+        if (!text) return text;
+        const lines = text.split(/\r?\n/);
+        let inHereDoc = false;
+        let terminator: string | null = null;
+        const processed = lines.map((line) => {
+          if (!inHereDoc) {
+            const hereDocMatch = line.match(/<<-?\s*([A-Za-z0-9_]+)/);
+            if (hereDocMatch) {
+              inHereDoc = true;
+              terminator = hereDocMatch[1];
+              return line;
+            }
+            const trimmed = line.trim();
+            if (trimmed === "" || trimmed.startsWith("#")) return line;
+            if (/(&&|;|\\)$/.test(trimmed)) return line;
+            return line + " ;";
+          } else {
+            if (terminator && line.trim() === terminator) {
+              inHereDoc = false;
+              terminator = null;
+            }
+            return line;
+          }
+        });
+        return processed.join("\n");
+      };
+
       // Step 2: Launch job with uploaded directory path
       const formData = new FormData();
 
@@ -161,10 +192,16 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
-        formData.append("command", command);
+        const finalCommand = autoAppendSemicolons
+          ? appendSemicolons(command)
+          : command;
+        const finalSetup = autoAppendSemicolons
+          ? appendSemicolons(setupCommand)
+          : setupCommand;
+        formData.append("command", finalCommand);
 
-        if (setupCommand) {
-          formData.append("setup", setupCommand);
+        if (finalSetup) {
+          formData.append("setup", finalSetup);
         }
 
         if (uploadedDirPath) {
@@ -344,6 +381,10 @@ zone: us-west-2a`}
                   minRows={2}
                   required
                 />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Multiple commands supported. End each line with <code>;</code>{" "}
+                  or enable the option below.
+                </Typography>
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
@@ -353,6 +394,18 @@ zone: us-west-2a`}
                   onChange={(e) => setSetupCommand(e.target.value)}
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
+                />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Use <code>;</code> at the end of each line for separate
+                  commands, or enable auto-append.
+                </Typography>
+              </FormControl>
+
+              <FormControl sx={{ mb: 2 }}>
+                <Checkbox
+                  label="Auto-append ; to each non-empty line"
+                  checked={autoAppendSemicolons}
+                  onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
                 />
               </FormControl>
 

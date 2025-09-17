@@ -14,6 +14,7 @@ import {
   Input,
   CircularProgress,
   Alert,
+  Checkbox,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
@@ -49,6 +50,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [numNodes, setNumNodes] = useState<string>("1");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   const available = parseResourcesString(availableResources);
 
@@ -155,11 +157,45 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
         }
       }
 
+      // Utility: optionally append semicolons per line (best-effort, preserves here-docs)
+      const appendSemicolons = (text: string): string => {
+        if (!text) return text;
+        const lines = text.split(/\r?\n/);
+        let inHereDoc = false;
+        let terminator: string | null = null;
+        const processed = lines.map((line) => {
+          if (!inHereDoc) {
+            const hereDocMatch = line.match(/<<-?\s*([A-Za-z0-9_]+)/);
+            if (hereDocMatch) {
+              inHereDoc = true;
+              terminator = hereDocMatch[1];
+              return line;
+            }
+            const trimmed = line.trim();
+            if (trimmed === "" || trimmed.startsWith("#")) return line;
+            if (/(&&|;|\\)$/.test(trimmed)) return line;
+            return line + " ;";
+          } else {
+            if (terminator && line.trim() === terminator) {
+              inHereDoc = false;
+              terminator = null;
+            }
+            return line;
+          }
+        });
+        return processed.join("\n");
+      };
+
       // Step 2: Submit job with uploaded directory path
       const formData = new FormData();
 
-      formData.append("command", command);
-      if (setup) formData.append("setup", setup);
+      const finalCommand = autoAppendSemicolons
+        ? appendSemicolons(command)
+        : command;
+      const finalSetup = autoAppendSemicolons ? appendSemicolons(setup) : setup;
+
+      formData.append("command", finalCommand);
+      if (finalSetup) formData.append("setup", finalSetup);
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
@@ -273,6 +309,10 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   required
                   disabled={isClusterLaunching}
                 />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Multiple commands supported. End each line with <code>;</code>{" "}
+                  or enable the option below.
+                </Typography>
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
@@ -282,6 +322,19 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   onChange={(e) => setSetup(e.target.value)}
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
+                  disabled={isClusterLaunching}
+                />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Use <code>;</code> at the end of each line for separate
+                  commands, or enable auto-append.
+                </Typography>
+              </FormControl>
+
+              <FormControl sx={{ mb: 2 }}>
+                <Checkbox
+                  label="Auto-append ; to each non-empty line"
+                  checked={autoAppendSemicolons}
+                  onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
                   disabled={isClusterLaunching}
                 />
               </FormControl>
