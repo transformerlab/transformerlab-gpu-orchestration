@@ -14,10 +14,12 @@ import {
   Input,
   CircularProgress,
   Alert,
+  Checkbox,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
 import { parseResourcesString } from "../../utils/resourceParser";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface SubmitJobModalProps {
   open: boolean;
@@ -49,6 +51,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [numNodes, setNumNodes] = useState<string>("1");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   const available = parseResourcesString(availableResources);
 
@@ -158,8 +161,13 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       // Step 2: Submit job with uploaded directory path
       const formData = new FormData();
 
-      formData.append("command", command);
-      if (setup) formData.append("setup", setup);
+      const finalCommand = autoAppendSemicolons
+        ? appendSemicolons(command)
+        : command;
+      const finalSetup = autoAppendSemicolons ? appendSemicolons(setup) : setup;
+
+      formData.append("command", finalCommand);
+      if (finalSetup) formData.append("setup", finalSetup);
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
@@ -273,6 +281,10 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   required
                   disabled={isClusterLaunching}
                 />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Multiple commands supported. End each line with <code>;</code>{" "}
+                  or enable the option below.
+                </Typography>
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
@@ -282,6 +294,19 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   onChange={(e) => setSetup(e.target.value)}
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
+                  disabled={isClusterLaunching}
+                />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Use <code>;</code> at the end of each line for separate
+                  commands, or enable auto-append.
+                </Typography>
+              </FormControl>
+
+              <FormControl sx={{ mb: 2 }}>
+                <Checkbox
+                  label="Auto-append ; to each non-empty line"
+                  checked={autoAppendSemicolons}
+                  onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
                   disabled={isClusterLaunching}
                 />
               </FormControl>
