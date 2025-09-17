@@ -90,6 +90,7 @@ def get_filesystem(
         # Determine the protocol from the source/remote_path
         # This is a simplified version - in production you'd have more sophisticated logic
         protocol = "file"  # Default to local filesystem
+        base_path = bucket.remote_path  # Default base path
         if bucket.source:
             if bucket.source.startswith("s3://"):
                 protocol = "s3"
@@ -98,6 +99,45 @@ def get_filesystem(
                     raise ImportError(
                         "s3fs package is required for S3 access. Install with 'pip install s3fs'"
                     )
+                # Remove unsupported keys that might be forwarded to AioSession
+                for k in [
+                    "source",
+                    "mode",
+                    "store",
+                    "persistent",
+                    "name",
+                    "remote_path",
+                ]:
+                    if k in options:
+                        options.pop(k, None)
+                # Hardcode AWS profile for s3 access unless explicitly provided
+                if not options.get("profile") and not options.get("profile_name"):
+                    options["profile"] = "transformerlab-s3"
+                # Prefer 'profile' over 'profile_name' for aiobotocore compatibility
+                if options.get("profile_name") and not options.get("profile"):
+                    options["profile"] = options.pop("profile_name")
+                # Allow-list known s3fs/fsspec options to avoid passing unexpected kwargs
+                allowed_s3_options = {
+                    "profile",
+                    "anon",
+                    "use_ssl",
+                    "client_kwargs",
+                    "config_kwargs",
+                    "s3_additional_kwargs",
+                    "endpoint_url",
+                    "key",
+                    "secret",
+                    "token",
+                    "requester_pays",
+                    "region_name",
+                    "version_aware",
+                    "default_cache_type",
+                    "default_fill_cache",
+                    "skip_instance_cache",
+                }
+                options = {k: v for k, v in options.items() if k in allowed_s3_options}
+                # For S3, use the bucket path from source (e.g., s3://<bucketname>)
+                base_path = bucket.source
             elif bucket.source.startswith("gs://") or bucket.source.startswith(
                 "gcs://"
             ):
@@ -196,7 +236,7 @@ def get_filesystem(
         # Try to initialize the filesystem with the determined protocol
         try:
             fs = fsspec.filesystem(protocol, **options)
-            return fs, bucket.remote_path
+            return fs, base_path
         except ModuleNotFoundError as e:
             if protocol in ["azure", "abfs", "az"]:
                 raise ImportError(
@@ -242,6 +282,7 @@ async def list_files(
 
         # Combine the base path with the requested path
         full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        print(f"Full path: {full_path}")
 
         # print("DEBUG INFO:")
         # print(f"Bucket ID: {bucket_id}")
@@ -321,6 +362,7 @@ async def list_files(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Failed to list files: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
 
 
