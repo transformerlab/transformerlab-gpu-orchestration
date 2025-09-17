@@ -315,6 +315,65 @@ def aws_set_default_config(
             db.close()
 
 
+def _remove_aws_profile_from_credentials(profile_name: str) -> None:
+    """Remove a profile section from ~/.aws/credentials if it exists."""
+    try:
+        aws_dir = Path.home() / ".aws"
+        credentials_file = aws_dir / "credentials"
+        if not credentials_file.exists():
+            return
+
+        config = ConfigParser()
+        config.read(credentials_file)
+        if config.has_section(profile_name):
+            config.remove_section(profile_name)
+            with open(credentials_file, "w") as f:
+                config.write(f)
+            print(f"Removed AWS profile from credentials: {profile_name}")
+    except Exception as e:
+        print(f"Error removing AWS profile from credentials: {e}")
+
+
+def aws_delete_config(
+    config_key: str,
+    organization_id: Optional[str] = None,
+    db: Optional[Session] = None,
+):
+    """Delete an AWS configuration from DB and remove its profile from credentials."""
+    should_close = False
+    if db is None:
+        db = next(get_db())
+        should_close = True
+    try:
+        org_id = require_org_id(organization_id)
+        from db.db_models import CloudAccount
+
+        row = (
+            db.query(CloudAccount)
+            .filter(
+                CloudAccount.provider == "aws",
+                CloudAccount.key == config_key,
+                CloudAccount.organization_id == org_id,
+            )
+            .first()
+        )
+        if not row:
+            return False
+
+        # Remove credentials profile if present
+        settings = row.settings or {}
+        profile_name = settings.get("profile_name")
+        if profile_name:
+            _remove_aws_profile_from_credentials(profile_name)
+
+        db.delete(row)
+        db.commit()
+        return True
+    finally:
+        if should_close:
+            db.close()
+
+
 def aws_run_sky_check():
     """Run sky check for AWS to validate credentials."""
     try:

@@ -128,6 +128,8 @@ const Pools: React.FC = () => {
           ? buildApiUrl(`clouds/azure/config/${configKey}/set-default`)
           : platform === "runpod"
           ? buildApiUrl(`clouds/runpod/config/${configKey}/set-default`)
+          : platform === "aws"
+          ? buildApiUrl(`clouds/aws/config/${configKey}/set-default`)
           : buildApiUrl(`clouds/gcp/config/${configKey}/set-default`);
 
       const response = await apiFetch(endpoint, {
@@ -143,6 +145,8 @@ const Pools: React.FC = () => {
               ? "Azure"
               : platform === "runpod"
               ? "RunPod"
+              : platform === "aws"
+              ? "AWS"
               : "GCP"
           } config set as default successfully`,
         });
@@ -179,6 +183,8 @@ const Pools: React.FC = () => {
           ? buildApiUrl(`clouds/azure/config/${configKey}`)
           : platform === "runpod"
           ? buildApiUrl(`clouds/runpod/config/${configKey}`)
+          : platform === "aws"
+          ? buildApiUrl(`clouds/aws/config/${configKey}`)
           : buildApiUrl(`clouds/gcp/config/${configKey}`);
 
       const response = await apiFetch(endpoint, {
@@ -194,6 +200,8 @@ const Pools: React.FC = () => {
               ? "Azure"
               : platform === "runpod"
               ? "RunPod"
+              : platform === "aws"
+              ? "AWS"
               : "GCP"
           } configuration deleted successfully`,
         });
@@ -393,7 +401,8 @@ const Pools: React.FC = () => {
                           <Trash2 size={14} />
                         </IconButton>
                       ) : (pool.provider === "azure" ||
-                          pool.provider === "runpod") &&
+                          pool.provider === "runpod" ||
+                          pool.provider === "aws") &&
                         pool.config?.config_key ? (
                         <IconButton
                           size="sm"

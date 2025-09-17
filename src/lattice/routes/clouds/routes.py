@@ -478,6 +478,11 @@ async def delete_cloud_config(
             az_delete_config(config_key, user.get("organization_id"), db)
         elif cloud == "runpod":
             rp_delete_config(config_key, user.get("organization_id"), db)
+        elif cloud == "aws":
+            from routes.clouds.aws.utils import aws_delete_config
+            deleted = aws_delete_config(config_key, user.get("organization_id"), db)
+            if not deleted:
+                raise HTTPException(status_code=404, detail="AWS configuration not found")
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
