@@ -151,6 +151,7 @@ def launch_cluster_with_skypilot(
     display_name: Optional[str] = None,
     credentials: Optional[dict] = None,
     num_nodes: Optional[int] = None,
+    env_vars: Optional[dict] = None,
 ):
     try:
         # RunPod no longer requires global setup; credentials are passed directly to SkyPilot
@@ -246,6 +247,13 @@ def launch_cluster_with_skypilot(
                 db.close()
         else:
             envs = None
+
+        # Merge launch hook environment variables with existing envs
+        if env_vars and isinstance(env_vars, dict):
+            if envs is None:
+                envs = env_vars.copy()
+            else:
+                envs.update(env_vars)
 
         name = "lattice-task-setup"
 
@@ -525,6 +533,7 @@ async def launch_cluster_with_skypilot_isolated(
     display_name: Optional[str] = None,
     credentials: Optional[dict] = None,
     num_nodes: Optional[int] = None,
+    env_vars: Optional[dict] = None,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -555,6 +564,7 @@ async def launch_cluster_with_skypilot_isolated(
             "display_name": display_name,
             "credentials": credentials,
             "num_nodes": num_nodes,
+            "env_vars": env_vars,
         }
 
         # Create a temporary file to pass parameters

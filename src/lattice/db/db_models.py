@@ -551,6 +551,7 @@ class LaunchHook(Base, ValidationMixin):
     name = Column(String, nullable=False)  # Human-readable name for the hook
     description = Column(Text, nullable=True)  # Optional description
     setup_commands = Column(Text, nullable=True)  # Commands to run before the main command
+    env_vars = Column(JSON, nullable=True)  # Environment variables to set (dict format)
     is_active = Column(Boolean, default=True)  # Whether the hook is active
     allowed_team_ids = Column(JSON, nullable=True)  # List of team IDs that can use this hook (null = all teams)
     created_at = Column(DateTime, default=func.now())
