@@ -484,6 +484,13 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                       },
                     }}
                   />
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Number of worker nodes that will launch with the same
+                    machine specs
+                  </Typography>
                 </FormControl>
 
                 {/* Advanced button - always show but disable when template is selected */}

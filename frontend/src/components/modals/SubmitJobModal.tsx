@@ -99,6 +99,18 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       return false;
     }
 
+    // Validate number of nodes
+    if (numNodes && available.count) {
+      const requestedNodes = parseInt(numNodes);
+      if (requestedNodes > available.count) {
+        addNotification({
+          type: "danger",
+          message: `Requested nodes (${requestedNodes}) exceed available nodes (${available.count})`,
+        });
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -434,6 +446,15 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                       },
                     }}
                   />
+                  {availableResources && (
+                    <Typography
+                      level="body-xs"
+                      color="neutral"
+                      sx={{ mt: 0.5 }}
+                    >
+                      Available: {available.count || "N/A"} nodes
+                    </Typography>
+                  )}
                 </FormControl>
               </Card>
             </CardContent>
