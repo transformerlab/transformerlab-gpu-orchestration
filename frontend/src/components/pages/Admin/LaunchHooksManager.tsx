@@ -589,7 +589,17 @@ const LaunchHooksManager: React.FC = () => {
                           }}
                         >
                           {Object.entries(hook.env_vars)
-                            .map(([k, v]) => `${k}=${v}`)
+                            .map(([k, v]) => {
+                              const raw = String(v ?? "");
+                              if (raw.length === 0) return `${k}=`;
+                              if (raw.length === 1) return `${k}=x`;
+                              const visibleCount = raw.length > 4 ? 4 : 1;
+                              const visible = raw.slice(0, visibleCount);
+                              const masked = "x".repeat(
+                                Math.max(0, raw.length - visibleCount)
+                              );
+                              return `${k}=${visible}${masked}`;
+                            })
                             .join("\n")}
                         </Box>
                       </Box>
