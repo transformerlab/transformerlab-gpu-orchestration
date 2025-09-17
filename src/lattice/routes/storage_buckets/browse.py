@@ -120,13 +120,8 @@ def get_filesystem(
                             profile_name = default_config.get("profile_name")
                             if profile_name:
                                 options["profile"] = profile_name
-                            else:
-                                options["profile"] = "transformerlab-s3"
-                        else:
-                            options["profile"] = "transformerlab-s3"
                     except Exception as e:
-                        print(f"Failed to load AWS config, using default profile: {e}")
-                        options["profile"] = "transformerlab-s3"
+                        print(f"Failed to load AWS config; falling back to default AWS credential chain: {e}")
                 # Prefer 'profile' over 'profile_name' for aiobotocore compatibility
                 if options.get("profile_name") and not options.get("profile"):
                     options["profile"] = options.pop("profile_name")

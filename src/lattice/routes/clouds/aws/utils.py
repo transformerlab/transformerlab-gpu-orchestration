@@ -42,7 +42,7 @@ def load_aws_config(
                 "name": row.name,
                 "access_key_id": creds.get("access_key_id", ""),
                 "secret_access_key": creds.get("secret_access_key", ""),
-                "region": creds.get("region", "us-east-1"),
+                "region": creds.get("region", ""),
                 "profile_name": settings.get("profile_name", ""),
                 "allowed_instance_types": settings.get("allowed_instance_types", []),
                 "allowed_regions": settings.get("allowed_regions", []),
