@@ -694,7 +694,7 @@ disk_space: 100`}
             onClick={launchCluster}
             disabled={
               (useYaml ? !yamlContent.trim() : !clusterName) ||
-              (!useYaml && !selectedGpuType) ||
+              (!useYaml && !selectedTemplateId && !selectedGpuType) ||
               (!useYaml && isLoadingGpuTypes) ||
               (!useYaml &&
                 availableGpuTypes.filter((gpu) =>
