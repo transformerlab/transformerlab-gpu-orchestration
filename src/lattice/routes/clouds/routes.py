@@ -36,9 +36,8 @@ from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_data,
 )
 from routes.clouds.ssh.routes import router as ssh_router
-from routes.auth.utils import requires_admin, get_current_user
+from routes.auth.utils import requires_admin
 from routes.clouds.aws.utils import (
-    load_aws_config,
     aws_get_config_for_display,
     aws_save_config_with_setup,
 )
