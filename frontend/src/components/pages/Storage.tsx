@@ -85,6 +85,11 @@ const BucketBrowser: React.FC<{
     });
   }, [bucket]);
 
+  // Reset current path when bucket changes
+  useEffect(() => {
+    setCurrentPath("/");
+  }, [bucket.id]);
+
   useEffect(() => {
     fetchFiles();
   }, [fetchFiles]);
