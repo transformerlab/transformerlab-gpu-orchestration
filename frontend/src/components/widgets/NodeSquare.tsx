@@ -76,7 +76,7 @@ const NodeSquare: React.FC<NodeSquareProps> = ({
   return (
     <Tooltip
       title={
-        <Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
           {isMockVariant && node.type && (
             <Typography level="body-sm">
               <b>Type:</b> {node.type}

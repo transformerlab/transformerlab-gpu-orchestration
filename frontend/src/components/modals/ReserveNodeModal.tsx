@@ -16,6 +16,7 @@ import {
   Select,
   Option,
   Stack,
+  Checkbox,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { Cluster } from "../ClusterCard";
@@ -23,6 +24,7 @@ import { useNotification } from "../NotificationSystem";
 import { useAuth } from "../../context/AuthContext";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 import YamlConfigurationSection from "./YamlConfigurationSection";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface DockerImage {
   id: string;
@@ -61,6 +63,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
   const [diskSpace, setDiskSpace] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [loading, setLoading] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
@@ -68,6 +71,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId]
@@ -184,6 +188,18 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
 
     // Validate form mode
     if (!useYaml) {
+      // Require CPUs and Memory when no template is selected
+      if (!selectedTemplateId) {
+        if (!cpus.trim() || !memory.trim()) {
+          addNotification({
+            type: "danger",
+            message:
+              "CPUs and Memory are required unless a template is selected",
+          });
+          setLoading(false);
+          return;
+        }
+      }
       // Validate resource limits
       if (maxResources.maxVcpus && cpus) {
         const requestedCpus = parseInt(cpus);
@@ -232,12 +248,20 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
         formData.append("cluster_name", finalClusterName);
         formData.append("node_pool_name", clusterName); // Pass the node pool name separately
         formData.append("command", command);
-        if (setup) formData.append("setup", setup);
+        const finalSetup = autoAppendSemicolons
+          ? appendSemicolons(setup)
+          : setup;
+        if (finalSetup) formData.append("setup", finalSetup);
         formData.append("cloud", "ssh"); // Always use SSH mode
         if (cpus) formData.append("cpus", cpus);
         if (memory) formData.append("memory", memory);
         if (accelerators) formData.append("accelerators", accelerators);
         if (diskSpace) formData.append("disk_space", diskSpace);
+        // Only include num_nodes if > 1
+        const parsedNumNodes = parseInt(numNodes || "1", 10);
+        if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+          formData.append("num_nodes", String(parsedNumNodes));
+        }
         if (selectedDockerImageId)
           formData.append("docker_image_id", selectedDockerImageId);
         formData.append("use_spot", "false");
@@ -390,6 +414,85 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   </Select>
                 </FormControl>
 
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Setup Command (optional)</FormLabel>
+                  <Textarea
+                    value={setup}
+                    onChange={(e) => setSetup(e.target.value)}
+                    placeholder="pip install -r requirements.txt"
+                    minRows={2}
+                  />
+                  <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                    Use <code>;</code> at the end of each line for separate
+                    commands, or enable auto-append.
+                  </Typography>
+                </FormControl>
+
+                <FormControl sx={{ mb: 2 }}>
+                  <Checkbox
+                    label="Auto-append ; to each non-empty line"
+                    checked={autoAppendSemicolons}
+                    onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
+                  />
+                </FormControl>
+
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Docker Image (optional)</FormLabel>
+                  {loadingImages ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading docker images...
+                    </Typography>
+                  ) : dockerImages.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No docker images configured. You can add them in Admin
+                      &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedDockerImageId}
+                      onChange={(_, value) =>
+                        setSelectedDockerImageId(value || "")
+                      }
+                      placeholder="Select a docker image (optional)"
+                    >
+                      {dockerImages.map((image) => (
+                        <Option key={image.id} value={image.id}>
+                          {image.name} ({image.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default VM image. Images are managed by your admin.
+                  </Typography>
+                </FormControl>
+
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Number of worker nodes that will launch with the same
+                    machine specs
+                  </Typography>
+                </FormControl>
+
                 {/* Advanced button - always show but disable when template is selected */}
                 <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
                   <Button
@@ -406,54 +509,10 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   </Button>
                 </Box>
 
-                {/* Advanced fields - only show when advanced button is clicked and no template is selected */}
+                {/* Advanced fields - only remaining resource fields */}
                 {showAdvanced && !selectedTemplateId && (
                   <>
-                    <FormControl sx={{ mb: 2 }}>
-                      <FormLabel>Setup Command (optional)</FormLabel>
-                      <Textarea
-                        value={setup}
-                        onChange={(e) => setSetup(e.target.value)}
-                        placeholder="pip install -r requirements.txt"
-                        minRows={2}
-                      />
-                    </FormControl>
-
-                    <FormControl sx={{ mb: 2 }}>
-                      <FormLabel>Docker Image (optional)</FormLabel>
-                      {loadingImages ? (
-                        <Typography level="body-sm" color="neutral">
-                          Loading docker images...
-                        </Typography>
-                      ) : dockerImages.length === 0 ? (
-                        <Typography level="body-sm" color="warning">
-                          No docker images configured. You can add them in Admin
-                          &gt; Private Container Registry.
-                        </Typography>
-                      ) : (
-                        <Select
-                          value={selectedDockerImageId}
-                          onChange={(_, value) =>
-                            setSelectedDockerImageId(value || "")
-                          }
-                          placeholder="Select a docker image (optional)"
-                        >
-                          {dockerImages.map((image) => (
-                            <Option key={image.id} value={image.id}>
-                              {image.name} ({image.image_tag})
-                            </Option>
-                          ))}
-                        </Select>
-                      )}
-                      <Typography
-                        level="body-xs"
-                        sx={{ mt: 0.5, color: "text.secondary" }}
-                      >
-                        Use a Docker image as runtime environment. Leave empty
-                        to use default VM image. Images are managed by your
-                        admin.
-                      </Typography>
-                    </FormControl>
+                    {/* Setup, Docker Image, and Num Nodes moved above */}
 
                     {/* Resource Configuration */}
                     <Box
@@ -480,7 +539,9 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                         </Alert>
                       ) : null}
                       <FormControl sx={{ mb: 2 }}>
-                        <FormLabel>CPUs</FormLabel>
+                        <FormLabel>
+                          CPUs{!selectedTemplateId ? " (required)" : ""}
+                        </FormLabel>
                         <Input
                           value={cpus}
                           onChange={(e) => setCpus(e.target.value)}
@@ -490,10 +551,13 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                               : "e.g., 4, 8+"
                           }
                           disabled={typeof tpl.cpus !== "undefined"}
+                          required={!selectedTemplateId}
                         />
                       </FormControl>
                       <FormControl sx={{ mb: 2 }}>
-                        <FormLabel>Memory (GB)</FormLabel>
+                        <FormLabel>
+                          Memory (GB){!selectedTemplateId ? " (required)" : ""}
+                        </FormLabel>
                         <Input
                           value={memory}
                           onChange={(e) => setMemory(e.target.value)}
@@ -503,6 +567,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                               : "e.g., 16, 32+"
                           }
                           disabled={typeof tpl.memory !== "undefined"}
+                          required={!selectedTemplateId}
                         />
                       </FormControl>
                       <FormControl sx={{ mb: 2 }}>

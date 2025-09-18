@@ -53,6 +53,7 @@ dependencies = [
     "skypilot[all] @ git+https://github.com/transformerlab/skypilot.git@prod-2",
     "fsspec>=2025.9.0",
     "adlfs>=2022.11.1",
+    "s3fs>=2025.9.0",
 ]
 
 [project.scripts]
@@ -71,9 +72,9 @@ dev = []
 [project.optional-dependencies]
 dev = [
     "openapi-client>=1.1.7",
- "ruff>=0.12.10",
- "pytest>=8.0.0",
- "pytest-cov>=7.0.0",
+    "ruff>=0.12.10",
+    "pytest>=8.0.0",
+    "pytest-cov>=7.0.0",
 ]
 
 cli = [

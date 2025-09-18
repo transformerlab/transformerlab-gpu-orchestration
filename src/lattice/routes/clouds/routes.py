@@ -37,6 +37,10 @@ from utils.cluster_utils import (
 )
 from routes.clouds.ssh.routes import router as ssh_router
 from routes.auth.utils import requires_admin
+from routes.clouds.aws.utils import (
+    aws_get_config_for_display,
+    aws_save_config_with_setup,
+)
 from config import get_db
 from sqlalchemy.orm import Session
 from db.db_models import NodePoolAccess
@@ -81,6 +85,25 @@ class RunPodTestRequest(BaseModel):
     api_key: str
 
 
+class AWSConfigRequest(BaseModel):
+    name: str
+    access_key_id: str
+    secret_access_key: str
+    region: str = "us-east-1"
+    allowed_instance_types: list[str] = []
+    allowed_regions: list[str] = []
+    max_instances: int = 0
+    config_key: str | None = None
+    # Teams allowed to use this pool (team IDs)
+    allowed_team_ids: list[str] = []
+
+
+class AWSTestRequest(BaseModel):
+    access_key_id: str
+    secret_access_key: str
+    region: str = "us-east-1"
+
+
 # Create main clouds router
 router = APIRouter(
     prefix="/clouds",
@@ -88,14 +111,13 @@ router = APIRouter(
     tags=["clouds"],
 )
 
-# Include SSH router
-
+# Include cloud provider routers
 router.include_router(ssh_router, prefix="/ssh")
 
 
 @router.get("/{cloud}/setup")
 async def setup_cloud(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     user: dict = Depends(get_user_or_api_key),
 ):
     """Setup cloud configuration"""
@@ -116,7 +138,7 @@ async def setup_cloud(
 
 @router.get("/{cloud}/verify")
 async def verify_cloud(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     user: dict = Depends(get_user_or_api_key),
 ):
     """Verify cloud setup"""
@@ -137,7 +159,7 @@ async def verify_cloud(
 
 @router.get("/{cloud}/config")
 async def get_cloud_config(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     request: Request = None,
     response: Response = None,
     user: dict = Depends(get_user_or_api_key),
@@ -149,6 +171,8 @@ async def get_cloud_config(
             config = az_get_config_for_display(user.get("organization_id"), db)
         elif cloud == "runpod":
             config = rp_get_config_for_display(user.get("organization_id"), db)
+        elif cloud == "aws":
+            config = aws_get_config_for_display(user.get("organization_id"), db)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
@@ -181,7 +205,7 @@ async def get_cloud_config(
 
 @router.get("/{cloud}/credentials")
 async def get_cloud_credentials(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     config_key: str = None,
     request: Request = None,
     response: Response = None,
@@ -240,8 +264,7 @@ async def get_cloud_credentials(
 
 @router.post("/{cloud}/config")
 async def save_cloud_config(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
-    config_request: AzureConfigRequest | RunPodConfigRequest = None,
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     request: Request = None,
     response: Response = None,
     user: dict = Depends(get_user_or_api_key),
@@ -250,11 +273,11 @@ async def save_cloud_config(
 ):
     """Save cloud configuration"""
     try:
+        # Parse request body
+        body = await request.json()
+        
         if cloud == "azure":
-            if not isinstance(config_request, AzureConfigRequest):
-                raise HTTPException(
-                    status_code=400, detail="Invalid config request for Azure"
-                )
+            config_request = AzureConfigRequest(**body)
 
             result = az_save_config_with_setup(
                 config_request.name,
@@ -322,10 +345,7 @@ async def save_cloud_config(
             return result
 
         elif cloud == "runpod":
-            if not isinstance(config_request, RunPodConfigRequest):
-                raise HTTPException(
-                    status_code=400, detail="Invalid config request for RunPod"
-                )
+            config_request = RunPodConfigRequest(**body)
 
             result = rp_save_config_with_setup(
                 config_request.name,
@@ -388,6 +408,24 @@ async def save_cloud_config(
             # CloudAccount persistence handled in utils
 
             return result
+        elif cloud == "aws":
+            config_request = AWSConfigRequest(**body)
+
+            result = aws_save_config_with_setup(
+                name=config_request.name,
+                access_key_id=config_request.access_key_id,
+                secret_access_key=config_request.secret_access_key,
+                region=config_request.region,
+                allowed_instance_types=config_request.allowed_instance_types,
+                allowed_regions=config_request.allowed_regions,
+                max_instances=config_request.max_instances,
+                config_key=config_request.config_key,
+                allowed_team_ids=config_request.allowed_team_ids,
+                organization_id=user.get("organization_id"),
+                user_id=user.get("id"),
+            )
+
+            return result
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
@@ -401,7 +439,7 @@ async def save_cloud_config(
 
 @router.post("/{cloud}/config/{config_key}/set-default")
 async def set_cloud_default_config(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     config_key: str = None,
     __: dict = Depends(requires_admin),
     user: dict = Depends(get_user_or_api_key),
@@ -427,7 +465,7 @@ async def set_cloud_default_config(
 
 @router.delete("/{cloud}/config/{config_key}")
 async def delete_cloud_config(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     config_key: str = None,
     __: dict = Depends(requires_admin),
     user: dict = Depends(get_user_or_api_key),
@@ -439,6 +477,11 @@ async def delete_cloud_config(
             az_delete_config(config_key, user.get("organization_id"), db)
         elif cloud == "runpod":
             rp_delete_config(config_key, user.get("organization_id"), db)
+        elif cloud == "aws":
+            from routes.clouds.aws.utils import aws_delete_config
+            deleted = aws_delete_config(config_key, user.get("organization_id"), db)
+            if not deleted:
+                raise HTTPException(status_code=404, detail="AWS configuration not found")
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported cloud: {cloud}")
 
@@ -453,7 +496,7 @@ async def delete_cloud_config(
 
 @router.post("/{cloud}/test")
 async def test_cloud_connection(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     test_request: AzureTestRequest | RunPodTestRequest = None,
     __: dict = Depends(requires_admin),
 ):
@@ -498,7 +541,7 @@ async def test_cloud_connection(
 
 @router.get("/{cloud}/instances")
 async def get_cloud_instances(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
 ):
@@ -601,7 +644,7 @@ async def get_cloud_info(cloud: str = Path(..., pattern="^(azure|runpod)$")):
 
 @router.get("/{cloud}/price")
 async def get_cloud_price(
-    cloud: str = Path(..., pattern="^(azure|runpod)$"),
+    cloud: str = Path(..., pattern="^(azure|runpod|aws)$"),
     instance_type: str | None = None,
     region: str | None = None,
     display_option: str | None = None,

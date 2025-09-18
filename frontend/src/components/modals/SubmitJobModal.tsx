@@ -14,10 +14,12 @@ import {
   Input,
   CircularProgress,
   Alert,
+  Checkbox,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
 import { parseResourcesString } from "../../utils/resourceParser";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface SubmitJobModalProps {
   open: boolean;
@@ -46,8 +48,10 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [memory, setMemory] = useState("");
   const [accelerators, setAccelerators] = useState("");
   const [jobName, setJobName] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   const available = parseResourcesString(availableResources);
 
@@ -60,6 +64,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setMemory("");
     setAccelerators("");
     setJobName("");
+    setNumNodes("1");
   };
 
   const validateResources = () => {
@@ -92,6 +97,18 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
         message: "No accelerators are available for this cluster",
       });
       return false;
+    }
+
+    // Validate number of nodes
+    if (numNodes && available.count) {
+      const requestedNodes = parseInt(numNodes);
+      if (requestedNodes > available.count) {
+        addNotification({
+          type: "danger",
+          message: `Requested nodes (${requestedNodes}) exceed available nodes (${available.count})`,
+        });
+        return false;
+      }
     }
 
     return true;
@@ -156,12 +173,22 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       // Step 2: Submit job with uploaded directory path
       const formData = new FormData();
 
-      formData.append("command", command);
-      if (setup) formData.append("setup", setup);
+      const finalCommand = autoAppendSemicolons
+        ? appendSemicolons(command)
+        : command;
+      const finalSetup = autoAppendSemicolons ? appendSemicolons(setup) : setup;
+
+      formData.append("command", finalCommand);
+      if (finalSetup) formData.append("setup", finalSetup);
       if (cpus) formData.append("cpus", cpus);
       if (memory) formData.append("memory", memory);
       if (accelerators) formData.append("accelerators", accelerators);
       if (jobName) formData.append("job_name", jobName);
+      // Only include num_nodes if > 1
+      const parsedNumNodes = parseInt(numNodes || "1", 10);
+      if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+        formData.append("num_nodes", String(parsedNumNodes));
+      }
       if (uploadedDirPath) {
         formData.append("uploaded_dir_path", uploadedDirPath);
       }
@@ -266,6 +293,10 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   required
                   disabled={isClusterLaunching}
                 />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Multiple commands supported. End each line with <code>;</code>{" "}
+                  or enable the option below.
+                </Typography>
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
@@ -275,6 +306,19 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   onChange={(e) => setSetup(e.target.value)}
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
+                  disabled={isClusterLaunching}
+                />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Use <code>;</code> at the end of each line for separate
+                  commands, or enable auto-append.
+                </Typography>
+              </FormControl>
+
+              <FormControl sx={{ mb: 2 }}>
+                <Checkbox
+                  label="Auto-append ; to each non-empty line"
+                  checked={autoAppendSemicolons}
+                  onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
                   disabled={isClusterLaunching}
                 />
               </FormControl>
@@ -385,6 +429,30 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                       sx={{ mt: 0.5 }}
                     >
                       Available: {available.gpu || "None"}
+                    </Typography>
+                  )}
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
+                    disabled={isClusterLaunching}
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                  {availableResources && (
+                    <Typography
+                      level="body-xs"
+                      color="neutral"
+                      sx={{ mt: 0.5 }}
+                    >
+                      Available: {available.count || "N/A"} nodes
                     </Typography>
                   )}
                 </FormControl>

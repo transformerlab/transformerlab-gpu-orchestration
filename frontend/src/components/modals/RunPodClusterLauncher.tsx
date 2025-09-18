@@ -17,6 +17,7 @@ import {
   Option,
   Alert,
   CircularProgress,
+  Checkbox,
 } from "@mui/joy";
 import { Rocket, Zap } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -24,6 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../NotificationSystem";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 import YamlConfigurationSection from "./YamlConfigurationSection";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface RunPodConfig {
   api_key: string;
@@ -112,6 +114,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // Docker image state
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
@@ -288,8 +291,14 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
-        formData.append("command", command);
-        if (setup) formData.append("setup", setup);
+        const finalCommand = autoAppendSemicolons
+          ? appendSemicolons(command)
+          : command;
+        const finalSetup = autoAppendSemicolons
+          ? appendSemicolons(setup)
+          : setup;
+        formData.append("command", finalCommand);
+        if (finalSetup) formData.append("setup", finalSetup);
         formData.append("cloud", "runpod");
         if (selectedGpuFullString)
           formData.append("accelerators", selectedGpuFullString);
@@ -379,6 +388,72 @@ disk_space: 100`}
               />
             </FormControl>
 
+            {/* Setup Command (moved out of Advanced) */}
+            <FormControl>
+              <FormLabel>Setup Command (optional)</FormLabel>
+              <Textarea
+                value={setup}
+                onChange={(e) => setSetup(e.target.value)}
+                placeholder="pip install torch transformers"
+                minRows={2}
+              />
+              <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                Use <code>;</code> at the end of each line for separate
+                commands, or enable auto-append.
+              </Typography>
+            </FormControl>
+            <FormControl>
+              <Checkbox
+                label="Auto-append ; to each non-empty line"
+                checked={autoAppendSemicolons}
+                onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
+              />
+            </FormControl>
+
+            {/* Docker Image (moved out of Advanced) */}
+            <Card variant="outlined">
+              <Typography level="title-sm" sx={{ mb: 2 }}>
+                Docker Configuration (Optional)
+              </Typography>
+              <Stack spacing={2}>
+                <FormControl>
+                  <FormLabel>Docker Image</FormLabel>
+                  {loadingDockerImages ? (
+                    <Typography level="body-sm" color="neutral">
+                      Loading docker images...
+                    </Typography>
+                  ) : dockerImages.length === 0 ? (
+                    <Typography level="body-sm" color="warning">
+                      No docker images configured. You can add them in Admin
+                      &gt; Private Container Registry.
+                    </Typography>
+                  ) : (
+                    <Select
+                      value={selectedDockerImageId}
+                      onChange={(_, value) =>
+                        setSelectedDockerImageId(value || "")
+                      }
+                      placeholder="Select a docker image (optional)"
+                    >
+                      {dockerImages.map((image) => (
+                        <Option key={image.id} value={image.id}>
+                          {image.name} ({image.image_tag})
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "text.secondary" }}
+                  >
+                    Use a Docker image as runtime environment. Leave empty to
+                    use default RunPod image. Configure images in Admin &gt;
+                    Private Container Registry.
+                  </Typography>
+                </FormControl>
+              </Stack>
+            </Card>
+
             {/* Template selector - moved down */}
             <FormControl>
               <FormLabel>Template (optional)</FormLabel>
@@ -414,58 +489,7 @@ disk_space: 100`}
             {/* Advanced fields - only show when advanced button is clicked and no template is selected */}
             {showAdvanced && !selectedTemplateId && (
               <>
-                <FormControl>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setup}
-                    onChange={(e) => setSetup(e.target.value)}
-                    placeholder="pip install torch transformers"
-                    minRows={2}
-                  />
-                </FormControl>
-
-                <Card variant="outlined">
-                  <Typography level="title-sm" sx={{ mb: 2 }}>
-                    Docker Configuration (Optional)
-                  </Typography>
-                  <Stack spacing={2}>
-                    <FormControl>
-                      <FormLabel>Docker Image</FormLabel>
-                      {loadingDockerImages ? (
-                        <Typography level="body-sm" color="neutral">
-                          Loading docker images...
-                        </Typography>
-                      ) : dockerImages.length === 0 ? (
-                        <Typography level="body-sm" color="warning">
-                          No docker images configured. You can add them in Admin
-                          &gt; Private Container Registry.
-                        </Typography>
-                      ) : (
-                        <Select
-                          value={selectedDockerImageId}
-                          onChange={(_, value) =>
-                            setSelectedDockerImageId(value || "")
-                          }
-                          placeholder="Select a docker image (optional)"
-                        >
-                          {dockerImages.map((image) => (
-                            <Option key={image.id} value={image.id}>
-                              {image.name} ({image.image_tag})
-                            </Option>
-                          ))}
-                        </Select>
-                      )}
-                      <Typography
-                        level="body-xs"
-                        sx={{ mt: 0.5, color: "text.secondary" }}
-                      >
-                        Use a Docker image as runtime environment. Leave empty
-                        to use default RunPod image. Configure images in Admin
-                        &gt; Private Container Registry.
-                      </Typography>
-                    </FormControl>
-                  </Stack>
-                </Card>
+                {/* Setup Command and Docker Image moved above */}
 
                 <FormControl required>
                   <FormLabel>GPU Type</FormLabel>
@@ -670,7 +694,7 @@ disk_space: 100`}
             onClick={launchCluster}
             disabled={
               (useYaml ? !yamlContent.trim() : !clusterName) ||
-              (!useYaml && !selectedGpuType) ||
+              (!useYaml && !selectedTemplateId && !selectedGpuType) ||
               (!useYaml && isLoadingGpuTypes) ||
               (!useYaml &&
                 availableGpuTypes.filter((gpu) =>

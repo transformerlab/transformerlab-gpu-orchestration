@@ -14,10 +14,12 @@ import {
   FormLabel,
   Input,
   Alert,
+  Checkbox,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface InstanceLauncherProps {
   open: boolean;
@@ -39,6 +41,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { addNotification } = useNotification();
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,12 +53,16 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
       const clusterName = instanceName || `instance-${Date.now()}`;
 
       // Create form data for the API call
+
       const formData = new FormData();
       formData.append("cluster_name", clusterName);
       formData.append("command", "echo 'Instance launched successfully'");
 
-      if (setupCommand) {
-        formData.append("setup", setupCommand);
+      const finalSetup = autoAppendSemicolons
+        ? appendSemicolons(setupCommand)
+        : setupCommand;
+      if (finalSetup) {
+        formData.append("setup", finalSetup);
       }
 
       if (vcpus) {
@@ -170,6 +177,18 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
               onChange={(e) => setSetupCommand(e.target.value)}
               placeholder="pip install -r requirements.txt"
               minRows={2}
+            />
+            <Typography level="body-xs" sx={{ mt: 0.5 }}>
+              Use <code>;</code> at the end of each line for separate commands,
+              or enable auto-append.
+            </Typography>
+          </FormControl>
+
+          <FormControl sx={{ mb: 2 }}>
+            <Checkbox
+              label="Auto-append ; to each non-empty line"
+              checked={autoAppendSemicolons}
+              onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
             />
           </FormControl>
 

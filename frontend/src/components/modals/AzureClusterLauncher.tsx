@@ -18,6 +18,7 @@ import {
   Alert,
   CircularProgress,
   Switch,
+  Checkbox,
 } from "@mui/joy";
 import { Rocket, Zap, Clock, DollarSign } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -25,6 +26,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../NotificationSystem";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 import YamlConfigurationSection from "./YamlConfigurationSection";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface AzureClusterLauncherProps {
   open: boolean;
@@ -102,6 +104,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   });
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
 
   const [selectedDockerImageId, setSelectedDockerImageId] = useState("");
   const [templates, setTemplates] = useState<any[]>([]);
@@ -121,6 +124,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const { addNotification } = useNotification();
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // Storage bucket state
   const [storageBuckets, setStorageBuckets] = useState<StorageBucket[]>([]);
@@ -171,7 +175,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     }
   }, [open, user?.organization_id]);
 
-  // Recompute estimated cost when instance type/region change
+  // Recompute estimated cost when instance type/region/nodes change
   useEffect(() => {
     const compute = async () => {
       if (!selectedInstanceType || !selectedRegion) {
@@ -191,13 +195,16 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         }
         const data = await res.json();
         const p = Number(data.price_per_hour || 0);
-        setEstimatedCost(!isNaN(p) ? p * 1.0 : 0); // 1h minimum
+        const numNodesValue = parseInt(numNodes || "1", 10);
+        const nodeCount =
+          isNaN(numNodesValue) || numNodesValue <= 0 ? 1 : numNodesValue;
+        setEstimatedCost(!isNaN(p) ? p * 1.0 * nodeCount : 0); // 1h minimum * number of nodes
       } catch (e) {
         setEstimatedCost(0);
       }
     };
     compute();
-  }, [selectedInstanceType, selectedRegion]);
+  }, [selectedInstanceType, selectedRegion, numNodes]);
 
   const fetchStorageBuckets = async () => {
     try {
@@ -386,6 +393,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     setDiskSpace("");
     setUseSpot(false);
     setIdleMinutesToAutostop("");
+    setNumNodes("1");
     setSelectedTemplateId("");
     setShowAdvanced(false);
     setSelectedDockerImageId("");
@@ -448,8 +456,14 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
-        formData.append("command", command);
-        if (setup) formData.append("setup", setup);
+        const finalCommand = autoAppendSemicolons
+          ? appendSemicolons(command)
+          : command;
+        const finalSetup = autoAppendSemicolons
+          ? appendSemicolons(setup)
+          : setup;
+        formData.append("command", finalCommand);
+        if (finalSetup) formData.append("setup", finalSetup);
         formData.append("cloud", "azure");
         formData.append("instance_type", selectedInstanceType);
         formData.append("region", selectedRegion);
@@ -457,6 +471,12 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         formData.append("use_spot", useSpot.toString());
         if (idleMinutesToAutostop) {
           formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
+        }
+
+        // Only include num_nodes if > 1
+        const parsedNumNodes = parseInt(numNodes || "1", 10);
+        if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+          formData.append("num_nodes", String(parsedNumNodes));
         }
 
         if (selectedDockerImageId)
@@ -629,6 +649,88 @@ disk_space: 100`}
                           required
                         />
                       </FormControl>
+                      <FormControl>
+                        <FormLabel>Number of Nodes</FormLabel>
+                        <Input
+                          value={numNodes}
+                          onChange={(e) => setNumNodes(e.target.value)}
+                          placeholder="1"
+                          slotProps={{
+                            input: {
+                              type: "number",
+                              min: 1,
+                            },
+                          }}
+                        />
+                        <Typography
+                          level="body-xs"
+                          sx={{ mt: 0.5, color: "text.secondary" }}
+                        >
+                          Number of worker nodes that will launch with the same
+                          machine specs
+                        </Typography>
+                      </FormControl>
+
+                      {/* Setup Command (moved out of Advanced) */}
+                      <FormControl>
+                        <FormLabel>Setup Command (optional)</FormLabel>
+                        <Textarea
+                          value={setup}
+                          onChange={(e) => setSetup(e.target.value)}
+                          placeholder="pip install -r requirements.txt"
+                          minRows={2}
+                        />
+                        <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                          Use <code>;</code> at the end of each line for
+                          separate commands, or enable auto-append.
+                        </Typography>
+                      </FormControl>
+                      <FormControl>
+                        <Checkbox
+                          label="Auto-append ; to each non-empty line"
+                          checked={autoAppendSemicolons}
+                          onChange={(e) =>
+                            setAutoAppendSemicolons(e.target.checked)
+                          }
+                        />
+                      </FormControl>
+
+                      {/* Docker Image (moved out of Advanced) */}
+                      <FormControl>
+                        <FormLabel>Docker Image (optional)</FormLabel>
+                        {loadingDockerImages ? (
+                          <Typography level="body-sm" color="neutral">
+                            Loading docker images...
+                          </Typography>
+                        ) : dockerImages.length === 0 ? (
+                          <Typography level="body-sm" color="warning">
+                            No docker images configured. You can add them in
+                            Admin &gt; Private Container Registry.
+                          </Typography>
+                        ) : (
+                          <Select
+                            value={selectedDockerImageId}
+                            onChange={(_, value) =>
+                              setSelectedDockerImageId(value || "")
+                            }
+                            placeholder="Select a docker image (optional)"
+                          >
+                            {dockerImages.map((image) => (
+                              <Option key={image.id} value={image.id}>
+                                {image.name} ({image.image_tag})
+                              </Option>
+                            ))}
+                          </Select>
+                        )}
+                        <Typography
+                          level="body-xs"
+                          sx={{ mt: 0.5, color: "text.secondary" }}
+                        >
+                          Use a Docker image as runtime environment. Leave empty
+                          to use default VM image. Configure images in Admin
+                          &gt; Private Container Registry.
+                        </Typography>
+                      </FormControl>
 
                       {/* Template selector - moved down */}
                       <FormControl>
@@ -670,6 +772,125 @@ disk_space: 100`}
                     </Stack>
                   </Card>
 
+                  {/* Storage Buckets (moved out of Advanced) */}
+                  <Card variant="outlined">
+                    <Typography level="title-sm" sx={{ mb: 2 }}>
+                      Storage Buckets (Optional)
+                    </Typography>
+                    <Stack spacing={2}>
+                      <FormControl>
+                        <FormLabel>Select Storage Buckets</FormLabel>
+                        {loadingStorageBuckets ? (
+                          <Typography level="body-sm" color="neutral">
+                            Loading storage buckets...
+                          </Typography>
+                        ) : storageBuckets.length === 0 ? (
+                          <Typography level="body-sm" color="warning">
+                            No storage buckets available. Create storage buckets
+                            in the "Object Storage" tab first.
+                          </Typography>
+                        ) : (
+                          <Select
+                            multiple
+                            value={selectedStorageBuckets}
+                            onChange={(_, value) =>
+                              setSelectedStorageBuckets(value || [])
+                            }
+                            placeholder="Select storage buckets to mount"
+                          >
+                            {storageBuckets.map((bucket) => (
+                              <Option key={bucket.id} value={bucket.id}>
+                                {bucket.name} ({bucket.remote_path}) -{" "}
+                                {bucket.mode}
+                              </Option>
+                            ))}
+                          </Select>
+                        )}
+                        {selectedStorageBuckets.length > 0 && (
+                          <Typography level="body-xs" color="primary">
+                            Selected: {selectedStorageBuckets.length} bucket(s)
+                          </Typography>
+                        )}
+                        <Typography
+                          level="body-xs"
+                          sx={{ color: "text.secondary", mt: 0.5 }}
+                        >
+                          Selected storage buckets will be mounted to your
+                          cluster for data access
+                        </Typography>
+                      </FormControl>
+                    </Stack>
+                  </Card>
+
+                  {/* Cost Optimization (moved out of Advanced) */}
+                  <Card variant="outlined">
+                    <Typography level="title-sm" sx={{ mb: 2 }}>
+                      <DollarSign
+                        size={16}
+                        style={{ marginRight: 8, verticalAlign: "middle" }}
+                      />
+                      Cost Optimization
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Box>
+                          <Typography level="title-sm">
+                            Use Spot Instances
+                          </Typography>
+                          <Typography
+                            level="body-xs"
+                            sx={{ color: "text.secondary" }}
+                          >
+                            Use spot instances for cost savings (may be
+                            interrupted)
+                          </Typography>
+                        </Box>
+                        <Switch
+                          checked={useSpot}
+                          onChange={(e) => setUseSpot(e.target.checked)}
+                          disabled={typeof tpl.use_spot !== "undefined"}
+                        />
+                      </Box>
+
+                      <FormControl>
+                        <FormLabel>
+                          <Clock
+                            size={16}
+                            style={{
+                              marginRight: 8,
+                              verticalAlign: "middle",
+                            }}
+                          />
+                          Auto-stop after idle (minutes)
+                        </FormLabel>
+                        <Input
+                          value={idleMinutesToAutostop}
+                          onChange={(e) =>
+                            setIdleMinutesToAutostop(e.target.value)
+                          }
+                          placeholder="e.g., 30 (leave empty for no auto-stop)"
+                          disabled={
+                            typeof tpl.idle_minutes_to_autostop !== "undefined"
+                          }
+                          type="number"
+                        />
+                        <Typography
+                          level="body-xs"
+                          sx={{ color: "text.secondary", mt: 0.5 }}
+                        >
+                          Cluster will automatically stop after being idle for
+                          this many minutes
+                        </Typography>
+                      </FormControl>
+                    </Stack>
+                  </Card>
+
                   {/* Advanced fields - only show when advanced button is clicked and no template is selected */}
                   {showAdvanced && !selectedTemplateId && (
                     <>
@@ -678,51 +899,7 @@ disk_space: 100`}
                           Advanced Configuration
                         </Typography>
                         <Stack spacing={2}>
-                          <FormControl>
-                            <FormLabel>Setup Command (optional)</FormLabel>
-                            <Textarea
-                              value={setup}
-                              onChange={(e) => setSetup(e.target.value)}
-                              placeholder="pip install -r requirements.txt"
-                              minRows={2}
-                            />
-                          </FormControl>
-
-                          <FormControl>
-                            <FormLabel>Docker Image (optional)</FormLabel>
-                            {loadingDockerImages ? (
-                              <Typography level="body-sm" color="neutral">
-                                Loading docker images...
-                              </Typography>
-                            ) : dockerImages.length === 0 ? (
-                              <Typography level="body-sm" color="warning">
-                                No docker images configured. You can add them in
-                                Admin &gt; Private Container Registry.
-                              </Typography>
-                            ) : (
-                              <Select
-                                value={selectedDockerImageId}
-                                onChange={(_, value) =>
-                                  setSelectedDockerImageId(value || "")
-                                }
-                                placeholder="Select a docker image (optional)"
-                              >
-                                {dockerImages.map((image) => (
-                                  <Option key={image.id} value={image.id}>
-                                    {image.name} ({image.image_tag})
-                                  </Option>
-                                ))}
-                              </Select>
-                            )}
-                            <Typography
-                              level="body-xs"
-                              sx={{ mt: 0.5, color: "text.secondary" }}
-                            >
-                              Use a Docker image as runtime environment. Leave
-                              empty to use default VM image. Configure images in
-                              Admin &gt; Private Container Registry.
-                            </Typography>
-                          </FormControl>
+                          {/* Setup and Docker Image moved above */}
 
                           <FormControl required>
                             <FormLabel>Instance Type</FormLabel>
@@ -799,125 +976,7 @@ disk_space: 100`}
                         </Stack>
                       </Card>
 
-                      <Card variant="outlined">
-                        <Typography level="title-sm" sx={{ mb: 2 }}>
-                          <DollarSign
-                            size={16}
-                            style={{ marginRight: 8, verticalAlign: "middle" }}
-                          />
-                          Cost Optimization
-                        </Typography>
-                        <Stack spacing={2}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <Box>
-                              <Typography level="title-sm">
-                                Use Spot Instances
-                              </Typography>
-                              <Typography
-                                level="body-xs"
-                                sx={{ color: "text.secondary" }}
-                              >
-                                Use spot instances for cost savings (may be
-                                interrupted)
-                              </Typography>
-                            </Box>
-                            <Switch
-                              checked={useSpot}
-                              onChange={(e) => setUseSpot(e.target.checked)}
-                              disabled={typeof tpl.use_spot !== "undefined"}
-                            />
-                          </Box>
-
-                          <FormControl>
-                            <FormLabel>
-                              <Clock
-                                size={16}
-                                style={{
-                                  marginRight: 8,
-                                  verticalAlign: "middle",
-                                }}
-                              />
-                              Auto-stop after idle (minutes)
-                            </FormLabel>
-                            <Input
-                              value={idleMinutesToAutostop}
-                              onChange={(e) =>
-                                setIdleMinutesToAutostop(e.target.value)
-                              }
-                              placeholder="e.g., 30 (leave empty for no auto-stop)"
-                              disabled={
-                                typeof tpl.idle_minutes_to_autostop !==
-                                "undefined"
-                              }
-                              type="number"
-                            />
-                            <Typography
-                              level="body-xs"
-                              sx={{ color: "text.secondary", mt: 0.5 }}
-                            >
-                              Cluster will automatically stop after being idle
-                              for this many minutes
-                            </Typography>
-                          </FormControl>
-                        </Stack>
-                      </Card>
-
-                      {/* Storage Bucket Selection */}
-                      <Card variant="outlined">
-                        <Typography level="title-sm" sx={{ mb: 2 }}>
-                          Storage Buckets (Optional)
-                        </Typography>
-                        <Stack spacing={2}>
-                          <FormControl>
-                            <FormLabel>Select Storage Buckets</FormLabel>
-                            {loadingStorageBuckets ? (
-                              <Typography level="body-sm" color="neutral">
-                                Loading storage buckets...
-                              </Typography>
-                            ) : storageBuckets.length === 0 ? (
-                              <Typography level="body-sm" color="warning">
-                                No storage buckets available. Create storage
-                                buckets in the "Object Storage" tab first.
-                              </Typography>
-                            ) : (
-                              <Select
-                                multiple
-                                value={selectedStorageBuckets}
-                                onChange={(_, value) =>
-                                  setSelectedStorageBuckets(value || [])
-                                }
-                                placeholder="Select storage buckets to mount"
-                              >
-                                {storageBuckets.map((bucket) => (
-                                  <Option key={bucket.id} value={bucket.id}>
-                                    {bucket.name} ({bucket.remote_path}) -{" "}
-                                    {bucket.mode}
-                                  </Option>
-                                ))}
-                              </Select>
-                            )}
-                            {selectedStorageBuckets.length > 0 && (
-                              <Typography level="body-xs" color="primary">
-                                Selected: {selectedStorageBuckets.length}{" "}
-                                bucket(s)
-                              </Typography>
-                            )}
-                            <Typography
-                              level="body-xs"
-                              sx={{ color: "text.secondary", mt: 0.5 }}
-                            >
-                              Selected storage buckets will be mounted to your
-                              cluster for data access
-                            </Typography>
-                          </FormControl>
-                        </Stack>
-                      </Card>
+                      {/* Cost Optimization and Storage Buckets moved above */}
                     </>
                   )}
                 </>

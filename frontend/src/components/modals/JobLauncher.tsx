@@ -14,11 +14,13 @@ import {
   FormLabel,
   Input,
   Alert,
+  Checkbox,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
 import YamlConfigurationSection from "./YamlConfigurationSection";
+import { appendSemicolons } from "../../utils/commandUtils";
 
 interface JobLauncherProps {
   open: boolean;
@@ -40,11 +42,13 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
   const [memory, setMemory] = useState("");
   const [gpus, setGpus] = useState("");
   const [diskSpace, setDiskSpace] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [zone, setZone] = useState("");
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { addNotification } = useNotification();
+  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // YAML configuration state
   const [useYaml, setUseYaml] = useState(false);
@@ -61,6 +65,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
     setMemory("");
     setGpus("");
     setDiskSpace("");
+    setNumNodes("1");
     setZone("");
     setRegion("");
     setUseYaml(false);
@@ -159,10 +164,16 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
-        formData.append("command", command);
+        const finalCommand = autoAppendSemicolons
+          ? appendSemicolons(command)
+          : command;
+        const finalSetup = autoAppendSemicolons
+          ? appendSemicolons(setupCommand)
+          : setupCommand;
+        formData.append("command", finalCommand);
 
-        if (setupCommand) {
-          formData.append("setup", setupCommand);
+        if (finalSetup) {
+          formData.append("setup", finalSetup);
         }
 
         if (uploadedDirPath) {
@@ -183,6 +194,12 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
 
         if (diskSpace) {
           formData.append("disk_space", diskSpace);
+        }
+
+        // Only include num_nodes if > 1
+        const parsedNumNodes = parseInt(numNodes || "1", 10);
+        if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+          formData.append("num_nodes", String(parsedNumNodes));
         }
 
         if (region) {
@@ -336,6 +353,10 @@ zone: us-west-2a`}
                   minRows={2}
                   required
                 />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Multiple commands supported. End each line with <code>;</code>{" "}
+                  or enable the option below.
+                </Typography>
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
@@ -345,6 +366,18 @@ zone: us-west-2a`}
                   onChange={(e) => setSetupCommand(e.target.value)}
                   placeholder="pip install -r requirements.txt"
                   minRows={2}
+                />
+                <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                  Use <code>;</code> at the end of each line for separate
+                  commands, or enable auto-append.
+                </Typography>
+              </FormControl>
+
+              <FormControl sx={{ mb: 2 }}>
+                <Checkbox
+                  label="Auto-append ; to each non-empty line"
+                  checked={autoAppendSemicolons}
+                  onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
                 />
               </FormControl>
 
@@ -385,6 +418,20 @@ zone: us-west-2a`}
                     value={diskSpace}
                     onChange={(e) => setDiskSpace(e.target.value)}
                     placeholder="e.g., 100, 200, 500"
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                </FormControl>
+                <FormControl sx={{ mb: 1 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
                     slotProps={{
                       input: {
                         type: "number",

@@ -150,6 +150,8 @@ def launch_cluster_with_skypilot(
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
     credentials: Optional[dict] = None,
+    num_nodes: Optional[int] = None,
+    env_vars: Optional[dict] = None,
 ):
     try:
         storage_mounts = {}
@@ -251,14 +253,32 @@ def launch_cluster_with_skypilot(
             envs = {
                 "AWS_PROFILE": os.getenv("AWS_PROFILE", "transformerlab-s3"),
             }
+            
+        # Merge launch hook environment variables with existing envs
+        if env_vars and isinstance(env_vars, dict):
+            if envs is None:
+                envs = env_vars.copy()
+            else:
+                envs.update(env_vars)
 
         name = "lattice-task-setup"
+
+        # Determine number of nodes (default to 1)
+        effective_num_nodes = 1
+        try:
+            if num_nodes is not None:
+                effective_num_nodes = int(num_nodes)
+                if effective_num_nodes <= 0:
+                    effective_num_nodes = 1
+        except Exception:
+            effective_num_nodes = 1
 
         task = sky.Task(
             name=name,
             run=command,
             setup=setup,
             envs=envs,
+            num_nodes=effective_num_nodes,
         )
 
         # Process storage buckets if provided
@@ -543,6 +563,8 @@ async def launch_cluster_with_skypilot_isolated(
     organization_id: Optional[str] = None,
     display_name: Optional[str] = None,
     credentials: Optional[dict] = None,
+    num_nodes: Optional[int] = None,
+    env_vars: Optional[dict] = None,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -572,6 +594,8 @@ async def launch_cluster_with_skypilot_isolated(
             "organization_id": organization_id,
             "display_name": display_name,
             "credentials": credentials,
+            "num_nodes": num_nodes,
+            "env_vars": env_vars,
         }
 
         # Create a temporary file to pass parameters

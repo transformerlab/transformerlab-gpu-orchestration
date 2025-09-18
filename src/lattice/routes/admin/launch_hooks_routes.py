@@ -43,6 +43,7 @@ async def list_launch_hooks(
             "name": hook.name,
             "description": hook.description,
             "setup_commands": hook.setup_commands,
+            "env_vars": hook.env_vars,
             "is_active": hook.is_active,
             "allowed_team_ids": hook.allowed_team_ids,
             "created_at": hook.created_at,
@@ -95,6 +96,7 @@ async def create_launch_hook(
     name: str = Form(...),
     description: Optional[str] = Form(None),
     setup_commands: Optional[str] = Form(None),
+    env_vars: Optional[str] = Form(None),  # JSON string of environment variables
     allowed_team_ids: Optional[str] = Form(None),  # JSON string of team IDs
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -128,6 +130,17 @@ async def create_launch_hook(
         except (json.JSONDecodeError, ValueError) as e:
             raise HTTPException(status_code=400, detail=f"Invalid allowed_team_ids format: {str(e)}")
 
+    # Parse environment variables
+    parsed_env_vars = None
+    if env_vars:
+        try:
+            import json
+            parsed_env_vars = json.loads(env_vars)
+            if not isinstance(parsed_env_vars, dict):
+                raise ValueError("env_vars must be a dictionary")
+        except (json.JSONDecodeError, ValueError) as e:
+            raise HTTPException(status_code=400, detail=f"Invalid env_vars format: {str(e)}")
+
     # Create new hook
     hook = LaunchHook(
         organization_id=org_id,
@@ -135,6 +148,7 @@ async def create_launch_hook(
         name=name,
         description=description,
         setup_commands=setup_commands,
+        env_vars=parsed_env_vars,
         allowed_team_ids=parsed_team_ids,
     )
     
@@ -185,6 +199,7 @@ async def get_launch_hook(
         "name": hook.name,
         "description": hook.description,
         "setup_commands": hook.setup_commands,
+        "env_vars": hook.env_vars,
         "is_active": hook.is_active,
         "allowed_team_ids": hook.allowed_team_ids,
         "created_at": hook.created_at,
@@ -207,6 +222,7 @@ async def update_launch_hook(
     name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     setup_commands: Optional[str] = Form(None),
+    env_vars: Optional[str] = Form(None),  # JSON string of environment variables
     is_active: Optional[bool] = Form(None),
     allowed_team_ids: Optional[str] = Form(None),  # JSON string of team IDs
     user=Depends(get_current_user),
@@ -253,6 +269,21 @@ async def update_launch_hook(
             except (json.JSONDecodeError, ValueError) as e:
                 raise HTTPException(status_code=400, detail=f"Invalid allowed_team_ids format: {str(e)}")
 
+    # Parse environment variables if provided
+    if env_vars is not None:
+        if env_vars == "":
+            # Empty string means no environment variables
+            hook.env_vars = None
+        else:
+            try:
+                import json
+                parsed_env_vars = json.loads(env_vars)
+                if not isinstance(parsed_env_vars, dict):
+                    raise ValueError("env_vars must be a dictionary")
+                hook.env_vars = parsed_env_vars
+            except (json.JSONDecodeError, ValueError) as e:
+                raise HTTPException(status_code=400, detail=f"Invalid env_vars format: {str(e)}")
+
     # Update fields
     if name is not None:
         hook.name = name
@@ -271,6 +302,7 @@ async def update_launch_hook(
         "name": hook.name,
         "description": hook.description,
         "setup_commands": hook.setup_commands,
+        "env_vars": hook.env_vars,
         "is_active": hook.is_active,
         "allowed_team_ids": hook.allowed_team_ids,
         "created_at": hook.created_at,

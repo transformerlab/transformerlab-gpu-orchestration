@@ -123,13 +123,12 @@ def update_gpu_resources_background(node_pool_name: str):
     _gpu_update_executor.submit(run_async_update)
 
 
-
-
 router = APIRouter(
     prefix="/instances",
     dependencies=[Depends(get_user_or_api_key), Depends(enforce_csrf)],
     tags=["instances"],
 )
+
 
 @router.get("/templates", response_model=MachineSizeTemplateListResponse)
 async def list_machine_size_templates(
@@ -155,9 +154,13 @@ async def list_machine_size_templates(
                     updated_at=m.updated_at.isoformat() if m.updated_at else "",
                 )
             )
-        return MachineSizeTemplateListResponse(templates=templates, total_count=len(templates))
+        return MachineSizeTemplateListResponse(
+            templates=templates, total_count=len(templates)
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list templates: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list templates: {str(e)}"
+        )
 
 
 @router.post("/launch", response_model=LaunchClusterResponse)
@@ -177,6 +180,7 @@ async def launch_instance(
     zone: Optional[str] = Form(None),
     use_spot: Optional[bool] = Form(False),
     idle_minutes_to_autostop: Optional[int] = Form(None),
+    num_nodes: Optional[int] = Form(None),
     python_file_name: Optional[str] = Form(None),
     uploaded_dir_path: Optional[str] = Form(None),
     dir_name: Optional[str] = Form(None),
@@ -233,6 +237,7 @@ async def launch_instance(
             "zone": zone,
             "use_spot": use_spot,
             "idle_minutes_to_autostop": idle_minutes_to_autostop,
+            "num_nodes": num_nodes,
             "storage_bucket_ids": storage_bucket_ids,
             "node_pool_name": node_pool_name,
             "docker_image_id": docker_image_id,
@@ -265,6 +270,7 @@ async def launch_instance(
         zone = final_config["zone"]
         use_spot = final_config["use_spot"] or False
         idle_minutes_to_autostop = final_config["idle_minutes_to_autostop"]
+        num_nodes = final_config["num_nodes"]
         storage_bucket_ids = final_config["storage_bucket_ids"]
         node_pool_name = final_config["node_pool_name"]
         docker_image_id = final_config["docker_image_id"]
@@ -327,24 +333,35 @@ async def launch_instance(
                 file_mounts = {}
             file_mounts[f"~/{base_name}"] = uploaded_dir_path
 
+        # Initialize hook environment variables
+        hook_env_vars = {}
+
         # Handle launch hooks for the organization
         organization_id = user.get("organization_id")
         if organization_id:
             from db.db_models import LaunchHook, LaunchHookFile, TeamMembership
-            
+
             # Get user's team ID
-            user_team = db.query(TeamMembership).filter(
-                TeamMembership.organization_id == organization_id,
-                TeamMembership.user_id == user.get("id")
-            ).first()
+            user_team = (
+                db.query(TeamMembership)
+                .filter(
+                    TeamMembership.organization_id == organization_id,
+                    TeamMembership.user_id == user.get("id"),
+                )
+                .first()
+            )
             user_team_id = user_team.team_id if user_team else None
-            
+
             # Get all active launch hooks for the organization
-            active_hooks = db.query(LaunchHook).filter(
-                LaunchHook.organization_id == organization_id,
-                LaunchHook.is_active == True # noqa: E712
-            ).all()
-            
+            active_hooks = (
+                db.query(LaunchHook)
+                .filter(
+                    LaunchHook.organization_id == organization_id,
+                    LaunchHook.is_active == True,  # noqa: E712
+                )
+                .all()
+            )
+
             # Filter hooks based on team access
             accessible_hooks = []
             for hook in active_hooks:
@@ -357,32 +374,41 @@ async def launch_instance(
                 # If user's team is in the allowed list, they can access the hook
                 elif user_team_id in hook.allowed_team_ids:
                     accessible_hooks.append(hook)
-            
+
             if accessible_hooks:
                 # Initialize file_mounts if not already set
                 if file_mounts is None:
                     file_mounts = {}
-                
-                # Collect all setup commands from accessible hooks
+
+                # Collect all setup commands and environment variables from accessible hooks
                 hook_setup_commands = []
-                
+                hook_env_vars = {}
+
                 for hook in accessible_hooks:
                     # Add setup commands from this hook
                     if hook.setup_commands:
                         hook_setup_commands.append(hook.setup_commands)
-                    
+
+                    # Collect environment variables from this hook
+                    if hook.env_vars and isinstance(hook.env_vars, dict):
+                        hook_env_vars.update(hook.env_vars)
+
                     # Get files for this hook
-                    hook_files = db.query(LaunchHookFile).filter(
-                        LaunchHookFile.launch_hook_id == hook.id,
-                        LaunchHookFile.is_active == True # noqa: E712
-                    ).all()
-                    
+                    hook_files = (
+                        db.query(LaunchHookFile)
+                        .filter(
+                            LaunchHookFile.launch_hook_id == hook.id,
+                            LaunchHookFile.is_active == True,  # noqa: E712
+                        )
+                        .all()
+                    )
+
                     # Mount each file to ~/hooks/<filename>
                     for hook_file in hook_files:
                         if os.path.exists(hook_file.file_path):
                             mount_path = f"~/hooks/{hook_file.original_filename}"
                             file_mounts[mount_path] = hook_file.file_path
-                
+
                 # Prepend hook setup commands to the main setup commands
                 if hook_setup_commands:
                     combined_setup = "\n".join(hook_setup_commands)
@@ -416,9 +442,7 @@ async def launch_instance(
         # RunPod: map display string to instance type if accelerators is provided
         if cloud == "runpod":
             if accelerators:
-                mapped_instance_type = map_runpod_display_to_instance_type(
-                    accelerators
-                )
+                mapped_instance_type = map_runpod_display_to_instance_type(accelerators)
                 if mapped_instance_type.lower().startswith("cpu"):
                     # Using skypilot logic to have disk size lesser than 10x vCPUs
                     disk_size = 5 * int(mapped_instance_type.split("-")[1])
@@ -462,7 +486,10 @@ async def launch_instance(
         elif cloud == "runpod":
             try:
                 from routes.clouds.runpod.utils import rp_get_current_config
-                rp_config = rp_get_current_config(organization_id=user.get("organization_id"))
+
+                rp_config = rp_get_current_config(
+                    organization_id=user.get("organization_id")
+                )
                 if rp_config and rp_config.get("api_key"):
                     credentials = {
                         "runpod": {
@@ -471,7 +498,8 @@ async def launch_instance(
                     }
             except Exception as e:
                 raise HTTPException(
-                    status_code=500, detail=f"Failed to setup RunPod credentials: {str(e)}"
+                    status_code=500,
+                    detail=f"Failed to setup RunPod credentials: {str(e)}",
                 )
         # print(f"az_config: {az_config}")
         # raise Exception("test")
@@ -645,6 +673,17 @@ async def launch_instance(
                 pass
 
         # Launch cluster using the actual cluster name
+        # Default num_nodes to 1 if not provided or invalid
+        try:
+            if num_nodes is None:
+                effective_num_nodes = 1
+            else:
+                effective_num_nodes = int(num_nodes)
+                if effective_num_nodes <= 0:
+                    effective_num_nodes = 1
+        except Exception:
+            effective_num_nodes = 1
+
         request_id = await launch_cluster_with_skypilot_isolated(
             cluster_name=actual_cluster_name,
             command=command,
@@ -658,6 +697,7 @@ async def launch_instance(
             zone=zone,
             use_spot=use_spot,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
+            num_nodes=effective_num_nodes,
             file_mounts=file_mounts,
             disk_size=disk_size,
             storage_bucket_ids=parsed_storage_bucket_ids,
@@ -667,6 +707,7 @@ async def launch_instance(
             organization_id=organization_id,
             display_name=cluster_name,
             credentials=credentials,
+            env_vars=hook_env_vars,
         )
 
         # Record usage event for cluster launch
@@ -1155,6 +1196,7 @@ async def get_cluster_info(
                 elif platform == "runpod":
                     try:
                         from routes.clouds.runpod.utils import rp_get_current_config
+
                         rp_config = rp_get_current_config(
                             organization_id=user.get("organization_id")
                         )
