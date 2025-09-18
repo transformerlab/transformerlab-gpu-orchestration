@@ -456,7 +456,7 @@ async def get_file(
                             break
                     
                     if not file_found:
-                        print(f"File not found in container listing")
+                        print("File not found in container listing")
                         raise HTTPException(status_code=404, detail=f"File not found: {req.path}")
                         
                 except Exception as e:
