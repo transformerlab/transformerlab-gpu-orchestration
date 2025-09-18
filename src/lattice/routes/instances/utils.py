@@ -336,16 +336,16 @@ def launch_cluster_with_skypilot(
 
                     storage_mounts[bucket.remote_path] = storage_obj
 
-                # Add mandatory transformerlab bucket
-                transformerlab_bucket = sky.Storage(
-                    name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
-                    mode=sky.StorageMode.MOUNT,
-                    source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
-                    persistent=True,
-                )
-                storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
-                    transformerlab_bucket
-                )
+                # # Add mandatory transformerlab bucket
+                # transformerlab_bucket = sky.Storage(
+                #     name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+                #     mode=sky.StorageMode.MOUNT,
+                #     source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+                #     persistent=True,
+                # )
+                # storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
+                #     transformerlab_bucket
+                # )
                 # Set storage mounts on the task
                 task.set_storage_mounts(storage_mounts)
 
@@ -353,22 +353,22 @@ def launch_cluster_with_skypilot(
                 print(f"[SkyPilot] Warning: Failed to process storage buckets: {e}")
             finally:
                 db.close()
-        else:
-            # Add mandatory transformerlab bucket
-            transformerlab_bucket = sky.Storage(
-                name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
-                mode=sky.StorageMode.MOUNT,
-                source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
-                persistent=True,
-            )
-            storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
-                transformerlab_bucket
-            )
-            # Set storage mounts on the task
-            task.set_storage_mounts(storage_mounts)
-            print(
-                f"[SkyPilot] Added mandatory transformerlab bucket: {transformerlab_bucket}"
-            )
+        # else:
+        #     # Add mandatory transformerlab bucket
+        #     transformerlab_bucket = sky.Storage(
+        #         name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+        #         mode=sky.StorageMode.MOUNT,
+        #         source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+        #         persistent=True,
+        #     )
+        #     storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
+        #         transformerlab_bucket
+        #     )
+        #     # Set storage mounts on the task
+        #     task.set_storage_mounts(storage_mounts)
+        #     print(
+        #         f"[SkyPilot] Added mandatory transformerlab bucket: {transformerlab_bucket}"
+        #     )
 
         if file_mounts:
             task.set_file_mounts(file_mounts)

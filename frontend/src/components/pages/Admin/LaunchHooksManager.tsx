@@ -562,6 +562,9 @@ const LaunchHooksManager: React.FC = () => {
                             fontSize: "sm",
                             overflow: "auto",
                             maxHeight: 200,
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            wordWrap: "break-word",
                           }}
                         >
                           {hook.setup_commands}
@@ -586,6 +589,9 @@ const LaunchHooksManager: React.FC = () => {
                             fontSize: "sm",
                             overflow: "auto",
                             maxHeight: 200,
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            wordWrap: "break-word",
                           }}
                         >
                           {Object.entries(hook.env_vars)
