@@ -156,19 +156,120 @@ def get_filesystem(
                     raise ImportError(
                         "gcsfs package is required for Google Cloud Storage access. Install with 'pip install gcsfs'"
                     )
-            elif bucket.source.startswith("azure://"):
-                # For Azure, we need to use 'abfs' or 'az' protocol instead of 'azure'
-                protocol = "abfs"
+            elif bucket.source.startswith("https://") and 'blob.core.windows.net' in bucket.source:
+                # For Azure, we need to use 'az' protocol for standard blob storage
+                protocol = "az"
                 # Check if adlfs is installed
                 if not importlib.util.find_spec("adlfs"):
                     raise ImportError(
                         "adlfs package is required for Azure Storage access. Install with 'pip install adlfs'"
                     )
 
+                # Parse the URL to extract account and container information
+                url_parts = bucket.source.replace("https://", "").split(".")
+                if len(url_parts) >= 1:
+                    account_name = url_parts[0]
+                    # Extract container name from path - it's the first path segment after the domain
+                    container_parts = bucket.source.split("/")
+                    if len(container_parts) > 3:
+                        # For https://account.blob.core.windows.net/container/path
+                        # container_parts[3] is the container name
+                        container_path = container_parts[3]
+                    else:
+                        container_path = ""
+
+                # Remove unsupported keys that might be forwarded from bucket configuration
+                for k in [
+                    "source",
+                    "mode",
+                    "store",
+                    "persistent",
+                    "name",
+                    "remote_path",
+                ]:
+                    if k in options:
+                        options.pop(k, None)
+
+                # Set these options, overriding any that might have been provided
+                options["account_name"] = account_name
+                if container_path:
+                    options["container_name"] = container_path
+
+                # For Azure blob storage with az protocol, use empty base path since container is specified in options
+                base_path = ""
+
                 # Use Azure credentials from the configured Azure account
                 try:
                     # We need to pass organization_id to az_get_current_config
                     # Extract organization_id from the bucket
+                    org_id = bucket.organization_id
+                    azure_config = az_get_current_config(organization_id=org_id)
+                    if azure_config:
+                        # Override any credentials in options with ones from config
+                        options["client_id"] = azure_config.get("client_id")
+                        options["client_secret"] = azure_config.get("client_secret")
+                        options["tenant_id"] = azure_config.get("tenant_id")
+                except Exception as e:
+                    print(f"Failed to load Azure credentials from config: {e}")
+                    print(
+                        "WARNING: No Azure credentials found. Using default credential chain."
+                    )
+            elif (
+                bucket.source.startswith("https://")
+                and "blob.core.windows.net" in bucket.source
+            ):
+                # Detect Azure blob URLs in the format https://account.blob.core.windows.net/container
+                # Use 'az' protocol for standard Azure Blob Storage (not Data Lake Gen2)
+                protocol = "az"
+                print(f"Detected Azure blob URL: {bucket.source}")
+
+                # Check if adlfs is installed
+                if not importlib.util.find_spec("adlfs"):
+                    raise ImportError(
+                        "adlfs package is required for Azure Storage access. Install with 'pip install adlfs'"
+                    )
+
+                # Parse the URL to extract account and container information
+                url_parts = bucket.source.replace("https://", "").split(".")
+                print(f"URL parts: {url_parts}")
+                if len(url_parts) >= 1:
+                    account_name = url_parts[0]
+                    # Extract container name from path - it's the first path segment after the domain
+                    container_parts = bucket.source.split("/")
+                    if len(container_parts) > 3:
+                        # For https://account.blob.core.windows.net/container/path
+                        # container_parts[3] is the container name
+                        container_path = container_parts[3]
+                    else:
+                        container_path = ""
+                    print(
+                        f"Extracted account: {account_name}, container: {container_path}"
+                    )
+
+                # Remove unsupported keys that might be forwarded from bucket configuration
+                for k in [
+                    "source",
+                    "mode",
+                    "store",
+                    "persistent",
+                    "name",
+                    "remote_path",
+                ]:
+                    if k in options:
+                        options.pop(k, None)
+
+                # Set these options, overriding any that might have been provided
+                options["account_name"] = account_name
+                if container_path:
+                    options["container_name"] = container_path
+                print(f"Set account_name: {account_name}, container_name: {container_path}")
+
+                # For Azure blob storage with az protocol, use empty base path since container is specified in options
+                base_path = ""
+
+                # Use Azure credentials from the configured Azure account
+                try:
+                    # We need to pass organization_id to az_get_current_config
                     org_id = bucket.organization_id
                     azure_config = az_get_current_config(organization_id=org_id)
                     if azure_config:
@@ -184,63 +285,10 @@ def get_filesystem(
                     print(
                         "WARNING: No Azure credentials found. Using default credential chain."
                     )
-            elif (
-                bucket.source.startswith("https://")
-                and "blob.core.windows.net" in bucket.source
-            ):
-                # Detect Azure blob URLs in the format https://account.blob.core.windows.net/container
-                protocol = "abfs"  # Use abfs protocol for Azure Blob Storage
-                print(f"Detected Azure blob URL: {bucket.source}")
-
-                # Check if adlfs is installed
-                if not importlib.util.find_spec("adlfs"):
-                    raise ImportError(
-                        "adlfs package is required for Azure Storage access. Install with 'pip install adlfs'"
-                    )
-
-                # Parse the URL to extract account and container information
-                url_parts = bucket.source.replace("https://", "").split(".")
-                if len(url_parts) >= 1:
-                    account_name = url_parts[0]
-                    # Extract container name from path
-                    container_parts = bucket.source.split("/")
-                    container_path = (
-                        container_parts[-1] if len(container_parts) > 3 else ""
-                    )
-                    print(
-                        f"Extracted account: {account_name}, container: {container_path}"
-                    )
-
-                    # Set these options, overriding any that might have been provided
-                    options["account_name"] = account_name
-                    if container_path:
-                        options["container_name"] = container_path
-
-                    # Use Azure credentials from the configured Azure account
-                    try:
-                        # We need to pass organization_id to az_get_current_config
-                        org_id = bucket.organization_id
-                        azure_config = az_get_current_config(organization_id=org_id)
-                        if azure_config:
-                            print(
-                                f"Found Azure configuration for org {org_id}, using credentials from config"
-                            )
-                            # Override any credentials in options with ones from config
-                            options["client_id"] = azure_config.get("client_id")
-                            options["client_secret"] = azure_config.get("client_secret")
-                            options["tenant_id"] = azure_config.get("tenant_id")
-                    except Exception as e:
-                        print(f"Failed to load Azure credentials from config: {e}")
-                        print(
-                            "WARNING: No Azure credentials found. Using default credential chain."
-                        )
             # Add other protocols as needed
 
         # In production, you would fetch credentials from a secure store based on the bucket.store
         # For now, we assume credentials are passed in storage_options or available via environment
-        print(
-            f"Initializing filesystem with protocol: {protocol} and options: {options}"
-        )
 
         # Try to initialize the filesystem with the determined protocol
         try:
@@ -290,8 +338,15 @@ async def list_files(
         fs, base_path = get_filesystem(bucket, req.storage_options)
 
         # Combine the base path with the requested path
-        full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
-        print(f"Full path: {full_path}")
+        if base_path:
+            if req.path == "/" or req.path == "":
+                # For root directory, just use the base path without trailing slash
+                full_path = base_path.rstrip('/')
+            else:
+                full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        else:
+            # For Azure with az protocol, use just the requested path
+            full_path = req.path.lstrip('/') if req.path != "/" else ""
 
         # print("DEBUG INFO:")
         # print(f"Bucket ID: {bucket_id}")
@@ -311,39 +366,21 @@ async def list_files(
         # print(f"Listing files in bucket {bucket_id} at path: {full_path}")
 
         try:
-            # print(f"Attempting to list files at: {full_path}")
-            # print(f"File exists: {fs.exists(full_path)}")
-
-            # For Azure, verify we can list the container directly
-            # if hasattr(fs, "account_name") and hasattr(fs, "container_name"):
-            #     container_path = f"azure://{fs.account_name}/{fs.container_name}"
-            #     try:
-            #         print(f"Testing container listing at: {container_path}")
-            #         container_listing = fs.ls(container_path, detail=True)
-            #         print(
-            #             f"Container contents: {[item.get('name', '') for item in container_listing]}"
-            #         )
-            #     except Exception as e:
-            #         print(f"Container listing error: {str(e)}")
-
-            # Try with and without trailing slash
-            # try:
-            #     if full_path.endswith("/"):
-            #         print(
-            #             f"Also trying without trailing slash: {full_path.rstrip('/')}"
-            #         )
-            #         test_listing = fs.ls(full_path.rstrip("/"), detail=True)
-            #         print(
-            #             f"Without trailing slash works, found {len(test_listing)} items"
-            #         )
-            #     else:
-            #         print(f"Also trying with trailing slash: {full_path}/")
-            #         test_listing = fs.ls(f"{full_path}/", detail=True)
-            #         print(f"With trailing slash works, found {len(test_listing)} items")
-            # except Exception as e:
-            #     print(f"Alternative path test error: {str(e)}")
-
-            listing = fs.ls(full_path, detail=True)
+            # For Azure, get container name from the source URL
+            container_name = None
+            if hasattr(fs, "account_name"):
+                # Get container name from the bucket source URL
+                container_parts = bucket.source.split("/")
+                container_name = container_parts[3] if len(container_parts) > 3 else None
+                
+                # Use the specific container directly
+                if container_name:
+                    listing = fs.ls(container_name, detail=True)
+                else:
+                    raise HTTPException(status_code=400, detail="Could not extract container name from source URL")
+            else:
+                # Fallback for non-Azure filesystems
+                listing = fs.ls(full_path, detail=True)
             # print(f"Successfully listed path, found {len(listing)} items")
             # Transform the listing to ensure consistent output format
             items = []
