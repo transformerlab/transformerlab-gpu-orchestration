@@ -441,11 +441,6 @@ async def get_file(
             # Get container name from the bucket source URL
             container_parts = bucket.source.split("/")
             container_name = container_parts[3] if len(container_parts) > 3 else None
-            print(f"Azure container name: {container_name}")
-            print(f"Bucket source: {bucket.source}")
-            print(f"Container parts: {container_parts}")
-            print(f"Filesystem exists check: {fs.exists(f'{container_name}/{full_path}')}")
-            print(f"Filesystem isfile check: {fs.isfile(f'{container_name}/{full_path}')}")
             
             if container_name:
                 # List files in the container to find the exact path
