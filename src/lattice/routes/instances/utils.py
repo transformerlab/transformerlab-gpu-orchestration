@@ -154,8 +154,7 @@ def launch_cluster_with_skypilot(
     env_vars: Optional[dict] = None,
 ):
     try:
-        # RunPod no longer requires global setup; credentials are passed directly to SkyPilot
-
+        storage_mounts = {}
         if cloud and cloud.lower() == "ssh":
             # Validate using DB and rely on SkyPilot's ssh_up with infra name
             from routes.node_pools.utils import (
@@ -248,6 +247,13 @@ def launch_cluster_with_skypilot(
         else:
             envs = None
 
+        if envs:
+            envs["AWS_PROFILE"] = os.getenv("AWS_PROFILE", "transformerlab-s3")
+        else:
+            envs = {
+                "AWS_PROFILE": os.getenv("AWS_PROFILE", "transformerlab-s3"),
+            }
+            
         # Merge launch hook environment variables with existing envs
         if env_vars and isinstance(env_vars, dict):
             if envs is None:
@@ -275,6 +281,12 @@ def launch_cluster_with_skypilot(
             num_nodes=effective_num_nodes,
         )
 
+        if file_mounts:
+            file_mounts.update({"/home/sky/.aws": f"{os.path.expanduser('~')}/.aws"})
+            task.set_file_mounts(file_mounts)
+        else:
+            task.set_file_mounts({"/home/sky/.aws": f"{os.path.expanduser('~')}/.aws"})
+
         # Process storage buckets if provided
         if storage_bucket_ids:
             from config import get_db
@@ -291,7 +303,6 @@ def launch_cluster_with_skypilot(
                 )
 
                 # Convert buckets to sky.Storage objects
-                storage_mounts = {}
                 mode_map = {
                     "MOUNT": sky.StorageMode.MOUNT,
                     "COPY": sky.StorageMode.COPY,
@@ -331,6 +342,16 @@ def launch_cluster_with_skypilot(
 
                     storage_mounts[bucket.remote_path] = storage_obj
 
+                # Add mandatory transformerlab bucket
+                transformerlab_bucket = sky.Storage(
+                    name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+                    mode=sky.StorageMode.MOUNT,
+                    source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+                    persistent=True,
+                )
+                storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
+                    transformerlab_bucket
+                )
                 # Set storage mounts on the task
                 task.set_storage_mounts(storage_mounts)
 
@@ -338,9 +359,24 @@ def launch_cluster_with_skypilot(
                 print(f"[SkyPilot] Warning: Failed to process storage buckets: {e}")
             finally:
                 db.close()
+        else:
+            # Add mandatory transformerlab bucket
 
-        if file_mounts:
-            task.set_file_mounts(file_mounts)
+            transformerlab_bucket = sky.Storage(
+                name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+                mode=sky.StorageMode.MOUNT,
+                source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+                persistent=True,
+            )
+            storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
+                transformerlab_bucket
+            )
+            # Set storage mounts on the task
+            task.set_storage_mounts(storage_mounts)
+            print(
+                f"[SkyPilot] Added mandatory transformerlab bucket: {transformerlab_bucket}"
+            )
+
 
         # If no cloud is specified, create a list of resources for all available clouds
         if not cloud:
@@ -633,6 +669,7 @@ except Exception as e:
             if output_text:
                 lines = [ln.strip() for ln in output_text.splitlines() if ln.strip()]
                 for ln in reversed(lines):
+                    print(f"[SkyPilot] Output text: {ln}")
                     if ln.startswith("{") and ln.endswith("}"):
                         try:
                             result_data = json.loads(ln)
