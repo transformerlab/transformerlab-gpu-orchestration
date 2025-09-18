@@ -30,6 +30,7 @@ import {
   FolderIcon,
   PlusIcon,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 // Utility function to format file sizes
@@ -43,9 +44,10 @@ const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 // File browser component for a specific bucket
-const BucketBrowser: React.FC<{ bucket: StorageBucketListItem }> = ({
-  bucket,
-}) => {
+const BucketBrowser: React.FC<{
+  bucket: StorageBucketListItem;
+  onError: () => void;
+}> = ({ bucket, onError }) => {
   const [currentPath, setCurrentPath] = useState("/");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,10 +69,12 @@ const BucketBrowser: React.FC<{ bucket: StorageBucketListItem }> = ({
       setFiles(response.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      // Clear the selected bucket when list API fails
+      onError();
     } finally {
       setLoading(false);
     }
-  }, [bucket.id, currentPath, storageOptions]);
+  }, [bucket.id, currentPath, storageOptions, onError]);
 
   // Initialize storage options with the bucket info
   useEffect(() => {
@@ -80,6 +84,11 @@ const BucketBrowser: React.FC<{ bucket: StorageBucketListItem }> = ({
       mode: bucket.mode,
     });
   }, [bucket]);
+
+  // Reset current path when bucket changes
+  useEffect(() => {
+    setCurrentPath("/");
+  }, [bucket.id]);
 
   useEffect(() => {
     fetchFiles();
@@ -422,7 +431,7 @@ const BucketBrowser: React.FC<{ bucket: StorageBucketListItem }> = ({
                         handleDeleteItem(item);
                       }}
                     >
-                      🗑️
+                      <Trash2 size={14} />
                     </IconButton>
                   </td>
                 </tr>
@@ -450,6 +459,11 @@ const StoragePage: React.FC = () => {
       setSelectedBucket(data.buckets[0]);
     }
   }, [data, selectedBucket]);
+
+  // Handle bucket error - clear selection when list API fails
+  const handleBucketError = () => {
+    setSelectedBucket(null);
+  };
 
   return (
     <PageWithTitle
@@ -496,7 +510,12 @@ const StoragePage: React.FC = () => {
           </Card>
 
           {/* Bucket browser */}
-          {selectedBucket && <BucketBrowser bucket={selectedBucket} />}
+          {selectedBucket && (
+            <BucketBrowser
+              bucket={selectedBucket}
+              onError={handleBucketError}
+            />
+          )}
         </Box>
       )}
     </PageWithTitle>

@@ -429,8 +429,44 @@ async def get_file(
         fs, base_path = get_filesystem(bucket, req.storage_options)
 
         # Combine the base path with the requested file path
-        full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        if base_path:
+            full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        else:
+            # For Azure with az protocol, use just the requested path
+            full_path = req.path.lstrip('/') if req.path != "/" else ""
 
+        
+        # For Azure, we need to check if the file exists in the container
+        if fs.protocol == "az" or fs.protocol == "abfs":
+            # Get container name from the bucket source URL
+            container_parts = bucket.source.split("/")
+            container_name = container_parts[3] if len(container_parts) > 3 else None
+            
+            if container_name:
+                # List files in the container to find the exact path
+                try:
+                    listing = fs.ls(container_name, detail=True)
+                                        
+                    # Check if the file exists in the listing
+                    file_found = False
+                    for item in listing:
+                        if item["name"].endswith(full_path) or item["name"] == full_path:
+                            full_path = item["name"]  # Use the full path from the listing
+                            file_found = True
+                            break
+                    
+                    if not file_found:
+                        print("File not found in container listing")
+                        raise HTTPException(status_code=404, detail=f"File not found: {req.path}")
+                        
+                except Exception as e:
+                    print(f"Error listing Azure container: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise HTTPException(status_code=500, detail=f"Failed to access Azure container: {str(e)}")
+            else:
+                print("No container name found")
+        
         try:
             # Check if it's a file
             if not fs.isfile(full_path):
@@ -483,8 +519,13 @@ async def upload_file(
         fs, base_path = get_filesystem(bucket, json.loads(storage_options))
 
         # Ensure the target directory exists
-        target_dir = f"{base_path.rstrip('/')}/{path.lstrip('/')}"
-        target_path = f"{target_dir.rstrip('/')}/{file.filename}"
+        if base_path:
+            target_dir = f"{base_path.rstrip('/')}/{path.lstrip('/')}"
+            target_path = f"{target_dir.rstrip('/')}/{file.filename}"
+        else:
+            # For Azure with az protocol, use just the requested path
+            target_dir = path.lstrip('/') if path != "/" else ""
+            target_path = f"{target_dir.rstrip('/')}/{file.filename}" if target_dir else file.filename
 
         try:
             # Create directory if it doesn't exist
@@ -526,7 +567,11 @@ async def delete_file(
         fs, base_path = get_filesystem(bucket, req.storage_options)
 
         # Combine the base path with the requested path
-        full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        if base_path:
+            full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        else:
+            # For Azure with az protocol, use just the requested path
+            full_path = req.path.lstrip('/') if req.path != "/" else ""
 
         try:
             if not fs.exists(full_path):
@@ -563,7 +608,11 @@ async def create_dir(
         fs, base_path = get_filesystem(bucket, req.storage_options)
 
         # Combine the base path with the requested path
-        full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        if base_path:
+            full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
+        else:
+            # For Azure with az protocol, use just the requested path
+            full_path = req.path.lstrip('/') if req.path != "/" else ""
 
         try:
             fs.mkdir(full_path, create_parents=True)
