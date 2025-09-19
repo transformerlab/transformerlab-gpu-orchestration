@@ -1,4 +1,5 @@
 import asyncio
+import configparser
 import json
 import os
 import sys
@@ -16,6 +17,58 @@ from utils.cluster_utils import (
 from sqlalchemy.orm import Session
 from utils.skypilot_tracker import skypilot_tracker
 from werkzeug.utils import secure_filename
+
+
+def create_selective_aws_credentials_file(organization_id: Optional[str] = None) -> str:
+    """
+    Create a temporary AWS credentials file containing only the transformerlab-s3 profile
+    and the organization-specific profile (if organization_id is provided).
+
+    Args:
+        organization_id: The organization ID to find the corresponding AWS profile
+
+    Returns:
+        Path to the temporary credentials file
+    """
+    import tempfile
+
+    # Read the original credentials file
+    aws_credentials_path = os.path.expanduser("~/.aws/credentials")
+
+    if not os.path.exists(aws_credentials_path):
+        # If no credentials file exists, create an empty one
+        temp_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".credentials", delete=False
+        )
+        temp_file.close()
+        return temp_file.name
+
+    # Parse the original credentials file
+    config = configparser.ConfigParser()
+    config.read(aws_credentials_path)
+
+    # Create a new config with only the profiles we need
+    new_config = configparser.ConfigParser()
+
+    # Always include transformerlab-s3 profile
+    if "transformerlab-s3" in config:
+        new_config["transformerlab-s3"] = config["transformerlab-s3"]
+
+    # Include organization-specific profiles if organization_id is provided
+    if organization_id:
+        # Look for profiles that start with the organization_id (format: {org_id}-{name})
+        for section_name in config.sections():
+            if section_name.startswith(f"{organization_id}-"):
+                new_config[section_name] = config[section_name]
+
+    # Write the selective credentials to a temporary file
+    temp_file = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".credentials", delete=False
+    )
+    new_config.write(temp_file)
+    temp_file.close()
+
+    return temp_file.name
 
 
 async def fetch_and_parse_gpu_resources(cluster_name: str):
@@ -253,7 +306,7 @@ def launch_cluster_with_skypilot(
             envs = {
                 "AWS_PROFILE": os.getenv("AWS_PROFILE", "transformerlab-s3"),
             }
-            
+
         # Merge launch hook environment variables with existing envs
         if env_vars and isinstance(env_vars, dict):
             if envs is None:
@@ -281,11 +334,20 @@ def launch_cluster_with_skypilot(
             num_nodes=effective_num_nodes,
         )
 
+        # Create selective AWS credentials file
+        selective_credentials_path = create_selective_aws_credentials_file(
+            organization_id
+        )
+
         if file_mounts:
-            file_mounts.update({"/home/sky/.aws": f"{os.path.expanduser('~')}/.aws"})
+            file_mounts.update(
+                {"/home/sky/.aws/credentials": selective_credentials_path}
+            )
             task.set_file_mounts(file_mounts)
         else:
-            task.set_file_mounts({"/home/sky/.aws": f"{os.path.expanduser('~')}/.aws"})
+            task.set_file_mounts(
+                {"/home/sky/.aws/credentials": selective_credentials_path}
+            )
 
         # Process storage buckets if provided
         if storage_bucket_ids:
@@ -349,9 +411,7 @@ def launch_cluster_with_skypilot(
                     source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
                     persistent=True,
                 )
-                storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
-                    transformerlab_bucket
-                )
+                storage_mounts["/workspace"] = transformerlab_bucket
                 # Set storage mounts on the task
                 task.set_storage_mounts(storage_mounts)
 
@@ -368,15 +428,12 @@ def launch_cluster_with_skypilot(
                 source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
                 persistent=True,
             )
-            storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
-                transformerlab_bucket
-            )
+            storage_mounts["/workspace"] = transformerlab_bucket
             # Set storage mounts on the task
             task.set_storage_mounts(storage_mounts)
             print(
                 f"[SkyPilot] Added mandatory transformerlab bucket: {transformerlab_bucket}"
             )
-
 
         # If no cloud is specified, create a list of resources for all available clouds
         if not cloud:
@@ -967,8 +1024,7 @@ def get_skypilot_status(cluster_names=None):
                 cluster["handle"] = ""
             if "storage_mounts_metadata" in cluster:
                 cluster["storage_mounts_metadata"] = {}
-            
-            
+
         return result_new
     except Exception as e:
         print(f"ERROR: {e}")
