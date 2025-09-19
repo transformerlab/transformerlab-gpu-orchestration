@@ -18,6 +18,7 @@ def api_request(
     headers: Optional[Dict] = None,
     json_data: Optional[Dict] = None,
     files: Optional[Dict] = None,
+    data: Optional[Dict] = None,
     auth_needed: bool = True,
 ) -> requests.Response:
     """
@@ -29,6 +30,7 @@ def api_request(
         headers: Optional headers dict
         json_data: Optional JSON data for POST requests
         files: Optional files dict for multipart form data
+        data: Optional form data dict (can be used with files)
         auth_needed: Whether to automatically add authentication headers
 
     Returns:
@@ -56,16 +58,21 @@ def api_request(
             print(f"[DEBUG] Headers: {json.dumps(safe_headers, indent=2)}")
         if json_data:
             print(f"[DEBUG] JSON data: {json.dumps(json_data, indent=2)}")
+        if data:
+            print(f"[DEBUG] Form data: {json.dumps(data, indent=2)}")
         if files:
             print(f"[DEBUG] Files: {list(files.keys())}")
 
     # Handle different request types
     if files:
-        # Multipart form data with files
-        response = requests.request(method, url, headers=headers, files=files)
+        # Multipart form data with files (can include additional form data)
+        response = requests.request(method, url, headers=headers, files=files, data=data)
     elif json_data:
         # JSON data
         response = requests.request(method, url, headers=headers, json=json_data)
+    elif data:
+        # Form data only
+        response = requests.request(method, url, headers=headers, data=data)
     else:
         # No data
         response = requests.request(method, url, headers=headers)
