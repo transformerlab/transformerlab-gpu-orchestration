@@ -92,9 +92,10 @@ def list_instances():
 @instances_app.command("request")
 def start_instance(
     yaml_file: str = typer.Argument(..., help="Path to YAML configuration file"),
+    files: Optional[str] = typer.Option(None, "--files", help="Path to directory to upload with the instance"),
 ):
     """Start a new lab instance using a YAML configuration file."""
-    start_instance_command(console, yaml_file)
+    start_instance_command(console, yaml_file, files)
 
 
 @instances_app.command("destroy")

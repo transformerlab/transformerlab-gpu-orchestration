@@ -1,6 +1,7 @@
 import time
 import os
 from lattice.cli.util.auth import api_request
+from lattice.cli.util.file_utils import upload_directory
 from typing import Optional
 
 from rich.console import Console
@@ -79,7 +80,7 @@ def list_instances_command(console: Console):
     console.print(f"[dim]Total instances: {len(clusters)}[/dim]")
 
 
-def start_instance_command(console: Console, yaml_file_path: str):
+def start_instance_command(console: Console, yaml_file_path: str, files_path: Optional[str] = None):
     """Start a new lab instance using a YAML configuration file."""
     console.print(
         f"[bold blue]Starting lab instance with configuration: [cyan]{yaml_file_path}[/cyan][/bold blue]"
@@ -107,6 +108,15 @@ def start_instance_command(console: Console, yaml_file_path: str):
     )
     console.print(file_info)
 
+    # Handle file upload if specified
+    uploaded_dir_path = None
+    if files_path:
+        try:
+            uploaded_dir_path = upload_directory(files_path, console)
+        except Exception as e:
+            console.print(f"[bold red]Error uploading files:[/bold red] {str(e)}")
+            return
+
     # Confirm the launch
     if not Confirm.ask(
         "[yellow]Launch instance with this configuration?[/yellow]", default=True
@@ -133,10 +143,15 @@ def start_instance_command(console: Console, yaml_file_path: str):
                     )
                 }
 
+                # Add uploaded directory path if provided
+                form_data = {}
+                if uploaded_dir_path:
+                    form_data["uploaded_dir_path"] = uploaded_dir_path
+
                 # Make the API request
                 progress.update(task, completed=50)
                 resp = api_request(
-                    "POST", "/instances/launch", auth_needed=True, files=files
+                    "POST", "/instances/launch", auth_needed=True, files=files, data=form_data
                 )
                 progress.update(task, completed=100)
 
