@@ -253,7 +253,7 @@ def launch_cluster_with_skypilot(
             envs = {
                 "AWS_PROFILE": os.getenv("AWS_PROFILE", "transformerlab-s3"),
             }
-            
+
         # Merge launch hook environment variables with existing envs
         if env_vars and isinstance(env_vars, dict):
             if envs is None:
@@ -349,9 +349,7 @@ def launch_cluster_with_skypilot(
                     source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
                     persistent=True,
                 )
-                storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
-                    transformerlab_bucket
-                )
+                storage_mounts["/workspace"] = transformerlab_bucket
                 # Set storage mounts on the task
                 task.set_storage_mounts(storage_mounts)
 
@@ -368,15 +366,12 @@ def launch_cluster_with_skypilot(
                 source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
                 persistent=True,
             )
-            storage_mounts[os.getenv("TRANSFORMERLAB_BUCKET_REMOTE_PATH")] = (
-                transformerlab_bucket
-            )
+            storage_mounts["/workspace"] = transformerlab_bucket
             # Set storage mounts on the task
             task.set_storage_mounts(storage_mounts)
             print(
                 f"[SkyPilot] Added mandatory transformerlab bucket: {transformerlab_bucket}"
             )
-
 
         # If no cloud is specified, create a list of resources for all available clouds
         if not cloud:
@@ -967,8 +962,7 @@ def get_skypilot_status(cluster_names=None):
                 cluster["handle"] = ""
             if "storage_mounts_metadata" in cluster:
                 cluster["storage_mounts_metadata"] = {}
-            
-            
+
         return result_new
     except Exception as e:
         print(f"ERROR: {e}")
