@@ -965,6 +965,10 @@ def get_skypilot_status(cluster_names=None):
                 cluster["last_update_yaml"] = ""
             if "handle" in cluster:
                 cluster["handle"] = ""
+            if "storage_mounts_metadata" in cluster:
+                cluster["storage_mounts_metadata"] = {}
+            
+            
         return result_new
     except Exception as e:
         print(f"ERROR: {e}")
