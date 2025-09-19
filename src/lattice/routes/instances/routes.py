@@ -194,14 +194,6 @@ async def launch_instance(
     scope_check: dict = Depends(require_scope("compute:write")),
 ):
     try:
-        print("RECEIVED REQUEST WITH CPU:", cpus)
-        print("RECEIVED REQUEST WITH MEMORY:", memory)
-        print("RECEIVED REQUEST WITH ACCELERATORS:", accelerators)
-        print("RECEIVED REQUEST WITH DISK_SPACE:", disk_space)
-        print("RECEIVED REQUEST WITH REGION:", region)
-        print("RECEIVED REQUEST WITH ZONE:", zone)
-        print("RECEIVED REQUEST WITH USE_SPOT:", use_spot)
-        print("RECEIVED REQUEST WITH INSTANCE_TYPE:", instance_type)
         # Parse YAML configuration if provided
         yaml_config = {}
         if yaml_file:
@@ -511,8 +503,6 @@ async def launch_instance(
                 )
         # print(f"az_config: {az_config}")
         # raise Exception("test")
-        print(f"credentials: {credentials}")
-
         # Get user info from the authenticated user (API key or session)
         user_id = user["id"]
         organization_id = user["organization_id"]
