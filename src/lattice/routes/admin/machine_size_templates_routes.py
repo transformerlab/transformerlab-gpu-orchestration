@@ -57,11 +57,12 @@ async def create_template(
     if not org_id:
         raise HTTPException(status_code=400, detail="Missing organization context")
 
-    # Validate that resources_json contains the expected fields (cpus, memory, accelerators)
+    # Validate that resources_json contains the expected fields (cpus, memory, accelerators, etc.)
     if not req.resources_json:
         raise HTTPException(status_code=400, detail="resources_json is required")
     
     # Check for required fields (at least one of cpus, memory, accelerators, disk_space should be present)
+    # Additional fields like region, zone, instance_type, use_spot, etc. are also supported
     required_fields = ["cpus", "memory", "accelerators", "disk_space"]
     if not any(field in req.resources_json for field in required_fields):
         raise HTTPException(status_code=400, detail="resources_json must contain at least one of: cpus, memory, accelerators, disk_space")
@@ -118,6 +119,7 @@ async def update_template(
         m.description = req.description
     if req.resources_json is not None:
         # Validate that resources_json contains the expected fields
+        # Additional fields like region, zone, instance_type, use_spot, etc. are also supported
         if req.resources_json:
             required_fields = ["cpus", "memory", "accelerators", "disk_space"]
             if not any(field in req.resources_json for field in required_fields):

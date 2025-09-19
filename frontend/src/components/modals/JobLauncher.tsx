@@ -223,6 +223,8 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
         const finalMemory = memory || tpl.memory;
         const finalGpus = gpus || tpl.accelerators;
         const finalDiskSpace = diskSpace || tpl.disk_space;
+        const finalRegion = region || tpl.region;
+        const finalZone = zone || tpl.zone;
 
         if (finalVcpus) {
           formData.append("cpus", finalVcpus);
@@ -246,12 +248,12 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
           formData.append("num_nodes", String(parsedNumNodes));
         }
 
-        if (region) {
-          formData.append("region", region);
+        if (finalRegion) {
+          formData.append("region", finalRegion);
         }
 
-        if (zone) {
-          formData.append("zone", zone);
+        if (finalZone) {
+          formData.append("zone", finalZone);
         }
       }
 

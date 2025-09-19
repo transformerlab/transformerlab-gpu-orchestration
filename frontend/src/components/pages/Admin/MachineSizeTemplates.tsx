@@ -39,6 +39,9 @@ const MachineSizeTemplates: React.FC = () => {
   const [memory, setMemory] = React.useState<string>("");
   const [accelerators, setAccelerators] = React.useState<string>("");
   const [diskSpace, setDiskSpace] = React.useState<string>("");
+  // Zone and region preferences
+  const [region, setRegion] = React.useState<string>("");
+  const [zone, setZone] = React.useState<string>("");
 
   const [createOpen, setCreateOpen] = React.useState(false);
 
@@ -52,6 +55,8 @@ const MachineSizeTemplates: React.FC = () => {
       if (memory) parsed.memory = memory;
       if (accelerators) parsed.accelerators = accelerators;
       if (diskSpace) parsed.disk_space = diskSpace;
+      if (region) parsed.region = region;
+      if (zone) parsed.zone = zone;
 
       const body = {
         name: name || undefined,
@@ -75,6 +80,8 @@ const MachineSizeTemplates: React.FC = () => {
       setMemory("");
       setAccelerators("");
       setDiskSpace("");
+      setRegion("");
+      setZone("");
       mutate();
       setCreateOpen(false);
     } catch (e: any) {
@@ -161,6 +168,22 @@ const MachineSizeTemplates: React.FC = () => {
                   value={diskSpace}
                   onChange={(e) => setDiskSpace(e.target.value)}
                   placeholder="e.g. 100"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Region (optional)</FormLabel>
+                <Input
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  placeholder="e.g. us-west-2, us-central1"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Zone (optional)</FormLabel>
+                <Input
+                  value={zone}
+                  onChange={(e) => setZone(e.target.value)}
+                  placeholder="e.g. us-west-2a, us-central1-a"
                 />
               </FormControl>
             </Stack>

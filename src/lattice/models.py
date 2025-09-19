@@ -614,7 +614,7 @@ class MachineSizeTemplateResponse(BaseModel):
 class CreateMachineSizeTemplateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    resources_json: Dict[str, Any]  # Contains cpus, memory, accelerators, disk_space
+    resources_json: Dict[str, Any]  # Contains cpus, memory, accelerators, disk_space, region, zone, etc.
 
 
 class UpdateMachineSizeTemplateRequest(BaseModel):

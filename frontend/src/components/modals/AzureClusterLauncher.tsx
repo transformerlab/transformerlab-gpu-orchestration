@@ -424,18 +424,11 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         return;
       }
 
-      if (!selectedInstanceType) {
+      // Only require instance_type if no template is selected
+      if (!selectedTemplateId && !selectedInstanceType) {
         addNotification({
           type: "danger",
           message: "Instance type is required",
-        });
-        return;
-      }
-
-      if (!selectedRegion) {
-        addNotification({
-          type: "danger",
-          message: "Region is required",
         });
         return;
       }
@@ -465,12 +458,38 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
         formData.append("command", finalCommand);
         if (finalSetup) formData.append("setup", finalSetup);
         formData.append("cloud", "azure");
-        formData.append("instance_type", selectedInstanceType);
-        formData.append("region", selectedRegion);
-        if (diskSpace) formData.append("disk_space", diskSpace);
+
+        // Handle instance_type, region, zone, and disk_space based on template selection
+        const tpl = templates.find((t) => t.id === selectedTemplateId);
+        if (tpl && tpl.resources_json) {
+          // Template selected - use template values for region, zone, disk_space
+          // Don't send instance_type when template is selected
+          const r = tpl.resources_json || {};
+          if (r.region) formData.append("region", String(r.region));
+          if (r.zone) formData.append("zone", String(r.zone));
+          if (r.disk_space) formData.append("disk_space", String(r.disk_space));
+          if (r.cpus) formData.append("cpus", String(r.cpus));
+          if (r.memory) formData.append("memory", String(r.memory));
+          if (r.accelerators)
+            formData.append("accelerators", String(r.accelerators));
+        } else {
+          // No template selected - use form values
+          formData.append("instance_type", selectedInstanceType);
+          formData.append("region", selectedRegion);
+          if (diskSpace) formData.append("disk_space", diskSpace);
+        }
+
+        // Always use form values for these fields (not in templates)
         formData.append("use_spot", useSpot.toString());
         if (idleMinutesToAutostop) {
           formData.append("idle_minutes_to_autostop", idleMinutesToAutostop);
+        }
+        // Add storage bucket IDs if selected
+        if (selectedStorageBuckets.length > 0) {
+          formData.append(
+            "storage_bucket_ids",
+            selectedStorageBuckets.join(",")
+          );
         }
 
         // Only include num_nodes if > 1
@@ -481,45 +500,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
         if (selectedDockerImageId)
           formData.append("docker_image_id", selectedDockerImageId);
-
-        // Add storage bucket IDs if selected
-        if (selectedStorageBuckets.length > 0) {
-          formData.append(
-            "storage_bucket_ids",
-            selectedStorageBuckets.join(",")
-          );
-        }
-
-        // If a template is selected, apply its resources on top
-        const tpl = templates.find((t) => t.id === selectedTemplateId);
-        if (tpl && tpl.resources_json) {
-          const r = tpl.resources_json || {};
-          if (r.instance_type && !formData.get("instance_type"))
-            formData.append("instance_type", String(r.instance_type));
-          if (r.region && !formData.get("region"))
-            formData.append("region", String(r.region));
-          if (r.disk_space && !formData.get("disk_space"))
-            formData.append("disk_space", String(r.disk_space));
-          if (typeof r.use_spot !== "undefined" && !formData.get("use_spot"))
-            formData.append("use_spot", String(!!r.use_spot));
-          if (
-            r.idle_minutes_to_autostop &&
-            !formData.get("idle_minutes_to_autostop")
-          )
-            formData.append(
-              "idle_minutes_to_autostop",
-              String(r.idle_minutes_to_autostop)
-            );
-          if (
-            r.storage_bucket_ids &&
-            Array.isArray(r.storage_bucket_ids) &&
-            !formData.get("storage_bucket_ids")
-          )
-            formData.append(
-              "storage_bucket_ids",
-              (r.storage_bucket_ids as any[]).join(",")
-            );
-        }
       }
 
       const response = await apiFetch(buildApiUrl("instances/launch"), {
