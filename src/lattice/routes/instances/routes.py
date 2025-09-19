@@ -503,8 +503,6 @@ async def launch_instance(
                 )
         # print(f"az_config: {az_config}")
         # raise Exception("test")
-        print(f"credentials: {credentials}")
-
         # Get user info from the authenticated user (API key or session)
         user_id = user["id"]
         organization_id = user["organization_id"]

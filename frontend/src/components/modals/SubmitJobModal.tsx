@@ -15,6 +15,8 @@ import {
   CircularProgress,
   Alert,
   Checkbox,
+  Select,
+  Option,
 } from "@mui/joy";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
@@ -53,6 +55,17 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const { addNotification } = useNotification();
   const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
+  // Template-related state
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const selectedTemplate = React.useMemo(
+    () => templates.find((t) => t.id === selectedTemplateId),
+    [templates, selectedTemplateId]
+  );
+  const tpl = selectedTemplate?.resources_json || {};
+
   const available = parseResourcesString(availableResources);
 
   const resetForm = () => {
@@ -65,11 +78,45 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     setAccelerators("");
     setJobName("");
     setNumNodes("1");
+    setSelectedTemplateId("");
+    setShowAdvanced(false);
   };
 
+  // Fetch templates when modal opens
+  React.useEffect(() => {
+    if (open) {
+      // Load job templates for this cluster
+      (async () => {
+        try {
+          const resp = await apiFetch(
+            buildApiUrl(
+              `instances/templates?cloud_type=ssh&cloud_identifier=${encodeURIComponent(
+                clusterName
+              )}`
+            ),
+            { credentials: "include" }
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            setTemplates(data.templates || []);
+          } else {
+            setTemplates([]);
+          }
+        } catch (e) {
+          setTemplates([]);
+        }
+      })();
+    }
+  }, [open, clusterName]);
+
   const validateResources = () => {
-    if (cpus && available.cpus) {
-      const requestedCpus = parseInt(cpus);
+    // Get the actual values to validate (from form or template)
+    const actualCpus = cpus || tpl.cpus;
+    const actualMemory = memory || tpl.memory;
+    const actualAccelerators = accelerators || tpl.accelerators;
+
+    if (actualCpus && available.cpus) {
+      const requestedCpus = parseInt(actualCpus);
       if (requestedCpus > available.cpus) {
         addNotification({
           type: "danger",
@@ -79,8 +126,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       }
     }
 
-    if (memory && available.memory) {
-      const requestedMemory = parseInt(memory);
+    if (actualMemory && available.memory) {
+      const requestedMemory = parseInt(actualMemory);
       if (requestedMemory > available.memory) {
         addNotification({
           type: "danger",
@@ -91,7 +138,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
     }
 
     // Validate that accelerators are only requested if available
-    if (accelerators && !available.gpu) {
+    if (actualAccelerators && !available.gpu) {
       addNotification({
         type: "danger",
         message: "No accelerators are available for this cluster",
@@ -180,9 +227,15 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
 
       formData.append("command", finalCommand);
       if (finalSetup) formData.append("setup", finalSetup);
-      if (cpus) formData.append("cpus", cpus);
-      if (memory) formData.append("memory", memory);
-      if (accelerators) formData.append("accelerators", accelerators);
+
+      // Apply template values if selected, otherwise use form values
+      const finalCpus = cpus || tpl.cpus;
+      const finalMemory = memory || tpl.memory;
+      const finalAccelerators = accelerators || tpl.accelerators;
+
+      if (finalCpus) formData.append("cpus", finalCpus);
+      if (finalMemory) formData.append("memory", finalMemory);
+      if (finalAccelerators) formData.append("accelerators", finalAccelerators);
       if (jobName) formData.append("job_name", jobName);
       // Only include num_nodes if > 1
       const parsedNumNodes = parseInt(numNodes || "1", 10);
@@ -283,6 +336,32 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                 />
               </FormControl>
 
+              {/* Template selector */}
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Template (optional)</FormLabel>
+                <Select
+                  value={selectedTemplateId}
+                  onChange={(_, v) => setSelectedTemplateId(v || "")}
+                  placeholder="Select a template"
+                  disabled={isClusterLaunching}
+                >
+                  {(templates || []).map((t: any) => (
+                    <Option key={t.id} value={t.id}>
+                      {t.name || t.id}
+                    </Option>
+                  ))}
+                </Select>
+                {selectedTemplate && (
+                  <Typography
+                    level="body-xs"
+                    sx={{ mt: 0.5, color: "success.500" }}
+                  >
+                    ✓ Template selected:{" "}
+                    {selectedTemplate.name || selectedTemplate.id}
+                  </Typography>
+                )}
+              </FormControl>
+
               <FormControl required sx={{ mb: 2 }}>
                 <FormLabel>Run Command</FormLabel>
                 <Textarea
@@ -345,118 +424,137 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                 )}
               </FormControl>
 
-              {/* Resource Configuration */}
-              <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Resource Configuration
-                </Typography>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>CPUs</FormLabel>
-                  <Input
-                    value={cpus}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Only allow digits
-                      if (value === "" || /^\d+$/.test(value)) {
-                        setCpus(value);
-                      }
-                    }}
-                    placeholder="e.g., 4"
-                    disabled={isClusterLaunching}
-                    slotProps={{
-                      input: {
-                        type: "number",
-                        min: 1,
-                      },
-                    }}
-                  />
-                  {availableResources && (
-                    <Typography
-                      level="body-xs"
-                      color="neutral"
-                      sx={{ mt: 0.5 }}
-                    >
-                      Available: {available.cpus || "N/A"} CPUs
+              {/* Number of Nodes - always visible since templates don't include this */}
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Number of Nodes</FormLabel>
+                <Input
+                  value={numNodes}
+                  onChange={(e) => setNumNodes(e.target.value)}
+                  placeholder="1"
+                  disabled={isClusterLaunching}
+                  slotProps={{
+                    input: {
+                      type: "number",
+                      min: 1,
+                    },
+                  }}
+                />
+                {availableResources && (
+                  <Typography level="body-xs" color="neutral" sx={{ mt: 0.5 }}>
+                    Available: {available.count || "N/A"} nodes
+                  </Typography>
+                )}
+              </FormControl>
+
+              {/* Advanced button - always show but disable when template is selected */}
+              <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  color={showAdvanced ? "primary" : "neutral"}
+                  disabled={!!selectedTemplateId}
+                >
+                  {selectedTemplateId
+                    ? "Advanced Options (Template Selected)"
+                    : showAdvanced
+                    ? "Hide Advanced Options"
+                    : "Show Advanced Options"}
+                </Button>
+              </Box>
+
+              {/* Advanced fields - only show when advanced is enabled and no template is selected */}
+              {showAdvanced && !selectedTemplateId && (
+                <>
+                  {/* Resource Configuration */}
+                  <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
+                    <Typography level="title-sm" sx={{ mb: 1 }}>
+                      Resource Configuration
                     </Typography>
-                  )}
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Memory (GB)</FormLabel>
-                  <Input
-                    value={memory}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Only allow digits
-                      if (value === "" || /^\d+$/.test(value)) {
-                        setMemory(value);
-                      }
-                    }}
-                    placeholder="e.g., 16"
-                    disabled={isClusterLaunching}
-                    slotProps={{
-                      input: {
-                        type: "number",
-                        min: 1,
-                      },
-                    }}
-                  />
-                  {availableResources && (
-                    <Typography
-                      level="body-xs"
-                      color="neutral"
-                      sx={{ mt: 0.5 }}
-                    >
-                      Available: {available.memory || "N/A"} GB
-                    </Typography>
-                  )}
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Accelerators</FormLabel>
-                  <Input
-                    value={accelerators}
-                    onChange={(e) => setAccelerators(e.target.value)}
-                    placeholder={
-                      available.gpu
-                        ? "e.g., V100, V100:2, A100:4"
-                        : "No accelerators available"
-                    }
-                    disabled={isClusterLaunching || !available.gpu}
-                  />
-                  {availableResources && (
-                    <Typography
-                      level="body-xs"
-                      color="neutral"
-                      sx={{ mt: 0.5 }}
-                    >
-                      Available: {available.gpu || "None"}
-                    </Typography>
-                  )}
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Number of Nodes</FormLabel>
-                  <Input
-                    value={numNodes}
-                    onChange={(e) => setNumNodes(e.target.value)}
-                    placeholder="1"
-                    disabled={isClusterLaunching}
-                    slotProps={{
-                      input: {
-                        type: "number",
-                        min: 1,
-                      },
-                    }}
-                  />
-                  {availableResources && (
-                    <Typography
-                      level="body-xs"
-                      color="neutral"
-                      sx={{ mt: 0.5 }}
-                    >
-                      Available: {available.count || "N/A"} nodes
-                    </Typography>
-                  )}
-                </FormControl>
-              </Card>
+                    <FormControl sx={{ mb: 1 }}>
+                      <FormLabel>CPUs</FormLabel>
+                      <Input
+                        value={cpus}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Only allow digits
+                          if (value === "" || /^\d+$/.test(value)) {
+                            setCpus(value);
+                          }
+                        }}
+                        placeholder="e.g., 4"
+                        disabled={isClusterLaunching}
+                        slotProps={{
+                          input: {
+                            type: "number",
+                            min: 1,
+                          },
+                        }}
+                      />
+                      {availableResources && (
+                        <Typography
+                          level="body-xs"
+                          color="neutral"
+                          sx={{ mt: 0.5 }}
+                        >
+                          Available: {available.cpus || "N/A"} CPUs
+                        </Typography>
+                      )}
+                    </FormControl>
+                    <FormControl sx={{ mb: 1 }}>
+                      <FormLabel>Memory (GB)</FormLabel>
+                      <Input
+                        value={memory}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Only allow digits
+                          if (value === "" || /^\d+$/.test(value)) {
+                            setMemory(value);
+                          }
+                        }}
+                        placeholder="e.g., 16"
+                        disabled={isClusterLaunching}
+                        slotProps={{
+                          input: {
+                            type: "number",
+                            min: 1,
+                          },
+                        }}
+                      />
+                      {availableResources && (
+                        <Typography
+                          level="body-xs"
+                          color="neutral"
+                          sx={{ mt: 0.5 }}
+                        >
+                          Available: {available.memory || "N/A"} GB
+                        </Typography>
+                      )}
+                    </FormControl>
+                    <FormControl sx={{ mb: 1 }}>
+                      <FormLabel>Accelerators</FormLabel>
+                      <Input
+                        value={accelerators}
+                        onChange={(e) => setAccelerators(e.target.value)}
+                        placeholder={
+                          available.gpu
+                            ? "e.g., V100, V100:2, A100:4"
+                            : "No accelerators available"
+                        }
+                        disabled={isClusterLaunching || !available.gpu}
+                      />
+                      {availableResources && (
+                        <Typography
+                          level="body-xs"
+                          color="neutral"
+                          sx={{ mt: 0.5 }}
+                        >
+                          Available: {available.gpu || "None"}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  </Card>
+                </>
+              )}
             </CardContent>
             <Box
               sx={{
