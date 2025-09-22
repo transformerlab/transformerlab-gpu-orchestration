@@ -8,6 +8,7 @@ import {
   Divider,
   Stack,
   Sheet,
+  Button,
 } from "@mui/joy";
 import PageWithTitle from "./templates/PageWithTitle";
 import { buildApiUrl } from "../../utils/api";
@@ -143,6 +144,14 @@ const Reports: React.FC = () => {
   };
 
   const dataToRender = realData || [];
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 25;
+  const totalPages = Math.max(1, Math.ceil(dataToRender.length / rowsPerPage));
+  const pagedData = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return dataToRender.slice(start, end);
+  }, [dataToRender, page]);
   const totalCost = dataToRender.reduce(
     (sum: number, job: CostReportJob) => sum + (job.total_cost || 0),
     0
@@ -307,7 +316,7 @@ const Reports: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {dataToRender.map((job, index) => (
+              {pagedData.map((job, index) => (
                 <tr key={index}>
                   <td>{job.name}</td>
                   <td>
@@ -358,6 +367,42 @@ const Reports: React.FC = () => {
               ))}
             </tbody>
           </Table>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mt: 1,
+            }}
+          >
+            <Typography level="body-sm">
+              Showing{" "}
+              {dataToRender.length === 0 ? 0 : (page - 1) * rowsPerPage + 1}-
+              {Math.min(page * rowsPerPage, dataToRender.length)} of{" "}
+              {dataToRender.length}
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Button
+                size="sm"
+                variant="outlined"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <Typography level="body-sm">
+                Page {page} of {totalPages}
+              </Typography>
+              <Button
+                size="sm"
+                variant="outlined"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </Box>
+          </Box>
         </Box>
       )}
     </PageWithTitle>
