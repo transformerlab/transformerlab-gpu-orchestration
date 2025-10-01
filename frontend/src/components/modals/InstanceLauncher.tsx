@@ -190,9 +190,11 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
           maxWidth: 800,
           maxHeight: "90vh",
           minWidth: "50vw",
-          overflow: "auto",
           display: "flex",
           flexDirection: "column",
+          overflow: "hidden", // Prevent overflow on the dialog
+          paddingRight: 0,
+          paddingBottom: 0,
         }}
       >
         <ModalClose />
@@ -214,160 +216,168 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
             </Alert>
           )}
 
-          <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Instance Name</FormLabel>
-            <Input
-              value={instanceName}
-              onChange={(e) => setInstanceName(e.target.value)}
-              placeholder="my-instance"
-              required
-            />
-          </FormControl>
+          <Box
+            sx={{
+              flex: 1,
+              overflowY: "auto", // Make the content scrollable
+              overflowX: "hidden",
+              paddingRight: 2, // Add padding to avoid scrollbar overlap
+            }}
+          >
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Instance Name</FormLabel>
+              <Input
+                value={instanceName}
+                onChange={(e) => setInstanceName(e.target.value)}
+                placeholder="my-instance"
+                required
+              />
+            </FormControl>
 
-          {/* Template selector */}
-          <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Machine Size Template (optional)</FormLabel>
-            <Select
-              value={selectedTemplateId}
-              onChange={(_, v) => setSelectedTemplateId(v || "")}
-              placeholder="Select a template"
-            >
-              {(templates || []).map((t: any) => (
-                <Option key={t.id} value={t.id}>
-                  {t.name || t.id}
-                </Option>
-              ))}
-            </Select>
-            <FormHelperText sx={{ color: "var(--joy-palette-danger-500)" }}>
-              {selectedTemplate && (
-                <>
-                  <span
-                    onClick={() => setSelectedTemplateId("")}
-                    style={{
-                      color: "var(--joy-palette-danger-500)",
+            {/* Template selector */}
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Machine Size Template (optional)</FormLabel>
+              <Select
+                value={selectedTemplateId}
+                onChange={(_, v) => setSelectedTemplateId(v || "")}
+                placeholder="Select a template"
+              >
+                {(templates || []).map((t: any) => (
+                  <Option key={t.id} value={t.id}>
+                    {t.name || t.id}
+                  </Option>
+                ))}
+              </Select>
+              <FormHelperText sx={{ color: "var(--joy-palette-danger-500)" }}>
+                {selectedTemplate && (
+                  <>
+                    <span
+                      onClick={() => setSelectedTemplateId("")}
+                      style={{
+                        color: "var(--joy-palette-danger-500)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Clear Selection
+                    </span>
+                  </>
+                )}
+              </FormHelperText>
+            </FormControl>
 
-                      cursor: "pointer",
-                    }}
-                  >
-                    Clear Selection
-                  </span>
-                </>
-              )}
-            </FormHelperText>
-          </FormControl>
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Setup Command (optional)</FormLabel>
+              <Textarea
+                value={setupCommand}
+                onChange={(e) => setSetupCommand(e.target.value)}
+                placeholder="pip install -r requirements.txt"
+                minRows={2}
+              />
+              <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                Use <code>;</code> at the end of each line for separate commands
+              </Typography>
+            </FormControl>
 
-          <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Setup Command (optional)</FormLabel>
-            <Textarea
-              value={setupCommand}
-              onChange={(e) => setSetupCommand(e.target.value)}
-              placeholder="pip install -r requirements.txt"
-              minRows={2}
-            />
-            <Typography level="body-xs" sx={{ mt: 0.5 }}>
-              Use <code>;</code> at the end of each line for separate commands,
-              or enable auto-append.
-            </Typography>
-          </FormControl>
+            {/* <FormControl sx={{ mb: 2 }}>
+              <Checkbox
+                label="Auto-append ; to each non-empty line"
+                checked={autoAppendSemicolons}
+                onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
+              />
+            </FormControl> */}
 
-          <FormControl sx={{ mb: 2 }}>
-            <Checkbox
-              label="Auto-append ; to each non-empty line"
-              checked={autoAppendSemicolons}
-              onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
-            />
-          </FormControl>
+            {/* Advanced button - always show but disable when template is selected */}
+            <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                color={showAdvanced ? "primary" : "neutral"}
+                disabled={!!selectedTemplateId}
+              >
+                {selectedTemplateId
+                  ? "Advanced Options (Template Selected)"
+                  : showAdvanced
+                  ? "Hide Advanced Options"
+                  : "Show Advanced Options"}
+              </Button>
+            </Box>
 
-          {/* Advanced button - always show but disable when template is selected */}
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              color={showAdvanced ? "primary" : "neutral"}
-              disabled={!!selectedTemplateId}
-            >
-              {selectedTemplateId
-                ? "Advanced Options (Template Selected)"
-                : showAdvanced
-                ? "Hide Advanced Options"
-                : "Show Advanced Options"}
-            </Button>
+            {/* Advanced fields - only show when advanced is enabled and no template is selected */}
+            {showAdvanced && !selectedTemplateId && (
+              <>
+                {/* Resource Configuration */}
+                <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
+                  <Typography level="title-sm" sx={{ mb: 1 }}>
+                    Resource Configuration
+                  </Typography>
+                  <FormControl sx={{ mb: 1 }}>
+                    <FormLabel>vCPUs</FormLabel>
+                    <Input
+                      value={vcpus}
+                      onChange={(e) => setVcpus(e.target.value)}
+                      placeholder="e.g., 4, 8, 16"
+                      type="number"
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 1 }}>
+                    <FormLabel>Memory (GB)</FormLabel>
+                    <Input
+                      value={memory}
+                      onChange={(e) => setMemory(e.target.value)}
+                      placeholder="e.g., 16, 32, 64"
+                      type="number"
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 1 }}>
+                    <FormLabel>GPUs</FormLabel>
+                    <Input
+                      value={gpus}
+                      onChange={(e) => setGpus(e.target.value)}
+                      placeholder="RTX3090:1, H100:4"
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 1 }}>
+                    <FormLabel>Disk Space (GB)</FormLabel>
+                    <Input
+                      value={diskSpace}
+                      onChange={(e) => setDiskSpace(e.target.value)}
+                      placeholder="e.g., 100, 200, 500"
+                      slotProps={{
+                        input: {
+                          type: "number",
+                          min: 1,
+                        },
+                      }}
+                    />
+                  </FormControl>
+                </Card>
+
+                {/* Zone and Region Preferences */}
+                <Card variant="soft" sx={{ mb: 2 }}>
+                  <Typography level="title-sm" sx={{ mb: 1 }}>
+                    Zone and Region Preferences
+                  </Typography>
+                  <FormControl sx={{ mb: 1 }}>
+                    <FormLabel>Region</FormLabel>
+                    <Input
+                      value={region}
+                      onChange={(e) => setRegion(e.target.value)}
+                      placeholder="e.g., us-west-2, us-central1"
+                    />
+                  </FormControl>
+                  <FormControl sx={{ mb: 1 }}>
+                    <FormLabel>Zone</FormLabel>
+                    <Input
+                      value={zone}
+                      onChange={(e) => setZone(e.target.value)}
+                      placeholder="e.g., us-west-2a, us-central1-a"
+                    />
+                  </FormControl>
+                </Card>
+              </>
+            )}
           </Box>
 
-          {/* Advanced fields - only show when advanced is enabled and no template is selected */}
-          {showAdvanced && !selectedTemplateId && (
-            <>
-              {/* Resource Configuration */}
-              <Card variant="soft" sx={{ mb: 2, mt: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Resource Configuration
-                </Typography>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>vCPUs</FormLabel>
-                  <Input
-                    value={vcpus}
-                    onChange={(e) => setVcpus(e.target.value)}
-                    placeholder="e.g., 4, 8, 16"
-                    type="number"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Memory (GB)</FormLabel>
-                  <Input
-                    value={memory}
-                    onChange={(e) => setMemory(e.target.value)}
-                    placeholder="e.g., 16, 32, 64"
-                    type="number"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>GPUs</FormLabel>
-                  <Input
-                    value={gpus}
-                    onChange={(e) => setGpus(e.target.value)}
-                    placeholder="RTX3090:1, H100:4"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Disk Space (GB)</FormLabel>
-                  <Input
-                    value={diskSpace}
-                    onChange={(e) => setDiskSpace(e.target.value)}
-                    placeholder="e.g., 100, 200, 500"
-                    slotProps={{
-                      input: {
-                        type: "number",
-                        min: 1,
-                      },
-                    }}
-                  />
-                </FormControl>
-              </Card>
-
-              {/* Zone and Region Preferences */}
-              <Card variant="soft" sx={{ mb: 2 }}>
-                <Typography level="title-sm" sx={{ mb: 1 }}>
-                  Zone and Region Preferences
-                </Typography>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Region</FormLabel>
-                  <Input
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    placeholder="e.g., us-west-2, us-central1"
-                  />
-                </FormControl>
-                <FormControl sx={{ mb: 1 }}>
-                  <FormLabel>Zone</FormLabel>
-                  <Input
-                    value={zone}
-                    onChange={(e) => setZone(e.target.value)}
-                    placeholder="e.g., us-west-2a, us-central1-a"
-                  />
-                </FormControl>
-              </Card>
-            </>
-          )}
           <Box
             sx={{
               display: "flex",
