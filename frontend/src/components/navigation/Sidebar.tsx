@@ -18,6 +18,7 @@ import {
   LoaderCircleIcon,
   SquareIcon,
   FileTextIcon,
+  LogsIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import path from "path";
@@ -72,7 +73,7 @@ const sidebarItems = [
     path: "/dashboard/jobs",
   },
   {
-    icon: <FileTextIcon />,
+    icon: <LogsIcon />,
     content: "Logs",
     path: "/dashboard/logs",
   },
