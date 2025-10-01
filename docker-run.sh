@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🐳 Lattice Docker Build & Run Script"
+echo "🐳 Transformer Lab GPU Orchestration Docker Build & Run Script"
 echo "==================================="
 
 # Check if Docker is installed
@@ -56,7 +56,7 @@ case $ACTION in
         echo "✅ Image built successfully: lattice"
         ;;
     "run")
-        echo "🚀 Running Lattice container..."
+        echo "🚀 Running Transformer Lab GPU Orchestration container..."
         docker run -p 8000:8000 -p 3000:3000 --env-file .env --name lattice-app lattice
         ;;
     "build-and-run"|"")
@@ -64,7 +64,7 @@ case $ACTION in
         docker build -t lattice .
         echo "✅ Image built successfully"
         
-        echo "🚀 Starting Lattice application..."
+        echo "🚀 Starting Transformer Lab GPU Orchestration application..."
         echo "📍 Frontend:        http://localhost:3000"
         echo "📍 Backend (API):   http://localhost:8000"
         echo "📚 API Documentation: http://localhost:8000/docs"
@@ -90,7 +90,7 @@ case $ACTION in
         echo "📍 Backend (API):   http://localhost:8000"
         ;;
     "stop")
-        echo "🛑 Stopping Lattice containers..."
+        echo "🛑 Stopping Transformer Lab GPU Orchestration containers..."
         docker stop lattice-app 2>/dev/null || true
         docker-compose down 2>/dev/null || true
         echo "✅ Containers stopped"

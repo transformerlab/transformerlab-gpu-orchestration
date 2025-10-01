@@ -89,7 +89,9 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
 }) => {
   const { user } = useAuth();
   const [clusterName, setClusterName] = useState("");
-  const [command, setCommand] = useState('echo "Welcome to Lattice"');
+  const [command, setCommand] = useState(
+    'echo "Welcome to Transformer Lab GPU Orchestration"'
+  );
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
   const [selectedGpuFullString, setSelectedGpuFullString] = useState("");

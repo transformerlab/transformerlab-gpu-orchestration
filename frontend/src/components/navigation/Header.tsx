@@ -35,8 +35,12 @@ const Header: React.FC = () => {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <img src={logo} alt="Lattice Logo" style={{ width: 40, height: 40 }} />
-        <Typography level="h1">Lattice</Typography>
+        <img
+          src={logo}
+          alt="Transformer Lab GPU Orchestration Logo"
+          style={{ width: 40, height: 40 }}
+        />
+        <Typography level="h1">GPU Orchestration</Typography>
       </Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <IconButton

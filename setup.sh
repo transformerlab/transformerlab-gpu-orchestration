@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Lattice Setup Script
+# Transformer Lab GPU Orchestration Setup Script
 
-echo "🚀 Setting up Lattice..."
+echo "🚀 Setting up Transformer Lab GPU Orchestration..."
 
 # Check if uv is installed
 if ! command -v uv &> /dev/null; then

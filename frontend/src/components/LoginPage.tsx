@@ -63,12 +63,12 @@ const LoginPage: React.FC = () => {
         <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
           <img
             src={logo}
-            alt="Lattice Logo"
+            alt="Transformer Lab GPU Orchestration Logo"
             style={{ width: 128, height: 128 }}
           />
         </Box>
         <Typography level="h2" sx={{ mb: 1 }}>
-          Lattice
+          Transformer Lab GPU Orchestration
         </Typography>
         <Typography level="body-md" sx={{ mb: 3, color: "text.secondary" }}>
           Distributed computing for AI

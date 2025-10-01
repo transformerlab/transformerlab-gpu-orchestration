@@ -208,8 +208,9 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
               </Select>
               <Typography level="body-xs" color="neutral">
                 Choose the cloud provider where your storage bucket will be
-                hosted. If you select "Auto-detect", Lattice will choose
-                automatically based on the configured cloud providers.
+                hosted. If you select "Auto-detect", Transformer Lab GPU
+                Orchestration will choose automatically based on the configured
+                cloud providers.
               </Typography>
               {formErrors.store && (
                 <Typography color="danger" level="body-xs">

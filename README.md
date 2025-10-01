@@ -1,4 +1,4 @@
-# Lattice
+# Transformer Lab GPU Orchestration
 
 ## Architecture
 
