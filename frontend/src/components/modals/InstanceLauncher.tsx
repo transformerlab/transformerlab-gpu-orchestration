@@ -17,6 +17,7 @@ import {
   Checkbox,
   Select,
   Option,
+  FormHelperText,
 } from "@mui/joy";
 import { Rocket } from "lucide-react";
 import { buildApiUrl, apiFetch } from "../../utils/api";
@@ -218,14 +219,14 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
             <Input
               value={instanceName}
               onChange={(e) => setInstanceName(e.target.value)}
-              placeholder="e.g., my-instance, training-cluster"
+              placeholder="my-instance"
               required
             />
           </FormControl>
 
           {/* Template selector */}
           <FormControl sx={{ mb: 2 }}>
-            <FormLabel>Template (optional)</FormLabel>
+            <FormLabel>Machine Size Template (optional)</FormLabel>
             <Select
               value={selectedTemplateId}
               onChange={(_, v) => setSelectedTemplateId(v || "")}
@@ -237,15 +238,22 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
                 </Option>
               ))}
             </Select>
-            {selectedTemplate && (
-              <Typography
-                level="body-xs"
-                sx={{ mt: 0.5, color: "success.500" }}
-              >
-                ✓ Template selected:{" "}
-                {selectedTemplate.name || selectedTemplate.id}
-              </Typography>
-            )}
+            <FormHelperText sx={{ color: "var(--joy-palette-danger-500)" }}>
+              {selectedTemplate && (
+                <>
+                  <span
+                    onClick={() => setSelectedTemplateId("")}
+                    style={{
+                      color: "var(--joy-palette-danger-500)",
+
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear Selection
+                  </span>
+                </>
+              )}
+            </FormHelperText>
           </FormControl>
 
           <FormControl sx={{ mb: 2 }}>
