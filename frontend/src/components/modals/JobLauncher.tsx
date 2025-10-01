@@ -91,6 +91,16 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
   // Fetch templates when modal opens
   React.useEffect(() => {
     if (open) {
+      resetForm();
+      setError("");
+      setLoading(false);
+      setDirFiles(null);
+      setUploadedDirPath(null);
+
+      // Reset YAML state
+      setUseYaml(false);
+      setYamlContent("");
+      setYamlFile(null);
       // Load job templates for general job launching
       (async () => {
         try {

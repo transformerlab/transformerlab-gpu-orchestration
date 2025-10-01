@@ -59,6 +59,9 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   // Fetch templates when modal opens
   React.useEffect(() => {
     if (open) {
+      resetForm();
+      setError("");
+      setLoading(false);
       // Load templates for general instance launching
       (async () => {
         try {
