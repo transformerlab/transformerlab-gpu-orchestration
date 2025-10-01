@@ -108,12 +108,12 @@ const adminSubItemsGroup2 = [
     path: "/dashboard/admin/machine-templates",
   },
   {
-    content: "Object Storage",
-    path: "/dashboard/admin/object-storage",
-  },
-  {
     content: "Container Registry",
     path: "/dashboard/admin/container-registry",
+  },
+  {
+    content: "Object Storage",
+    path: "/dashboard/admin/object-storage",
   },
   {
     content: "Shared Volumes",
