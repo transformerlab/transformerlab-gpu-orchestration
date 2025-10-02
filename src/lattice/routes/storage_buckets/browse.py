@@ -114,14 +114,21 @@ def get_filesystem(
                 if not options.get("profile") and not options.get("profile_name"):
                     try:
                         from routes.clouds.aws.utils import load_aws_config
-                        aws_config = load_aws_config(organization_id=bucket.organization_id)
+
+                        aws_config = load_aws_config(
+                            organization_id=bucket.organization_id
+                        )
                         if aws_config.get("default_config"):
-                            default_config = aws_config["configs"].get(aws_config["default_config"], {})
+                            default_config = aws_config["configs"].get(
+                                aws_config["default_config"], {}
+                            )
                             profile_name = default_config.get("profile_name")
                             if profile_name:
                                 options["profile"] = profile_name
                     except Exception as e:
-                        print(f"Failed to load AWS config; falling back to default AWS credential chain: {e}")
+                        print(
+                            f"Failed to load AWS config; falling back to default AWS credential chain: {e}"
+                        )
                 # Prefer 'profile' over 'profile_name' for aiobotocore compatibility
                 if options.get("profile_name") and not options.get("profile"):
                     options["profile"] = options.pop("profile_name")
@@ -156,7 +163,10 @@ def get_filesystem(
                     raise ImportError(
                         "gcsfs package is required for Google Cloud Storage access. Install with 'pip install gcsfs'"
                     )
-            elif bucket.source.startswith("https://") and 'blob.core.windows.net' in bucket.source:
+            elif (
+                bucket.source.startswith("https://")
+                and "blob.core.windows.net" in bucket.source
+            ):
                 # For Azure, we need to use 'az' protocol for standard blob storage
                 protocol = "az"
                 # Check if adlfs is installed
@@ -262,7 +272,9 @@ def get_filesystem(
                 options["account_name"] = account_name
                 if container_path:
                     options["container_name"] = container_path
-                print(f"Set account_name: {account_name}, container_name: {container_path}")
+                print(
+                    f"Set account_name: {account_name}, container_name: {container_path}"
+                )
 
                 # For Azure blob storage with az protocol, use empty base path since container is specified in options
                 base_path = ""
@@ -341,29 +353,29 @@ async def list_files(
         if base_path:
             if req.path == "/" or req.path == "":
                 # For root directory, just use the base path without trailing slash
-                full_path = base_path.rstrip('/')
+                full_path = base_path.rstrip("/")
             else:
                 full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
         else:
             # For Azure with az protocol, use just the requested path
-            full_path = req.path.lstrip('/') if req.path != "/" else ""
+            full_path = req.path.lstrip("/") if req.path != "/" else ""
 
-        # print("DEBUG INFO:")
-        # print(f"Bucket ID: {bucket_id}")
-        # print(f"Request path: {req.path}")
-        # print(f"Base path: {base_path}")
-        # print(f"Full path: {full_path}")
-        # print(f"Protocol: {fs.protocol}")
-        # print(f"Storage options: {req.storage_options}")
-        # print(f"Bucket source: {bucket.source}")
+        print("DEBUG INFO:")
+        print(f"Bucket ID: {bucket_id}")
+        print(f"Request path: {req.path}")
+        print(f"Base path: {base_path}")
+        print(f"Full path: {full_path}")
+        print(f"Protocol: {fs.protocol}")
+        print(f"Storage options: {req.storage_options}")
+        print(f"Bucket source: {bucket.source}")
 
         # Additional Azure-specific debug info
-        # if hasattr(fs, "account_name"):
-        #     print(f"Azure account name: {fs.account_name}")
-        # if hasattr(fs, "container_name"):
-        #     print(f"Azure container name: {fs.container_name}")
+        if hasattr(fs, "account_name"):
+            print(f"Azure account name: {fs.account_name}")
+        if hasattr(fs, "container_name"):
+            print(f"Azure container name: {fs.container_name}")
 
-        # print(f"Listing files in bucket {bucket_id} at path: {full_path}")
+        print(f"Listing files in bucket {bucket_id} at path: {full_path}")
 
         try:
             # For Azure, get container name from the source URL
@@ -371,17 +383,24 @@ async def list_files(
             if hasattr(fs, "account_name"):
                 # Get container name from the bucket source URL
                 container_parts = bucket.source.split("/")
-                container_name = container_parts[3] if len(container_parts) > 3 else None
-                
+                container_name = (
+                    container_parts[3] if len(container_parts) > 3 else None
+                )
+
                 # Use the specific container directly
                 if container_name:
-                    listing = fs.ls(container_name, detail=True)
+                    listing = fs.ls(
+                        f"{container_name}/{full_path.lstrip('/')}", detail=True
+                    )
                 else:
-                    raise HTTPException(status_code=400, detail="Could not extract container name from source URL")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Could not extract container name from source URL",
+                    )
             else:
                 # Fallback for non-Azure filesystems
                 listing = fs.ls(full_path, detail=True)
-            # print(f"Successfully listed path, found {len(listing)} items")
+            print(f"Successfully listed path, found {len(listing)} items")
             # Transform the listing to ensure consistent output format
             items = []
             for item in listing:
@@ -433,40 +452,50 @@ async def get_file(
             full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
         else:
             # For Azure with az protocol, use just the requested path
-            full_path = req.path.lstrip('/') if req.path != "/" else ""
+            full_path = req.path.lstrip("/") if req.path != "/" else ""
 
-        
         # For Azure, we need to check if the file exists in the container
         if fs.protocol == "az" or fs.protocol == "abfs":
             # Get container name from the bucket source URL
             container_parts = bucket.source.split("/")
             container_name = container_parts[3] if len(container_parts) > 3 else None
-            
+
             if container_name:
                 # List files in the container to find the exact path
                 try:
                     listing = fs.ls(container_name, detail=True)
-                                        
+
                     # Check if the file exists in the listing
                     file_found = False
                     for item in listing:
-                        if item["name"].endswith(full_path) or item["name"] == full_path:
-                            full_path = item["name"]  # Use the full path from the listing
+                        if (
+                            item["name"].endswith(full_path)
+                            or item["name"] == full_path
+                        ):
+                            full_path = item[
+                                "name"
+                            ]  # Use the full path from the listing
                             file_found = True
                             break
-                    
+
                     if not file_found:
                         print("File not found in container listing")
-                        raise HTTPException(status_code=404, detail=f"File not found: {req.path}")
-                        
+                        raise HTTPException(
+                            status_code=404, detail=f"File not found: {req.path}"
+                        )
+
                 except Exception as e:
                     print(f"Error listing Azure container: {e}")
                     import traceback
+
                     traceback.print_exc()
-                    raise HTTPException(status_code=500, detail=f"Failed to access Azure container: {str(e)}")
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to access Azure container: {str(e)}",
+                    )
             else:
                 print("No container name found")
-        
+
         try:
             # Check if it's a file
             if not fs.isfile(full_path):
@@ -524,8 +553,12 @@ async def upload_file(
             target_path = f"{target_dir.rstrip('/')}/{file.filename}"
         else:
             # For Azure with az protocol, use just the requested path
-            target_dir = path.lstrip('/') if path != "/" else ""
-            target_path = f"{target_dir.rstrip('/')}/{file.filename}" if target_dir else file.filename
+            target_dir = path.lstrip("/") if path != "/" else ""
+            target_path = (
+                f"{target_dir.rstrip('/')}/{file.filename}"
+                if target_dir
+                else file.filename
+            )
 
         try:
             # Create directory if it doesn't exist
@@ -571,7 +604,7 @@ async def delete_file(
             full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
         else:
             # For Azure with az protocol, use just the requested path
-            full_path = req.path.lstrip('/') if req.path != "/" else ""
+            full_path = req.path.lstrip("/") if req.path != "/" else ""
 
         try:
             if not fs.exists(full_path):
@@ -612,7 +645,7 @@ async def create_dir(
             full_path = f"{base_path.rstrip('/')}/{req.path.lstrip('/')}"
         else:
             # For Azure with az protocol, use just the requested path
-            full_path = req.path.lstrip('/') if req.path != "/" else ""
+            full_path = req.path.lstrip("/") if req.path != "/" else ""
 
         try:
             fs.mkdir(full_path, create_parents=True)
