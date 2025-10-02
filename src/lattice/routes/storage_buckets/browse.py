@@ -205,7 +205,9 @@ def get_filesystem(
                 # Set these options, overriding any that might have been provided
                 options["account_name"] = account_name
                 if container_path:
-                    options["container_name"] = container_path
+                    # adlfs expects 'container' (not 'container_name') for default container context
+                    # Using 'container' ensures paths like 'folder/file' are resolved within this container
+                    options["container"] = container_path
 
                 # For Azure blob storage with az protocol, use empty base path since container is specified in options
                 base_path = ""
@@ -217,79 +219,6 @@ def get_filesystem(
                     org_id = bucket.organization_id
                     azure_config = az_get_current_config(organization_id=org_id)
                     if azure_config:
-                        # Override any credentials in options with ones from config
-                        options["client_id"] = azure_config.get("client_id")
-                        options["client_secret"] = azure_config.get("client_secret")
-                        options["tenant_id"] = azure_config.get("tenant_id")
-                except Exception as e:
-                    print(f"Failed to load Azure credentials from config: {e}")
-                    print(
-                        "WARNING: No Azure credentials found. Using default credential chain."
-                    )
-            elif (
-                bucket.source.startswith("https://")
-                and "blob.core.windows.net" in bucket.source
-            ):
-                # Detect Azure blob URLs in the format https://account.blob.core.windows.net/container
-                # Use 'az' protocol for standard Azure Blob Storage (not Data Lake Gen2)
-                protocol = "az"
-                print(f"Detected Azure blob URL: {bucket.source}")
-
-                # Check if adlfs is installed
-                if not importlib.util.find_spec("adlfs"):
-                    raise ImportError(
-                        "adlfs package is required for Azure Storage access. Install with 'pip install adlfs'"
-                    )
-
-                # Parse the URL to extract account and container information
-                url_parts = bucket.source.replace("https://", "").split(".")
-                print(f"URL parts: {url_parts}")
-                if len(url_parts) >= 1:
-                    account_name = url_parts[0]
-                    # Extract container name from path - it's the first path segment after the domain
-                    container_parts = bucket.source.split("/")
-                    if len(container_parts) > 3:
-                        # For https://account.blob.core.windows.net/container/path
-                        # container_parts[3] is the container name
-                        container_path = container_parts[3]
-                    else:
-                        container_path = ""
-                    print(
-                        f"Extracted account: {account_name}, container: {container_path}"
-                    )
-
-                # Remove unsupported keys that might be forwarded from bucket configuration
-                for k in [
-                    "source",
-                    "mode",
-                    "store",
-                    "persistent",
-                    "name",
-                    "remote_path",
-                ]:
-                    if k in options:
-                        options.pop(k, None)
-
-                # Set these options, overriding any that might have been provided
-                options["account_name"] = account_name
-                if container_path:
-                    options["container_name"] = container_path
-                print(
-                    f"Set account_name: {account_name}, container_name: {container_path}"
-                )
-
-                # For Azure blob storage with az protocol, use empty base path since container is specified in options
-                base_path = ""
-
-                # Use Azure credentials from the configured Azure account
-                try:
-                    # We need to pass organization_id to az_get_current_config
-                    org_id = bucket.organization_id
-                    azure_config = az_get_current_config(organization_id=org_id)
-                    if azure_config:
-                        print(
-                            f"Found Azure configuration for org {org_id}, using credentials from config"
-                        )
                         # Override any credentials in options with ones from config
                         options["client_id"] = azure_config.get("client_id")
                         options["client_secret"] = azure_config.get("client_secret")
@@ -662,23 +591,82 @@ async def create_dir(
         print(f"Bucket source: {bucket.source}")
 
         try:
-            fs.mkdir(full_path, create_parents=True)
-            print(f"Successfully created directory at path: {full_path}")
+            # Handle Azure Blob Storage differently from other storage systems
+            if fs.protocol in ["az", "abfs"]:
+                # Extract container name from the bucket source URL
+                container_parts = bucket.source.split("/")
+                container_name = (
+                    container_parts[3] if len(container_parts) > 3 else None
+                )
 
-            # Create a placeholder blob to ensure the directory is visible
-            try:
-                placeholder_path = f"{full_path.rstrip('/')}/.placeholder"
+                if not container_name:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Could not extract container name from source URL",
+                    )
+
+                # Prefix all paths with the container for az/abfs
+                azure_parent_path = (
+                    f"{container_name}/{full_path.rstrip('/')}"
+                    if full_path
+                    else container_name
+                )
+                placeholder_path = (
+                    f"{azure_parent_path}/.placeholder"
+                    if azure_parent_path
+                    else f"{container_name}/.placeholder"
+                )
+                print(f"Creating Azure placeholder file at: {placeholder_path}")
+
+                # Ensure the directory path exists by creating parent directories if needed
+                parent_path = azure_parent_path
+                if parent_path and not fs.exists(parent_path):
+                    # Create parent directories by creating placeholder files
+                    path_parts = parent_path.split("/")
+                    current_path = ""
+                    for part in path_parts:
+                        if part:
+                            current_path = f"{current_path}/{part}"
+                            parent_placeholder = f"{current_path}/.placeholder"
+                            if not fs.exists(parent_placeholder):
+                                try:
+                                    with fs.open(parent_placeholder, "wb") as f:
+                                        f.write(b"")
+                                    print(
+                                        f"Created parent placeholder: {parent_placeholder}"
+                                    )
+                                except Exception as e:
+                                    print(
+                                        f"Failed to create parent placeholder {parent_placeholder}: {e}"
+                                    )
+
                 with fs.open(placeholder_path, "wb") as f:
                     f.write(b"")  # Write an empty file
-                print(f"Created placeholder file at: {placeholder_path}")
-            except Exception as e:
-                print(f"Failed to create placeholder file: {e}")
+                print(
+                    f"Successfully created Azure placeholder file at: {placeholder_path}"
+                )
+
+                # Clean up any .placeholder file that might have been created in the root container
+                root_placeholder = f"{container_name}/.placeholder"
+                try:
+                    if fs.exists(root_placeholder):
+                        fs.rm(root_placeholder)
+                        print(f"Cleaned up root placeholder file: {root_placeholder}")
+                except Exception as e:
+                    print(f"Failed to clean up root placeholder: {e}")
+            else:
+                # For other storage systems (S3, GCS, etc.), use mkdir
+                fs.mkdir(full_path, create_parents=True)
+                print(f"Successfully created directory at path: {full_path}")
 
             fs.invalidate_cache(base_path)
 
             return FileOperationResponse(status="success", path=req.path)
         except Exception as e:
             print(f"Failed to create directory: {str(e)}")
+            import traceback
+
+            traceback.print_exc()
             raise HTTPException(
                 status_code=500, detail=f"Failed to create directory: {str(e)}"
             )
