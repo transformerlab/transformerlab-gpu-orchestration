@@ -177,6 +177,8 @@ def get_filesystem(
 
                 # Parse the URL to extract account and container information
                 url_parts = bucket.source.replace("https://", "").split(".")
+                account_name = None  # Initialize with a default value
+                container_path = None
                 if len(url_parts) >= 1:
                     account_name = url_parts[0]
                     # Extract container name from path - it's the first path segment after the domain
@@ -647,17 +649,40 @@ async def create_dir(
             # For Azure with az protocol, use just the requested path
             full_path = req.path.lstrip("/") if req.path != "/" else ""
 
+        print("DEBUG INFO:")
+        print(f"Bucket ID: {bucket_id}")
+        print(f"Request path: {req.path}")
+        print(f"Base path: {base_path}")
+        print(f"Full path: {full_path}")
+        print(f"Protocol: {fs.protocol}")
+        print(f"Storage options: {req.storage_options}")
+        print(f"Bucket source: {bucket.source}")
+
         try:
             fs.mkdir(full_path, create_parents=True)
+            print(f"Successfully created directory at path: {full_path}")
+
+            # Create a placeholder blob to ensure the directory is visible
+            try:
+                placeholder_path = f"{full_path.rstrip('/')}/.placeholder"
+                with fs.open(placeholder_path, "wb") as f:
+                    f.write(b"")  # Write an empty file
+                print(f"Created placeholder file at: {placeholder_path}")
+            except Exception as e:
+                print(f"Failed to create placeholder file: {e}")
+
             return FileOperationResponse(status="success", path=req.path)
         except Exception as e:
+            print(f"Failed to create directory: {str(e)}")
             raise HTTPException(
                 status_code=500, detail=f"Failed to create directory: {str(e)}"
             )
 
-    except HTTPException:
+    except HTTPException as http_exc:
+        print(f"HTTPException occurred: {http_exc.detail}")
         raise
     except Exception as e:
+        print(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to create directory: {str(e)}"
         )
