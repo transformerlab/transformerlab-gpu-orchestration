@@ -572,6 +572,8 @@ async def upload_file(
                 while content := await file.read(1024 * 1024):  # Read 1MB chunks
                     f.write(content)
 
+            fs.invalidate_cache(base_path)
+
             return FileOperationResponse(
                 status="success", path=f"{path.rstrip('/')}/{file.filename}"
             )
@@ -615,6 +617,7 @@ async def delete_file(
                 )
 
             fs.rm(full_path, recursive=True)  # Use recursive to delete directories
+            fs.invalidate_cache(base_path)
             return FileOperationResponse(status="success", path=req.path)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Path not found: {req.path}")
@@ -670,6 +673,8 @@ async def create_dir(
                 print(f"Created placeholder file at: {placeholder_path}")
             except Exception as e:
                 print(f"Failed to create placeholder file: {e}")
+
+            fs.invalidate_cache(base_path)
 
             return FileOperationResponse(status="success", path=req.path)
         except Exception as e:
