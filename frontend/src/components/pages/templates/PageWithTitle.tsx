@@ -44,6 +44,7 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
           justifyContent: "space-between",
           mb: 2,
           gap: 2,
+          flexWrap: { xs: "wrap", sm: "wrap", md: "nowrap" }, // Wrap on small screens, no wrap on larger screens
           ...(sticky && {
             position: "sticky",
             top: 0,
@@ -56,7 +57,9 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
           }),
         }}
       >
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 1 }}>
+          {" "}
+          {/* Adjust margin for responsiveness */}
           <Typography
             level="h2"
             sx={{ mb: 0.5 }}
@@ -76,10 +79,16 @@ const PageWithTitle: React.FC<PageWithTitleProps> = ({
             {title}
           </Typography>
           {subtitle && <Typography level="body-lg">{subtitle}</Typography>}
-        </Box>{" "}
-        {button}
+        </Box>
+        <Box
+          sx={{
+            mb: { xs: 2, sm: 2, md: 4 }, // Adjust margin for responsiveness
+            textAlign: { xs: "left", sm: "right" }, // Align left on small screens, right on larger screens
+          }}
+        >
+          {button}
+        </Box>
       </Box>
-
       {children}
     </Box>
   );
