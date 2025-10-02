@@ -443,8 +443,7 @@ zone: us-west-2a`}
                   required
                 />
                 <Typography level="body-xs" sx={{ mt: 0.5 }}>
-                  Multiple commands supported. End each line with <code>;</code>{" "}
-                  or enable the option below.
+                  Multiple commands supported. End each line with <code>;</code>
                 </Typography>
               </FormControl>
 
@@ -457,18 +456,17 @@ zone: us-west-2a`}
                   minRows={2}
                 />
                 <Typography level="body-xs" sx={{ mt: 0.5 }}>
-                  Use <code>;</code> at the end of each line for separate
-                  commands, or enable auto-append.
+                  Multiple commands supported. End each line with <code>;</code>
                 </Typography>
               </FormControl>
 
-              <FormControl sx={{ mb: 2 }}>
+              {/* <FormControl sx={{ mb: 2 }}>
                 <Checkbox
                   label="Auto-append ; to each non-empty line"
                   checked={autoAppendSemicolons}
                   onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
                 />
-              </FormControl>
+              </FormControl> */}
 
               {/* Number of Nodes - always visible since templates don't include this */}
               <FormControl sx={{ mb: 2 }}>
