@@ -42,71 +42,9 @@ node_pool_name: ${clusterName || "your-node-pool"}`;
 
   return (
     <>
-      {/* Configuration Mode Toggle */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          mb: 2,
-          p: 1,
-          border: "1px solid var(--joy-palette-neutral-300)",
-          borderRadius: "var(--joy-radius-md)",
-          backgroundColor: "var(--joy-palette-neutral-50)",
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            backgroundColor: "var(--joy-palette-background-surface)",
-            borderRadius: "var(--joy-radius-lg)",
-            p: 0.5,
-            position: "relative",
-          }}
-        >
-          {/* Form Mode Button */}
-          <Button
-            variant={!useYaml ? "solid" : "plain"}
-            color={!useYaml ? "primary" : "neutral"}
-            size="sm"
-            onClick={() => {
-              setUseYaml(false);
-              setYamlContent("");
-              setYamlFile(null);
-            }}
-            sx={{
-              minWidth: 100,
-              borderRadius: "var(--joy-radius-lg)",
-              fontWeight: !useYaml ? 600 : 400,
-            }}
-          >
-            General
-          </Button>
-
-          {/* YAML Mode Button */}
-          <Button
-            variant={useYaml ? "solid" : "plain"}
-            color={useYaml ? "primary" : "neutral"}
-            size="sm"
-            onClick={() => setUseYaml(true)}
-            sx={{
-              minWidth: 100,
-              borderRadius: "var(--joy-radius-lg)",
-              fontWeight: useYaml ? 600 : 400,
-            }}
-          >
-            YAML
-          </Button>
-        </Box>
-      </Box>
-
       {/* YAML Configuration Section */}
       {useYaml && (
-        <Card variant="outlined" sx={{ mb: 2 }}>
-          <Typography level="title-sm" sx={{ mb: 2 }}>
-            YAML Configuration
-          </Typography>
+        <>
           <Stack spacing={2}>
             <FormControl>
               <FormLabel>YAML File (optional)</FormLabel>
@@ -132,12 +70,6 @@ node_pool_name: ${clusterName || "your-node-pool"}`;
                   width: "100%",
                 }}
               />
-              <Typography
-                level="body-xs"
-                sx={{ mt: 0.5, color: "text.secondary" }}
-              >
-                Upload a YAML file or paste content below
-              </Typography>
             </FormControl>
 
             <FormControl>
@@ -163,7 +95,7 @@ node_pool_name: ${clusterName || "your-node-pool"}`;
               </Typography>
             </FormControl>
           </Stack>
-        </Card>
+        </>
       )}
     </>
   );
