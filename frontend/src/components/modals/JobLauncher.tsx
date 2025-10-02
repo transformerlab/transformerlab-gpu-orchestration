@@ -428,7 +428,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
             {/* Resource Configuration */}
             <Card variant="soft" sx={{ mb: 2 }}>
               <Typography level="title-sm" sx={{ mb: 1 }}>
-                Resource Configuration
+                Machine Size
               </Typography>
               <FormControl sx={{ mb: 1 }}>
                 <FormLabel>vCPUs</FormLabel>
