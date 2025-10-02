@@ -334,20 +334,22 @@ def launch_cluster_with_skypilot(
             num_nodes=effective_num_nodes,
         )
 
-        # Create selective AWS credentials file
-        selective_credentials_path = create_selective_aws_credentials_file(
-            organization_id
-        )
-
-        if file_mounts:
-            file_mounts.update(
-                {"/home/sky/.aws/credentials": selective_credentials_path}
+        if os.getenv("TRANSFORMERLAB_BUCKET_NAME") and os.getenv(
+            "TRANSFORMERLAB_BUCKET_SOURCE"
+        ):
+            # Create selective AWS credentials file
+            selective_credentials_path = create_selective_aws_credentials_file(
+                organization_id
             )
-            task.set_file_mounts(file_mounts)
-        else:
-            task.set_file_mounts(
-                {"/home/sky/.aws/credentials": selective_credentials_path}
-            )
+            if file_mounts:
+                file_mounts.update(
+                    {"/home/sky/.aws/credentials": selective_credentials_path}
+                )
+                task.set_file_mounts(file_mounts)
+            else:
+                task.set_file_mounts(
+                    {"/home/sky/.aws/credentials": selective_credentials_path}
+                )
 
         # Process storage buckets if provided
         if storage_bucket_ids:
