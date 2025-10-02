@@ -70,6 +70,10 @@ const Logs: React.FC = () => {
   );
 
   const requests = requestsData || [];
+  // Hide TERMINATE requests from the dashboard/logs page
+  const displayRequests = requests.filter(
+    (r: SkyPilotRequest) => (r.task_type || "").toLowerCase() !== "terminate"
+  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -193,7 +197,7 @@ const Logs: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {requests.length === 0 ? (
+            {displayRequests.length === 0 ? (
               <tr>
                 <td
                   colSpan={4}
@@ -205,7 +209,7 @@ const Logs: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              requests.map((request: SkyPilotRequest) => (
+              displayRequests.map((request: SkyPilotRequest) => (
                 <tr key={request.id}>
                   <td>
                     <Chip
