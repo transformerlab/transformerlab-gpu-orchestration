@@ -39,6 +39,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
   const [memory, setMemory] = useState("");
   const [gpus, setGpus] = useState("");
   const [diskSpace, setDiskSpace] = useState("");
+  const [numNodes, setNumNodes] = useState<string>("1");
   const [zone, setZone] = useState("");
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,6 +91,7 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
     setMemory("");
     setGpus("");
     setDiskSpace("");
+    setNumNodes("1");
     setZone("");
     setRegion("");
     setSelectedTemplateId("");
@@ -140,6 +142,12 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
 
       if (finalDiskSpace) {
         formData.append("disk_space", finalDiskSpace);
+      }
+
+      // Only include num_nodes if > 1
+      const parsedNumNodes = parseInt(numNodes || "1", 10);
+      if (!isNaN(parsedNumNodes) && parsedNumNodes > 1) {
+        formData.append("num_nodes", String(parsedNumNodes));
       }
 
       if (finalRegion) {
@@ -276,6 +284,22 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
               <Typography level="body-xs" sx={{ mt: 0.5 }}>
                 Use <code>;</code> at the end of each line for separate commands
               </Typography>
+            </FormControl>
+
+            {/* Number of Nodes - always visible since templates don't include this */}
+            <FormControl sx={{ mb: 2 }}>
+              <FormLabel>Number of Nodes</FormLabel>
+              <Input
+                value={numNodes}
+                onChange={(e) => setNumNodes(e.target.value)}
+                placeholder="1"
+                slotProps={{
+                  input: {
+                    type: "number",
+                    min: 1,
+                  },
+                }}
+              />
             </FormControl>
 
             {/* <FormControl sx={{ mb: 2 }}>
