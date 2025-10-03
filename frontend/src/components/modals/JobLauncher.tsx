@@ -365,38 +365,6 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
                 />
               </FormControl>
 
-              {/* Template selector */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Machine Size Template (optional)</FormLabel>
-                <Select
-                  value={selectedTemplateId}
-                  onChange={(_, v) => setSelectedTemplateId(v || "")}
-                  placeholder="Select a template"
-                >
-                  {(templates || []).map((t: any) => (
-                    <Option key={t.id} value={t.id}>
-                      {t.name || t.id}
-                    </Option>
-                  ))}
-                </Select>
-                <FormHelperText sx={{ color: "var(--joy-palette-danger-500)" }}>
-                  {selectedTemplate && (
-                    <>
-                      <span
-                        onClick={() => setSelectedTemplateId("")}
-                        style={{
-                          color: "var(--joy-palette-danger-500)",
-
-                          cursor: "pointer",
-                        }}
-                      >
-                        Clear Selection
-                      </span>
-                    </>
-                  )}
-                </FormHelperText>
-              </FormControl>
-
               <FormControl sx={{ mb: 2 }}>
                 <FormLabel>Command *</FormLabel>
                 <Textarea
@@ -446,6 +414,38 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
                     },
                   }}
                 />
+              </FormControl>
+
+              {/* Template selector */}
+              <FormControl sx={{ mb: 2 }}>
+                <FormLabel>Machine Size Template (optional)</FormLabel>
+                <Select
+                  value={selectedTemplateId}
+                  onChange={(_, v) => setSelectedTemplateId(v || "")}
+                  placeholder="Select a template"
+                >
+                  {(templates || []).map((t: any) => (
+                    <Option key={t.id} value={t.id}>
+                      {t.name || t.id}
+                    </Option>
+                  ))}
+                </Select>
+                <FormHelperText sx={{ color: "var(--joy-palette-danger-500)" }}>
+                  {selectedTemplate && (
+                    <>
+                      <span
+                        onClick={() => setSelectedTemplateId("")}
+                        style={{
+                          color: "var(--joy-palette-danger-500)",
+
+                          cursor: "pointer",
+                        }}
+                      >
+                        Clear Selection
+                      </span>
+                    </>
+                  )}
+                </FormHelperText>
               </FormControl>
 
               {/* Advanced button - always show but disable when template is selected */}
