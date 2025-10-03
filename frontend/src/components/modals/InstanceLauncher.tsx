@@ -364,7 +364,37 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
                   />
                 </FormControl>
 
-                {/* Template selector */}
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Setup Command (optional)</FormLabel>
+                  <Textarea
+                    value={setupCommand}
+                    onChange={(e) => setSetupCommand(e.target.value)}
+                    placeholder="pip install -r requirements.txt"
+                    minRows={2}
+                  />
+                  <Typography level="body-xs" sx={{ mt: 0.5 }}>
+                    Use <code>;</code> at the end of each line for separate
+                    commands
+                  </Typography>
+                </FormControl>
+
+                {/* Number of Nodes - always visible since templates don't include this */}
+                <FormControl sx={{ mb: 2 }}>
+                  <FormLabel>Number of Nodes</FormLabel>
+                  <Input
+                    value={numNodes}
+                    onChange={(e) => setNumNodes(e.target.value)}
+                    placeholder="1"
+                    slotProps={{
+                      input: {
+                        type: "number",
+                        min: 1,
+                      },
+                    }}
+                  />
+                </FormControl>
+
+                {/* Machine Size Template (positioned near Advanced Options like Job Launcher) */}
                 <FormControl sx={{ mb: 2 }}>
                   <FormLabel>Machine Size Template (optional)</FormLabel>
                   <Select
@@ -395,36 +425,6 @@ const InstanceLauncher: React.FC<InstanceLauncherProps> = ({
                       </>
                     )}
                   </FormHelperText>
-                </FormControl>
-
-                <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Setup Command (optional)</FormLabel>
-                  <Textarea
-                    value={setupCommand}
-                    onChange={(e) => setSetupCommand(e.target.value)}
-                    placeholder="pip install -r requirements.txt"
-                    minRows={2}
-                  />
-                  <Typography level="body-xs" sx={{ mt: 0.5 }}>
-                    Use <code>;</code> at the end of each line for separate
-                    commands
-                  </Typography>
-                </FormControl>
-
-                {/* Number of Nodes - always visible since templates don't include this */}
-                <FormControl sx={{ mb: 2 }}>
-                  <FormLabel>Number of Nodes</FormLabel>
-                  <Input
-                    value={numNodes}
-                    onChange={(e) => setNumNodes(e.target.value)}
-                    placeholder="1"
-                    slotProps={{
-                      input: {
-                        type: "number",
-                        min: 1,
-                      },
-                    }}
-                  />
                 </FormControl>
 
                 {/* Advanced button - always show but disable when template is selected */}
