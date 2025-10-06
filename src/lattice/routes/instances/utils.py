@@ -302,9 +302,15 @@ def launch_cluster_with_skypilot(
 
         if envs:
             envs["AWS_PROFILE"] = os.getenv("AWS_PROFILE", "transformerlab-s3")
+            envs["_TFL_REMOTE_SKYPILOT_WORKSPACE"] = os.getenv(
+                "_TFL_REMOTE_SKYPILOT_WORKSPACE", "true"
+            )
         else:
             envs = {
                 "AWS_PROFILE": os.getenv("AWS_PROFILE", "transformerlab-s3"),
+                "_TFL_REMOTE_SKYPILOT_WORKSPACE": os.getenv(
+                    "_TFL_REMOTE_SKYPILOT_WORKSPACE", "true"
+                ),
             }
 
         # Merge launch hook environment variables with existing envs
