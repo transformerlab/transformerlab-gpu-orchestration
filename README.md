@@ -3,7 +3,7 @@
 
 WARNING:
 
-- We are working on making it easy for anyone to deploy this project. Right now it has some dependencies on WorkOS and the instructions are a roughly written. We will update this ASAP. Please join our discord if you'd like to help!
+We are working on making it easy for anyone to deploy this project. Right now it has some dependencies on WorkOS and the instructions are written for our internal team. We will update this ASAP. Please join our discord if you'd like to help!
 
 ## Architecture
 
