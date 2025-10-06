@@ -1,5 +1,10 @@
 # Transformer Lab GPU Orchestration
 
+
+WARNING:
+
+- We are working on making it easy for anyone to deploy this project. Right now it has some dependencies on WorkOS and the instructions are a roughly written. We will update this ASAP. Please join our discord if you'd like to help!
+
 ## Architecture
 
 - **Backend**: FastAPI with WorkOS SSO integration serving API at `/api/v1/*`
