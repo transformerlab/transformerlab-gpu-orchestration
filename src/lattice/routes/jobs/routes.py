@@ -142,6 +142,7 @@ async def get_cluster_jobs(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
+
                     rp_config = rp_get_current_config(
                         organization_id=user["organization_id"]
                     )
@@ -253,6 +254,7 @@ async def stream_job_logs(
             elif platform == "runpod":
                 try:
                     from routes.clouds.runpod.utils import rp_get_current_config
+
                     rp_config = rp_get_current_config(
                         organization_id=user["organization_id"]
                     )
@@ -435,10 +437,18 @@ async def submit_job_to_cluster(
             "num_nodes": num_nodes,
         }
 
-        # Override with YAML values where form parameters are None
+        # Override with YAML values where form parameters are None (excluding resource fields)
         for key, value in yaml_config.items():
             if key in final_config and final_config[key] is None:
                 final_config[key] = value
+
+        # Handle nested resources structure in YAML (only supported format)
+        if "resources" in yaml_config and isinstance(yaml_config["resources"], dict):
+            resources = yaml_config["resources"]
+            if "cpus" in resources and final_config["cpus"] is None:
+                final_config["cpus"] = resources["cpus"]
+            if "accelerators" in resources and final_config["accelerators"] is None:
+                final_config["accelerators"] = resources["accelerators"]
 
         # Validate required fields
         if not final_config["command"]:

@@ -244,10 +244,20 @@ async def launch_instance(
             "experiment_id": experiment_id,
         }
 
-        # Override with YAML values for all form parameters
+        # Override with YAML values for non-resource form parameters
         for key, value in yaml_config.items():
             if key in final_config:
                 final_config[key] = value
+
+        # Handle nested resources structure in YAML
+        if "resources" in yaml_config and isinstance(yaml_config["resources"], dict):
+            resources = yaml_config["resources"]
+            if "cpus" in resources:
+                final_config["cpus"] = resources["cpus"]
+            if "accelerators" in resources:
+                final_config["accelerators"] = resources["accelerators"]
+            if "disk_space" in resources:
+                final_config["disk_space"] = resources["disk_space"]
 
         # Validate required fields
         if not final_config["cluster_name"]:
