@@ -205,6 +205,7 @@ def launch_cluster_with_skypilot(
     credentials: Optional[dict] = None,
     num_nodes: Optional[int] = None,
     env_vars: Optional[dict] = None,
+    job_name: Optional[str] = None,
 ):
     try:
         storage_mounts = {}
@@ -320,7 +321,8 @@ def launch_cluster_with_skypilot(
             else:
                 envs.update(env_vars)
 
-        name = "lattice-task-setup"
+        # Use job_name if provided, otherwise use default
+        name = job_name if job_name else "lattice-task-setup"
 
         # Determine number of nodes (default to 1)
         effective_num_nodes = 1
@@ -640,6 +642,7 @@ async def launch_cluster_with_skypilot_isolated(
     credentials: Optional[dict] = None,
     num_nodes: Optional[int] = None,
     env_vars: Optional[dict] = None,
+    job_name: Optional[str] = None,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -671,6 +674,7 @@ async def launch_cluster_with_skypilot_isolated(
             "credentials": credentials,
             "num_nodes": num_nodes,
             "env_vars": env_vars,
+            "job_name": job_name,
         }
 
         # Create a temporary file to pass parameters
