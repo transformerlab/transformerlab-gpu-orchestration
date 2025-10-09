@@ -1,7 +1,7 @@
 # Transformer Lab GPU Orchestration
 
-
 [![License](https://img.shields.io/github/license/transformerlab/transformerlab-gpu-orchestration)](LICENSE)
+
 <!-- [![Deploy Status](https://img.shields.io/github/actions/workflow/status/your-org/your-repo/ci.yml?branch=main)](https://github.com/your-org/your-repo/actions) -->
 
 > **Warning**  
@@ -36,13 +36,14 @@ Visit us at [http://lab.cloud](http://lab.cloud) for updates.
 
 - Python 3.8+
 - Node.js 16+
+- uv (can be installed via `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - WorkOS account and application setup
 
 ### Setup Instructions
 
 1. **WorkOS Setup**: Create a WorkOS account at [workos.com](https://workos.com) and configure your SSO connection.
 2. **Configure Environment**: Copy `.env.example` to `.env` and add your WorkOS credentials.
-3. **Run Setup Script**:  
+3. **Run Setup Script**:
    ```bash
    ./setup.sh
    ```
@@ -58,7 +59,7 @@ You are set up!
 2. Create a new WorkOS application
 3. Configure your SSO connection (Google, Microsoft, etc.)
 4. Note your API Key and Client ID
-5. Add redirect URI:  
+5. Add redirect URI:
    ```
    http://localhost:8000/api/v1/auth/callback
    ```
@@ -68,16 +69,16 @@ You are set up!
 ## 🛠️ Run in Development
 
 1. Ensure your env files are set in `/backend/.env` and `/frontend/.env`.  
-   For frontend dev, set:  
+   For frontend dev, set:
    ```
    VITE_API_URL=http://localhost:8000/api/v1
    ```
    (Use `VITE_API_URL=/api/v1` only for production with unified server.)
-2. Run backend and migrations:  
+2. Run backend and migrations:
    ```
    ./start.sh --dev
    ```
-3. In another window, run frontend:  
+3. In another window, run frontend:
    ```
    npm run dev
    ```
@@ -132,13 +133,13 @@ Migrations live in `backend/alembic/versions` and target metadata from `backend/
 
 ## 🔐 API Key Scopes
 
-| Scope             | Description                                      |
-|-------------------|--------------------------------------------------|
-| `admin`           | Full access to all write operations              |
-| `compute:write`   | Launch, stop, and manage compute jobs/instances  |
-| `nodepools:write` | Create, update, or delete node pools             |
-| `storage:write`   | Create, mount, or modify storage buckets         |
-| `registries:write`| Manage private container registries              |
+| Scope              | Description                                     |
+| ------------------ | ----------------------------------------------- |
+| `admin`            | Full access to all write operations             |
+| `compute:write`    | Launch, stop, and manage compute jobs/instances |
+| `nodepools:write`  | Create, update, or delete node pools            |
+| `storage:write`    | Create, mount, or modify storage buckets        |
+| `registries:write` | Manage private container registries             |
 
 - Scopes apply to API key-authenticated requests. Session-authenticated users are not scope-restricted.
 - If an API key has no scopes, it cannot perform protected write actions.
@@ -154,6 +155,7 @@ Migrations live in `backend/alembic/versions` and target metadata from `backend/
 - **Location:** `tests/`
 
 Quick run:
+
 ```bash
 ./run_tests.sh
 ```
@@ -175,10 +177,12 @@ Quick run:
    ```
 
 Tips:
+
 - Run a single file: `pytest tests/test_app_basic.py`
 - Run a single test: `pytest -k login_url`
 - Forward args via script: `./run_tests.sh -k login_url`
 
 Notes:
+
 - Tests isolate `$HOME` to `tests/.tmp_home` and set `DATABASE_URL` to a file-based SQLite DB under that folder; Alembic migrations run at test session start to match production schema.
 - The initial tests are intentionally simple to serve as templates for future tests.
