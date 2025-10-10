@@ -188,6 +188,7 @@ async def launch_instance(
     node_pool_name: Optional[str] = Form(None),
     docker_image_id: Optional[str] = Form(None),
     experiment_id: Optional[str] = Form(None),
+    job_name: Optional[str] = Form(None),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
@@ -242,6 +243,7 @@ async def launch_instance(
             "node_pool_name": node_pool_name,
             "docker_image_id": docker_image_id,
             "experiment_id": experiment_id,
+            "job_name": job_name,
         }
 
         # Override with YAML values for non-resource form parameters
@@ -285,6 +287,7 @@ async def launch_instance(
         node_pool_name = final_config["node_pool_name"]
         docker_image_id = final_config["docker_image_id"]
         experiment_id = final_config["experiment_id"]
+        job_name = final_config["job_name"]
 
         file_mounts = None
         python_filename = None
@@ -716,6 +719,7 @@ async def launch_instance(
             display_name=cluster_name,
             credentials=credentials,
             env_vars=hook_env_vars,
+            job_name=job_name,
         )
 
         # Record usage event for cluster launch
