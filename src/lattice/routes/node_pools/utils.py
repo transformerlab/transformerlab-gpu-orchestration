@@ -501,12 +501,23 @@ def validate_node_pool_identity_files(node_pool_name: str) -> list[str]:
         db.close()
 
 
-def get_cluster_config_from_db(cluster_name: str) -> dict:
+def get_cluster_config_from_db(cluster_name: str, organization_id: str = None) -> dict:
     db = SessionLocal()
     try:
-        pool = (
-            db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
-        )
+        # Query with organization scoping if provided
+        if organization_id:
+            pool = (
+                db.query(SSHNodePoolDB)
+                .filter(
+                    SSHNodePoolDB.name == cluster_name,
+                    SSHNodePoolDB.organization_id == organization_id
+                )
+                .first()
+            )
+        else:
+            pool = (
+                db.query(SSHNodePoolDB).filter(SSHNodePoolDB.name == cluster_name).first()
+            )
         if pool is None:
             raise HTTPException(
                 status_code=404, detail=f"Cluster '{cluster_name}' not found"

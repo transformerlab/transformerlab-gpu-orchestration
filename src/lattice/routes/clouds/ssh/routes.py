@@ -34,7 +34,7 @@ async def get_ssh_node_info(
         cluster_names = list_cluster_names_from_db_by_org(user["organization_id"])
 
         for cluster_name in cluster_names:
-            cfg = get_cluster_config_from_db(cluster_name)
+            cfg = get_cluster_config_from_db(cluster_name, user["organization_id"])
 
             # Fetch and update GPU resources synchronously
             try:
