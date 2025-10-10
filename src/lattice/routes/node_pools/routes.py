@@ -453,7 +453,7 @@ async def get_node_pools(
 
                 for pool in user_ssh_pools:
                     cluster_name = pool.name
-                    cfg = get_cluster_config_from_db(cluster_name)
+                    cfg = get_cluster_config_from_db(cluster_name, user["organization_id"])
                     hosts_count = len(cfg.get("hosts", []))
                     # Trigger background refresh of GPU resources for this pool
                     try:
@@ -960,7 +960,7 @@ async def get_cluster(
             detail=f"SSH node pool '{cluster_name}' not found or access denied",
         )
 
-    cfg = get_cluster_config_from_db(cluster_name)
+    cfg = get_cluster_config_from_db(cluster_name, user["organization_id"])
     nodes = [
         SSHNode(
             ip=host["ip"],
