@@ -51,11 +51,11 @@ else
     # echo "✅ Backend dependencies installed"
     
     # Run database migrations
-    echo "🗄️  Running database migrations..."
-    pushd src/lattice
-    alembic upgrade head
-    popd
-    echo "✅ Database migrations completed"
+    # echo "🗄️  Running database migrations..."
+    # pushd src/lattice
+    # alembic upgrade head
+    # popd
+    # echo "✅ Database migrations completed"
     
     export AUTH_REDIRECT_URI=${AUTH_REDIRECT_URI:-"http://localhost:8000/api/v1/auth/callback"}
     export DEBUG=${DEBUG:-"False"}
