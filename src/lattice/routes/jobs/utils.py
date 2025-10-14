@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
-from routes.instances.utils import (
+from build.lib.lattice.routes.instances.utils import (
     determine_actual_cloud_from_skypilot_status,
 )
 from config import SessionLocal
@@ -53,6 +53,10 @@ def get_job_logs(
         if platform_info and platform_info.get("platform"):
             platform = platform_info["platform"]
             if platform == "multi-cloud":
+                from routes.instances.utils import (
+                    determine_actual_cloud_from_skypilot_status,
+                )
+
                 # Determine the actual cloud used by SkyPilot
                 actual_platform = determine_actual_cloud_from_skypilot_status(
                     actual_cluster_name

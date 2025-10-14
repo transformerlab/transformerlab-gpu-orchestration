@@ -14,7 +14,6 @@ import json
 import queue
 import threading
 from werkzeug.utils import secure_filename
-from routes.instances.utils import determine_actual_cloud_from_skypilot_status
 from models import (
     JobQueueResponse,
     JobLogsResponse,
@@ -123,6 +122,10 @@ async def get_cluster_jobs(
         if platform_info and platform_info.get("platform"):
             platform = platform_info["platform"]
             if platform == "multi-cloud":
+                from routes.instances.utils import (
+                    determine_actual_cloud_from_skypilot_status,
+                )
+
                 # Determine the actual cloud used by SkyPilot
                 actual_platform = determine_actual_cloud_from_skypilot_status(
                     actual_cluster_name
