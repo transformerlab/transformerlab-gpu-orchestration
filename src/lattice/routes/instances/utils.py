@@ -488,17 +488,18 @@ def launch_cluster_with_skypilot(
 
                     # Get RunPod configuration
                     runpod_config = rp_get_current_config(organization_id, db)
-                    # Add to credentials if available
-                    if credentials and credentials.get("runpod") is None:
-                        credentials.update(
-                            {"runpod": {"api_key": runpod_config.get("api_key")}}
-                        )
-                    else:
-                        if not credentials:
-                            credentials = {
-                                "runpod": {"api_key": runpod_config.get("api_key")}
-                            }
+
                     if runpod_config:
+                        # Add to credentials if available
+                        if credentials and credentials.get("runpod") is None:
+                            credentials.update(
+                                {"runpod": {"api_key": runpod_config.get("api_key")}}
+                            )
+                        else:
+                            if not credentials:
+                                credentials = {
+                                    "runpod": {"api_key": runpod_config.get("api_key")}
+                                }
                         runpod_resources_kwargs = {"cloud": "runpod"}
                         if instance_type:
                             runpod_resources_kwargs["instance_type"] = instance_type
@@ -523,41 +524,41 @@ def launch_cluster_with_skypilot(
 
                     # Get Azure configuration
                     azure_config = az_get_current_config(organization_id, db)
-                    # Add to credentials if available
-                    if credentials and credentials.get("azure") is None:
-                        credentials.update(
-                            {
-                                "azure": {
-                                    "service_principal": {
-                                        "tenant_id": azure_config.get("tenant_id"),
-                                        "client_id": azure_config.get("client_id"),
-                                        "client_secret": azure_config.get(
-                                            "client_secret"
-                                        ),
-                                        "subscription_id": azure_config.get(
-                                            "subscription_id"
-                                        ),
-                                    }
-                                }
-                            }
-                        )
-                    else:
-                        if not credentials:
-                            credentials = {
-                                "azure": {
-                                    "service_principal": {
-                                        "tenant_id": azure_config.get("tenant_id"),
-                                        "client_id": azure_config.get("client_id"),
-                                        "client_secret": azure_config.get(
-                                            "client_secret"
-                                        ),
-                                        "subscription_id": azure_config.get(
-                                            "subscription_id"
-                                        ),
-                                    }
-                                }
-                            }
                     if azure_config:
+                        # Add to credentials if available
+                        if credentials and credentials.get("azure") is None:
+                            credentials.update(
+                                {
+                                    "azure": {
+                                        "service_principal": {
+                                            "tenant_id": azure_config.get("tenant_id"),
+                                            "client_id": azure_config.get("client_id"),
+                                            "client_secret": azure_config.get(
+                                                "client_secret"
+                                            ),
+                                            "subscription_id": azure_config.get(
+                                                "subscription_id"
+                                            ),
+                                        }
+                                    }
+                                }
+                            )
+                        else:
+                            if not credentials:
+                                credentials = {
+                                    "azure": {
+                                        "service_principal": {
+                                            "tenant_id": azure_config.get("tenant_id"),
+                                            "client_id": azure_config.get("client_id"),
+                                            "client_secret": azure_config.get(
+                                                "client_secret"
+                                            ),
+                                            "subscription_id": azure_config.get(
+                                                "subscription_id"
+                                            ),
+                                        }
+                                    }
+                                }
                         azure_resources_kwargs = {"cloud": "azure"}
                         if instance_type:
                             azure_resources_kwargs["instance_type"] = instance_type
@@ -907,6 +908,12 @@ def stop_cluster_with_skypilot(
         credentials = None
         if platform_info and platform_info.get("platform"):
             platform = platform_info["platform"]
+            if platform == "multi-cloud":
+                # Determine the actual cloud used by SkyPilot
+                actual_platform = determine_actual_cloud_from_skypilot_status(
+                    cluster_name
+                )
+                platform = actual_platform if actual_platform else platform
             if platform == "azure":
                 try:
                     azure_config_dict = az_get_current_config(
@@ -980,6 +987,13 @@ def down_cluster_with_skypilot(
         credentials = None
         if platform_info and platform_info.get("platform"):
             platform = platform_info["platform"]
+            if platform == "multi-cloud":
+                # Determine the actual cloud used by SkyPilot
+                actual_platform = determine_actual_cloud_from_skypilot_status(
+                    cluster_name
+                )
+                platform = actual_platform if actual_platform else platform
+
             if platform == "azure":
                 try:
                     azure_config_dict = az_get_current_config(
