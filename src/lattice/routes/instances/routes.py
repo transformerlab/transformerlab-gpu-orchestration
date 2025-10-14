@@ -80,6 +80,7 @@ from werkzeug.utils import secure_filename
 from routes.auth.api_key_auth import enforce_csrf
 
 from .utils import (
+    determine_actual_cloud_from_skypilot_status,
     down_cluster_with_skypilot,
     generate_cost_report,
     get_skypilot_status,
@@ -748,9 +749,6 @@ async def launch_instance(
                     time.sleep(5)
 
                     # Determine which cloud was actually selected
-                    from routes.instances.utils import (
-                        determine_actual_cloud_from_skypilot_status,
-                    )
                     from utils.cluster_utils import update_cluster_platform
 
                     actual_cloud = determine_actual_cloud_from_skypilot_status(
@@ -1185,6 +1183,12 @@ async def get_cluster_info(
             credentials = None
             if platform_info_jobs and platform_info_jobs.get("platform"):
                 platform = platform_info_jobs["platform"]
+                if platform == "multi-cloud":
+                    # Determine the actual cloud used by SkyPilot
+                    actual_platform = determine_actual_cloud_from_skypilot_status(
+                        cluster_name
+                    )
+                    platform = actual_platform if actual_platform else platform
                 if platform == "azure":
                     try:
                         azure_config_dict = az_get_current_config(
