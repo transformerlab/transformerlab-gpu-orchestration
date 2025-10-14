@@ -4,9 +4,6 @@ from pathlib import Path
 from fastapi import HTTPException
 import sky
 from typing import Optional
-from build.lib.lattice.routes.instances.utils import (
-    determine_actual_cloud_from_skypilot_status,
-)
 from config import SessionLocal
 from db.db_models import ClusterPlatform
 from utils.cluster_resolver import handle_cluster_name_param
