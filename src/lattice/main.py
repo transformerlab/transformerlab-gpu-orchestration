@@ -107,5 +107,5 @@ print(f"🔗 Backend using AUTH_REDIRECT_URI: {AUTH_REDIRECT_URI}")
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("GPU_ORCHESTRATION_API_PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
