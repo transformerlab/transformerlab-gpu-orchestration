@@ -121,6 +121,16 @@ async def get_cluster_jobs(
         credentials = None
         if platform_info and platform_info.get("platform"):
             platform = platform_info["platform"]
+            if platform == "multi-cloud":
+                from routes.instances.utils import (
+                    determine_actual_cloud_from_skypilot_status,
+                )
+
+                # Determine the actual cloud used by SkyPilot
+                actual_platform = determine_actual_cloud_from_skypilot_status(
+                    actual_cluster_name
+                )
+                platform = actual_platform if actual_platform else platform
             if platform == "azure":
                 try:
                     azure_config_dict = az_get_current_config(
