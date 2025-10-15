@@ -70,6 +70,37 @@ else
     echo "⚠️  Please install kubectl manually for your OS"
 fi
 
+# Install netcat-openbsd and rsync
+echo "📦 Installing netcat-openbsd and rsync..."
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    if ! which netcat &> /dev/null || ! which socat &> /dev/null || ! which rsync &> /dev/null; then
+        if command -v brew &> /dev/null; then
+            brew install netcat socat rsync
+            echo "✅ netcat, socat, and rsync installed"
+        else
+            echo "⚠️  Homebrew not found. Please install netcat, socat, and rsync manually."
+        fi
+    else
+        echo "✅ netcat, socat, and rsync already installed"
+    fi
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    if ! which netcat &> /dev/null || ! which rsync &> /dev/null; then
+        if command -v apt &> /dev/null; then
+            sudo apt update
+            sudo apt install -y netcat-openbsd rsync
+            echo "✅ netcat-openbsd and rsync installed"
+        else
+            echo "⚠️  apt not found. Please install netcat-openbsd and rsync manually."
+        fi
+    else
+        echo "✅ netcat and rsync already installed"
+    fi
+else
+    echo "⚠️  Please install netcat-openbsd and rsync manually for your OS"
+fi
+
 echo "✅ Backend dependencies installed"
 
 # Check if required environment variables are set
