@@ -11,12 +11,21 @@ from routes.clouds.azure.utils import az_get_current_config
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
+from lab import Job, Experiment, dirs
 
-
-def get_cluster_job_queue(cluster_name: str, credentials: Optional[dict] = None):
+def get_cluster_job_queue(cluster_name: str, credentials: Optional[dict] = None, experiment_id: Optional[str] = None):
     try:
         request_id = sky.queue(cluster_name, credentials=credentials)
         job_records = sky.get(request_id)
+
+        try:
+            experiment = Experiment.get(experiment_id)
+        except FileNotFoundError:
+            experiment = Experiment.create(experiment_id)
+
+        job_obj = experiment.create_job()
+        # TODO: Update job_obj with job_records if needed
+
         return job_records
     except Exception as e:
         raise HTTPException(
@@ -133,8 +142,39 @@ def submit_job_to_existing_cluster(
     zone: Optional[str] = None,
     job_name: Optional[str] = None,
     num_nodes: Optional[int] = None,
+    experiment_id: Optional[str] = None,
 ):
     try:
+        try:
+            try:
+                experiment = Experiment.get(experiment_id)
+            except FileNotFoundError:
+                experiment = Experiment.create(experiment_id)
+
+            sdk_job = experiment.create_job()
+            sdk_job.set_type("REMOTE")
+            sdk_job.update_status("QUEUED")
+
+            job_metadata = {
+                "command": command,
+                "setup": setup,
+                "resources": {
+                    "cpus": cpus,
+                    "memory": memory,
+                    "accelerators": accelerators,
+                    "region": region,
+                    "zone": zone,
+                    "num_nodes": effective_num_nodes,
+                },
+                "cluster_name": cluster_name,
+                "job_name": final_job_name,
+            }
+            sdk_job.set_job_data(job_metadata)
+
+        except Exception as sdk_error:
+            print(f"Warning: Failed to create SDK job: {str(sdk_error)}")
+            sdk_job = None
+
         # Create job name with metadata if it's a special job type
         final_job_name = job_name if job_name else "lattice-job"
 
@@ -180,6 +220,15 @@ def submit_job_to_existing_cluster(
         else:
             request_id = sky.exec(task, cluster_name=cluster_name)
 
+        if sdk_job and request_id:
+            try:
+                # TODO: What we want to store in job data for skypilot?
+                # sdk_job.update_job_data_field("skypilot_request_id", request_id)
+                # sdk_job.update_job_data_field("skypilot_cluster_name", cluster_name)
+                sdk_job.update_status("RUNNING")
+            except Exception as link_error:
+                print(f"Warning: Failed to link SDK job with SkyPilot job: {str(link_error)}")
+
         return request_id
     except Exception as e:
         from fastapi import HTTPException
@@ -193,6 +242,7 @@ def cancel_job_with_skypilot(cluster_name: str, job_id: int):
         # Use sky.cancel to cancel the job
         # The job_id should be passed as a string to match the expected format
         request_id = sky.cancel(cluster_name=cluster_name, job_ids=[str(job_id)])
+        # TODO: DO we want to update the SDK job status to "CANCELLED" here?
 
         # Wait for the cancel operation to complete
         result = sky.get(request_id)

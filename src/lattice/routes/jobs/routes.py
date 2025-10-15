@@ -108,6 +108,7 @@ async def get_cluster_jobs(
     cluster_name: str,
     request: Request,
     response: Response,
+    experiment_id: Optional[str] = None,
     user: dict = Depends(get_user_or_api_key),
 ):
     try:
@@ -169,7 +170,7 @@ async def get_cluster_jobs(
                 credentials = None
 
         job_records = get_cluster_job_queue(
-            actual_cluster_name, credentials=credentials
+            actual_cluster_name, credentials=credentials, experiment_id=experiment_id
         )
         jobs = []
         for record in job_records:
@@ -400,6 +401,7 @@ async def submit_job_to_cluster(
     dir_name: Optional[str] = Form(None),
     uploaded_dir_path: Optional[str] = Form(None),
     num_nodes: Optional[int] = Form(None),
+    experiment_id: Optional[str] = Form(None),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     scope_check: dict = Depends(require_scope("compute:write")),
@@ -539,6 +541,7 @@ async def submit_job_to_cluster(
             zone=zone,
             job_name=secure_job_name,
             num_nodes=effective_num_nodes,
+            experiment_id=experiment_id
         )
 
         # Record usage event
