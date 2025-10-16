@@ -350,14 +350,10 @@ def launch_cluster_with_skypilot(
                 organization_id
             )
             if file_mounts:
-                file_mounts.update(
-                    {"/home/sky/.aws/credentials": selective_credentials_path}
-                )
+                file_mounts.update({"~/.aws/credentials": selective_credentials_path})
                 task.set_file_mounts(file_mounts)
             else:
-                task.set_file_mounts(
-                    {"/home/sky/.aws/credentials": selective_credentials_path}
-                )
+                task.set_file_mounts({"~/.aws/credentials": selective_credentials_path})
 
         # Process storage buckets if provided
         if storage_bucket_ids:
