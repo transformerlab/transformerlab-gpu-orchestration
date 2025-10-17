@@ -591,6 +591,23 @@ export const quotaApi = {
   },
 };
 
+// GPU Orchestration API functions
+export const gpuOrchestrationApi = {
+  getServerConfig: async (): Promise<{
+    message: string;
+    tlab_server: string;
+    tlab_server_port: string;
+  }> => {
+    const response = await apiFetch(buildApiUrl("healthz"), {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch GPU orchestration server config");
+    }
+    return response.json();
+  },
+};
+
 // SSH Keys API functions
 export const sshKeyApi = {
   list: async (): Promise<{
