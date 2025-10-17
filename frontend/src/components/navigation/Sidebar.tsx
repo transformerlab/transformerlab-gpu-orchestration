@@ -21,6 +21,7 @@ import {
   LogsIcon,
 } from "lucide-react";
 import { buildApiUrl, apiFetch, gpuOrchestrationApi } from "../../utils/api";
+import { TransformerLabIcon } from "../icons/TransformerLabIcon";
 import path from "path";
 
 interface ItemProps {
@@ -286,7 +287,7 @@ export default function Sidebar() {
           }}
         >
           <ListItemDecorator>
-            <BoltIcon />
+            <TransformerLabIcon size={20} />
           </ListItemDecorator>
           <ListItemContent>Transformer Lab</ListItemContent>
         </ListItemButton>

@@ -595,9 +595,8 @@ export const quotaApi = {
 export const gpuOrchestrationApi = {
   getServerConfig: async (): Promise<{
     message: string;
-    mode: string;
-    gpu_orchestration_server: string;
-    gpu_orchestration_server_port: string;
+    tlab_server: string;
+    tlab_server_port: string;
   }> => {
     const response = await apiFetch(buildApiUrl("healthz"), {
       credentials: "include",
