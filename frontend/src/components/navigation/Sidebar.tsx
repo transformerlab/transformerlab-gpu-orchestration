@@ -20,7 +20,7 @@ import {
   FileTextIcon,
   LogsIcon,
 } from "lucide-react";
-import { buildApiUrl, apiFetch } from "../../utils/api";
+import { buildApiUrl, apiFetch, gpuOrchestrationApi } from "../../utils/api";
 import path from "path";
 
 interface ItemProps {
@@ -161,6 +161,16 @@ export default function Sidebar() {
     }
   }, [isAdminPath]);
 
+  const handleTransformerLabClick = async () => {
+    try {
+      const config = await gpuOrchestrationApi.getServerConfig();
+      const url = `${config.tlab_server}:${config.tlab_server_port}`;
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Failed to fetch TransformerLab URL:", error);
+    }
+  };
+
   // Fetch instance count using SWR
   const instanceFetcher = (url: string) =>
     apiFetch(url, { credentials: "include" }).then((res) => res.json());
@@ -262,6 +272,24 @@ export default function Sidebar() {
             )}
           </ListItem>
         </List>
+      </ListItem>
+
+      {/* Transformer Lab Link */}
+      <ListItem>
+        <ListItemButton
+          onClick={handleTransformerLabClick}
+          sx={{
+            color: "primary.500",
+            "&:hover": {
+              backgroundColor: "primary.50",
+            },
+          }}
+        >
+          <ListItemDecorator>
+            <BoltIcon />
+          </ListItemDecorator>
+          <ListItemContent>Transformer Lab</ListItemContent>
+        </ListItemButton>
       </ListItem>
     </List>
   );
