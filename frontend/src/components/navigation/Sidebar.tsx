@@ -289,7 +289,7 @@ export default function Sidebar() {
           <ListItemDecorator>
             <TransformerLabIcon size={20} />
           </ListItemDecorator>
-          <ListItemContent>Transformer Lab</ListItemContent>
+          <ListItemContent>Experiment Tracking</ListItemContent>
         </ListItemButton>
       </ListItem>
     </List>
