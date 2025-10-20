@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -77,6 +77,26 @@ app.include_router(storage_buckets_router, prefix=api_v1_prefix)
 app.include_router(ssh_config_router, prefix=api_v1_prefix)
 app.include_router(container_registries_router, prefix=api_v1_prefix)
 app.include_router(storage_buckets_browse_router, prefix=api_v1_prefix)
+
+
+@app.get("/api/v1/healthz")
+async def healthz(request: Request):
+    """Health check endpoint that returns server information"""
+    # Get environment variables with fallbacks
+    tlab_server = os.getenv("_TLAB_SERVER_URL")
+    tlab_port = os.getenv("_TLAB_SERVER_PORT", "8338")
+
+    # If server URL is not set, use the current request's host
+    if not tlab_server:
+        # Extract host from request URL
+        host = request.headers.get("host", "localhost")
+        # Remove port if present to avoid duplication
+        if ":" in host:
+            host = host.split(":")[0]
+        tlab_server = f"http://{host}"
+
+    return {"message": "OK", "tlab_server": tlab_server, "tlab_server_port": tlab_port}
+
 
 # Mount static files for production (when frontend build exists)
 frontend_build_path = os.path.join(
