@@ -206,6 +206,7 @@ def launch_cluster_with_skypilot(
     num_nodes: Optional[int] = None,
     env_vars: Optional[dict] = None,
     job_name: Optional[str] = None,
+    tlab_job_id: Optional[str] = None,
 ):
     try:
         storage_mounts = {}
@@ -320,6 +321,12 @@ def launch_cluster_with_skypilot(
                 envs = env_vars.copy()
             else:
                 envs.update(env_vars)
+
+        # Set _TFL_JOB_ID environment variable if tlab_job_id is provided
+        if tlab_job_id:
+            if envs is None:
+                envs = {}
+            envs["_TFL_JOB_ID"] = tlab_job_id
 
         # Use job_name if provided, otherwise use default
         name = job_name if job_name else "lattice-task-setup"
@@ -684,6 +691,7 @@ async def launch_cluster_with_skypilot_isolated(
     num_nodes: Optional[int] = None,
     env_vars: Optional[dict] = None,
     job_name: Optional[str] = None,
+    tlab_job_id: Optional[str] = None,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -716,6 +724,7 @@ async def launch_cluster_with_skypilot_isolated(
             "num_nodes": num_nodes,
             "env_vars": env_vars,
             "job_name": job_name,
+            "tlab_job_id": tlab_job_id,
         }
 
         # Create a temporary file to pass parameters

@@ -190,6 +190,7 @@ async def launch_instance(
     docker_image_id: Optional[str] = Form(None),
     experiment_id: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
+    tlab_job_id: Optional[str] = Form(None),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
@@ -245,6 +246,7 @@ async def launch_instance(
             "docker_image_id": docker_image_id,
             "experiment_id": experiment_id,
             "job_name": job_name,
+            "tlab_job_id": tlab_job_id,
         }
 
         # Override with YAML values for non-resource form parameters
@@ -289,6 +291,7 @@ async def launch_instance(
         docker_image_id = final_config["docker_image_id"]
         experiment_id = final_config["experiment_id"]
         job_name = final_config["job_name"]
+        tlab_job_id = final_config["tlab_job_id"]
 
         file_mounts = None
         python_filename = None
@@ -430,6 +433,10 @@ async def launch_instance(
                         setup = f"{combined_setup}\n{setup}"
                     else:
                         setup = combined_setup
+
+        # Set _TFL_JOB_ID environment variable if tlab_job_id is provided
+        if tlab_job_id:
+            hook_env_vars["_TFL_JOB_ID"] = tlab_job_id
 
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
         # (RunPod mapping below may clear 'accelerators')
@@ -721,6 +728,7 @@ async def launch_instance(
             credentials=credentials,
             env_vars=hook_env_vars,
             job_name=job_name,
+            tlab_job_id=tlab_job_id,
         )
 
         # Record usage event for cluster launch
