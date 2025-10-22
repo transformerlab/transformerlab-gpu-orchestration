@@ -322,12 +322,6 @@ def launch_cluster_with_skypilot(
             else:
                 envs.update(env_vars)
 
-        # Set _TFL_JOB_ID environment variable if tlab_job_id is provided
-        if tlab_job_id:
-            if envs is None:
-                envs = {}
-            envs["_TFL_JOB_ID"] = tlab_job_id
-
         # Use job_name if provided, otherwise use default
         name = job_name if job_name else "lattice-task-setup"
 
