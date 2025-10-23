@@ -673,7 +673,9 @@ async def launch_instance(
         }
 
         # Create cluster platform entry with display name and get actual cluster name
-        actual_cluster_name = create_cluster_platform_entry(
+        # This returns both the actual cluster name and the unique display name
+        # (which may have a number appended if the original name already exists)
+        actual_cluster_name, cluster_name = create_cluster_platform_entry(
             display_name=cluster_name,
             platform=platform,
             user_id=user_id,
@@ -783,7 +785,7 @@ async def launch_instance(
 
         return LaunchClusterResponse(
             request_id=request_id,
-            cluster_name=cluster_name,  # Return display name to user
+            cluster_name=cluster_name,  # Return the unique display name (may have -2, -3, etc.)
             message=f"Cluster '{cluster_name}' launch initiated successfully",
         )
     except Exception as e:
