@@ -206,6 +206,7 @@ def launch_cluster_with_skypilot(
     num_nodes: Optional[int] = None,
     env_vars: Optional[dict] = None,
     job_name: Optional[str] = None,
+    tlab_job_id: Optional[str] = None,
 ):
     try:
         storage_mounts = {}
@@ -684,6 +685,7 @@ async def launch_cluster_with_skypilot_isolated(
     num_nodes: Optional[int] = None,
     env_vars: Optional[dict] = None,
     job_name: Optional[str] = None,
+    tlab_job_id: Optional[str] = None,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -716,6 +718,7 @@ async def launch_cluster_with_skypilot_isolated(
             "num_nodes": num_nodes,
             "env_vars": env_vars,
             "job_name": job_name,
+            "tlab_job_id": tlab_job_id,
         }
 
         # Create a temporary file to pass parameters
