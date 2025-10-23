@@ -163,7 +163,7 @@ def create_cluster_platform_entry(
     user_info: Optional[Dict[str, Any]] = None,
     experiment_id: Optional[str] = None,
     db: Optional[Session] = None,
-) -> str:
+) -> tuple[str, str]:
     """
     Create a new cluster platform entry in the database.
 
@@ -177,7 +177,7 @@ def create_cluster_platform_entry(
         db: Optional database session
 
     Returns:
-        The generated actual cluster name
+        A tuple of (actual_cluster_name, unique_display_name)
 
     Note:
         If display name already exists for user+org, automatically generates
@@ -222,7 +222,7 @@ def create_cluster_platform_entry(
         db.commit()
         db.refresh(cluster_platform)
 
-        return cluster_name
+        return cluster_name, unique_display_name
 
     except HTTPException:
         raise
