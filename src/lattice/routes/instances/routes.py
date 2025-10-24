@@ -1477,10 +1477,7 @@ async def stream_request_logs(
             raise HTTPException(status_code=404, detail="Request not found")
 
         # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
+        if request.organization_id != user["organization_id"]:
             raise HTTPException(status_code=403, detail="Access denied")
 
         def generate_logs():
