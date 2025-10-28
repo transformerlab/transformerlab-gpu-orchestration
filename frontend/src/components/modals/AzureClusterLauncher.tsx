@@ -26,7 +26,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../NotificationSystem";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 import YamlConfigurationSection from "./YamlConfigurationSection";
-import { appendSemicolons } from "../../utils/commandUtils";
 
 interface AzureClusterLauncherProps {
   open: boolean;
@@ -124,7 +123,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const { addNotification } = useNotification();
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
-  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // Storage bucket state
   const [storageBuckets, setStorageBuckets] = useState<StorageBucket[]>([]);
@@ -449,14 +447,8 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
-        const finalCommand = autoAppendSemicolons
-          ? appendSemicolons(command)
-          : command;
-        const finalSetup = autoAppendSemicolons
-          ? appendSemicolons(setup)
-          : setup;
-        formData.append("command", finalCommand);
-        if (finalSetup) formData.append("setup", finalSetup);
+        formData.append("command", command);
+        if (setup) formData.append("setup", setup);
         formData.append("cloud", "azure");
 
         // Handle instance_type, region, zone, and disk_space based on template selection
@@ -662,17 +654,8 @@ disk_space: 100`}
                         />
                         <Typography level="body-xs" sx={{ mt: 0.5 }}>
                           Use <code>;</code> at the end of each line for
-                          separate commands, or enable auto-append.
+                          separate commands
                         </Typography>
-                      </FormControl>
-                      <FormControl>
-                        <Checkbox
-                          label="Auto-append ; to each non-empty line"
-                          checked={autoAppendSemicolons}
-                          onChange={(e) =>
-                            setAutoAppendSemicolons(e.target.checked)
-                          }
-                        />
                       </FormControl>
 
                       {/* Docker Image (moved out of Advanced) */}
