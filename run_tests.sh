@@ -13,7 +13,7 @@ fi
 # Create venv if missing and activate
 if [ ! -d .venv ]; then
   echo "📦 Creating Python virtual environment with uv..."
-  uv venv --python 3.10 --seed
+  uv venv --python 3.10 --seed --clear
 fi
 
 source .venv/bin/activate

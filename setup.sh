@@ -21,7 +21,7 @@ echo "✅ Prerequisites check passed"
 
 # Create Python virtual environment and install backend dependencies
 echo "📦 Creating Python virtual environment with uv..."
-uv venv --seed --python 3.10
+uv venv --seed --python 3.10 --clear
 source .venv/bin/activate
 uv pip install .
 echo "✅ Backend dependencies installed"
