@@ -97,7 +97,9 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     InstanceType[]
   >([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
-  const [allowedInstanceTypes, setAllowedInstanceTypes] = useState<string[]>([]);
+  const [allowedInstanceTypes, setAllowedInstanceTypes] = useState<string[]>(
+    []
+  );
   const [allowedRegions, setAllowedRegions] = useState<string[]>([]);
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
@@ -107,9 +109,10 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
   // Individual loading states
-  const [loadingInstanceTypesAndRegions, setLoadingInstanceTypesAndRegions] = useState(false);
+  const [loadingInstanceTypesAndRegions, setLoadingInstanceTypesAndRegions] =
+    useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [loadingQuota, setLoadingQuota] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
@@ -153,24 +156,39 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   // Set default instance type and region when data is loaded
   useEffect(() => {
-    if (allowedInstanceTypes.length > 0 && availableInstanceTypes.length > 0 && !selectedInstanceType) {
-      const firstAllowedType = availableInstanceTypes.find(type => 
+    if (
+      allowedInstanceTypes.length > 0 &&
+      availableInstanceTypes.length > 0 &&
+      !selectedInstanceType
+    ) {
+      const firstAllowedType = availableInstanceTypes.find((type) =>
         allowedInstanceTypes.includes(type.name)
       );
       if (firstAllowedType) {
         setSelectedInstanceType(firstAllowedType.name);
       }
     }
-    
-    if (allowedRegions.length > 0 && availableRegions.length > 0 && !selectedRegion) {
-      const firstAllowedRegion = availableRegions.find(region => 
+
+    if (
+      allowedRegions.length > 0 &&
+      availableRegions.length > 0 &&
+      !selectedRegion
+    ) {
+      const firstAllowedRegion = availableRegions.find((region) =>
         allowedRegions.includes(region)
       );
       if (firstAllowedRegion) {
         setSelectedRegion(firstAllowedRegion);
       }
     }
-  }, [allowedInstanceTypes, allowedRegions, availableInstanceTypes, availableRegions, selectedInstanceType, selectedRegion]);
+  }, [
+    allowedInstanceTypes,
+    allowedRegions,
+    availableInstanceTypes,
+    availableRegions,
+    selectedInstanceType,
+    selectedRegion,
+  ]);
 
   const fetchTemplates = async () => {
     try {
@@ -323,7 +341,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       });
       if (response.ok) {
         const data = await response.json();
-        
+
         // Set instance types
         const instanceTypes = (data.instance_types || []).map(
           (type: string) => {
@@ -366,7 +384,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
           }
         );
         setAvailableInstanceTypes(instanceTypes);
-        
+
         // Set regions
         setAvailableRegions(data.regions || []);
       }
@@ -687,9 +705,17 @@ disk_space: 100`}
                       <FormControl>
                         <FormLabel>Template (optional)</FormLabel>
                         {loadingTemplates ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
                             <CircularProgress size="sm" />
-                            <Typography level="body-sm">Loading templates...</Typography>
+                            <Typography level="body-sm">
+                              Loading templates...
+                            </Typography>
                           </Box>
                         ) : (
                           <Select
@@ -874,15 +900,17 @@ disk_space: 100`}
                                 loadingConfig
                               }
                             >
-                              {loadingInstanceTypesAndRegions || loadingConfig ? (
+                              {loadingInstanceTypesAndRegions ||
+                              loadingConfig ? (
                                 <Option value="" disabled>
                                   Loading instance types...
                                 </Option>
                               ) : (
                                 availableInstanceTypes
-                                  .filter((type) =>
-                                    allowedInstanceTypes.length === 0 || 
-                                    allowedInstanceTypes.includes(type.name)
+                                  .filter(
+                                    (type) =>
+                                      allowedInstanceTypes.length === 0 ||
+                                      allowedInstanceTypes.includes(type.name)
                                   )
                                   .map((type) => (
                                     <Option key={type.name} value={type.name}>
@@ -908,15 +936,17 @@ disk_space: 100`}
                                 loadingConfig
                               }
                             >
-                              {loadingInstanceTypesAndRegions || loadingConfig ? (
+                              {loadingInstanceTypesAndRegions ||
+                              loadingConfig ? (
                                 <Option value="" disabled>
                                   Loading regions...
                                 </Option>
                               ) : (
                                 availableRegions
-                                  .filter((region) =>
-                                    allowedRegions.length === 0 || 
-                                    allowedRegions.includes(region)
+                                  .filter(
+                                    (region) =>
+                                      allowedRegions.length === 0 ||
+                                      allowedRegions.includes(region)
                                   )
                                   .map((region) => (
                                     <Option key={region} value={region}>
@@ -961,27 +991,42 @@ disk_space: 100`}
               {/* Cost & Credits Display */}
               {loadingQuota ? (
                 <Card variant="outlined" sx={{ mt: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      justifyContent: "center",
+                    }}
+                  >
                     <CircularProgress size="sm" />
-                    <Typography level="body-sm">Loading quota information...</Typography>
+                    <Typography level="body-sm">
+                      Loading quota information...
+                    </Typography>
                   </Box>
                 </Card>
-              ) : availableCredits !== null && (
-                <Box sx={{ mt: 2 }}>
-                  <CostCreditsDisplay
-                    estimatedCost={estimatedCost}
-                    availableCredits={availableCredits}
-                    variant="card"
-                    showWarning={true}
-                  />
-                  <Typography
-                    level="body-xs"
-                    sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
-                  >
-                    Note: Cost estimates are approximate and may vary based on
-                    actual usage and resource allocation.
-                  </Typography>
-                </Box>
+              ) : (
+                availableCredits !== null && (
+                  <Box sx={{ mt: 2 }}>
+                    <CostCreditsDisplay
+                      estimatedCost={estimatedCost}
+                      availableCredits={availableCredits}
+                      variant="card"
+                      showWarning={true}
+                    />
+                    <Typography
+                      level="body-xs"
+                      sx={{
+                        mt: 1,
+                        color: "text.secondary",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      Note: Cost estimates are approximate and may vary based on
+                      actual usage and resource allocation.
+                    </Typography>
+                  </Box>
+                )
               )}
             </Stack>
           </form>
