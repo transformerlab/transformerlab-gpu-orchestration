@@ -62,11 +62,10 @@
         // Construct WebSocket URL dynamically based on current location
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${protocol}//${window.location.host}/api/v1/terminal/ws/{{ session_id }}`;
-        term.writeln(`Connecting to ${wsUrl}...\r\n`);
         const socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
-          term.writeln("\r\nConnected to {{ cluster_name }}");
+          term.writeln("\r\nConnected to instance");
           term.onData((data) => {
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(btoa(data)); // Encode input as Base64
