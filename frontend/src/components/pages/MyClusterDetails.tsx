@@ -181,37 +181,69 @@ const MyClusterDetails: React.FC = () => {
     jobId: null,
   });
 
-  // Fetch consolidated cluster info data
+  // Fetch basic cluster info (fast - no jobs or cost data)
   const {
-    data: clusterInfoData,
-    isLoading: clusterInfoLoading,
-    mutate: refreshClusterInfo,
+    data: basicInfoData,
+    isLoading: basicInfoLoading,
+    mutate: refreshBasicInfo,
   } = useSWR(
-    clusterName ? `cluster-info-${clusterName}` : null,
-    () => clusterInfoApi.getClusterInfo(clusterName!),
+    clusterName ? `cluster-basic-info-${clusterName}` : null,
+    () => clusterInfoApi.getBasicInfo(clusterName!),
     {
       refreshInterval: 5000,
+      revalidateOnFocus: false,
+      dedupingInterval: 2000,
       onError: (err) => {
-        console.error("Error fetching cluster info:", err);
+        console.error("Error fetching cluster basic info:", err);
         setError("Failed to fetch cluster information");
       },
     }
   );
 
-  // Extract data from the consolidated response
-  const clusterData = clusterInfoData?.cluster;
-  const clusterTypeInfo = clusterInfoData?.cluster_type;
-  const sshNodeInfo = clusterInfoData?.ssh_node_info;
-  const costInfo = clusterInfoData?.cost_info;
-  const jobs = clusterInfoData?.jobs || [];
-  const clusterPlatform = clusterInfoData?.platform?.platform || "unknown";
-  const clusterTemplate = clusterInfoData?.template;
-
-  useEffect(() => {
-    if (clusterName) {
-      refreshClusterInfo();
+  // Fetch jobs separately (can be slower)
+  const {
+    data: jobsData,
+    isLoading: jobsLoading,
+    mutate: refreshJobs,
+  } = useSWR(
+    clusterName ? `cluster-jobs-${clusterName}` : null,
+    () => clusterInfoApi.getJobs(clusterName!),
+    {
+      refreshInterval: 5000,
+      revalidateOnFocus: false,
+      dedupingInterval: 2000,
+      onError: (err) => {
+        console.error("Error fetching cluster jobs:", err);
+      },
     }
-  }, [clusterName, refreshClusterInfo]);
+  );
+
+  // Fetch cost info separately (can be slower)
+  const {
+    data: costData,
+    isLoading: costLoading,
+    mutate: refreshCost,
+  } = useSWR(
+    clusterName ? `cluster-cost-${clusterName}` : null,
+    () => clusterInfoApi.getCostInfo(clusterName!),
+    {
+      refreshInterval: 30000, // Refresh less frequently (30s) as cost updates slowly
+      revalidateOnFocus: false,
+      dedupingInterval: 2000,
+      onError: (err) => {
+        console.error("Error fetching cluster cost info:", err);
+      },
+    }
+  );
+
+  // Extract data from the separate responses
+  const clusterData = basicInfoData?.cluster;
+  const clusterTypeInfo = basicInfoData?.cluster_type;
+  const sshNodeInfo = basicInfoData?.ssh_node_info;
+  const costInfo = costData?.cost_info;
+  const jobs = jobsData?.jobs || [];
+  const clusterPlatform = basicInfoData?.platform?.platform || "unknown";
+  const clusterTemplate = basicInfoData?.state?.template;
 
   const handleDownCluster = async () => {
     if (!clusterName) return;
@@ -281,7 +313,7 @@ const MyClusterDetails: React.FC = () => {
         console.error("Failed to stop cluster:", errorData.detail);
       } else {
         // Refresh cluster info after successful operation
-        refreshClusterInfo();
+        refreshBasicInfo();
       }
     } catch (err) {
       console.error("Error stopping cluster:", err);
@@ -423,8 +455,8 @@ const MyClusterDetails: React.FC = () => {
       await jobApi.cancelJob(clusterName, jobId);
       console.log("Job cancelled successfully");
 
-      // Refresh cluster info to get updated job status
-      refreshClusterInfo();
+      // Refresh jobs to get updated job status
+      refreshJobs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel job");
     } finally {
@@ -557,7 +589,8 @@ const MyClusterDetails: React.FC = () => {
     );
   }
 
-  const CLUSTER_IS_UP = clusterData?.status.toLowerCase().includes("up") || false;
+  const CLUSTER_IS_UP =
+    clusterData?.status.toLowerCase().includes("up") || false;
 
   return (
     <PageWithTitle
@@ -642,19 +675,35 @@ const MyClusterDetails: React.FC = () => {
           {/* Basic Info Card */}
           <Grid xs={12} md={6}>
             <Card>
-              {clusterInfoLoading ? (
+              {basicInfoLoading ? (
                 <Stack spacing={1.5}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Skeleton variant="text" width="30%" />
                     <Skeleton variant="text" width="40%" />
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Skeleton variant="text" width="20%" />
-                    <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 12 }} />
+                    <Skeleton
+                      variant="rectangular"
+                      width={100}
+                      height={24}
+                      sx={{ borderRadius: 12 }}
+                    />
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Skeleton variant="text" width="25%" />
-                    <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 12 }} />
+                    <Skeleton
+                      variant="rectangular"
+                      width={80}
+                      height={24}
+                      sx={{ borderRadius: 12 }}
+                    />
                   </Box>
                   <Box>
                     <Skeleton variant="text" width="30%" sx={{ mb: 1 }} />
@@ -663,7 +712,9 @@ const MyClusterDetails: React.FC = () => {
                 </Stack>
               ) : clusterData ? (
                 <Stack spacing={1}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Typography level="body-sm" color="neutral">
                       Cluster Name:
                     </Typography>
@@ -691,7 +742,9 @@ const MyClusterDetails: React.FC = () => {
                     </Chip>
                   </Box>
 
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Typography level="body-sm" color="neutral">
                       Status:
                     </Typography>
@@ -700,7 +753,11 @@ const MyClusterDetails: React.FC = () => {
 
                   {clusterData.resources_str && (
                     <Box>
-                      <Typography level="body-sm" color="neutral" sx={{ mb: 1 }}>
+                      <Typography
+                        level="body-sm"
+                        color="neutral"
+                        sx={{ mb: 1 }}
+                      >
                         Resources:
                       </Typography>
                       <ResourceDisplay
@@ -727,28 +784,19 @@ const MyClusterDetails: React.FC = () => {
                 <Clock size={16} />
                 Usage & Credits Information
               </Typography>
-              {clusterInfoLoading ? (
+              {basicInfoLoading ? (
                 <Stack spacing={1.5}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Skeleton variant="text" width="35%" />
                     <Skeleton variant="text" width="45%" />
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Skeleton variant="text" width="30%" />
                     <Skeleton variant="text" width="40%" />
-                  </Box>
-                  <Skeleton variant="rectangular" height={1} sx={{ my: 1 }} />
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Skeleton variant="text" width="45%" />
-                    <Skeleton variant="text" width="25%" />
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Skeleton variant="text" width="30%" />
-                    <Skeleton variant="text" width="35%" />
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Skeleton variant="text" width="35%" />
-                    <Skeleton variant="text" width="30%" />
                   </Box>
                 </Stack>
               ) : clusterData ? (
@@ -766,70 +814,56 @@ const MyClusterDetails: React.FC = () => {
                     </Box>
                   )}
 
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Typography level="body-sm" color="neutral">
                       Auto-stop:
                     </Typography>
                     <Typography level="body-sm">
-                      {formatAutostop(clusterData.autostop, clusterData.to_down)}
+                      {formatAutostop(
+                        clusterData.autostop,
+                        clusterData.to_down
+                      )}
                     </Typography>
                   </Box>
 
-                  {costInfo && (
+                  {/* Cost info section - shows skeleton while loading */}
+                  {costLoading ? (
+                    <>
+                      <Divider sx={{ my: 1 }} />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Skeleton variant="text" width="45%" />
+                        <Skeleton variant="text" width="25%" />
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Skeleton variant="text" width="30%" />
+                        <Skeleton variant="text" width="35%" />
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Skeleton variant="text" width="35%" />
+                        <Skeleton variant="text" width="30%" />
+                      </Box>
+                    </>
+                  ) : costInfo ? (
                     <>
                       <Divider sx={{ my: 1 }} />
 
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Typography level="body-sm" color="neutral">
-                        Total Credits Used:
-                      </Typography>
-                      <Typography
-                        level="body-sm"
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        {costInfo.total_cost.toFixed(2)}
-                      </Typography>
-                    </Box>
-
-                    {costInfo.duration > 0 && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <Typography level="body-sm" color="neutral">
-                          Duration:
-                        </Typography>
-                        <Typography level="body-sm">
-                          {formatDuration(costInfo.duration)}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {costInfo.cost_per_hour > 0 && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <Typography level="body-sm" color="neutral">
-                          Credits/Hour:
-                        </Typography>
-                        <Typography level="body-sm">
-                          {costInfo.cost_per_hour.toFixed(2)}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {costInfo.cloud && (
                       <Box
                         sx={{
                           display: "flex",
@@ -838,56 +872,115 @@ const MyClusterDetails: React.FC = () => {
                         }}
                       >
                         <Typography level="body-sm" color="neutral">
-                          Cloud Provider:
+                          Total Credits Used:
                         </Typography>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        <Typography
+                          level="body-sm"
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
                         >
-                          {costInfo.cloud.toLowerCase() === "runpod" && (
-                            <img
-                              src={RunPodIcon}
-                              alt="RunPod"
-                              style={{
-                                width: 20,
-                                height: 20,
-                              }}
-                            />
-                          )}
-                          {costInfo.cloud.toLowerCase() === "azure" && (
-                            <img
-                              src={AzureIcon}
-                              alt="Azure"
-                              style={{
-                                width: 20,
-                                height: 20,
-                              }}
-                            />
-                          )}
+                          {costInfo.total_cost.toFixed(2)}
+                        </Typography>
+                      </Box>
+
+                      {costInfo.duration > 0 && (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography level="body-sm" color="neutral">
+                            Duration:
+                          </Typography>
                           <Typography level="body-sm">
-                            {costInfo.cloud.charAt(0).toUpperCase() +
-                              costInfo.cloud.slice(1)}
+                            {formatDuration(costInfo.duration)}
                           </Typography>
                         </Box>
-                      </Box>
-                    )}
+                      )}
 
-                    {costInfo.region && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <Typography level="body-sm" color="neutral">
-                          Region:
-                        </Typography>
-                        <Typography level="body-sm">
-                          {costInfo.region}
-                        </Typography>
-                      </Box>
-                    )}
-                  </>
-                )}
+                      {costInfo.cost_per_hour > 0 && (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography level="body-sm" color="neutral">
+                            Credits/Hour:
+                          </Typography>
+                          <Typography level="body-sm">
+                            {costInfo.cost_per_hour.toFixed(2)}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {costInfo.cloud && (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Typography level="body-sm" color="neutral">
+                            Cloud Provider:
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            {costInfo.cloud.toLowerCase() === "runpod" && (
+                              <img
+                                src={RunPodIcon}
+                                alt="RunPod"
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                }}
+                              />
+                            )}
+                            {costInfo.cloud.toLowerCase() === "azure" && (
+                              <img
+                                src={AzureIcon}
+                                alt="Azure"
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                }}
+                              />
+                            )}
+                            <Typography level="body-sm">
+                              {costInfo.cloud.charAt(0).toUpperCase() +
+                                costInfo.cloud.slice(1)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+
+                      {costInfo.region && (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography level="body-sm" color="neutral">
+                            Region:
+                          </Typography>
+                          <Typography level="body-sm">
+                            {costInfo.region}
+                          </Typography>
+                        </Box>
+                      )}
+                    </>
+                  ) : null}
                 </Stack>
               ) : null}
             </Card>
@@ -950,10 +1043,14 @@ const MyClusterDetails: React.FC = () => {
             level="title-sm"
             sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
           >
-            {clusterInfoLoading ? <Skeleton variant="text" width={80} /> : `Jobs (${jobs.length})`}
+            {jobsLoading ? (
+              <Skeleton variant="text" width={80} />
+            ) : (
+              `Jobs (${jobs.length})`
+            )}
           </Typography>
 
-          {clusterInfoLoading ? (
+          {jobsLoading ? (
             <Stack spacing={2}>
               <Table>
                 <thead>
@@ -971,13 +1068,32 @@ const MyClusterDetails: React.FC = () => {
                 <tbody>
                   {[1, 2, 3].map((i) => (
                     <tr key={i}>
-                      <td><Skeleton variant="text" width={40} /></td>
-                      <td><Skeleton variant="text" width="80%" /></td>
-                      <td><Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 12 }} /></td>
-                      <td><Skeleton variant="text" width="60%" /></td>
-                      <td><Skeleton variant="text" width="90%" /></td>
-                      <td><Skeleton variant="text" width={50} /></td>
-                      <td><Skeleton variant="text" width="70%" /></td>
+                      <td>
+                        <Skeleton variant="text" width={40} />
+                      </td>
+                      <td>
+                        <Skeleton variant="text" width="80%" />
+                      </td>
+                      <td>
+                        <Skeleton
+                          variant="rectangular"
+                          width={80}
+                          height={24}
+                          sx={{ borderRadius: 12 }}
+                        />
+                      </td>
+                      <td>
+                        <Skeleton variant="text" width="60%" />
+                      </td>
+                      <td>
+                        <Skeleton variant="text" width="90%" />
+                      </td>
+                      <td>
+                        <Skeleton variant="text" width={50} />
+                      </td>
+                      <td>
+                        <Skeleton variant="text" width="70%" />
+                      </td>
                       <td>
                         <Box sx={{ display: "flex", gap: 1 }}>
                           <Skeleton variant="circular" width={32} height={32} />
