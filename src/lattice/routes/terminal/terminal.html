@@ -59,28 +59,46 @@
           fitAddon.fit();
         });
 
-        const socket = new WebSocket(
-          `ws://localhost:8000/api/v1/terminal/ws/{{ session_id }}`
-        );
+        // Construct WebSocket URL dynamically based on current location
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/terminal/ws/{{ session_id }}`;
+        term.writeln(`Connecting to ${wsUrl}...\r\n`);
+        const socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
-          term.writeln("Connected to {{ cluster_name }}");
+          term.writeln("\r\nConnected to {{ cluster_name }}");
           term.onData((data) => {
-            socket.send(btoa(data)); // Encode input as Base64
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(btoa(data)); // Encode input as Base64
+            }
           });
         };
 
         socket.onmessage = (event) => {
-          const decodedData = atob(event.data); // Decode Base64 data
-          term.write(decodedData);
+          try {
+            const decodedData = atob(event.data); // Decode Base64 data
+            term.write(decodedData);
+          } catch (e) {
+            console.error("Error decoding message:", e);
+          }
         };
 
-        socket.onclose = () => {
-          term.writeln("Connection closed");
+        socket.onclose = (event) => {
+          term.writeln("\r\n\r\nConnection closed");
+          if (event.code !== 1000) {
+            term.writeln(
+              `Close code: ${event.code}, reason: ${
+                event.reason || "No reason provided"
+              }`
+            );
+          }
         };
 
         socket.onerror = (error) => {
-          term.writeln("WebSocket error: " + JSON.stringify(error));
+          console.error("WebSocket error:", error);
+          term.writeln(
+            "\r\nWebSocket error occurred. Check console for details."
+          );
         };
       });
     </script>

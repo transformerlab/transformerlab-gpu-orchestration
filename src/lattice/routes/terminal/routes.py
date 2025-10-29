@@ -137,24 +137,31 @@ async def terminal_websocket(
 
     # Validate the session using auth utils
     if not session_cookie:
+        print(f"WebSocket connection attempt without session cookie. Session ID: {session_id}")
         await websocket.close(code=1008, reason="Authentication required")
-        print("WebSocket closed: Missing wos_session cookie")
         return
 
     # Bind user from cookie and compare with session owner
-    user = get_user_from_sealed_session(session_cookie)
-    if not user:
+    try:
+        user = get_user_from_sealed_session(session_cookie)
+    except Exception as e:
+        print(f"Error validating session cookie: {str(e)}")
         await websocket.close(code=1008, reason="Authentication failed")
-        print("WebSocket closed: Authentication failed")
+        return
+        
+    if not user:
+        print(f"WebSocket closed: Invalid or expired session cookie. Session ID: {session_id}")
+        await websocket.close(code=1008, reason="Authentication failed")
         return
 
     # Accept the WebSocket connection
     await websocket.accept()
+    print(f"WebSocket connection accepted for session {session_id}, user {user.get('id')}")
 
     # Validate session ID
     if session_id not in active_sessions:
+        print(f"WebSocket closed: Invalid session ID {session_id}. Available sessions: {list(active_sessions.keys())[:5]}")
         await websocket.close(code=1008, reason="Invalid session")
-        print(f"WebSocket closed: Invalid session ID {session_id}")
         return
 
     session_data = active_sessions[session_id]
@@ -162,20 +169,25 @@ async def terminal_websocket(
     try:
         now = asyncio.get_event_loop().time()
         if (now - session_data.get("created_at", now)) > SESSION_TTL_SECONDS:
+            print(f"WebSocket closed: Session {session_id} expired")
             await websocket.close(code=1008, reason="Session expired")
             async with active_sessions_lock:
                 active_sessions.pop(session_id, None)
             return
-    except Exception:
+    except Exception as e:
+        print(f"Error during TTL check: {str(e)}")
         pass
     params = session_data["params"]
 
     # Enforce that the websocket user matches the session owner
     if session_data.get("user_id") != user.get("id") or session_data.get("organization_id") != user.get("organization_id"):
+        print(f"WebSocket closed: User mismatch. Session user: {session_data.get('user_id')}, WebSocket user: {user.get('id')}")
         await websocket.close(code=1008, reason="Unauthorized for session")
         return
 
     ssh_cmd = ["ssh", params["cluster_name"]]
+    
+    print(f"Starting SSH connection to {params['cluster_name']} for session {session_id}")
 
     # Schedule forced disconnect after TTL from session creation
     ttl_task = None
@@ -200,15 +212,36 @@ async def terminal_websocket(
 
     try:
         # Allocate a PTY for the SSH process
-        master_fd, slave_fd = pty.openpty()
-        os.set_blocking(master_fd, False)  # Make PTY non-blocking
-        process = await asyncio.create_subprocess_exec(
-            *ssh_cmd,
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            close_fds=True,
-        )
+        try:
+            master_fd, slave_fd = pty.openpty()
+            os.set_blocking(master_fd, False)  # Make PTY non-blocking
+        except Exception as e:
+            error_msg = f"Failed to create PTY: {str(e)}"
+            print(f"WebSocket error: {error_msg}")
+            await websocket.send_text(error_msg)
+            await websocket.close(code=1011, reason="PTY creation failed")
+            return
+            
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *ssh_cmd,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                close_fds=True,
+            )
+        except Exception as e:
+            error_msg = f"Failed to start SSH process: {str(e)}"
+            print(f"WebSocket error: {error_msg}")
+            try:
+                os.close(master_fd)
+                os.close(slave_fd)
+            except Exception:
+                pass
+            await websocket.send_text(error_msg)
+            await websocket.close(code=1011, reason="SSH process failed")
+            return
+            
         os.close(slave_fd)  # We don't need the slave fd in this process
         session_data["process"] = process
         session_data["master_fd"] = master_fd
