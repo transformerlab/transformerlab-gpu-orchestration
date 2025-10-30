@@ -47,7 +47,7 @@ const VSCodeInfoModal: React.FC<VSCodeInfoModalProps> = ({
         buildApiUrl(`jobs/${clusterName}/${jobId}/vscode-info`),
         {
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -81,7 +81,7 @@ const VSCodeInfoModal: React.FC<VSCodeInfoModalProps> = ({
 
   const copyToClipboard = async (
     text: string,
-    type: "auth_code" | "tunnel_url"
+    type: "auth_code" | "tunnel_url",
   ) => {
     try {
       await navigator.clipboard.writeText(text);

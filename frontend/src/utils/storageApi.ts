@@ -80,7 +80,7 @@ export const storageBucketApi = {
       buildApiUrl(`storage-buckets/${bucketId}`),
       {
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       throw new Error("Failed to fetch storage bucket");
@@ -98,7 +98,7 @@ export const storageBucketApi = {
       store?: string;
       persistent?: boolean;
       mode?: string;
-    }
+    },
   ): Promise<StorageBucketListItem> => {
     const response = await apiFetch(
       buildApiUrl(`storage-buckets/${bucketId}`),
@@ -109,7 +109,7 @@ export const storageBucketApi = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(updates),
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json();
@@ -125,7 +125,7 @@ export const storageBucketApi = {
       {
         method: "DELETE",
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json();
@@ -138,7 +138,7 @@ export const storageBucketApi = {
   listFiles: async (
     bucketId: string,
     path: string = "/",
-    storageOptions: Record<string, any> = {}
+    storageOptions: Record<string, any> = {},
   ): Promise<ListFilesResponse> => {
     const response = await apiFetch(
       buildApiUrl(`storage-buckets/${bucketId}/list`),
@@ -152,7 +152,7 @@ export const storageBucketApi = {
           path,
           storage_options: storageOptions,
         }),
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -165,7 +165,7 @@ export const storageBucketApi = {
   getFile: async (
     bucketId: string,
     path: string,
-    storageOptions: Record<string, any> = {}
+    storageOptions: Record<string, any> = {},
   ): Promise<Response> => {
     const response = await apiFetch(
       buildApiUrl(`storage-buckets/${bucketId}/get-file`),
@@ -179,7 +179,7 @@ export const storageBucketApi = {
           path,
           storage_options: storageOptions,
         }),
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -193,7 +193,7 @@ export const storageBucketApi = {
     bucketId: string,
     file: File,
     path: string,
-    storageOptions: Record<string, any> = {}
+    storageOptions: Record<string, any> = {},
   ): Promise<FileOperationResponse> => {
     const formData = new FormData();
     formData.append("file", file);
@@ -206,7 +206,7 @@ export const storageBucketApi = {
         method: "POST",
         credentials: "include",
         body: formData,
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -219,7 +219,7 @@ export const storageBucketApi = {
   deleteFile: async (
     bucketId: string,
     path: string,
-    storageOptions: Record<string, any> = {}
+    storageOptions: Record<string, any> = {},
   ): Promise<FileOperationResponse> => {
     const response = await apiFetch(
       buildApiUrl(`storage-buckets/${bucketId}/delete-file`),
@@ -233,7 +233,7 @@ export const storageBucketApi = {
           path,
           storage_options: storageOptions,
         }),
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -246,7 +246,7 @@ export const storageBucketApi = {
   createDir: async (
     bucketId: string,
     path: string,
-    storageOptions: Record<string, any> = {}
+    storageOptions: Record<string, any> = {},
   ): Promise<FileOperationResponse> => {
     const response = await apiFetch(
       buildApiUrl(`storage-buckets/${bucketId}/create-dir`),
@@ -260,7 +260,7 @@ export const storageBucketApi = {
           path,
           storage_options: storageOptions,
         }),
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

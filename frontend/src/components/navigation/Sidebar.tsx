@@ -147,7 +147,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [adminExpanded, setAdminExpanded] = React.useState(
-    location.pathname.startsWith("/dashboard/admin")
+    location.pathname.startsWith("/dashboard/admin"),
   );
 
   const handleNavigation = (path: string) => {
@@ -179,7 +179,7 @@ export default function Sidebar() {
   const { data: instanceData } = useSWR(
     buildApiUrl("instances/status"),
     instanceFetcher,
-    { refreshInterval: 5000 } // Refresh every 5 seconds
+    { refreshInterval: 5000 }, // Refresh every 5 seconds
   );
 
   const instanceCount = instanceData?.clusters

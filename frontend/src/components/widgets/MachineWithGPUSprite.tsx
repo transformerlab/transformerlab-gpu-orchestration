@@ -57,14 +57,14 @@ const MachineWithGPUSprite: React.FC<MachineWithGPUSpriteProps> = ({
   };
 
   // Infer GPU totals from host if props are not provided
-  const entries: GPUEntry[] = ip ? host[ip]?.gpu_resources?.gpus ?? [] : [];
+  const entries: GPUEntry[] = ip ? (host[ip]?.gpu_resources?.gpus ?? []) : [];
   const inferred = entries.map((e) => {
     const util = parseUtilization(e.utilization);
     const totalParsed = Number.parseInt(e.total ?? "", 10);
     const freeParsed = Number.parseInt(e.free ?? "", 10);
     return {
-      total: Number.isFinite(totalParsed) ? totalParsed : util.total ?? 0,
-      free: Number.isFinite(freeParsed) ? freeParsed : util.free ?? 0,
+      total: Number.isFinite(totalParsed) ? totalParsed : (util.total ?? 0),
+      free: Number.isFinite(freeParsed) ? freeParsed : (util.free ?? 0),
     };
   });
   const inferredTotal =

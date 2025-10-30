@@ -125,7 +125,7 @@ const PrivateContainerRegistry: React.FC = () => {
         buildApiUrl("container-registries/images/available"),
         {
           credentials: "include",
-        }
+        },
       );
       if (!response.ok) {
         throw new Error("Failed to fetch docker images");
@@ -174,7 +174,7 @@ const PrivateContainerRegistry: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.detail || "Failed to create container registry"
+          errorData.detail || "Failed to create container registry",
         );
       }
 
@@ -284,13 +284,13 @@ const PrivateContainerRegistry: React.FC = () => {
           },
           credentials: "include",
           body: JSON.stringify(updateData),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.detail || "Failed to update container registry"
+          errorData.detail || "Failed to update container registry",
         );
       }
 
@@ -313,13 +313,13 @@ const PrivateContainerRegistry: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.detail || "Failed to delete container registry"
+          errorData.detail || "Failed to delete container registry",
         );
       }
 
@@ -360,7 +360,7 @@ const PrivateContainerRegistry: React.FC = () => {
           },
           credentials: "include",
           body: JSON.stringify(imageFormData),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -387,7 +387,7 @@ const PrivateContainerRegistry: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {

@@ -82,7 +82,7 @@ const SSHConfigPage: React.FC = () => {
 
   // Validation states
   const [nameValidationError, setNameValidationError] = useState<string | null>(
-    null
+    null,
   );
   const [isValidatingName, setIsValidatingName] = useState(false);
 
@@ -123,7 +123,7 @@ const SSHConfigPage: React.FC = () => {
         buildApiUrl("node-pools/ssh-node-pools/identity-files"),
         {
           credentials: "include",
-        }
+        },
       );
       if (response.ok) {
         const data = await response.json();
@@ -141,7 +141,7 @@ const SSHConfigPage: React.FC = () => {
         buildApiUrl("node-pools/ssh-node-pools"),
         {
           credentials: "include",
-        }
+        },
       );
       if (response.ok) {
         const data = await response.json();
@@ -178,7 +178,7 @@ const SSHConfigPage: React.FC = () => {
     try {
       const response = await apiFetch(
         buildApiUrl(`node-pools/ssh-node-pools/${clusterName}/access`),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (response.ok) {
         const data = await response.json();
@@ -195,7 +195,7 @@ const SSHConfigPage: React.FC = () => {
         buildApiUrl(`node-pools/ssh-node-pools/${clusterName}`),
         {
           credentials: "include",
-        }
+        },
       );
       if (response.ok) {
         const data = await response.json();
@@ -230,7 +230,7 @@ const SSHConfigPage: React.FC = () => {
 
   // Check if pool name exists in database
   const validatePoolNameExists = async (
-    name: string
+    name: string,
   ): Promise<string | null> => {
     if (!name || !name.trim()) {
       return null; // Let format validation handle empty names
@@ -240,12 +240,12 @@ const SSHConfigPage: React.FC = () => {
       setIsValidatingName(true);
       const response = await apiFetch(
         buildApiUrl(
-          `node-pools/ssh-node-pools/check-name/${encodeURIComponent(name)}`
+          `node-pools/ssh-node-pools/check-name/${encodeURIComponent(name)}`,
         ),
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -321,7 +321,7 @@ const SSHConfigPage: React.FC = () => {
           method: "POST",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {
@@ -373,13 +373,13 @@ const SSHConfigPage: React.FC = () => {
 
       const response = await apiFetch(
         buildApiUrl(
-          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/nodes`
+          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/nodes`,
         ),
         {
           method: "POST",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {
@@ -420,7 +420,7 @@ const SSHConfigPage: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -453,12 +453,12 @@ const SSHConfigPage: React.FC = () => {
     try {
       const response = await apiFetch(
         buildApiUrl(
-          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/nodes/${nodeIp}`
+          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/nodes/${nodeIp}`,
         ),
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -488,14 +488,14 @@ const SSHConfigPage: React.FC = () => {
       setSavingAccess(true);
       const response = await apiFetch(
         buildApiUrl(
-          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/access`
+          `node-pools/ssh-node-pools/${selectedCluster.cluster_name}/access`,
         ),
         {
           method: "PUT",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ allowed_team_ids: allowedTeamIds }),
-        }
+        },
       );
       if (response.ok) {
         addNotification({ type: "success", message: "Access updated" });

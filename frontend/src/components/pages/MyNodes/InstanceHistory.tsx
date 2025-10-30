@@ -44,7 +44,7 @@ const InstanceHistory: React.FC = () => {
     {
       refreshInterval: 30000, // Refresh every 30 seconds
       revalidateOnFocus: true,
-    }
+    },
   );
 
   const formatDate = (timestamp?: number) => {

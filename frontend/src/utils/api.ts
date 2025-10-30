@@ -63,7 +63,7 @@ export const clusterInfoApi = {
       buildApiUrl(`instances/${clusterName}/info`),
       {
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       throw new Error("Failed to fetch cluster info");
@@ -87,7 +87,7 @@ export const authApi = {
 
   createOrganization: async (
     name: string,
-    domains?: string[]
+    domains?: string[],
   ): Promise<{
     id: string;
     name: string;
@@ -130,7 +130,7 @@ const getCookie = (name: string): string | null => {
 
 export const apiFetch = async (
   input: RequestInfo,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> => {
   const method = (init?.method || "GET").toUpperCase();
 
@@ -248,7 +248,7 @@ export const teamsApi = {
       {
         method: "DELETE",
         credentials: "include",
-      }
+      },
     );
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -304,7 +304,7 @@ export const teamsApi = {
 // Team Quotas API functions
 export const teamsQuotaApi = {
   listTeamQuotas: async (
-    organizationId: string
+    organizationId: string,
   ): Promise<{
     organization_id: string;
     teams: Array<{
@@ -319,7 +319,7 @@ export const teamsQuotaApi = {
   }> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/teams/quotas`),
-      { credentials: "include" }
+      { credentials: "include" },
     );
     if (!res.ok) throw new Error("Failed to fetch team quotas");
     return res.json();
@@ -327,7 +327,7 @@ export const teamsQuotaApi = {
 
   getTeamQuota: async (
     organizationId: string,
-    teamId: string
+    teamId: string,
   ): Promise<{
     team_id: string;
     team_name: string;
@@ -338,7 +338,7 @@ export const teamsQuotaApi = {
   }> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/teams/${teamId}/quota`),
-      { credentials: "include" }
+      { credentials: "include" },
     );
     if (!res.ok) throw new Error("Failed to fetch team quota");
     return res.json();
@@ -347,7 +347,7 @@ export const teamsQuotaApi = {
   updateTeamQuota: async (
     organizationId: string,
     teamId: string,
-    monthlyCreditsPerUser: number
+    monthlyCreditsPerUser: number,
   ): Promise<{
     team_id: string;
     team_name: string;
@@ -365,7 +365,7 @@ export const teamsQuotaApi = {
         body: JSON.stringify({
           monthly_credits_per_user: monthlyCreditsPerUser,
         }),
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to update team quota");
     return res.json();
@@ -373,14 +373,14 @@ export const teamsQuotaApi = {
 
   deleteTeamQuota: async (
     organizationId: string,
-    teamId: string
+    teamId: string,
   ): Promise<void> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/teams/${teamId}/quota`),
       {
         method: "DELETE",
         credentials: "include",
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to delete team quota");
   },
@@ -423,7 +423,7 @@ export const runpodApi = {
 export const jobApi = {
   cancelJob: async (
     clusterName: string,
-    jobId: number
+    jobId: number,
   ): Promise<{
     request_id: string;
     job_id: number;
@@ -436,7 +436,7 @@ export const jobApi = {
       {
         method: "POST",
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       throw new Error(`Failed to cancel job: ${response.statusText}`);
@@ -447,7 +447,7 @@ export const jobApi = {
 
 export const quotaApi = {
   getOrganizationQuota: async (
-    organizationId: string
+    organizationId: string,
   ): Promise<{
     organization_quota: {
       id: string;
@@ -470,7 +470,7 @@ export const quotaApi = {
       buildApiUrl(`quota/organization/${organizationId}`),
       {
         credentials: "include",
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to fetch organization quota");
     return res.json();
@@ -478,7 +478,7 @@ export const quotaApi = {
 
   updateOrganizationQuota: async (
     organizationId: string,
-    monthlyCreditsPerUser: number
+    monthlyCreditsPerUser: number,
   ): Promise<any> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}`),
@@ -489,7 +489,7 @@ export const quotaApi = {
         body: JSON.stringify({
           monthly_credits_per_user: monthlyCreditsPerUser,
         }),
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to update organization quota");
     return res.json();
@@ -497,7 +497,7 @@ export const quotaApi = {
 
   getUserQuota: async (
     organizationId: string,
-    userId: string
+    userId: string,
   ): Promise<{
     user_id: string;
     user_email?: string;
@@ -511,14 +511,14 @@ export const quotaApi = {
   }> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
-      { credentials: "include" }
+      { credentials: "include" },
     );
     if (!res.ok) throw new Error("Failed to fetch user quota");
     return res.json();
   },
 
   listUserQuotas: async (
-    organizationId: string
+    organizationId: string,
   ): Promise<{
     organization_id: string;
     users: Array<{
@@ -536,7 +536,7 @@ export const quotaApi = {
   }> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/users/quotas`),
-      { credentials: "include" }
+      { credentials: "include" },
     );
     if (!res.ok) throw new Error("Failed to fetch user quotas");
     return res.json();
@@ -545,7 +545,7 @@ export const quotaApi = {
   updateUserQuota: async (
     organizationId: string,
     userId: string,
-    monthlyCreditsPerUser: number
+    monthlyCreditsPerUser: number,
   ): Promise<any> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
@@ -556,7 +556,7 @@ export const quotaApi = {
         body: JSON.stringify({
           monthly_credits_per_user: monthlyCreditsPerUser,
         }),
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to update user quota");
     return res.json();
@@ -564,27 +564,27 @@ export const quotaApi = {
 
   deleteUserQuota: async (
     organizationId: string,
-    userId: string
+    userId: string,
   ): Promise<void> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/users/${userId}/quota`),
       {
         method: "DELETE",
         credentials: "include",
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to delete user quota");
   },
 
   refreshQuotaPeriods: async (
-    organizationId: string
+    organizationId: string,
   ): Promise<{ message: string }> => {
     const res = await apiFetch(
       buildApiUrl(`quota/organization/${organizationId}/refresh-quota-periods`),
       {
         method: "POST",
         credentials: "include",
-      }
+      },
     );
     if (!res.ok) throw new Error("Failed to refresh quota periods");
     return res.json();
@@ -635,7 +635,7 @@ export const sshKeyApi = {
 
   create: async (
     name: string,
-    publicKey: string
+    publicKey: string,
   ): Promise<{
     id: string;
     name: string;
@@ -670,7 +670,7 @@ export const sshKeyApi = {
     updates: {
       name?: string;
       is_active?: boolean;
-    }
+    },
   ): Promise<{
     id: string;
     name: string;
@@ -691,7 +691,7 @@ export const sshKeyApi = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(updates),
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json();
@@ -706,7 +706,7 @@ export const sshKeyApi = {
       {
         method: "DELETE",
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       const errorData = await response.json();

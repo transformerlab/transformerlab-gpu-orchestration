@@ -194,7 +194,7 @@ const MyClusterDetails: React.FC = () => {
         console.error("Error fetching cluster info:", err);
         setError("Failed to fetch cluster information");
       },
-    }
+    },
   );
 
   // Extract data from the consolidated response
@@ -251,7 +251,7 @@ const MyClusterDetails: React.FC = () => {
     if (!clusterName) return;
 
     const confirmed = confirm(
-      `Are you sure you want to terminate the cluster "${clusterName}"? This action cannot be undone and will permanently delete all data on the cluster.`
+      `Are you sure you want to terminate the cluster "${clusterName}"? This action cannot be undone and will permanently delete all data on the cluster.`,
     );
     if (confirmed) {
       handleDownCluster();
@@ -294,7 +294,7 @@ const MyClusterDetails: React.FC = () => {
 
   const openInteractiveTaskModal = (
     clusterName: string,
-    taskType: "vscode" | "jupyter"
+    taskType: "vscode" | "jupyter",
   ) => {
     setInteractiveTaskModal({
       open: true,
@@ -336,9 +336,9 @@ const MyClusterDetails: React.FC = () => {
       // Create EventSource for Server-Sent Events
       const eventSource = new EventSource(
         buildApiUrl(
-          `jobs/${clusterName}/${jobId}/logs/stream?tail=1000&follow=true`
+          `jobs/${clusterName}/${jobId}/logs/stream?tail=1000&follow=true`,
         ),
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       eventSource.onopen = () => {
@@ -356,7 +356,7 @@ const MyClusterDetails: React.FC = () => {
                     ...prev,
                     logs: [...prev.logs, data.log_line],
                   }
-                : null
+                : null,
             );
           } else if (data.status === "completed") {
             setIsStreaming(false);
@@ -368,7 +368,7 @@ const MyClusterDetails: React.FC = () => {
                     ...prev,
                     logs: [...prev.logs, `ERROR: ${data.error}`],
                   }
-                : null
+                : null,
             );
             setIsStreaming(false);
             eventSource.close();
@@ -386,7 +386,7 @@ const MyClusterDetails: React.FC = () => {
                 ...prev,
                 logs: [...prev.logs, "ERROR: Failed to connect to log stream"],
               }
-            : null
+            : null,
         );
         setLogsLoading(false);
         setIsStreaming(false);
@@ -904,7 +904,7 @@ const MyClusterDetails: React.FC = () => {
                                 (gpu: any) =>
                                   `${gpu.gpu_count || 1}x ${
                                     gpu.gpu_type || "GPU"
-                                  }`
+                                  }`,
                               )
                               .join(", ")}
                           </Chip>

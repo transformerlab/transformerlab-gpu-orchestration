@@ -89,7 +89,7 @@ const Reports: React.FC = () => {
         buildApiUrl(`quota/organization/${user.organization_id}`),
         {
           credentials: "include",
-        }
+        },
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -119,7 +119,7 @@ const Reports: React.FC = () => {
     } catch (err) {
       console.error("Failed to fetch real data:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch real data"
+        err instanceof Error ? err.message : "Failed to fetch real data",
       );
     } finally {
       setLoading(false);
@@ -154,7 +154,7 @@ const Reports: React.FC = () => {
   }, [dataToRender, page]);
   const totalCost = dataToRender.reduce(
     (sum: number, job: CostReportJob) => sum + (job.total_cost || 0),
-    0
+    0,
   );
 
   // Helper to compute week start (Monday) from a unix seconds timestamp
@@ -174,14 +174,14 @@ const Reports: React.FC = () => {
     const lastDayOfMonth = new Date(
       today.getFullYear(),
       today.getMonth() + 1,
-      0
+      0,
     );
 
     // Find first Monday on or before the 1st of the month
     const firstMonday = new Date(firstDayOfMonth);
     const dayOfWeek = firstMonday.getDay();
     firstMonday.setDate(
-      firstMonday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)
+      firstMonday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1),
     );
 
     const mondays = [];

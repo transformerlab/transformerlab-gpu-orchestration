@@ -168,7 +168,7 @@ const OrgQuota: React.FC = () => {
       ? buildApiUrl(`quota/organization/${organizationId}/usage/all`)
       : null,
     fetcher,
-    { refreshInterval: 45000 } // Refresh every 45 seconds
+    { refreshInterval: 45000 }, // Refresh every 45 seconds
   );
 
   const {
@@ -181,7 +181,7 @@ const OrgQuota: React.FC = () => {
       ? buildApiUrl(`quota/organization/${organizationId}/users`)
       : null,
     fetcher,
-    { refreshInterval: 45000 }
+    { refreshInterval: 45000 },
   );
 
   const {
@@ -194,7 +194,7 @@ const OrgQuota: React.FC = () => {
       ? buildApiUrl(`quota/organization/${organizationId}/users/quotas`)
       : null,
     fetcher,
-    { refreshInterval: 45000 }
+    { refreshInterval: 45000 },
   );
 
   const {
@@ -205,7 +205,7 @@ const OrgQuota: React.FC = () => {
   } = useSWR<TeamQuotaList>(
     organizationId ? `team-quotas-${organizationId}` : null,
     () => teamsQuotaApi.listTeamQuotas(organizationId!),
-    { refreshInterval: 45000 }
+    { refreshInterval: 45000 },
   );
 
   // SWR hook for automatic cost report syncing
@@ -216,7 +216,7 @@ const OrgQuota: React.FC = () => {
   } = useSWR(
     organizationId ? buildApiUrl("quota/sync-from-cost-report") : null,
     fetcher,
-    { refreshInterval: 45000 } // Sync every 45 seconds
+    { refreshInterval: 45000 }, // Sync every 45 seconds
   );
 
   // Modal and form state
@@ -273,7 +273,7 @@ const OrgQuota: React.FC = () => {
   useEffect(() => {
     if (quotaData?.organization_quota?.monthly_credits_per_user) {
       setNewQuotaHours(
-        quotaData.organization_quota.monthly_credits_per_user.toString()
+        quotaData.organization_quota.monthly_credits_per_user.toString(),
       );
     }
   }, [quotaData]);
@@ -285,19 +285,19 @@ const OrgQuota: React.FC = () => {
         try {
           await apiFetch(
             buildApiUrl(
-              `quota/organization/${organizationId}/populate-user-quotas`
+              `quota/organization/${organizationId}/populate-user-quotas`,
             ),
             {
               method: "POST",
               credentials: "include",
-            }
+            },
           );
           // Revalidate user quotas data
           mutateUserQuotas();
         } catch (populateErr) {
           console.error(
             "Failed to automatically populate user quotas:",
-            populateErr
+            populateErr,
           );
         }
       };
@@ -347,7 +347,7 @@ const OrgQuota: React.FC = () => {
             monthly_credits_per_user: parseFloat(newQuotaHours),
           }),
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -359,7 +359,7 @@ const OrgQuota: React.FC = () => {
         try {
           const userQuotasResponse = await apiFetch(
             buildApiUrl(`quota/organization/${organizationId}/users/quotas`),
-            { credentials: "include" }
+            { credentials: "include" },
           );
           if (userQuotasResponse.ok) {
             const userQuotasData = await userQuotasResponse.json();
@@ -368,17 +368,17 @@ const OrgQuota: React.FC = () => {
                 try {
                   await apiFetch(
                     buildApiUrl(
-                      `quota/organization/${organizationId}/users/${userQuota.user_id}/quota`
+                      `quota/organization/${organizationId}/users/${userQuota.user_id}/quota`,
                     ),
                     {
                       method: "DELETE",
                       credentials: "include",
-                    }
+                    },
                   );
                 } catch (err) {
                   console.error(
                     `Failed to reset quota for user ${userQuota.user_id}:`,
-                    err
+                    err,
                   );
                 }
               }
@@ -424,7 +424,7 @@ const OrgQuota: React.FC = () => {
 
       const response = await apiFetch(
         buildApiUrl(
-          `quota/organization/${organizationId}/users/${selectedUser.user_id}/quota`
+          `quota/organization/${organizationId}/users/${selectedUser.user_id}/quota`,
         ),
         {
           method: "PUT",
@@ -435,7 +435,7 @@ const OrgQuota: React.FC = () => {
             monthly_credits_per_user: parseFloat(newUserQuotaHours),
           }),
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -459,12 +459,12 @@ const OrgQuota: React.FC = () => {
     try {
       const response = await apiFetch(
         buildApiUrl(
-          `quota/organization/${organizationId}/users/${user.user_id}/quota`
+          `quota/organization/${organizationId}/users/${user.user_id}/quota`,
         ),
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -635,7 +635,7 @@ const OrgQuota: React.FC = () => {
               const overrides = teamQuotas.teams.filter(
                 (t) =>
                   t.monthly_credits_per_user !==
-                  teamQuotas.default_quota_per_user
+                  teamQuotas.default_quota_per_user,
               );
               if (overrides.length === 0) {
                 return (
@@ -676,7 +676,7 @@ const OrgQuota: React.FC = () => {
                                 onClick={() => {
                                   setSelectedTeam(t);
                                   setNewTeamQuotaHours(
-                                    String(t.monthly_credits_per_user)
+                                    String(t.monthly_credits_per_user),
                                   );
                                   setOpenTeamQuotaModal(true);
                                 }}
@@ -692,13 +692,13 @@ const OrgQuota: React.FC = () => {
                                   try {
                                     await teamsQuotaApi.deleteTeamQuota(
                                       organizationId,
-                                      t.team_id
+                                      t.team_id,
                                     );
                                     await mutateTeamQuotas();
                                   } catch (err) {
                                     console.error(
                                       "Failed to reset team quota:",
-                                      err
+                                      err,
                                     );
                                   }
                                 }}
@@ -1052,7 +1052,7 @@ const OrgQuota: React.FC = () => {
                     await teamsQuotaApi.updateTeamQuota(
                       organizationId,
                       selectedTeam.team_id,
-                      parsed
+                      parsed,
                     );
                     await mutateTeamQuotas();
                     setOpenTeamQuotaModal(false);
@@ -1114,12 +1114,12 @@ const OrgQuota: React.FC = () => {
                     .filter(
                       (t) =>
                         t.monthly_credits_per_user ===
-                        teamQuotas.default_quota_per_user
+                        teamQuotas.default_quota_per_user,
                     )
                     .filter((t) =>
                       (t.team_name || "")
                         .toLowerCase()
-                        .includes(addTeamSearch.toLowerCase())
+                        .includes(addTeamSearch.toLowerCase()),
                     )
                     .map((t) => (
                       <ListItem key={t.team_id} sx={{ py: 0 }}>
@@ -1138,12 +1138,12 @@ const OrgQuota: React.FC = () => {
                       .filter(
                         (t) =>
                           t.monthly_credits_per_user ===
-                          teamQuotas.default_quota_per_user
+                          teamQuotas.default_quota_per_user,
                       )
                       .filter((t) =>
                         (t.team_name || "")
                           .toLowerCase()
-                          .includes(addTeamSearch.toLowerCase())
+                          .includes(addTeamSearch.toLowerCase()),
                       ).length === 0 && (
                       <Box sx={{ p: 2 }}>
                         <Typography level="body-sm" color="neutral">
@@ -1174,7 +1174,7 @@ const OrgQuota: React.FC = () => {
                     await teamsQuotaApi.updateTeamQuota(
                       organizationId,
                       selectedTeamIdForOverride,
-                      parsed
+                      parsed,
                     );
                     await mutateTeamQuotas();
                     setOpenAddTeamOverride(false);
@@ -1244,7 +1244,7 @@ const OrgQuota: React.FC = () => {
                         .filter(Boolean)
                         .join(" ")
                         .toLowerCase()
-                        .includes(addUserSearch.toLowerCase())
+                        .includes(addUserSearch.toLowerCase()),
                     )
                     .map((u) => {
                       const primary = (u.user_name ||
@@ -1280,7 +1280,7 @@ const OrgQuota: React.FC = () => {
                           .filter(Boolean)
                           .join(" ")
                           .toLowerCase()
-                          .includes(addUserSearch.toLowerCase())
+                          .includes(addUserSearch.toLowerCase()),
                       ).length === 0 && (
                       <Box sx={{ p: 2 }}>
                         <Typography level="body-sm" color="neutral">
@@ -1310,7 +1310,7 @@ const OrgQuota: React.FC = () => {
                     setUpdatingUserQuota(true);
                     await apiFetch(
                       buildApiUrl(
-                        `quota/organization/${organizationId}/users/${selectedUserIdForOverride}/quota`
+                        `quota/organization/${organizationId}/users/${selectedUserIdForOverride}/quota`,
                       ),
                       {
                         method: "PUT",
@@ -1319,7 +1319,7 @@ const OrgQuota: React.FC = () => {
                           monthly_credits_per_user: parsed,
                         }),
                         credentials: "include",
-                      }
+                      },
                     );
                     await mutateUserQuotas();
                     setOpenAddUserOverride(false);

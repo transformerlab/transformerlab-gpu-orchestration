@@ -64,7 +64,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
 
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
-    [templates, selectedTemplateId]
+    [templates, selectedTemplateId],
   );
   const tpl = selectedTemplate?.resources_json || {};
 
@@ -111,7 +111,7 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
         try {
           const resp = await apiFetch(
             buildApiUrl("instances/templates?cloud_type=aws"),
-            { credentials: "include" }
+            { credentials: "include" },
           );
           if (resp.ok) {
             const data = await resp.json();
@@ -459,8 +459,8 @@ const JobLauncher: React.FC<JobLauncherProps> = ({
                   {selectedTemplateId
                     ? "Advanced Options (Template Selected)"
                     : showAdvanced
-                    ? "Hide Advanced Options"
-                    : "Show Advanced Options"}
+                      ? "Hide Advanced Options"
+                      : "Show Advanced Options"}
                 </Button>
               </Box>
 

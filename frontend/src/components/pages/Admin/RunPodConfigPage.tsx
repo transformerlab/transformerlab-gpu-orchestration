@@ -208,7 +208,7 @@ const RunPodConfigPage: React.FC = () => {
         ) {
           const missingTypes = config.allowed_gpu_types.filter(
             (selectedType) =>
-              !gpuTypes.some((gpu: GpuType) => gpu.name === selectedType)
+              !gpuTypes.some((gpu: GpuType) => gpu.name === selectedType),
           );
 
           // Add missing types to the available list
@@ -432,7 +432,7 @@ const RunPodConfigPage: React.FC = () => {
                 options={availableTeams}
                 getOptionLabel={(opt) => opt.name}
                 value={availableTeams.filter((t) =>
-                  allowedTeamIds.includes(t.id)
+                  allowedTeamIds.includes(t.id),
                 )}
                 onChange={(_, newValue) => {
                   setAllowedTeamIds(newValue.map((t) => t.id));
@@ -563,7 +563,7 @@ const RunPodConfigPage: React.FC = () => {
                   options={availableGpuTypes}
                   getOptionLabel={(option) => `${option.name}`}
                   value={availableGpuTypes.filter((gpu: GpuType) =>
-                    config.allowed_gpu_types.includes(gpu.name)
+                    config.allowed_gpu_types.includes(gpu.name),
                   )}
                   onChange={(_, newValue) => {
                     setConfig((prev) => ({
@@ -609,7 +609,7 @@ const RunPodConfigPage: React.FC = () => {
                     setConfig((prev) => ({
                       ...prev,
                       allowed_gpu_types: availableGpuTypes.map(
-                        (gpu) => gpu.name
+                        (gpu) => gpu.name,
                       ),
                     }));
                   }}

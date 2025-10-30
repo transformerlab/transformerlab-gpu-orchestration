@@ -139,7 +139,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
   });
 
   const [sshClusterName, setSshClusterName] = React.useState<string | null>(
-    null
+    null,
   );
 
   // Combine real and fake data - only show fake data if no real data exists
@@ -210,7 +210,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
 
   const handleDownClusterWithConfirmation = (clusterName: string) => {
     const confirmed = confirm(
-      `Are you sure you want to terminate the cluster "${clusterName}"? This action cannot be undone and will permanently delete all data on the cluster.`
+      `Are you sure you want to terminate the cluster "${clusterName}"? This action cannot be undone and will permanently delete all data on the cluster.`,
     );
     if (confirmed) {
       handleDownCluster(clusterName);
@@ -219,7 +219,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
 
   const openInteractiveTaskModal = (
     clusterName: string,
-    taskType: "vscode" | "jupyter"
+    taskType: "vscode" | "jupyter",
   ) => {
     setInteractiveTaskModal({
       open: true,
@@ -325,8 +325,8 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                 statusValue === "up"
                                   ? "active"
                                   : statusValue === "stopped"
-                                  ? "inactive"
-                                  : "unhealthy",
+                                    ? "inactive"
+                                    : "unhealthy",
                               type: "dedicated",
                               user: "ali",
                               gpuType: node.gpuType,
@@ -350,7 +350,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                     navigate(
                                       `/dashboard/node-pools/${
                                         node.cluster || "default"
-                                      }`
+                                      }`,
                                     );
                                   }}
                                 >
@@ -386,7 +386,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openSubmitJobModal(
-                                      node.cluster || "default"
+                                      node.cluster || "default",
                                     );
                                   }}
                                 >
@@ -412,7 +412,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                     e.stopPropagation();
                                     openInteractiveTaskModal(
                                       node.cluster || "default",
-                                      "vscode"
+                                      "vscode",
                                     );
                                   }}
                                 >
@@ -426,7 +426,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                                     e.stopPropagation();
                                     openInteractiveTaskModal(
                                       node.cluster || "default",
-                                      "jupyter"
+                                      "jupyter",
                                     );
                                   }}
                                 >
@@ -525,8 +525,8 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               cluster.status === "up"
                                 ? "active"
                                 : cluster.status === "stopped"
-                                ? "inactive"
-                                : "active",
+                                  ? "inactive"
+                                  : "active",
                             type: "dedicated",
                             user: "Demo User",
                             gpuType: "Demo GPU",
@@ -725,8 +725,8 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                           cluster.status === "ClusterStatus.UP"
                             ? "active"
                             : cluster.status === "ClusterStatus.STOPPED"
-                            ? "inactive"
-                            : "active",
+                              ? "inactive"
+                              : "active",
                         type: "dedicated",
                         user:
                           (cluster as Cluster).user_info?.first_name ||
@@ -773,7 +773,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                       color="neutral"
                       onClick={() =>
                         navigate(
-                          `/dashboard/my-instance-info/${cluster.cluster_name}`
+                          `/dashboard/my-instance-info/${cluster.cluster_name}`,
                         )
                       }
                       startDecorator={<Info size="16px" />}
@@ -861,7 +861,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               onClick={() =>
                                 openInteractiveTaskModal(
                                   cluster.cluster_name,
-                                  "vscode"
+                                  "vscode",
                                 )
                               }
                               disabled={isFakeData || isTerminating}
@@ -875,7 +875,7 @@ const MyInstancesTable: React.FC<MyInstancesTableProps> = ({
                               onClick={() =>
                                 openInteractiveTaskModal(
                                   cluster.cluster_name,
-                                  "jupyter"
+                                  "jupyter",
                                 )
                               }
                               disabled={isFakeData || isTerminating}
