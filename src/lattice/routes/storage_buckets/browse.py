@@ -291,23 +291,6 @@ async def list_files(
             # For Azure with az protocol, use just the requested path
             full_path = req.path.lstrip("/") if req.path != "/" else ""
 
-        print("DEBUG INFO:")
-        print(f"Bucket ID: {bucket_id}")
-        print(f"Request path: {req.path}")
-        print(f"Base path: {base_path}")
-        print(f"Full path: {full_path}")
-        print(f"Protocol: {fs.protocol}")
-        print(f"Storage options: {req.storage_options}")
-        print(f"Bucket source: {bucket.source}")
-
-        # Additional Azure-specific debug info
-        if hasattr(fs, "account_name"):
-            print(f"Azure account name: {fs.account_name}")
-        if hasattr(fs, "container_name"):
-            print(f"Azure container name: {fs.container_name}")
-
-        print(f"Listing files in bucket {bucket_id} at path: {full_path}")
-
         try:
             # For Azure, get container name from the source URL
             container_name = None

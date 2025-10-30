@@ -65,7 +65,7 @@ const AWSConfigPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
   const [actualCredentials, setActualCredentials] = useState<AWSConfig | null>(
-    null
+    null,
   );
   const [existingConfigs, setExistingConfigs] = useState<any>(null);
 
@@ -486,7 +486,7 @@ const AWSConfigPage: React.FC = () => {
                   options={availableTeams}
                   getOptionLabel={(option) => option.name}
                   value={availableTeams.filter((team) =>
-                    allowedTeamIds.includes(team.id)
+                    allowedTeamIds.includes(team.id),
                   )}
                   onChange={handleTeamChange}
                   placeholder="Select teams (leave empty for all teams)"

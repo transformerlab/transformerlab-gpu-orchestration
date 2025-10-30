@@ -64,7 +64,7 @@ const BucketBrowser: React.FC<{
       const response = await storageBucketApi.listFiles(
         bucket.id,
         currentPath,
-        storageOptions
+        storageOptions,
       );
       setFiles(response.items);
     } catch (err) {
@@ -127,7 +127,7 @@ const BucketBrowser: React.FC<{
     if (segments.length > 0) {
       segments.pop(); // Remove last segment
       setCurrentPath(
-        "/" + segments.join("/") + (segments.length > 0 ? "/" : "")
+        "/" + segments.join("/") + (segments.length > 0 ? "/" : ""),
       );
     }
   };
@@ -145,7 +145,7 @@ const BucketBrowser: React.FC<{
       const response = await storageBucketApi.getFile(
         bucket.id,
         filePath,
-        storageOptions
+        storageOptions,
       );
       const blob = await response.blob();
 
@@ -202,7 +202,7 @@ const BucketBrowser: React.FC<{
         bucket.id,
         file,
         currentPath,
-        storageOptions
+        storageOptions,
       );
       fetchFiles(); // Refresh the file list
     } catch (err) {
@@ -447,7 +447,7 @@ const BucketBrowser: React.FC<{
 const StoragePage: React.FC = () => {
   const { data, error, isLoading } = useSWR(
     "storage-buckets",
-    async () => await storageBucketApi.list()
+    async () => await storageBucketApi.list(),
   );
 
   const [selectedBucket, setSelectedBucket] =

@@ -66,13 +66,13 @@ const Logs: React.FC = () => {
     {
       refreshInterval: 5000, // Refresh every 5 seconds
       revalidateOnFocus: true,
-    }
+    },
   );
 
   const requests = requestsData || [];
   // Hide TERMINATE requests from the dashboard/logs page
   const displayRequests = requests.filter(
-    (r: SkyPilotRequest) => (r.task_type || "").toLowerCase() !== "terminate"
+    (r: SkyPilotRequest) => (r.task_type || "").toLowerCase() !== "terminate",
   );
 
   const formatDate = (dateString: string) => {

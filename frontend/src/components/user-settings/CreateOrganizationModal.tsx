@@ -31,7 +31,7 @@ const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = ({
   const [newOrgDomains, setNewOrgDomains] = React.useState("");
   const [creatingOrg, setCreatingOrg] = React.useState(false);
   const [createOrgError, setCreateOrgError] = React.useState<string | null>(
-    null
+    null,
   );
   const [createOrgSuccess, setCreateOrgSuccess] = React.useState(false);
 
@@ -68,7 +68,7 @@ const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = ({
       }, 1500);
     } catch (err) {
       setCreateOrgError(
-        err instanceof Error ? err.message : "Failed to create organization"
+        err instanceof Error ? err.message : "Failed to create organization",
       );
     } finally {
       setCreatingOrg(false);

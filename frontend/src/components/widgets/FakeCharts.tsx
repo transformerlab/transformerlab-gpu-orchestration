@@ -24,7 +24,7 @@ const getColorHex = (colorName: string): string => {
 const generateSampleData = (
   minutes: number,
   base: number,
-  variance: number
+  variance: number,
 ): MetricPoint[] => {
   const data: MetricPoint[] = [];
   const now = new Date();
@@ -33,7 +33,7 @@ const generateSampleData = (
   const step = Math.max(0.5, variance / 12); // small per-minute drift
   let value = Math.max(
     0,
-    Math.min(100, base + (Math.random() - 0.5) * (variance / 6))
+    Math.min(100, base + (Math.random() - 0.5) * (variance / 6)),
   );
 
   for (let i = minutes; i >= 0; i--) {
@@ -119,19 +119,19 @@ const FakeCharts: React.FC<FakeChartsProps> = ({
   // Create four fake series for the past `minutes` minutes
   const cpuData = React.useMemo(
     () => generateSampleData(minutes, 55, 30),
-    [minutes]
+    [minutes],
   );
   const gpuData = React.useMemo(
     () => generateSampleData(minutes, 40, 40),
-    [minutes]
+    [minutes],
   );
   const vramData = React.useMemo(
     () => generateSampleData(minutes, 35, 35),
-    [minutes]
+    [minutes],
   );
   const memData = React.useMemo(
     () => generateSampleData(minutes, 65, 25),
-    [minutes]
+    [minutes],
   );
 
   return (

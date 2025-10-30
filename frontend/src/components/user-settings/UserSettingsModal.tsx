@@ -80,7 +80,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setOrganizations(response.organizations);
     } catch (err) {
       setOrgError(
-        err instanceof Error ? err.message : "Failed to fetch organizations"
+        err instanceof Error ? err.message : "Failed to fetch organizations",
       );
     } finally {
       setLoadingOrgs(false);
@@ -99,7 +99,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setSshKeys(response.ssh_keys);
     } catch (err) {
       setSshKeyError(
-        err instanceof Error ? err.message : "Failed to fetch SSH keys"
+        err instanceof Error ? err.message : "Failed to fetch SSH keys",
       );
     } finally {
       setLoadingSshKeys(false);
@@ -122,7 +122,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       await fetchSshKeys(); // Refresh the list
     } catch (err) {
       setSshKeyError(
-        err instanceof Error ? err.message : "Failed to add SSH key"
+        err instanceof Error ? err.message : "Failed to add SSH key",
       );
     } finally {
       setAddingSshKey(false);
@@ -139,7 +139,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       await fetchSshKeys(); // Refresh the list
     } catch (err) {
       setSshKeyError(
-        err instanceof Error ? err.message : "Failed to delete SSH key"
+        err instanceof Error ? err.message : "Failed to delete SSH key",
       );
     }
   };

@@ -110,12 +110,9 @@ const AzureAdmin: React.FC = () => {
 
   const fetchAvailableInstanceTypes = async () => {
     try {
-      const response = await apiFetch(
-        buildApiUrl("clouds/azure/info"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         const instanceTypes = (data.instance_types || []).map(
@@ -168,7 +165,7 @@ const AzureAdmin: React.FC = () => {
               display_name: type,
               category,
             };
-          }
+          },
         );
         setAvailableInstanceTypes(instanceTypes);
       } else {
@@ -464,7 +461,7 @@ const AzureAdmin: React.FC = () => {
               >
                 Test Connection
               </Button>
-              
+
               <Button
                 variant="outlined"
                 onClick={async () => {
@@ -479,8 +476,6 @@ const AzureAdmin: React.FC = () => {
             </Box>
           </Stack>
         </Card>
-
-        
 
         {/* Instance Types Configuration */}
         <Card variant="outlined">
@@ -528,7 +523,7 @@ const AzureAdmin: React.FC = () => {
                     `${option.name} (${option.category})`
                   }
                   value={availableInstanceTypes.filter((type) =>
-                    config.allowed_instance_types.includes(type.name)
+                    config.allowed_instance_types.includes(type.name),
                   )}
                   onChange={(_, newValue) => {
                     setConfig((prev) => ({
@@ -569,7 +564,7 @@ const AzureAdmin: React.FC = () => {
                     setConfig((prev) => ({
                       ...prev,
                       allowed_instance_types: availableInstanceTypes.map(
-                        (type) => type.name
+                        (type) => type.name,
                       ),
                     }));
                   }}

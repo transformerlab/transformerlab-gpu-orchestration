@@ -72,7 +72,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
-    [templates, selectedTemplateId]
+    [templates, selectedTemplateId],
   );
   const tpl = selectedTemplate?.resources_json || {};
 
@@ -107,10 +107,10 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
           const resp = await apiFetch(
             buildApiUrl(
               `instances/templates?cloud_type=ssh&cloud_identifier=${encodeURIComponent(
-                clusterName
-              )}`
+                clusterName,
+              )}`,
             ),
-            { credentials: "include" }
+            { credentials: "include" },
           );
           if (resp.ok) {
             const data = await resp.json();
@@ -132,7 +132,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
         buildApiUrl("container-registries/images/available"),
         {
           credentials: "include",
-        }
+        },
       );
       if (!response.ok) {
         throw new Error("Failed to fetch docker images");
@@ -491,8 +491,8 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                     {selectedTemplateId
                       ? "Advanced Options (Template Selected)"
                       : showAdvanced
-                      ? "Hide Advanced Options"
-                      : "Show Advanced Options"}
+                        ? "Hide Advanced Options"
+                        : "Show Advanced Options"}
                   </Button>
                 </Box>
 

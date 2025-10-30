@@ -85,7 +85,7 @@ const SkyPilotClusterStatus: React.FC = () => {
   const { data, isLoading, mutate } = useSWR(
     buildApiUrl("instances/status"),
     fetcher,
-    { refreshInterval: 2000 }
+    { refreshInterval: 2000 },
   );
 
   const clusters = data?.clusters || [];
@@ -94,7 +94,7 @@ const SkyPilotClusterStatus: React.FC = () => {
   const { data: jobsData, mutate: mutateJobs } = useSWR(
     expandedCluster ? buildApiUrl(`jobs/${expandedCluster}`) : null,
     fetcher,
-    { refreshInterval: 5000 }
+    { refreshInterval: 5000 },
   );
 
   // Fetch cluster type info for each cluster
@@ -109,7 +109,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         try {
           const typeResponse = await apiFetch(
             buildApiUrl(`instances/cluster-type/${cluster.cluster_name}`),
-            { credentials: "include" }
+            { credentials: "include" },
           );
           if (typeResponse.ok) {
             const typeData: ClusterTypeInfo = await typeResponse.json();
@@ -118,7 +118,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         } catch (err) {
           console.error(
             `Failed to fetch cluster type for ${cluster.cluster_name}:`,
-            err
+            err,
           );
         }
         return null;
@@ -169,7 +169,7 @@ const SkyPilotClusterStatus: React.FC = () => {
     try {
       const response = await apiFetch(
         buildApiUrl(`jobs/${clusterName}/${jobId}/logs?tail_lines=100`),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (!response.ok) {
         throw new Error(`Failed to fetch logs: ${response.statusText}`);
@@ -178,7 +178,7 @@ const SkyPilotClusterStatus: React.FC = () => {
       setSelectedJobLogs(data.logs || "No logs available");
     } catch (err) {
       setSelectedJobLogs(
-        err instanceof Error ? err.message : "Failed to fetch logs"
+        err instanceof Error ? err.message : "Failed to fetch logs",
       );
     } finally {
       setLogsLoading(false);
@@ -195,7 +195,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         {
           method: "POST",
           credentials: "include",
-        }
+        },
       );
       if (!response.ok) {
         throw new Error(`Failed to cancel job: ${response.statusText}`);
@@ -640,7 +640,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                                             <Chip
                                               size="sm"
                                               color={getJobStatusColor(
-                                                job.status
+                                                job.status,
                                               )}
                                               variant="soft"
                                             >
@@ -713,7 +713,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                                               onClick={() =>
                                                 fetchJobLogs(
                                                   cluster.cluster_name,
-                                                  job.job_id
+                                                  job.job_id,
                                                 )
                                               }
                                             >
@@ -734,7 +734,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                                                 onClick={() =>
                                                   cancelJob(
                                                     cluster.cluster_name,
-                                                    job.job_id
+                                                    job.job_id,
                                                   )
                                                 }
                                                 loading={
@@ -786,7 +786,7 @@ const SkyPilotClusterStatus: React.FC = () => {
                                         </Box>
                                       </ListItem>
                                     </React.Fragment>
-                                  )
+                                  ),
                                 )
                               )}
                             </List>
@@ -818,7 +818,7 @@ const SkyPilotClusterStatus: React.FC = () => {
         isSshCluster={!!clusterTypes[jobModalCluster]?.is_ssh}
         availableResources={
           clusters.find(
-            (c: ClusterStatus) => c.cluster_name === jobModalCluster
+            (c: ClusterStatus) => c.cluster_name === jobModalCluster,
           )?.resources_str || ""
         }
       />
