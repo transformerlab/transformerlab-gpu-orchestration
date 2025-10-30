@@ -24,7 +24,6 @@ import { useNotification } from "../NotificationSystem";
 import { useAuth } from "../../context/AuthContext";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 import YamlConfigurationSection from "./YamlConfigurationSection";
-import { appendSemicolons } from "../../utils/commandUtils";
 
 interface DockerImage {
   id: string;
@@ -71,7 +70,6 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId],
@@ -248,10 +246,7 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
         formData.append("cluster_name", finalClusterName);
         formData.append("node_pool_name", clusterName); // Pass the node pool name separately
         formData.append("command", command);
-        const finalSetup = autoAppendSemicolons
-          ? appendSemicolons(setup)
-          : setup;
-        if (finalSetup) formData.append("setup", finalSetup);
+        if (setup) formData.append("setup", setup);
         formData.append("cloud", "ssh"); // Always use SSH mode
         if (cpus) formData.append("cpus", cpus);
         if (memory) formData.append("memory", memory);
@@ -424,16 +419,8 @@ const ReserveNodeModal: React.FC<ReserveNodeModalProps> = ({
                   />
                   <Typography level="body-xs" sx={{ mt: 0.5 }}>
                     Use <code>;</code> at the end of each line for separate
-                    commands, or enable auto-append.
+                    commands
                   </Typography>
-                </FormControl>
-
-                <FormControl sx={{ mb: 2 }}>
-                  <Checkbox
-                    label="Auto-append ; to each non-empty line"
-                    checked={autoAppendSemicolons}
-                    onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
-                  />
                 </FormControl>
 
                 <FormControl sx={{ mb: 2 }}>

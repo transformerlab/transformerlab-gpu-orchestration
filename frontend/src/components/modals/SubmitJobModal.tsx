@@ -21,7 +21,6 @@ import {
 import { buildApiUrl, apiFetch } from "../../utils/api";
 import { useNotification } from "../NotificationSystem";
 import { parseResourcesString } from "../../utils/resourceParser";
-import { appendSemicolons } from "../../utils/commandUtils";
 
 interface SubmitJobModalProps {
   open: boolean;
@@ -53,7 +52,6 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
   const [numNodes, setNumNodes] = useState<string>("1");
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
-  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // Template-related state
   const [templates, setTemplates] = useState<any[]>([]);
@@ -220,13 +218,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
       // Step 2: Submit job with uploaded directory path
       const formData = new FormData();
 
-      const finalCommand = autoAppendSemicolons
-        ? appendSemicolons(command)
-        : command;
-      const finalSetup = autoAppendSemicolons ? appendSemicolons(setup) : setup;
-
-      formData.append("command", finalCommand);
-      if (finalSetup) formData.append("setup", finalSetup);
+      formData.append("command", command);
+      if (setup) formData.append("setup", setup);
 
       // Apply template values if selected, otherwise use form values
       const finalCpus = cpus || tpl.cpus;
@@ -373,8 +366,7 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                   disabled={isClusterLaunching}
                 />
                 <Typography level="body-xs" sx={{ mt: 0.5 }}>
-                  Multiple commands supported. End each line with <code>;</code>{" "}
-                  or enable the option below.
+                  Multiple commands supported. End each line with <code>;</code>
                 </Typography>
               </FormControl>
 
@@ -389,17 +381,8 @@ const SubmitJobModal: React.FC<SubmitJobModalProps> = ({
                 />
                 <Typography level="body-xs" sx={{ mt: 0.5 }}>
                   Use <code>;</code> at the end of each line for separate
-                  commands, or enable auto-append.
+                  commands
                 </Typography>
-              </FormControl>
-
-              <FormControl sx={{ mb: 2 }}>
-                <Checkbox
-                  label="Auto-append ; to each non-empty line"
-                  checked={autoAppendSemicolons}
-                  onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
-                  disabled={isClusterLaunching}
-                />
               </FormControl>
 
               <FormControl sx={{ mb: 2 }}>
