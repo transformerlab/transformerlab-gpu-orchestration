@@ -394,8 +394,7 @@ disk_space: 100`}
                 minRows={2}
               />
               <Typography level="body-xs" sx={{ mt: 0.5 }}>
-                Use <code>;</code> at the end of each line for separate
-                commands
+                Use <code>;</code> at the end of each line for separate commands
               </Typography>
             </FormControl>
 
