@@ -215,7 +215,7 @@ const MyClusterDetails: React.FC = () => {
       onError: (err) => {
         console.error("Error fetching cluster jobs:", err);
       },
-    }
+    },
   );
 
   // Fetch cost info separately (can be slower)
@@ -233,7 +233,7 @@ const MyClusterDetails: React.FC = () => {
       onError: (err) => {
         console.error("Error fetching cluster cost info:", err);
       },
-    }
+    },
   );
 
   // Extract data from the separate responses
@@ -823,7 +823,7 @@ const MyClusterDetails: React.FC = () => {
                     <Typography level="body-sm">
                       {formatAutostop(
                         clusterData.autostop,
-                        clusterData.to_down
+                        clusterData.to_down,
                       )}
                     </Typography>
                   </Box>

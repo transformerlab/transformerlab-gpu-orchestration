@@ -73,7 +73,7 @@ export const clusterInfoApi = {
 
   // Fast endpoint - basic cluster info without jobs or cost data
   getBasicInfo: async (
-    clusterName: string
+    clusterName: string,
   ): Promise<{
     cluster: ClusterInfo;
     cluster_type: ClusterTypeInfo;
@@ -85,7 +85,7 @@ export const clusterInfoApi = {
       buildApiUrl(`instances/${clusterName}/basic-info`),
       {
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       throw new Error("Failed to fetch cluster basic info");
@@ -99,7 +99,7 @@ export const clusterInfoApi = {
       buildApiUrl(`instances/${clusterName}/jobs`),
       {
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       throw new Error("Failed to fetch cluster jobs");
@@ -109,7 +109,7 @@ export const clusterInfoApi = {
 
   // Get cost info separately
   getCostInfo: async (
-    clusterName: string
+    clusterName: string,
   ): Promise<{
     cost_info?: {
       total_cost: number;
@@ -125,7 +125,7 @@ export const clusterInfoApi = {
       buildApiUrl(`instances/${clusterName}/cost-info`),
       {
         credentials: "include",
-      }
+      },
     );
     if (!response.ok) {
       throw new Error("Failed to fetch cluster cost info");

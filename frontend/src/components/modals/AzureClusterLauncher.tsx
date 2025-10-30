@@ -98,7 +98,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   >([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
   const [allowedInstanceTypes, setAllowedInstanceTypes] = useState<string[]>(
-    []
+    [],
   );
   const [allowedRegions, setAllowedRegions] = useState<string[]>([]);
   const [useSpot, setUseSpot] = useState(false);
@@ -162,7 +162,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       !selectedInstanceType
     ) {
       const firstAllowedType = availableInstanceTypes.find((type) =>
-        allowedInstanceTypes.includes(type.name)
+        allowedInstanceTypes.includes(type.name),
       );
       if (firstAllowedType) {
         setSelectedInstanceType(firstAllowedType.name);
@@ -175,7 +175,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       !selectedRegion
     ) {
       const firstAllowedRegion = availableRegions.find((region) =>
-        allowedRegions.includes(region)
+        allowedRegions.includes(region),
       );
       if (firstAllowedRegion) {
         setSelectedRegion(firstAllowedRegion);
@@ -195,7 +195,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       setLoadingTemplates(true);
       const resp = await apiFetch(
         buildApiUrl("instances/templates?cloud_type=azure"),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (resp.ok) {
         const data = await resp.json();
@@ -216,7 +216,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
       setLoadingQuota(true);
       const res = await apiFetch(
         buildApiUrl(`quota/organization/${user.organization_id}`),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (res.ok) {
         const data = await res.json();
@@ -910,7 +910,7 @@ disk_space: 100`}
                                   .filter(
                                     (type) =>
                                       allowedInstanceTypes.length === 0 ||
-                                      allowedInstanceTypes.includes(type.name)
+                                      allowedInstanceTypes.includes(type.name),
                                   )
                                   .map((type) => (
                                     <Option key={type.name} value={type.name}>
@@ -946,7 +946,7 @@ disk_space: 100`}
                                   .filter(
                                     (region) =>
                                       allowedRegions.length === 0 ||
-                                      allowedRegions.includes(region)
+                                      allowedRegions.includes(region),
                                   )
                                   .map((region) => (
                                     <Option key={region} value={region}>
