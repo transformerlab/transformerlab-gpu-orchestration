@@ -290,6 +290,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         });
         formData.append("yaml_file", yamlBlob, "config.yaml");
         formData.append("cloud", "runpod");
+        formData.append("disabled_mandatory_mounts", "true");
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
@@ -307,6 +308,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         if (diskSpace) formData.append("disk_space", diskSpace);
         formData.append("use_spot", "false");
         formData.append("launch_mode", "custom");
+        formData.append("disabled_mandatory_mounts", "true");
 
         if (selectedDockerImageId)
           formData.append("docker_image_id", selectedDockerImageId);
