@@ -26,7 +26,7 @@ const MyClusters: React.FC = () => {
   const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
     buildApiUrl("instances/status"),
     skypilotFetcher,
-    { refreshInterval: 2000 }
+    { refreshInterval: 2000 },
   );
 
   // Filter for active clusters (status contains "init" or "up")
@@ -34,7 +34,7 @@ const MyClusters: React.FC = () => {
     (c: Cluster) =>
       c.status &&
       (c.status.toLowerCase().includes("init") ||
-        c.status.toLowerCase().includes("up"))
+        c.status.toLowerCase().includes("up")),
   );
 
   return (

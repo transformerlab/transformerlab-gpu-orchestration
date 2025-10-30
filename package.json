@@ -12,7 +12,9 @@
     "install:frontend": "cd frontend && npm install",
     "build": "cd frontend && npm run build",
     "test": "cd frontend && npm test",
-    "lint": "cd frontend && npm run lint"
+    "lint": "cd frontend && npm run lint",
+    "format": "cd frontend && npm run format",
+    "format:check": "cd frontend && npm run format:check"
   },
   "keywords": [
     "fastapi",

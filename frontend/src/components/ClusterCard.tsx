@@ -85,14 +85,14 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
     clusterType === "cloud" ? buildApiUrl("instances/status") : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 2000 }
+    { refreshInterval: 2000 },
   );
 
   // Process nodes based on cluster type
   let processedNodes = cluster.nodes;
   let activeCount = cluster.nodes.filter((n) => n.status === "active").length;
   let assignedToYouCount = cluster.nodes.filter(
-    (n) => n.user === currentUser
+    (n) => n.user === currentUser,
   ).length;
 
   if (clusterType === "cloud") {
@@ -104,7 +104,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
             ac.status === "ClusterStatus.UP" ||
             ac.status === "ClusterStatus.INIT" ||
             ac.status === "UP" ||
-            ac.status === "INIT"
+            ac.status === "INIT",
         ) || false;
 
       // Update the node status based on active clusters
@@ -116,7 +116,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
               ac.status === "ClusterStatus.UP" ||
               ac.status === "ClusterStatus.INIT" ||
               ac.status === "UP" ||
-              ac.status === "INIT"
+              ac.status === "INIT",
           );
 
           return {
@@ -144,7 +144,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
       // For other cloud providers (RunPod, Azure), use the old SkyPilot status matching
       const skyPilotClusters = skyPilotStatus?.clusters || [];
       const skyPilotCluster = skyPilotClusters.find(
-        (c: any) => c.cluster_name === displayName
+        (c: any) => c.cluster_name === displayName,
       );
       const isActiveCluster =
         skyPilotCluster?.status === "ClusterStatus.UP" ||
@@ -168,7 +168,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
       }));
 
       activeCount = processedNodes.filter(
-        (n: Node) => n.status === "active"
+        (n: Node) => n.status === "active",
       ).length;
       assignedToYouCount = 0; // All nodes are available, none assigned
     }
@@ -177,7 +177,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
   const sortedNodes = [...processedNodes].sort(
     (a, b) =>
       getStatusOrder(a.status, a.type, a.user, currentUser) -
-      getStatusOrder(b.status, b.type, b.user, currentUser)
+      getStatusOrder(b.status, b.type, b.user, currentUser),
   );
 
   const handleReserveNode = () => {
@@ -284,7 +284,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
 
                         // Helper to parse strings like "1 of 2 free"
                         const parseUtilization = (
-                          s?: string
+                          s?: string,
                         ): { free?: number; total?: number } => {
                           if (!s) return {};
                           const m = s.match(/(\d+)\s*of\s*(\d+)/i);
@@ -302,18 +302,18 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                             const util = parseUtilization(e.utilization);
                             const totalParsed = Number.parseInt(
                               e.total ?? "",
-                              10
+                              10,
                             );
                             const freeParsed = Number.parseInt(
                               e.free ?? "",
-                              10
+                              10,
                             );
                             const total = Number.isFinite(totalParsed)
                               ? totalParsed
-                              : util.total ?? 0;
+                              : (util.total ?? 0);
                             const free = Number.isFinite(freeParsed)
                               ? freeParsed
-                              : util.free ?? 0;
+                              : (util.free ?? 0);
 
                             totalGpus += total;
                             usedGpus += Math.max(0, total - free);
@@ -326,7 +326,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                       } else {
                         // Fall back to capacity calculation for non-SSH clusters
                         return Math.round(
-                          (activeCount / processedNodes.length) * 100
+                          (activeCount / processedNodes.length) * 100,
                         );
                       }
                     })()}
@@ -389,7 +389,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({
                 // For cloud and regular clusters, show in two columns
                 ["dedicated", "on-demand"].map((nodeType) => {
                   const nodesOfType = nodesToShow.filter(
-                    (node) => node.type === nodeType
+                    (node) => node.type === nodeType,
                   );
                   if (nodesOfType.length === 0) return null;
 

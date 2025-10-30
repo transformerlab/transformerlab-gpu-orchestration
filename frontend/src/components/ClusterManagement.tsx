@@ -48,7 +48,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
         buildApiUrl("node-pools/ssh-node-pools"),
         {
           credentials: "include",
-        }
+        },
       );
       if (response.ok) {
         const data = await response.json();
@@ -70,7 +70,7 @@ const ClusterManagement: React.FC<ClusterManagementProps> = ({
         buildApiUrl(`node-pools/ssh-node-pools/${clusterName}`),
         {
           credentials: "include",
-        }
+        },
       );
       if (response.ok) {
         const data = await response.json();

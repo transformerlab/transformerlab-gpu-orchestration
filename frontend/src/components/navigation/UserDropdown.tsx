@@ -42,7 +42,7 @@ const UserDropdown: React.FC = () => {
         // Use summary endpoint which returns effective quota (user > team > org) and current period usage
         const res = await apiFetch(
           buildApiUrl(`quota/summary/${organizationId}`),
-          { credentials: "include" }
+          { credentials: "include" },
         );
         if (!res.ok) throw new Error("Failed to load quota summary");
         const summary = await res.json();
@@ -52,7 +52,7 @@ const UserDropdown: React.FC = () => {
           const used = Number(summary.quota_used || 0);
           const remaining = Math.max(
             0,
-            Number(summary.quota_remaining || Math.max(0, limit - used))
+            Number(summary.quota_remaining || Math.max(0, limit - used)),
           );
           const percentage = limit > 0 ? (used / limit) * 100 : 0;
 

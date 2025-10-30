@@ -58,7 +58,7 @@ const ClusterDetails: React.FC = () => {
     clusterName ? buildApiUrl("instances/cluster-platforms") : null,
     (url: string) =>
       apiFetch(url, { credentials: "include" }).then((res) => res.json()),
-    { refreshInterval: 5000 }
+    { refreshInterval: 5000 },
   );
 
   const platforms = clusterPlatforms?.platforms || {};
@@ -184,7 +184,7 @@ const ClusterDetails: React.FC = () => {
                   gpuInfoFromBackend || node.gpu_info || node.gpu_type || "-",
                 status: node.status || "active",
               } as Node;
-            }
+            },
           );
           setNodes(transformedNodes);
         })
@@ -197,12 +197,12 @@ const ClusterDetails: React.FC = () => {
               // Find the cluster by name instead of using the first one
               const cluster = mockClusterData.find(
                 (cluster: any) =>
-                  cluster.id === clusterName || cluster.name === clusterName
+                  cluster.id === clusterName || cluster.name === clusterName,
               );
 
               if (!cluster) {
                 console.warn(
-                  `Cluster "${clusterName}" not found in mock data, using first cluster as fallback`
+                  `Cluster "${clusterName}" not found in mock data, using first cluster as fallback`,
                 );
                 return mockClusterData[0].nodes.map(
                   (node: any, index: number) => ({
@@ -211,7 +211,7 @@ const ClusterDetails: React.FC = () => {
                     identity_file: node.identity_file || "-",
                     gpu_info: node.gpuType || "-",
                     status: node.status || "active",
-                  })
+                  }),
                 );
               }
 
@@ -374,7 +374,7 @@ const ClusterDetails: React.FC = () => {
                         >
                           {region}
                         </Chip>
-                      )
+                      ),
                     )}
                   </Box>
                 </Box>
@@ -463,8 +463,8 @@ const ClusterDetails: React.FC = () => {
                             node.status === "active"
                               ? "success"
                               : node.status === "inactive"
-                              ? "neutral"
-                              : "warning"
+                                ? "neutral"
+                                : "warning"
                           }
                         >
                           {node.status}

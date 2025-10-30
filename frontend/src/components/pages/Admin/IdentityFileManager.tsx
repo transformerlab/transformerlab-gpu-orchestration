@@ -53,7 +53,7 @@ const IdentityFileManager: React.FC = () => {
         buildApiUrl("node-pools/ssh-node-pools/identity-files"),
         {
           credentials: "include",
-        }
+        },
       );
       if (response.ok) {
         const data = await response.json();
@@ -83,7 +83,7 @@ const IdentityFileManager: React.FC = () => {
           method: "POST",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {
@@ -117,7 +117,7 @@ const IdentityFileManager: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -148,7 +148,7 @@ const IdentityFileManager: React.FC = () => {
           method: "PUT",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {

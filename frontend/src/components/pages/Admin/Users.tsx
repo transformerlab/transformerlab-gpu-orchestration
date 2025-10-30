@@ -61,7 +61,7 @@ const Users: React.FC = () => {
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [userToRemove, setUserToRemove] = useState<OrganizationMember | null>(
-    null
+    null,
   );
 
   // Invitation modal state
@@ -77,7 +77,8 @@ const Users: React.FC = () => {
 
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [changingRole, setChangingRole] = useState(false);
-  const [userToChangeRole, setUserToChangeRole] = useState<OrganizationMember | null>(null);
+  const [userToChangeRole, setUserToChangeRole] =
+    useState<OrganizationMember | null>(null);
   const [newRole, setNewRole] = useState<string>("member");
   const [roleError, setRoleError] = useState<string | null>(null);
   const [roleSuccess, setRoleSuccess] = useState<string | null>(null);
@@ -103,7 +104,7 @@ const Users: React.FC = () => {
           buildApiUrl(`admin/orgs/${user.organization_id}/members`),
           {
             credentials: "include",
-          }
+          },
         );
 
         if (!response.ok) {
@@ -116,7 +117,7 @@ const Users: React.FC = () => {
       } catch (err) {
         console.error("Error fetching members:", err);
         setError(
-          err instanceof Error ? err.message : "Failed to fetch members"
+          err instanceof Error ? err.message : "Failed to fetch members",
         );
       } finally {
         setLoading(false);
@@ -149,20 +150,21 @@ const Users: React.FC = () => {
 
   // Helper function to calculate permissions based on current member list
   const calculatePermissions = (memberList: OrganizationMember[]) => {
-    const adminCount = memberList.filter(m => {
+    const adminCount = memberList.filter((m) => {
       const role = typeof m.role === "string" ? m.role : m.role?.slug;
       return role === "admin";
     }).length;
 
-    return memberList.map(member => {
-      const memberRole = typeof member.role === "string" ? member.role : member.role?.slug;
+    return memberList.map((member) => {
+      const memberRole =
+        typeof member.role === "string" ? member.role : member.role?.slug;
       const isAdmin = memberRole === "admin";
       const isOnlyAdmin = isAdmin && adminCount === 1;
 
       return {
         ...member,
         can_be_removed: !isOnlyAdmin,
-        can_change_role: !isOnlyAdmin
+        can_change_role: !isOnlyAdmin,
       };
     });
   };
@@ -179,12 +181,12 @@ const Users: React.FC = () => {
 
       const response = await apiFetch(
         buildApiUrl(
-          `admin/orgs/${user.organization_id}/members/${member.user_id}`
+          `admin/orgs/${user.organization_id}/members/${member.user_id}`,
         ),
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -192,7 +194,9 @@ const Users: React.FC = () => {
       }
 
       // Remove the user from the local state and recalculate permissions
-      const updatedMembers = members.filter((m) => m.user_id !== member.user_id);
+      const updatedMembers = members.filter(
+        (m) => m.user_id !== member.user_id,
+      );
       setMembers(calculatePermissions(updatedMembers));
       setRemoveDialogOpen(false);
       setUserToRemove(null);
@@ -238,7 +242,7 @@ const Users: React.FC = () => {
             role_slug: inviteForm.role_slug,
             expires_in_days: inviteForm.expires_in_days,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -262,7 +266,7 @@ const Users: React.FC = () => {
     } catch (err) {
       console.error("Error sending invitation:", err);
       setInviteError(
-        err instanceof Error ? err.message : "Failed to send invitation"
+        err instanceof Error ? err.message : "Failed to send invitation",
       );
     } finally {
       setInviting(false);
@@ -283,9 +287,9 @@ const Users: React.FC = () => {
   const openRoleDialog = (member: OrganizationMember) => {
     setUserToChangeRole(member);
     setNewRole(
-      typeof member.role === "string" 
-        ? member.role 
-        : member.role?.slug || "member"
+      typeof member.role === "string"
+        ? member.role
+        : member.role?.slug || "member",
     );
     setRoleDialogOpen(true);
     setRoleError(null);
@@ -305,7 +309,7 @@ const Users: React.FC = () => {
 
       const response = await apiFetch(
         buildApiUrl(
-          `admin/orgs/${user.organization_id}/members/${userToChangeRole.user_id}/role`
+          `admin/orgs/${user.organization_id}/members/${userToChangeRole.user_id}/role`,
         ),
         {
           method: "PUT",
@@ -316,7 +320,7 @@ const Users: React.FC = () => {
           body: JSON.stringify({
             role: newRole,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -327,21 +331,25 @@ const Users: React.FC = () => {
       const responseData = await response.json();
 
       // Update the local state and recalculate permissions
-      const updatedMembers = members.map(member => 
-        member.user_id === userToChangeRole.user_id 
+      const updatedMembers = members.map((member) =>
+        member.user_id === userToChangeRole.user_id
           ? { ...member, role: newRole }
-          : member
+          : member,
       );
       setMembers(calculatePermissions(updatedMembers));
 
       if (responseData.is_self_update) {
-        setRoleSuccess(`Role updated successfully to ${newRole}. Refreshing session...`);
+        setRoleSuccess(
+          `Role updated successfully to ${newRole}. Refreshing session...`,
+        );
         try {
           await refreshSession();
           setRoleSuccess(`Role updated successfully to ${newRole}`);
         } catch (error) {
           console.error("Failed to refresh session:", error);
-          setRoleSuccess(`Role updated successfully to ${newRole}. Please refresh the page to see changes.`);
+          setRoleSuccess(
+            `Role updated successfully to ${newRole}. Please refresh the page to see changes.`,
+          );
         }
         setTimeout(() => {
           setRoleDialogOpen(false);
@@ -359,7 +367,7 @@ const Users: React.FC = () => {
     } catch (err) {
       console.error("Error updating role:", err);
       setRoleError(
-        err instanceof Error ? err.message : "Failed to update role"
+        err instanceof Error ? err.message : "Failed to update role",
       );
     } finally {
       setChangingRole(false);
@@ -542,15 +550,17 @@ const Users: React.FC = () => {
                             )}
                           </IconButton>
                         )}
-                        {(!member.can_change_role &&
-                          !member.can_be_removed) && (
-                            <Typography
-                              level="body-sm"
-                              sx={{ color: "text.secondary", fontStyle: "italic" }}
-                            >
-                              Cannot edit/remove the only admin
-                            </Typography>
-                          )}
+                        {!member.can_change_role && !member.can_be_removed && (
+                          <Typography
+                            level="body-sm"
+                            sx={{
+                              color: "text.secondary",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            Cannot edit/remove the only admin
+                          </Typography>
+                        )}
                       </Box>
                     )}
                   </td>

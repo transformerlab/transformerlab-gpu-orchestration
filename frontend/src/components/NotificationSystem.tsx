@@ -45,7 +45,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
   const removeNotification = useCallback((id: string) => {
     setNotifications((prev) =>
-      prev.filter((notification) => notification.id !== id)
+      prev.filter((notification) => notification.id !== id),
     );
   }, []);
 
@@ -67,7 +67,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         }, newNotification.duration);
       }
     },
-    [removeNotification]
+    [removeNotification],
   );
 
   const getIcon = (type: Notification["type"]) => {
@@ -85,7 +85,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
   const contextValue = useMemo(
     () => ({ addNotification, removeNotification }),
-    [addNotification, removeNotification]
+    [addNotification, removeNotification],
   );
 
   return (

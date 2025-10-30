@@ -1,9 +1,9 @@
 /* by default, Mui tables overflow, this changes that */
 .MuiTable-root td {
-    overflow: hidden;
+  overflow: hidden;
 }
 
 /* Allow overflow for the Actions column to show buttons properly */
 .MuiTable-root td:last-child {
-    overflow: visible;
+  overflow: visible;
 }

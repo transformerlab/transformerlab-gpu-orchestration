@@ -37,7 +37,7 @@ const CLIAuthorizePage: React.FC = () => {
           buildApiUrl(`auth/cli/session/${sessionId}`),
           {
             credentials: "include",
-          }
+          },
         );
         console.log(`Response status: ${response.status}`);
 
@@ -45,7 +45,7 @@ const CLIAuthorizePage: React.FC = () => {
           const errorText = await response.text();
           console.error(`Error response: ${errorText}`);
           throw new Error(
-            `Session not found or expired: ${response.status} - ${errorText}`
+            `Session not found or expired: ${response.status} - ${errorText}`,
           );
         }
 
