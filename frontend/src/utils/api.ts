@@ -70,6 +70,68 @@ export const clusterInfoApi = {
     }
     return response.json();
   },
+
+  // Fast endpoint - basic cluster info without jobs or cost data
+  getBasicInfo: async (
+    clusterName: string
+  ): Promise<{
+    cluster: ClusterInfo;
+    cluster_type: ClusterTypeInfo;
+    platform: any;
+    state: any;
+    ssh_node_info?: any;
+  }> => {
+    const response = await apiFetch(
+      buildApiUrl(`instances/${clusterName}/basic-info`),
+      {
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch cluster basic info");
+    }
+    return response.json();
+  },
+
+  // Get jobs separately
+  getJobs: async (clusterName: string): Promise<{ jobs: JobRecord[] }> => {
+    const response = await apiFetch(
+      buildApiUrl(`instances/${clusterName}/jobs`),
+      {
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch cluster jobs");
+    }
+    return response.json();
+  },
+
+  // Get cost info separately
+  getCostInfo: async (
+    clusterName: string
+  ): Promise<{
+    cost_info?: {
+      total_cost: number;
+      duration: number;
+      cost_per_hour: number;
+      launched_at?: number;
+      status?: string;
+      cloud?: string;
+      region?: string;
+    };
+  }> => {
+    const response = await apiFetch(
+      buildApiUrl(`instances/${clusterName}/cost-info`),
+      {
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch cluster cost info");
+    }
+    return response.json();
+  },
 };
 
 export const authApi = {

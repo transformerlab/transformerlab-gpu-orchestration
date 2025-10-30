@@ -97,11 +97,10 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     InstanceType[]
   >([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
-  const [azureConfig, setAzureConfig] = useState({
-    allowed_instance_types: [] as string[],
-    allowed_regions: [] as string[],
-    is_configured: false,
-  });
+  const [allowedInstanceTypes, setAllowedInstanceTypes] = useState<string[]>(
+    []
+  );
+  const [allowedRegions, setAllowedRegions] = useState<string[]>([]);
   const [useSpot, setUseSpot] = useState(false);
   const [idleMinutesToAutostop, setIdleMinutesToAutostop] = useState("");
   const [numNodes, setNumNodes] = useState<string>("1");
@@ -110,6 +109,13 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Individual loading states
+  const [loadingInstanceTypesAndRegions, setLoadingInstanceTypesAndRegions] =
+    useState(false);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [loadingQuota, setLoadingQuota] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId]
@@ -140,40 +146,88 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
   useEffect(() => {
     if (open) {
       fetchAzureConfig();
-      fetchAvailableInstanceTypes();
-      fetchAvailableRegions();
+      fetchInstanceTypesAndRegions();
+      fetchTemplates();
       fetchStorageBuckets();
       fetchDockerImages();
-      // Load templates for azure
-      (async () => {
-        try {
-          const resp = await apiFetch(
-            buildApiUrl("instances/templates?cloud_type=azure"),
-            { credentials: "include" }
-          );
-          if (resp.ok) {
-            const data = await resp.json();
-            setTemplates(data.templates || []);
-          } else {
-            setTemplates([]);
-          }
-        } catch (e) {
-          setTemplates([]);
-        }
-      })();
-      if (user?.organization_id) {
-        apiFetch(buildApiUrl(`quota/organization/${user.organization_id}`), {
-          credentials: "include",
-        })
-          .then(async (res) => {
-            if (!res.ok) return;
-            const data = await res.json();
-            setAvailableCredits(Number(data.credits_remaining || 0));
-          })
-          .catch(() => {});
-      }
+      fetchQuota();
     }
   }, [open, user?.organization_id]);
+
+  // Set default instance type and region when data is loaded
+  useEffect(() => {
+    if (
+      allowedInstanceTypes.length > 0 &&
+      availableInstanceTypes.length > 0 &&
+      !selectedInstanceType
+    ) {
+      const firstAllowedType = availableInstanceTypes.find((type) =>
+        allowedInstanceTypes.includes(type.name)
+      );
+      if (firstAllowedType) {
+        setSelectedInstanceType(firstAllowedType.name);
+      }
+    }
+
+    if (
+      allowedRegions.length > 0 &&
+      availableRegions.length > 0 &&
+      !selectedRegion
+    ) {
+      const firstAllowedRegion = availableRegions.find((region) =>
+        allowedRegions.includes(region)
+      );
+      if (firstAllowedRegion) {
+        setSelectedRegion(firstAllowedRegion);
+      }
+    }
+  }, [
+    allowedInstanceTypes,
+    allowedRegions,
+    availableInstanceTypes,
+    availableRegions,
+    selectedInstanceType,
+    selectedRegion,
+  ]);
+
+  const fetchTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const resp = await apiFetch(
+        buildApiUrl("instances/templates?cloud_type=azure"),
+        { credentials: "include" }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        setTemplates(data.templates || []);
+      } else {
+        setTemplates([]);
+      }
+    } catch (e) {
+      setTemplates([]);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const fetchQuota = async () => {
+    if (!user?.organization_id) return;
+    try {
+      setLoadingQuota(true);
+      const res = await apiFetch(
+        buildApiUrl(`quota/organization/${user.organization_id}`),
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableCredits(Number(data.credits_remaining || 0));
+      }
+    } catch (e) {
+      console.error("Error fetching quota:", e);
+    } finally {
+      setLoadingQuota(false);
+    }
+  };
 
   // Recompute estimated cost when instance type/region/nodes change
   useEffect(() => {
@@ -250,6 +304,7 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
 
   const fetchAzureConfig = async () => {
     try {
+      setLoadingConfig(true);
       const response = await apiFetch(buildApiUrl("clouds/azure/config"), {
         credentials: "include",
       });
@@ -263,64 +318,31 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
           data.configs[data.default_config]
         ) {
           const defaultConfig = data.configs[data.default_config];
-          setAzureConfig({
-            allowed_instance_types: defaultConfig.allowed_instance_types || [],
-            allowed_regions: defaultConfig.allowed_regions || [],
-            is_configured: data.is_configured || false,
-          });
-          // Set the first allowed instance type as default
-          if (
-            defaultConfig.allowed_instance_types &&
-            Array.isArray(defaultConfig.allowed_instance_types) &&
-            defaultConfig.allowed_instance_types.length > 0
-          ) {
-            setSelectedInstanceType(defaultConfig.allowed_instance_types[0]);
-          }
-          // Set the first allowed region as default
-          if (
-            defaultConfig.allowed_regions &&
-            Array.isArray(defaultConfig.allowed_regions) &&
-            defaultConfig.allowed_regions.length > 0
-          ) {
-            setSelectedRegion(defaultConfig.allowed_regions[0]);
-          }
+          setAllowedInstanceTypes(defaultConfig.allowed_instance_types || []);
+          setAllowedRegions(defaultConfig.allowed_regions || []);
         } else {
           // Fallback to legacy structure
-          setAzureConfig({
-            allowed_instance_types: data.allowed_instance_types || [],
-            allowed_regions: data.allowed_regions || [],
-            is_configured: data.is_configured || false,
-          });
-          // Set the first allowed instance type as default
-          if (
-            data.allowed_instance_types &&
-            Array.isArray(data.allowed_instance_types) &&
-            data.allowed_instance_types.length > 0
-          ) {
-            setSelectedInstanceType(data.allowed_instance_types[0]);
-          }
-          // Set the first allowed region as default
-          if (
-            data.allowed_regions &&
-            Array.isArray(data.allowed_regions) &&
-            data.allowed_regions.length > 0
-          ) {
-            setSelectedRegion(data.allowed_regions[0]);
-          }
+          setAllowedInstanceTypes(data.allowed_instance_types || []);
+          setAllowedRegions(data.allowed_regions || []);
         }
       }
     } catch (err) {
       console.error("Error fetching Azure config:", err);
+    } finally {
+      setLoadingConfig(false);
     }
   };
 
-  const fetchAvailableInstanceTypes = async () => {
+  const fetchInstanceTypesAndRegions = async () => {
     try {
+      setLoadingInstanceTypesAndRegions(true);
       const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
+
+        // Set instance types
         const instanceTypes = (data.instance_types || []).map(
           (type: string) => {
             // Parse instance type to extract category and display name
@@ -362,25 +384,16 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
           }
         );
         setAvailableInstanceTypes(instanceTypes);
-      }
-    } catch (err) {
-      console.error("Error fetching available instance types:", err);
-      setAvailableInstanceTypes([]);
-    }
-  };
 
-  const fetchAvailableRegions = async () => {
-    try {
-      const response = await apiFetch(buildApiUrl("clouds/azure/info"), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
+        // Set regions
         setAvailableRegions(data.regions || []);
       }
     } catch (err) {
-      console.error("Error fetching available regions:", err);
+      console.error("Error fetching Azure instance types and regions:", err);
+      setAvailableInstanceTypes([]);
       setAvailableRegions([]);
+    } finally {
+      setLoadingInstanceTypesAndRegions(false);
     }
   };
 
@@ -544,30 +557,6 @@ const AzureClusterLauncher: React.FC<AzureClusterLauncherProps> = ({
     }
   };
 
-  if (!azureConfig.is_configured) {
-    return (
-      <Modal open={open} onClose={handleClose}>
-        <ModalDialog sx={{ maxWidth: 500 }}>
-          <ModalClose />
-          <Typography level="h4" sx={{ mb: 2 }}>
-            Azure Cluster Launcher
-          </Typography>
-          <Alert color="warning">
-            Azure is not configured. Please configure Azure in the Admin section
-            before launching clusters.
-          </Alert>
-          <Box
-            sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 2 }}
-          >
-            <Button variant="plain" onClick={handleClose}>
-              Close
-            </Button>
-          </Box>
-        </ModalDialog>
-      </Modal>
-    );
-  }
-
   return (
     <Modal open={open} onClose={handleClose}>
       <ModalDialog
@@ -715,17 +704,32 @@ disk_space: 100`}
                       {/* Template selector - moved down */}
                       <FormControl>
                         <FormLabel>Template (optional)</FormLabel>
-                        <Select
-                          value={selectedTemplateId}
-                          onChange={(_, v) => setSelectedTemplateId(v || "")}
-                          placeholder="Select a template"
-                        >
-                          {(templates || []).map((t: any) => (
-                            <Option key={t.id} value={t.id}>
-                              {t.name || t.id}
-                            </Option>
-                          ))}
-                        </Select>
+                        {loadingTemplates ? (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <CircularProgress size="sm" />
+                            <Typography level="body-sm">
+                              Loading templates...
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Select
+                            value={selectedTemplateId}
+                            onChange={(_, v) => setSelectedTemplateId(v || "")}
+                            placeholder="Select a template"
+                          >
+                            {(templates || []).map((t: any) => (
+                              <Option key={t.id} value={t.id}>
+                                {t.name || t.id}
+                              </Option>
+                            ))}
+                          </Select>
+                        )}
                       </FormControl>
 
                       {/* Advanced button - always show but disable when template is selected */}
@@ -891,20 +895,29 @@ disk_space: 100`}
                               placeholder="Select instance type"
                               required
                               disabled={
-                                typeof tpl.instance_type !== "undefined"
+                                typeof tpl.instance_type !== "undefined" ||
+                                loadingInstanceTypesAndRegions ||
+                                loadingConfig
                               }
                             >
-                              {availableInstanceTypes
-                                .filter((type) =>
-                                  azureConfig.allowed_instance_types.includes(
-                                    type.name
+                              {loadingInstanceTypesAndRegions ||
+                              loadingConfig ? (
+                                <Option value="" disabled>
+                                  Loading instance types...
+                                </Option>
+                              ) : (
+                                availableInstanceTypes
+                                  .filter(
+                                    (type) =>
+                                      allowedInstanceTypes.length === 0 ||
+                                      allowedInstanceTypes.includes(type.name)
                                   )
-                                )
-                                .map((type) => (
-                                  <Option key={type.name} value={type.name}>
-                                    {type.name}
-                                  </Option>
-                                ))}
+                                  .map((type) => (
+                                    <Option key={type.name} value={type.name}>
+                                      {type.name} ({type.category})
+                                    </Option>
+                                  ))
+                              )}
                             </Select>
                           </FormControl>
 
@@ -917,17 +930,30 @@ disk_space: 100`}
                               }
                               placeholder="Select region"
                               required
-                              disabled={typeof tpl.region !== "undefined"}
+                              disabled={
+                                typeof tpl.region !== "undefined" ||
+                                loadingInstanceTypesAndRegions ||
+                                loadingConfig
+                              }
                             >
-                              {availableRegions
-                                .filter((region) =>
-                                  azureConfig.allowed_regions.includes(region)
-                                )
-                                .map((region) => (
-                                  <Option key={region} value={region}>
-                                    {region}
-                                  </Option>
-                                ))}
+                              {loadingInstanceTypesAndRegions ||
+                              loadingConfig ? (
+                                <Option value="" disabled>
+                                  Loading regions...
+                                </Option>
+                              ) : (
+                                availableRegions
+                                  .filter(
+                                    (region) =>
+                                      allowedRegions.length === 0 ||
+                                      allowedRegions.includes(region)
+                                  )
+                                  .map((region) => (
+                                    <Option key={region} value={region}>
+                                      {region}
+                                    </Option>
+                                  ))
+                              )}
                             </Select>
                           </FormControl>
 
@@ -963,22 +989,44 @@ disk_space: 100`}
               )}
 
               {/* Cost & Credits Display */}
-              {availableCredits !== null && (
-                <Box sx={{ mt: 2 }}>
-                  <CostCreditsDisplay
-                    estimatedCost={estimatedCost}
-                    availableCredits={availableCredits}
-                    variant="card"
-                    showWarning={true}
-                  />
-                  <Typography
-                    level="body-xs"
-                    sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
+              {loadingQuota ? (
+                <Card variant="outlined" sx={{ mt: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      justifyContent: "center",
+                    }}
                   >
-                    Note: Cost estimates are approximate and may vary based on
-                    actual usage and resource allocation.
-                  </Typography>
-                </Box>
+                    <CircularProgress size="sm" />
+                    <Typography level="body-sm">
+                      Loading quota information...
+                    </Typography>
+                  </Box>
+                </Card>
+              ) : (
+                availableCredits !== null && (
+                  <Box sx={{ mt: 2 }}>
+                    <CostCreditsDisplay
+                      estimatedCost={estimatedCost}
+                      availableCredits={availableCredits}
+                      variant="card"
+                      showWarning={true}
+                    />
+                    <Typography
+                      level="body-xs"
+                      sx={{
+                        mt: 1,
+                        color: "text.secondary",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      Note: Cost estimates are approximate and may vary based on
+                      actual usage and resource allocation.
+                    </Typography>
+                  </Box>
+                )
               )}
             </Stack>
           </form>

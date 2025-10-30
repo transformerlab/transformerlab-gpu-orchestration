@@ -86,7 +86,11 @@ async def terminal_connect(
     async with active_sessions_lock:
         # TTL cleanup
         try:
-            expired = [sid for sid, data in active_sessions.items() if (now - data.get("created_at", now)) > SESSION_TTL_SECONDS]
+            expired = [
+                sid
+                for sid, data in active_sessions.items()
+                if (now - data.get("created_at", now)) > SESSION_TTL_SECONDS
+            ]
             for sid in expired:
                 active_sessions.pop(sid, None)
         except Exception:
@@ -142,7 +146,13 @@ async def terminal_websocket(
         return
 
     # Bind user from cookie and compare with session owner
-    user = get_user_from_sealed_session(session_cookie)
+    try:
+        user = get_user_from_sealed_session(session_cookie)
+    except Exception as e:
+        print(f"Error validating session cookie: {str(e)}")
+        await websocket.close(code=1008, reason="Authentication failed")
+        return
+
     if not user:
         await websocket.close(code=1008, reason="Authentication failed")
         print("WebSocket closed: Authentication failed")
@@ -166,21 +176,31 @@ async def terminal_websocket(
             async with active_sessions_lock:
                 active_sessions.pop(session_id, None)
             return
-    except Exception:
+    except Exception as e:
+        print(f"Error during TTL check: {str(e)}")
         pass
     params = session_data["params"]
 
     # Enforce that the websocket user matches the session owner
-    if session_data.get("user_id") != user.get("id") or session_data.get("organization_id") != user.get("organization_id"):
+    if session_data.get("user_id") != user.get("id") or session_data.get(
+        "organization_id"
+    ) != user.get("organization_id"):
+        print("WebSocket closed: User mismatch.")
         await websocket.close(code=1008, reason="Unauthorized for session")
         return
 
     ssh_cmd = ["ssh", params["cluster_name"]]
 
+    print(
+        f"Starting SSH connection to {params['cluster_name']} for session {session_id}"
+    )
+
     # Schedule forced disconnect after TTL from session creation
     ttl_task = None
     try:
-        created_at = float(session_data.get("created_at", asyncio.get_event_loop().time()))
+        created_at = float(
+            session_data.get("created_at", asyncio.get_event_loop().time())
+        )
         now = asyncio.get_event_loop().time()
         remain = max(0.0, (SESSION_TTL_SECONDS - (now - created_at)))
 
@@ -200,15 +220,36 @@ async def terminal_websocket(
 
     try:
         # Allocate a PTY for the SSH process
-        master_fd, slave_fd = pty.openpty()
-        os.set_blocking(master_fd, False)  # Make PTY non-blocking
-        process = await asyncio.create_subprocess_exec(
-            *ssh_cmd,
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            close_fds=True,
-        )
+        try:
+            master_fd, slave_fd = pty.openpty()
+            os.set_blocking(master_fd, False)  # Make PTY non-blocking
+        except Exception as e:
+            error_msg = f"Failed to create PTY: {str(e)}"
+            print(f"WebSocket error: {error_msg}")
+            await websocket.send_text(error_msg)
+            await websocket.close(code=1011, reason="PTY creation failed")
+            return
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *ssh_cmd,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                close_fds=True,
+            )
+        except Exception as e:
+            error_msg = f"Failed to start SSH process: {str(e)}"
+            print(f"WebSocket error: {error_msg}")
+            try:
+                os.close(master_fd)
+                os.close(slave_fd)
+            except Exception:
+                pass
+            await websocket.send_text(error_msg)
+            await websocket.close(code=1011, reason="SSH process failed")
+            return
+
         os.close(slave_fd)  # We don't need the slave fd in this process
         session_data["process"] = process
         session_data["master_fd"] = master_fd
