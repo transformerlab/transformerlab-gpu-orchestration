@@ -596,24 +596,6 @@ async def submit_job_to_cluster(
         if tlab_job_id:
             hook_env_vars["_TFL_JOB_ID"] = tlab_job_id
 
-        # Handle mandatory storage mounts
-        storage_mounts = {}
-        if os.getenv("TRANSFORMERLAB_BUCKET_NAME") and os.getenv(
-            "TRANSFORMERLAB_BUCKET_SOURCE"
-        ):
-            import sky
-
-            transformerlab_bucket = sky.Storage(
-                name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
-                mode=sky.StorageMode.MOUNT,
-                source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
-                persistent=True,
-            )
-            storage_mounts["/workspace"] = transformerlab_bucket
-            print(
-                f"[Jobs] Added mandatory transformerlab bucket: {transformerlab_bucket}"
-            )
-
         command = command.replace("\r", "")
         if setup:
             setup = setup.replace("\r", "")
@@ -627,6 +609,42 @@ async def submit_job_to_cluster(
         actual_cluster_name = handle_cluster_name_param(
             cluster_name, user["id"], user["organization_id"]
         )
+
+        # Handle mandatory storage mounts (skip for RunPod clusters)
+        storage_mounts = {}
+        platform_info = get_cluster_platform_info_util(actual_cluster_name)
+        is_runpod = False
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform == "multi-cloud":
+                from routes.instances.utils import (
+                    determine_actual_cloud_from_skypilot_status,
+                )
+
+                # Determine the actual cloud used by SkyPilot
+                actual_platform = determine_actual_cloud_from_skypilot_status(
+                    actual_cluster_name
+                )
+                platform = actual_platform if actual_platform else platform
+            is_runpod = platform == "runpod"
+
+        if (
+            not is_runpod
+            and os.getenv("TRANSFORMERLAB_BUCKET_NAME")
+            and os.getenv("TRANSFORMERLAB_BUCKET_SOURCE")
+        ):
+            import sky
+
+            transformerlab_bucket = sky.Storage(
+                name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
+                mode=sky.StorageMode.MOUNT,
+                source=os.getenv("TRANSFORMERLAB_BUCKET_SOURCE"),
+                persistent=True,
+            )
+            storage_mounts["/workspace"] = transformerlab_bucket
+            print(
+                f"[Jobs] Added mandatory transformerlab bucket: {transformerlab_bucket}"
+            )
 
         # Default num_nodes to 1 if not provided or invalid
         try:
