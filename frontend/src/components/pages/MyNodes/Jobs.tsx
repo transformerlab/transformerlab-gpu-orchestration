@@ -107,7 +107,7 @@ interface JobsProps {
 
 const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
   const [clustersWithJobs, setClustersWithJobs] = useState<ClusterWithJobs[]>(
-    [],
+    []
   );
   const [pastJobClusters, setPastJobClusters] = useState<PastJobCluster[]>([]);
   const [pastJobsLoading, setPastJobsLoading] = useState(false);
@@ -154,7 +154,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
         try {
           const response = await apiFetch(
             buildApiUrl(`jobs/${cluster.cluster_name}`),
-            { credentials: "include" },
+            { credentials: "include" }
           );
 
           if (response.ok) {
@@ -164,9 +164,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
             clusterWithJobs.jobsError = `Failed to fetch jobs: ${response.statusText}`;
           }
         } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : "Failed to fetch jobs";
-          clusterWithJobs.jobsError = errorMessage;
-          console.error(`Error fetching jobs for cluster ${cluster.cluster_name}:`, err);
+          clusterWithJobs.jobsError = "Failed to fetch jobs";
         } finally {
           clusterWithJobs.jobsLoading = false;
         }
@@ -210,7 +208,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
     try {
       const response = await apiFetch(
         buildApiUrl(`jobs/past-jobs/${clusterName}/${jobId}/logs`),
-        { credentials: "include" },
+        { credentials: "include" }
       );
 
       if (response.ok) {
@@ -240,7 +238,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           try {
             const response = await apiFetch(
               buildApiUrl(`jobs/${cluster.cluster_name}`),
-              { credentials: "include" },
+              { credentials: "include" }
             );
 
             if (response.ok) {
@@ -256,11 +254,11 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
           } catch (err) {
             console.error(
               `Error monitoring jobs for cluster ${cluster.cluster_name}:`,
-              err,
+              err
             );
           }
           return cluster;
-        }),
+        })
       );
 
       setClustersWithJobs(updatedClustersWithJobs);
@@ -280,9 +278,9 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
       // Create EventSource for Server-Sent Events
       const eventSource = new EventSource(
         buildApiUrl(
-          `jobs/${clusterName}/${jobId}/logs/stream?tail=1000&follow=true`,
+          `jobs/${clusterName}/${jobId}/logs/stream?tail=1000&follow=true`
         ),
-        { withCredentials: true },
+        { withCredentials: true }
       );
 
       eventSource.onopen = () => {
@@ -341,7 +339,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
         {
           method: "POST",
           credentials: "include",
-        },
+        }
       );
 
       if (!response.ok) {
@@ -359,7 +357,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
             jobs: cluster.jobs.map((job) =>
               job.job_id === jobId
                 ? { ...job, status: "JobStatus.CANCELLED" }
-                : job,
+                : job
             ),
           };
         }
@@ -772,7 +770,7 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
                                 onClick={() =>
                                   fetchPastJobLogs(
                                     pastCluster.cluster_name,
-                                    job.job_id,
+                                    job.job_id
                                   )
                                 }
                               >
