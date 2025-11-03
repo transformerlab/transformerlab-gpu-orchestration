@@ -322,13 +322,6 @@ def launch_cluster_with_skypilot(
                 envs = env_vars.copy()
             else:
                 envs.update(env_vars)
-        
-        # Log environment variables for debugging (especially checkpoint resume vars)
-        if envs:
-            checkpoint_env_keys = ["_TFL_PARENT_JOB_ID", "_TFL_CHECKPOINT_NAME", "_TFL_JOB_ID"]
-            checkpoint_envs = {k: v for k, v in envs.items() if k in checkpoint_env_keys}
-            if checkpoint_envs:
-                print(f"[SkyPilot] Checkpoint-related env vars: {checkpoint_envs}")
 
         # Use job_name if provided, otherwise use default
         name = job_name if job_name else "lattice-task-setup"
@@ -343,10 +336,6 @@ def launch_cluster_with_skypilot(
         except Exception:
             effective_num_nodes = 1
 
-        # Log command details for debugging
-        print(f"[SkyPilot] Creating task with name: {name}")
-        print(f"[SkyPilot] Command length: {len(command)} chars")
-        print(f"[SkyPilot] Command preview: {command[:200]}..." if len(command) > 200 else f"[SkyPilot] Command: {command}")
         
         task = sky.Task(
             name=name,
