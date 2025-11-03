@@ -11,6 +11,7 @@ import sky
 from fastapi import HTTPException
 from routes.clouds.azure.utils import az_get_current_config
 from routes.jobs.utils import get_cluster_job_queue, save_cluster_jobs
+from routes.node_pools.utils import is_ssh_cluster
 from utils.cluster_utils import (
     get_cluster_platform_info as get_cluster_platform_info_util,
 )
@@ -1053,6 +1054,26 @@ def down_cluster_with_skypilot(
             print(f"Failed to save jobs for cluster {cluster_name}: {str(e)}")
 
         request_id = sky.down(cluster_name=cluster_name, credentials=credentials)
+
+        # For SSH clusters, also clean up any lingering Kubernetes processes
+        if platform_info and platform_info.get("platform"):
+            platform = platform_info["platform"]
+            if platform != cluster_name and is_ssh_cluster(platform):
+                try:
+                    print(f"Cleaning up Kubernetes processes for SSH cluster: {platform}")
+                    # Kill any k3s or kubernetes processes that might be left running
+                    import subprocess
+                    try:
+                        # Kill k3s processes
+                        subprocess.run(["pkill", "-f", "k3s"], check=False, capture_output=True)
+                        # Kill any processes listening on common Kubernetes ports
+                        subprocess.run(["pkill", "-f", "kube-apiserver"], check=False, capture_output=True)
+                        subprocess.run(["pkill", "-f", "etcd"], check=False, capture_output=True)
+                        print("Cleaned up Kubernetes processes")
+                    except Exception as e:
+                        print(f"Warning: Failed to kill Kubernetes processes: {e}")
+                except Exception as e:
+                    print(f"Warning: Failed to clean up SSH infrastructure {platform}: {e}")
 
         # Store the request in the database if user info is provided
         if user_id and organization_id:
