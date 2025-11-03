@@ -164,7 +164,9 @@ const Jobs: React.FC<JobsProps> = ({ skypilotLoading, myClusters }) => {
             clusterWithJobs.jobsError = `Failed to fetch jobs: ${response.statusText}`;
           }
         } catch (err) {
-          clusterWithJobs.jobsError = "Failed to fetch jobs";
+          const errorMessage = err instanceof Error ? err.message : "Failed to fetch jobs";
+          clusterWithJobs.jobsError = errorMessage;
+          console.error(`Error fetching jobs for cluster ${cluster.cluster_name}:`, err);
         } finally {
           clusterWithJobs.jobsLoading = false;
         }
