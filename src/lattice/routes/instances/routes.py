@@ -191,8 +191,6 @@ async def launch_instance(
     experiment_id: Optional[str] = Form(None),
     job_name: Optional[str] = Form(None),
     tlab_job_id: Optional[str] = Form(None),
-    tlab_parent_job_id: Optional[str] = Form(None),
-    tlab_checkpoint_name: Optional[str] = Form(None),
     disabled_mandatory_mounts: Optional[bool] = Form(False),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
@@ -443,11 +441,8 @@ async def launch_instance(
         if tlab_job_id:
             hook_env_vars["_TFL_JOB_ID"] = tlab_job_id
         
-        # Set checkpoint-related environment variables for training resume
-        if tlab_parent_job_id:
-            hook_env_vars["_TFL_PARENT_JOB_ID"] = tlab_parent_job_id
-        if tlab_checkpoint_name:
-            hook_env_vars["_TFL_CHECKPOINT_NAME"] = tlab_checkpoint_name
+        # Note: Checkpoint resume info (parent_job_id, checkpoint_name) is now stored in job_data
+        # and accessed directly by the SDK via lab.get_checkpoint_to_resume()
 
         # Pre-calculate requested GPU count and preserve selected RunPod option for pricing
         # (RunPod mapping below may clear 'accelerators')
