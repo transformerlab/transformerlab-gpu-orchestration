@@ -29,7 +29,7 @@ const MachineSizeTemplates: React.FC = () => {
   const { addNotification } = useNotification();
   const { data, mutate, isLoading } = useSWR(
     buildApiUrl("admin/machine-size-templates"),
-    fetcher
+    fetcher,
   );
 
   const [name, setName] = React.useState("");
@@ -93,7 +93,7 @@ const MachineSizeTemplates: React.FC = () => {
     try {
       const res = await apiFetch(
         buildApiUrl(`admin/machine-size-templates/${id}`),
-        { method: "DELETE", credentials: "include" }
+        { method: "DELETE", credentials: "include" },
       );
       if (!res.ok) throw new Error("Delete failed");
       addNotification({ type: "success", message: "Template deleted" });
@@ -235,7 +235,7 @@ const MachineSizeTemplates: React.FC = () => {
                         <div key={key}>
                           <strong>{key}:</strong> {String(value)}
                         </div>
-                      )
+                      ),
                     )}
                   </td>
                   <td>

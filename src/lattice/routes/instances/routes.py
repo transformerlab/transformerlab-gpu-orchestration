@@ -193,6 +193,7 @@ async def launch_instance(
     tlab_job_id: Optional[str] = Form(None),
     tlab_parent_job_id: Optional[str] = Form(None),
     tlab_checkpoint_name: Optional[str] = Form(None),
+    disabled_mandatory_mounts: Optional[bool] = Form(False),
     yaml_file: Optional[UploadFile] = File(None),
     user: dict = Depends(get_user_or_api_key),
     db: Session = Depends(get_db),
@@ -249,6 +250,7 @@ async def launch_instance(
             "experiment_id": experiment_id,
             "job_name": job_name,
             "tlab_job_id": tlab_job_id,
+            "disabled_mandatory_mounts": disabled_mandatory_mounts,
         }
 
         # Override with YAML values for non-resource form parameters
@@ -294,6 +296,7 @@ async def launch_instance(
         experiment_id = final_config["experiment_id"]
         job_name = final_config["job_name"]
         tlab_job_id = final_config["tlab_job_id"]
+        disabled_mandatory_mounts = final_config["disabled_mandatory_mounts"] or False
 
         file_mounts = None
         python_filename = None
@@ -739,6 +742,7 @@ async def launch_instance(
             env_vars=hook_env_vars,
             job_name=job_name,
             tlab_job_id=tlab_job_id,
+            disabled_mandatory_mounts=disabled_mandatory_mounts,
         )
 
         # Record usage event for cluster launch
@@ -1104,6 +1108,295 @@ async def resolve_cluster_name(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to resolve cluster name: {str(e)}"
+        )
+
+
+@router.get("/{cluster_name}/basic-info")
+async def get_cluster_basic_info(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get basic cluster information (fast endpoint - no jobs or cost data).
+
+    This endpoint returns:
+    - Cluster status and basic information
+    - Cluster type
+    - Platform information
+    - Template information
+    - SSH node information (if applicable)
+
+    This is optimized for quick page loads by excluding slower operations like:
+    - Job queue fetching
+    - Cost report generation
+
+    Returns:
+        dict: Basic cluster information
+            - cluster: Basic cluster status and metadata
+            - cluster_type: Type information
+            - platform: Platform-specific information
+            - template: Template information
+            - ssh_node_info: SSH node information (only for SSH clusters)
+    """
+    try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        # Get cluster status information
+        cluster_records = get_skypilot_status([actual_cluster_name])
+        cluster_data = None
+
+        for record in cluster_records:
+            user_info = get_cluster_user_info(record["name"])
+
+            # Skip clusters without user info or not belonging to current user
+            if not user_info or not user_info.get("id"):
+                continue
+
+            if not (
+                user_info.get("id") == user["id"]
+                and user_info.get("organization_id") == user["organization_id"]
+            ):
+                continue
+
+            # Get display name for the response
+            display_name = get_display_name_from_actual(record["name"])
+            if not display_name:
+                display_name = record["name"]  # Fallback to actual name
+
+            cluster_data = {
+                "cluster_name": display_name,
+                "status": str(record["status"]),
+                "launched_at": record.get("launched_at"),
+                "last_use": record.get("last_use"),
+                "autostop": record.get("autostop"),
+                "to_down": record.get("to_down"),
+                "resources_str": record.get("resources_str_full")
+                or record.get("resources_str"),
+                "user_info": user_info,
+            }
+            break
+
+        if not cluster_data:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        # Get cluster type information
+        is_ssh = is_ssh_cluster(actual_cluster_name)
+        cluster_type = "ssh" if is_ssh else "cloud"
+
+        cluster_type_info = {
+            "cluster_name": cluster_name,
+            "cluster_type": cluster_type,
+            "is_ssh": is_ssh,
+        }
+
+        # Get platform information
+        platform_info = get_cluster_platform(actual_cluster_name)
+
+        # Get cluster state
+        state = get_cluster_state(actual_cluster_name)
+
+        # Get SSH node information if it's an SSH cluster
+        ssh_node_info = None
+        if is_ssh:
+            try:
+                # Get cached GPU resources from database instead of file
+                from routes.node_pools.utils import get_cached_gpu_resources
+
+                cached_gpu_resources = get_cached_gpu_resources(actual_cluster_name)
+                if cached_gpu_resources:
+                    ssh_node_info = {
+                        actual_cluster_name: {"gpu_resources": cached_gpu_resources}
+                    }
+            except Exception as e:
+                print(
+                    f"Warning: Failed to get SSH node info for cluster {cluster_name}: {e}"
+                )
+
+        return {
+            "cluster": cluster_data,
+            "cluster_type": cluster_type_info,
+            "platform": platform_info,
+            "state": state,
+            "ssh_node_info": ssh_node_info,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting cluster basic info: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster basic info: {str(e)}"
+        )
+
+
+@router.get("/{cluster_name}/jobs")
+async def get_cluster_jobs(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get jobs for a specific cluster.
+
+    Returns:
+        dict: Jobs information
+            - jobs: List of jobs associated with the cluster
+    """
+    try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        # Get jobs for this cluster
+        try:
+            # Fetch credentials for the cluster based on the platform
+            platform_info_jobs = get_cluster_platform_info_util(actual_cluster_name)
+            credentials = None
+            if platform_info_jobs and platform_info_jobs.get("platform"):
+                platform = platform_info_jobs["platform"]
+                if platform == "multi-cloud":
+                    # Determine the actual cloud used by SkyPilot
+                    actual_platform = determine_actual_cloud_from_skypilot_status(
+                        cluster_name
+                    )
+                    platform = actual_platform if actual_platform else platform
+                if platform == "azure":
+                    try:
+                        azure_config_dict = az_get_current_config(
+                            organization_id=user.get("organization_id")
+                        )
+                        credentials = {
+                            "azure": {
+                                "service_principal": {
+                                    "tenant_id": azure_config_dict["tenant_id"],
+                                    "client_id": azure_config_dict["client_id"],
+                                    "client_secret": azure_config_dict["client_secret"],
+                                    "subscription_id": azure_config_dict[
+                                        "subscription_id"
+                                    ],
+                                },
+                            }
+                        }
+                    except Exception as e:
+                        print(f"Failed to get Azure credentials: {e}")
+                        credentials = None
+                elif platform == "runpod":
+                    try:
+                        from routes.clouds.runpod.utils import rp_get_current_config
+
+                        rp_config = rp_get_current_config(
+                            organization_id=user.get("organization_id")
+                        )
+                        if rp_config and rp_config.get("api_key"):
+                            credentials = {
+                                "runpod": {
+                                    "api_key": rp_config.get("api_key"),
+                                }
+                            }
+                    except Exception as e:
+                        print(f"Failed to get RunPod credentials: {e}")
+                        credentials = None
+                else:
+                    credentials = None
+
+            job_records = get_cluster_job_queue(
+                actual_cluster_name, credentials=credentials
+            )
+            jobs = []
+            for record in job_records:
+                jobs.append(
+                    {
+                        "job_id": record["job_id"],
+                        "job_name": record["job_name"],
+                        "username": record["username"],
+                        "submitted_at": record["submitted_at"],
+                        "start_at": record.get("start_at"),
+                        "end_at": record.get("end_at"),
+                        "resources": record["resources"],
+                        "status": str(record["status"]),
+                        "log_path": record["log_path"],
+                    }
+                )
+        except Exception as e:
+            print(f"Warning: Failed to get jobs for cluster {cluster_name}: {e}")
+            jobs = []
+
+        return {"jobs": jobs}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting cluster jobs: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster jobs: {str(e)}"
+        )
+
+
+@router.get("/{cluster_name}/cost-info")
+async def get_cluster_cost_info(
+    cluster_name: str,
+    request: Request,
+    response: Response,
+    user: dict = Depends(get_user_or_api_key),
+):
+    """
+    Get cost information for a specific cluster.
+
+    Returns:
+        dict: Cost information
+            - cost_info: Cost and usage data for the cluster
+    """
+    try:
+        # Resolve display name to actual cluster name
+        actual_cluster_name = handle_cluster_name_param(
+            cluster_name, user["id"], user["organization_id"]
+        )
+
+        # Get cost information for this cluster
+        cost_info = None
+        try:
+            # Get the full cost report and find this cluster's cost data
+            report = generate_cost_report()
+            if report:
+                for cluster_cost_data in report:
+                    if cluster_cost_data.get("name") == actual_cluster_name:
+                        total_cost = cluster_cost_data.get("total_cost", 0)
+                        duration = cluster_cost_data.get("duration", 0)
+                        cost_per_hour = 0
+                        if duration and duration > 0:
+                            cost_per_hour = total_cost / (
+                                duration / 3600
+                            )  # Convert seconds to hours
+
+                        cost_info = {
+                            "total_cost": total_cost,
+                            "duration": duration,
+                            "cost_per_hour": cost_per_hour,
+                            "launched_at": cluster_cost_data.get("launched_at"),
+                            "status": cluster_cost_data.get("status"),
+                            "cloud": cluster_cost_data.get("cloud"),
+                            "region": cluster_cost_data.get("region"),
+                        }
+                        break
+        except Exception as e:
+            print(f"Warning: Failed to get cost info for cluster {cluster_name}: {e}")
+            # Continue without cost info if there's an error
+
+        return {"cost_info": cost_info}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting cluster cost info: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get cluster cost info: {str(e)}"
         )
 
 
@@ -1485,10 +1778,7 @@ async def stream_request_logs(
             raise HTTPException(status_code=404, detail="Request not found")
 
         # Check if user has access to this request
-        if (
-            request.user_id != user["id"]
-            or request.organization_id != user["organization_id"]
-        ):
+        if request.organization_id != user["organization_id"]:
             raise HTTPException(status_code=403, detail="Access denied")
 
         def generate_logs():

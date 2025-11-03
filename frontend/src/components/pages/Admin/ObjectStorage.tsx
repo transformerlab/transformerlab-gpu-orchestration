@@ -53,7 +53,7 @@ const ObjectStorage: React.FC = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [selectedBucket, setSelectedBucket] = useState<StorageBucket | null>(
-    null
+    null,
   );
   const [buckets, setBuckets] = useState<StorageBucket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,7 +125,7 @@ const ObjectStorage: React.FC = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(formData),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -152,7 +152,7 @@ const ObjectStorage: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -221,7 +221,7 @@ const ObjectStorage: React.FC = () => {
   // Handle form input changes
   const handleInputChange = (
     field: keyof CreateStorageBucketRequest,
-    value: any
+    value: any,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {

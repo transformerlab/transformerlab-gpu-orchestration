@@ -97,15 +97,15 @@ const OrgOverview: React.FC<OrgOverviewProps> = ({
     organizationId && clusterName
       ? buildApiUrl(
           `quota/organization/${organizationId}/users/cluster/${encodeURIComponent(
-            clusterName
-          )}`
+            clusterName,
+          )}`,
         )
       : null,
     fetcher,
     {
       refreshInterval: 30000, // Refresh every 30 seconds
       revalidateOnFocus: false,
-    }
+    },
   );
 
   const formatCurrency = (amount: number) => {

@@ -163,7 +163,7 @@ const Reports: React.FC = () => {
     } catch (err) {
       console.error("Failed to fetch real data:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch real data"
+        err instanceof Error ? err.message : "Failed to fetch real data",
       );
     } finally {
       setLoading(false);

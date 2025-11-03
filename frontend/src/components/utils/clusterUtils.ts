@@ -4,7 +4,7 @@ export const getStatusOrder = (
   status: string,
   type: string,
   nodeUser?: string,
-  currentUser?: string
+  currentUser?: string,
 ): number => {
   let sort1 = 0;
   let sort2 = 0;
@@ -59,13 +59,13 @@ export const experimentNames = [
 
 export function randomIp() {
   return `10.${Math.floor(Math.random() * 256)}.${Math.floor(
-    Math.random() * 256
+    Math.random() * 256,
   )}.${Math.floor(Math.random() * 256)}`;
 }
 
 export const generateRandomNodes = (
   count: number,
-  currentUser?: string
+  currentUser?: string,
 ): Node[] => {
   const users = [currentUser || "ali", "bob", "catherine"];
   const types: ("dedicated" | "on-demand")[] = ["dedicated", "on-demand"];
@@ -119,7 +119,7 @@ export const generateRandomNodes = (
 export const generateDedicatedNodes = (
   count: number,
   activeCount: number = 0,
-  currentUser?: string
+  currentUser?: string,
 ): Node[] => {
   return Array.from({ length: count }, (_, i) => {
     // Only the first 'activeCount' nodes should be active

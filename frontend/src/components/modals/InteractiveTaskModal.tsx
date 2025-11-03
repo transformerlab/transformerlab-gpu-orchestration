@@ -96,7 +96,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
 && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" \
 | sudo tee /etc/apt/sources.list.d/vscode.list \
 && sudo apt update && sudo apt install -y code \
-&& code tunnel --disable-telemetry`
+&& code tunnel --disable-telemetry`,
         );
         formData.append("job_name", `vscode-${clusterName}`);
         formData.append("job_type", "vscode");
@@ -107,7 +107,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
             method: "POST",
             credentials: "include",
             body: formData,
-          }
+          },
         );
 
         if (response.ok) {
@@ -153,7 +153,7 @@ echo "c.NotebookApp.open_browser = False" >> ~/.jupyter/jupyter_notebook_config.
 echo "c.NotebookApp.password = ''" >> ~/.jupyter/jupyter_notebook_config.py
 echo "c.NotebookApp.token = ''" >> ~/.jupyter/jupyter_notebook_config.py
 echo "Jupyter notebook will be available at http://localhost:${jupyterPort}"
-jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser`
+jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --allow-root --no-browser`,
         );
         formData.append("job_name", `jupyter-${clusterName}`);
         formData.append("job_type", "jupyter");
@@ -165,7 +165,7 @@ jupyter notebook --port ${jupyterPort} --ip=0.0.0.0 --NotebookApp.token='' --Not
             method: "POST",
             credentials: "include",
             body: formData,
-          }
+          },
         );
 
         if (response.ok) {

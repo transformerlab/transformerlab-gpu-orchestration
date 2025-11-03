@@ -6,7 +6,7 @@ interface FakeDataContextType {
 }
 
 const FakeDataContext = createContext<FakeDataContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export const useFakeData = () => {

@@ -204,7 +204,7 @@ const LaunchHooksManager: React.FC = () => {
           method: "PUT",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {
@@ -234,7 +234,7 @@ const LaunchHooksManager: React.FC = () => {
           method: "PUT",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {
@@ -253,7 +253,7 @@ const LaunchHooksManager: React.FC = () => {
   const handleDeleteHook = async (hookId: string) => {
     if (
       !confirm(
-        "Are you sure you want to delete this launch hook? This will also delete all associated files."
+        "Are you sure you want to delete this launch hook? This will also delete all associated files.",
       )
     ) {
       return;
@@ -266,7 +266,7 @@ const LaunchHooksManager: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -299,7 +299,7 @@ const LaunchHooksManager: React.FC = () => {
           method: "POST",
           credentials: "include",
           body: formData,
-        }
+        },
       );
 
       if (response.ok) {
@@ -329,7 +329,7 @@ const LaunchHooksManager: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -348,14 +348,14 @@ const LaunchHooksManager: React.FC = () => {
   const handleDownloadFile = async (
     hookId: string,
     fileId: string,
-    filename: string
+    filename: string,
   ) => {
     try {
       const response = await apiFetch(
         buildApiUrl(`admin/launch-hooks/${hookId}/files/${fileId}/download`),
         {
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -540,7 +540,7 @@ const LaunchHooksManager: React.FC = () => {
                             >
                               {teamName}
                             </Chip>
-                          )
+                          ),
                         )}
                       </Box>
                     </Box>
@@ -602,7 +602,7 @@ const LaunchHooksManager: React.FC = () => {
                               const visibleCount = raw.length > 4 ? 4 : 1;
                               const visible = raw.slice(0, visibleCount);
                               const masked = "x".repeat(
-                                Math.max(0, raw.length - visibleCount)
+                                Math.max(0, raw.length - visibleCount),
                               );
                               return `${k}=${visible}${masked}`;
                             })
@@ -696,7 +696,7 @@ const LaunchHooksManager: React.FC = () => {
                                     handleDownloadFile(
                                       hook.id,
                                       file.id,
-                                      file.original_filename
+                                      file.original_filename,
                                     )
                                   }
                                 >
@@ -792,7 +792,7 @@ const LaunchHooksManager: React.FC = () => {
                         onClick={() => {
                           const next = hookEnvVars.filter((_, i) => i !== idx);
                           setHookEnvVars(
-                            next.length ? next : [{ key: "", value: "" }]
+                            next.length ? next : [{ key: "", value: "" }],
                           );
                         }}
                       >
@@ -825,7 +825,7 @@ const LaunchHooksManager: React.FC = () => {
                         onClick={() => {
                           if (selectedTeamIds.includes(team.id)) {
                             setSelectedTeamIds(
-                              selectedTeamIds.filter((id) => id !== team.id)
+                              selectedTeamIds.filter((id) => id !== team.id),
                             );
                           } else {
                             setSelectedTeamIds([...selectedTeamIds, team.id]);
@@ -926,7 +926,7 @@ const LaunchHooksManager: React.FC = () => {
                         onClick={() => {
                           const next = hookEnvVars.filter((_, i) => i !== idx);
                           setHookEnvVars(
-                            next.length ? next : [{ key: "", value: "" }]
+                            next.length ? next : [{ key: "", value: "" }],
                           );
                         }}
                       >
@@ -959,7 +959,7 @@ const LaunchHooksManager: React.FC = () => {
                         onClick={() => {
                           if (selectedTeamIds.includes(team.id)) {
                             setSelectedTeamIds(
-                              selectedTeamIds.filter((id) => id !== team.id)
+                              selectedTeamIds.filter((id) => id !== team.id),
                             );
                           } else {
                             setSelectedTeamIds([...selectedTeamIds, team.id]);

@@ -124,7 +124,7 @@ const AddStorageBucketModal: React.FC<AddStorageBucketModalProps> = ({
   // Handle form input changes
   const handleInputChange = (
     field: keyof CreateStorageBucketRequest,
-    value: any
+    value: any,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {

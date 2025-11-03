@@ -25,7 +25,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../NotificationSystem";
 import CostCreditsDisplay from "../widgets/CostCreditsDisplay";
 import YamlConfigurationSection from "./YamlConfigurationSection";
-import { appendSemicolons } from "../../utils/commandUtils";
 
 interface RunPodConfig {
   api_key: string;
@@ -90,7 +89,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const { user } = useAuth();
   const [clusterName, setClusterName] = useState("");
   const [command, setCommand] = useState(
-    'echo "Welcome to Transformer Lab GPU Orchestration"'
+    'echo "Welcome to Transformer Lab GPU Orchestration"',
   );
   const [setup, setSetup] = useState("");
   const [selectedGpuType, setSelectedGpuType] = useState("");
@@ -103,7 +102,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const selectedTemplate = React.useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
-    [templates, selectedTemplateId]
+    [templates, selectedTemplateId],
   );
   const tpl = selectedTemplate?.resources_json || {};
 
@@ -116,7 +115,6 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   const [isLoadingGpuTypes, setIsLoadingGpuTypes] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
-  const [autoAppendSemicolons, setAutoAppendSemicolons] = useState(false);
 
   // Docker image state
   const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
@@ -132,7 +130,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         try {
           const resp = await apiFetch(
             buildApiUrl("instances/templates?cloud_type=runpod"),
-            { credentials: "include" }
+            { credentials: "include" },
           );
           if (resp.ok) {
             const data = await resp.json();
@@ -186,7 +184,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
             price: option.price,
             full_string: option.name, // Use the name as the full string
             type: option.type,
-          })
+          }),
         );
         setAvailableGpuTypes(gpuTypes);
       }
@@ -200,7 +198,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
   useEffect(() => {
     // Recompute estimated cost when selection changes
     const opt = availableGpuTypes.find(
-      (o) => o.full_string === selectedGpuFullString
+      (o) => o.full_string === selectedGpuFullString,
     );
     if (opt && opt.price) {
       const priceNum = parseFloat(String(opt.price).replace(/[^0-9.]/g, ""));
@@ -220,7 +218,7 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         buildApiUrl("container-registries/images/available"),
         {
           credentials: "include",
-        }
+        },
       );
       if (!response.ok) {
         throw new Error("Failed to fetch docker images");
@@ -290,23 +288,19 @@ const RunPodClusterLauncher: React.FC<RunPodClusterLauncherProps> = ({
         });
         formData.append("yaml_file", yamlBlob, "config.yaml");
         formData.append("cloud", "runpod");
+        formData.append("disabled_mandatory_mounts", "true");
       } else {
         // Form mode: use regular form data
         formData.append("cluster_name", clusterName);
-        const finalCommand = autoAppendSemicolons
-          ? appendSemicolons(command)
-          : command;
-        const finalSetup = autoAppendSemicolons
-          ? appendSemicolons(setup)
-          : setup;
-        formData.append("command", finalCommand);
-        if (finalSetup) formData.append("setup", finalSetup);
+        formData.append("command", command);
+        if (setup) formData.append("setup", setup);
         formData.append("cloud", "runpod");
         if (selectedGpuFullString)
           formData.append("accelerators", selectedGpuFullString);
         if (diskSpace) formData.append("disk_space", diskSpace);
         formData.append("use_spot", "false");
         formData.append("launch_mode", "custom");
+        formData.append("disabled_mandatory_mounts", "true");
 
         if (selectedDockerImageId)
           formData.append("docker_image_id", selectedDockerImageId);
@@ -400,16 +394,8 @@ disk_space: 100`}
                 minRows={2}
               />
               <Typography level="body-xs" sx={{ mt: 0.5 }}>
-                Use <code>;</code> at the end of each line for separate
-                commands, or enable auto-append.
+                Use <code>;</code> at the end of each line for separate commands
               </Typography>
-            </FormControl>
-            <FormControl>
-              <Checkbox
-                label="Auto-append ; to each non-empty line"
-                checked={autoAppendSemicolons}
-                onChange={(e) => setAutoAppendSemicolons(e.target.checked)}
-              />
             </FormControl>
 
             {/* Docker Image (moved out of Advanced) */}
@@ -483,8 +469,8 @@ disk_space: 100`}
                 {selectedTemplateId
                   ? "Advanced Options (Template Selected)"
                   : showAdvanced
-                  ? "Hide Advanced Options"
-                  : "Show Advanced Options"}
+                    ? "Hide Advanced Options"
+                    : "Show Advanced Options"}
               </Button>
             </Box>
 
@@ -511,8 +497,8 @@ disk_space: 100`}
                       isLoadingGpuTypes
                         ? "Loading available GPU types..."
                         : availableGpuTypes.length === 0
-                        ? "No GPU types available"
-                        : "Select GPU type"
+                          ? "No GPU types available"
+                          : "Select GPU type"
                     }
                     disabled={
                       isLoadingGpuTypes ||
@@ -550,7 +536,7 @@ disk_space: 100`}
                         // Both config and API now use "GPU_NAME:COUNT" format with integer counts
                         const isAllowed =
                           runpodConfig.allowed_gpu_types?.includes(
-                            gpu.full_string
+                            gpu.full_string,
                           );
                         return isAllowed;
                       });
@@ -571,8 +557,8 @@ disk_space: 100`}
                       availableGpuTypes.length > 0 &&
                       availableGpuTypes.filter((gpu) =>
                         runpodConfig.allowed_gpu_types?.includes(
-                          gpu.full_string
-                        )
+                          gpu.full_string,
+                        ),
                       ).length === 0 && (
                         <span style={{ color: "orange" }}>
                           {" "}
@@ -624,12 +610,12 @@ disk_space: 100`}
                     isLoadingGpuTypes
                       ? "neutral"
                       : availableGpuTypes.filter((gpu) =>
-                          runpodConfig.allowed_gpu_types?.includes(
-                            gpu.full_string
-                          )
-                        ).length > 0
-                      ? "primary"
-                      : "warning"
+                            runpodConfig.allowed_gpu_types?.includes(
+                              gpu.full_string,
+                            ),
+                          ).length > 0
+                        ? "primary"
+                        : "warning"
                   }
                 >
                   {isLoadingGpuTypes ? (
@@ -643,8 +629,8 @@ disk_space: 100`}
                     `${
                       availableGpuTypes.filter((gpu) =>
                         runpodConfig.allowed_gpu_types?.includes(
-                          gpu.full_string
-                        )
+                          gpu.full_string,
+                        ),
                       ).length || 0
                     } GPU types allowed`
                   )}
@@ -652,7 +638,7 @@ disk_space: 100`}
               </Stack>
               {!isLoadingGpuTypes &&
                 availableGpuTypes.filter((gpu) =>
-                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string),
                 ).length === 0 && (
                   <Typography
                     level="body-xs"
@@ -700,7 +686,7 @@ disk_space: 100`}
               (!useYaml && isLoadingGpuTypes) ||
               (!useYaml &&
                 availableGpuTypes.filter((gpu) =>
-                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+                  runpodConfig.allowed_gpu_types?.includes(gpu.full_string),
                 ).length === 0) ||
               (availableCredits !== null && estimatedCost > availableCredits)
             }
@@ -712,7 +698,7 @@ disk_space: 100`}
 
         {!isLoadingGpuTypes &&
           availableGpuTypes.filter((gpu) =>
-            runpodConfig.allowed_gpu_types?.includes(gpu.full_string)
+            runpodConfig.allowed_gpu_types?.includes(gpu.full_string),
           ).length === 0 && (
             <Alert color="warning" sx={{ mt: 2 }}>
               No GPU types are allowed in the current configuration. Please
