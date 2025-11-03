@@ -207,6 +207,7 @@ def launch_cluster_with_skypilot(
     env_vars: Optional[dict] = None,
     job_name: Optional[str] = None,
     tlab_job_id: Optional[str] = None,
+    disabled_mandatory_mounts: Optional[bool] = False,
 ):
     try:
         storage_mounts = {}
@@ -369,7 +370,7 @@ def launch_cluster_with_skypilot(
                 task.set_file_mounts({"~/.aws/credentials": selective_credentials_path})
 
         # Process storage buckets if provided
-        if storage_bucket_ids:
+        if storage_bucket_ids and not (cloud and cloud.lower() == "runpod"):
             from config import get_db
             from db.db_models import StorageBucket
 
@@ -423,10 +424,14 @@ def launch_cluster_with_skypilot(
 
                     storage_mounts[bucket.remote_path] = storage_obj
 
-                if os.getenv("TRANSFORMERLAB_BUCKET_NAME") and os.getenv(
-                    "TRANSFORMERLAB_BUCKET_SOURCE"
-                ):
-                    # Add mandatory transformerlab bucket
+                # Add mandatory transformerlab bucket (skip for runpod if disabled_mandatory_mounts is True)
+                should_add_mandatory_bucket = (
+                    os.getenv("TRANSFORMERLAB_BUCKET_NAME")
+                    and os.getenv("TRANSFORMERLAB_BUCKET_SOURCE")
+                    and not disabled_mandatory_mounts
+                )
+
+                if should_add_mandatory_bucket:
                     transformerlab_bucket = sky.Storage(
                         name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
                         mode=sky.StorageMode.MOUNT,
@@ -442,10 +447,14 @@ def launch_cluster_with_skypilot(
             finally:
                 db.close()
         else:
-            if os.getenv("TRANSFORMERLAB_BUCKET_NAME") and os.getenv(
-                "TRANSFORMERLAB_BUCKET_SOURCE"
-            ):
-                # Add mandatory transformerlab bucket
+            # Add mandatory transformerlab bucket (skip for runpod if disabled_mandatory_mounts is True)
+            should_add_mandatory_bucket = (
+                os.getenv("TRANSFORMERLAB_BUCKET_NAME")
+                and os.getenv("TRANSFORMERLAB_BUCKET_SOURCE")
+                and not disabled_mandatory_mounts
+            )
+
+            if should_add_mandatory_bucket:
                 transformerlab_bucket = sky.Storage(
                     name=os.getenv("TRANSFORMERLAB_BUCKET_NAME"),
                     mode=sky.StorageMode.MOUNT,
@@ -698,6 +707,7 @@ async def launch_cluster_with_skypilot_isolated(
     env_vars: Optional[dict] = None,
     job_name: Optional[str] = None,
     tlab_job_id: Optional[str] = None,
+    disabled_mandatory_mounts: Optional[bool] = False,
 ):
     """
     Launch cluster in a separate process to avoid thread-local storage leakage.
@@ -731,6 +741,7 @@ async def launch_cluster_with_skypilot_isolated(
             "env_vars": env_vars,
             "job_name": job_name,
             "tlab_job_id": tlab_job_id,
+            "disabled_mandatory_mounts": disabled_mandatory_mounts,
         }
 
         # Create a temporary file to pass parameters

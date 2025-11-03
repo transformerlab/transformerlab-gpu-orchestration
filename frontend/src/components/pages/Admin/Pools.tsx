@@ -71,10 +71,10 @@ const Pools: React.FC = () => {
 
   // Check if Azure, RunPod, AWS, or GCP configurations already exist
   const hasAzureConfig = nodePools.some(
-    (pool: Pool) => pool.provider === "azure"
+    (pool: Pool) => pool.provider === "azure",
   );
   const hasRunPodConfig = nodePools.some(
-    (pool: Pool) => pool.provider === "runpod"
+    (pool: Pool) => pool.provider === "runpod",
   );
   const hasAWSConfig = nodePools.some((pool: Pool) => pool.provider === "aws");
   const hasGcpConfig = nodePools.some((pool: Pool) => pool.provider === "gcp");
@@ -84,39 +84,39 @@ const Pools: React.FC = () => {
     // Open the appropriate configuration page in a new tab based on platform
     const baseUrl = window.location.origin;
     const poolName = encodeURIComponent(
-      pool.name || pool.provider || "unknown"
+      pool.name || pool.provider || "unknown",
     );
     const configKey = pool.config?.config_key;
 
     switch (pool.provider) {
       case "azure":
         navigate(
-          `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`
+          `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
         );
         break;
       case "runpod":
         navigate(
-          `/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`
+          `/dashboard/admin/runpod-config?mode=configure&poolName=${poolName}`,
         );
         break;
       case "aws":
         navigate(
-          `/dashboard/admin/aws-config?mode=configure&poolName=${poolName}`
+          `/dashboard/admin/aws-config?mode=configure&poolName=${poolName}`,
         );
         break;
       case "gcp":
         navigate(
-          `/dashboard/admin/gcp-config?mode=configure&poolName=${poolName}`
+          `/dashboard/admin/gcp-config?mode=configure&poolName=${poolName}`,
         );
         break;
       case "direct":
         navigate(
-          `/dashboard/admin/ssh-config?mode=configure&poolName=${poolName}`
+          `/dashboard/admin/ssh-config?mode=configure&poolName=${poolName}`,
         );
         break;
       default:
         navigate(
-          `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`
+          `/dashboard/admin/azure-config?mode=configure&poolName=${poolName}`,
         );
     }
   };
@@ -127,10 +127,10 @@ const Pools: React.FC = () => {
         platform === "azure"
           ? buildApiUrl(`clouds/azure/config/${configKey}/set-default`)
           : platform === "runpod"
-          ? buildApiUrl(`clouds/runpod/config/${configKey}/set-default`)
-          : platform === "aws"
-          ? buildApiUrl(`clouds/aws/config/${configKey}/set-default`)
-          : buildApiUrl(`clouds/gcp/config/${configKey}/set-default`);
+            ? buildApiUrl(`clouds/runpod/config/${configKey}/set-default`)
+            : platform === "aws"
+              ? buildApiUrl(`clouds/aws/config/${configKey}/set-default`)
+              : buildApiUrl(`clouds/gcp/config/${configKey}/set-default`);
 
       const response = await apiFetch(endpoint, {
         method: "POST",
@@ -144,10 +144,10 @@ const Pools: React.FC = () => {
             platform === "azure"
               ? "Azure"
               : platform === "runpod"
-              ? "RunPod"
-              : platform === "aws"
-              ? "AWS"
-              : "GCP"
+                ? "RunPod"
+                : platform === "aws"
+                  ? "AWS"
+                  : "GCP"
           } config set as default successfully`,
         });
         // Refresh the data using SWR mutate
@@ -171,7 +171,7 @@ const Pools: React.FC = () => {
   const handleDeleteConfig = async (platform: string, configKey: string) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete this ${platform} configuration?`
+        `Are you sure you want to delete this ${platform} configuration?`,
       )
     ) {
       return;
@@ -182,10 +182,10 @@ const Pools: React.FC = () => {
         platform === "azure"
           ? buildApiUrl(`clouds/azure/config/${configKey}`)
           : platform === "runpod"
-          ? buildApiUrl(`clouds/runpod/config/${configKey}`)
-          : platform === "aws"
-          ? buildApiUrl(`clouds/aws/config/${configKey}`)
-          : buildApiUrl(`clouds/gcp/config/${configKey}`);
+            ? buildApiUrl(`clouds/runpod/config/${configKey}`)
+            : platform === "aws"
+              ? buildApiUrl(`clouds/aws/config/${configKey}`)
+              : buildApiUrl(`clouds/gcp/config/${configKey}`);
 
       const response = await apiFetch(endpoint, {
         method: "DELETE",
@@ -199,10 +199,10 @@ const Pools: React.FC = () => {
             platform === "azure"
               ? "Azure"
               : platform === "runpod"
-              ? "RunPod"
-              : platform === "aws"
-              ? "AWS"
-              : "GCP"
+                ? "RunPod"
+                : platform === "aws"
+                  ? "AWS"
+                  : "GCP"
           } configuration deleted successfully`,
         });
         // Refresh the data using SWR mutate
@@ -238,7 +238,7 @@ const Pools: React.FC = () => {
         {
           method: "DELETE",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -363,10 +363,10 @@ const Pools: React.FC = () => {
                             (team || "") === "Admin"
                               ? "success"
                               : (team || "") === "Research Team"
-                              ? "primary"
-                              : (team || "") === "Search ML Team"
-                              ? "warning"
-                              : "success"
+                                ? "primary"
+                                : (team || "") === "Search ML Team"
+                                  ? "warning"
+                                  : "success"
                           }
                         >
                           {team || "Unknown"}
@@ -411,7 +411,7 @@ const Pools: React.FC = () => {
                           onClick={() =>
                             handleDeleteConfig(
                               pool.provider!,
-                              pool.config!.config_key!
+                              pool.config!.config_key!,
                             )
                           }
                         >
@@ -533,7 +533,7 @@ const Pools: React.FC = () => {
                   if (hasAzureConfig) return;
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/azure-config?mode=add&poolName=new-azure-pool`
+                    `/dashboard/admin/azure-config?mode=add&poolName=new-azure-pool`,
                   );
                 }}
               >
@@ -551,7 +551,7 @@ const Pools: React.FC = () => {
                   if (hasRunPodConfig) return;
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/runpod-config?mode=add&poolName=new-runpod-pool`
+                    `/dashboard/admin/runpod-config?mode=add&poolName=new-runpod-pool`,
                   );
                 }}
               >
@@ -569,7 +569,7 @@ const Pools: React.FC = () => {
                   if (hasAWSConfig) return;
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/aws-config?mode=add&poolName=new-aws-pool`
+                    `/dashboard/admin/aws-config?mode=add&poolName=new-aws-pool`,
                   );
                 }}
               >
@@ -587,7 +587,7 @@ const Pools: React.FC = () => {
                   if (hasGcpConfig) return;
                   setOpenAdd(false);
                   navigate(
-                    `/dashboard/admin/gcp-config?mode=add&poolName=new-gcp-pool`
+                    `/dashboard/admin/gcp-config?mode=add&poolName=new-gcp-pool`,
                   );
                 }}
               >

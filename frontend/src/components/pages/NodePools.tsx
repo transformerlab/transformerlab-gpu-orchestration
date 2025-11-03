@@ -169,7 +169,7 @@ const Nodes: React.FC = () => {
   useEffect(() => {
     // Extract RunPod configuration from node_pools
     const runpodPool = nodePools.find(
-      (pool: any) => pool.provider === "runpod"
+      (pool: any) => pool.provider === "runpod",
     );
     if (runpodPool && runpodPool.config) {
       setRunpodConfig({
@@ -249,7 +249,7 @@ const Nodes: React.FC = () => {
         const hasActiveCluster = activeClusters.some(
           (cluster: any) =>
             cluster.status === "ClusterStatus.UP" ||
-            cluster.status === "ClusterStatus.INIT"
+            cluster.status === "ClusterStatus.INIT",
         );
 
         // Convert the pool data to Cluster format
@@ -393,7 +393,7 @@ const Nodes: React.FC = () => {
           (() => {
             // Find RunPod pool from node pools
             const runpodPool = nodePools.find(
-              (pool: any) => pool.provider === "runpod"
+              (pool: any) => pool.provider === "runpod",
             );
 
             if (!runpodPool) return null;
@@ -406,7 +406,7 @@ const Nodes: React.FC = () => {
                   nodes: generateDedicatedNodes(
                     runpodPool.max_instances,
                     runpodPool.current_instances,
-                    currentUserEmail
+                    currentUserEmail,
                   ),
                 }}
                 provider={runpodPool?.provider}
@@ -429,7 +429,7 @@ const Nodes: React.FC = () => {
           (() => {
             // Find Azure pool from node pools
             const azurePool = nodePools.find(
-              (pool: any) => pool.provider === "azure"
+              (pool: any) => pool.provider === "azure",
             );
 
             if (!azurePool) return null;
@@ -442,7 +442,7 @@ const Nodes: React.FC = () => {
                   nodes: generateDedicatedNodes(
                     azurePool.max_instances,
                     azurePool.current_instances,
-                    currentUserEmail
+                    currentUserEmail,
                   ),
                 }}
                 provider={azurePool?.provider}
@@ -461,7 +461,7 @@ const Nodes: React.FC = () => {
           (() => {
             // Find GCP pool from node pools
             const gcpPool = nodePools.find(
-              (pool: any) => pool.provider === "gcp"
+              (pool: any) => pool.provider === "gcp",
             );
 
             if (!gcpPool) return null;
@@ -474,7 +474,7 @@ const Nodes: React.FC = () => {
                   nodes: generateDedicatedNodes(
                     gcpPool.max_instances,
                     gcpPool.current_instances,
-                    currentUserEmail
+                    currentUserEmail,
                   ),
                 }}
                 provider={gcpPool?.provider}

@@ -81,10 +81,10 @@ const NodeSquare: React.FC<{ node: Node }> = ({ node }) => (
 
 const ClusterCard: React.FC<{ cluster: Cluster }> = ({ cluster }) => {
   const healthyCount = cluster.nodes.filter(
-    (n) => n.status === "healthy"
+    (n) => n.status === "healthy",
   ).length;
   const warningCount = cluster.nodes.filter(
-    (n) => n.status === "warning"
+    (n) => n.status === "warning",
   ).length;
   const errorCount = cluster.nodes.filter((n) => n.status === "error").length;
 
@@ -146,13 +146,13 @@ const JobsPage: React.FC = () => {
   const { data: skypilotData, isLoading: skypilotLoading } = useSWR(
     buildApiUrl("instances/status"),
     skypilotFetcher,
-    { refreshInterval: 2000 }
+    { refreshInterval: 2000 },
   );
   const myClusters = (skypilotData?.clusters || []).filter(
     (c: Cluster) =>
       c.status &&
       (c.status.toLowerCase().includes("init") ||
-        c.status.toLowerCase().includes("up"))
+        c.status.toLowerCase().includes("up")),
   );
 
   const handleJobLaunched = () => {

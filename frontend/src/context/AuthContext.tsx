@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const handleAuthError = () => {
       console.log(
-        "Event Listener: Auth error from fetch, clearing user session."
+        "Event Listener: Auth error from fetch, clearing user session.",
       );
       setUser(null);
     };
@@ -70,11 +70,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       const currentOrg = current_organization_id
         ? organizations.find(
-            (org: Organization) => org.id === current_organization_id
+            (org: Organization) => org.id === current_organization_id,
           )
         : organizations.length > 0
-        ? organizations[0]
-        : null;
+          ? organizations[0]
+          : null;
 
       return {
         organization_id: currentOrg?.id || current_organization_id,

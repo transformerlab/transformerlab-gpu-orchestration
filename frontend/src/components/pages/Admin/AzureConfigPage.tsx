@@ -119,7 +119,7 @@ const AzureConfigPage: React.FC = () => {
       let endpoint = "clouds/azure/config";
       if (configKey) {
         endpoint = `clouds/azure/credentials?config_key=${encodeURIComponent(
-          configKey
+          configKey,
         )}`;
       }
 
@@ -263,7 +263,7 @@ const AzureConfigPage: React.FC = () => {
               display_name: type,
               category,
             };
-          }
+          },
         );
         setAvailableInstanceTypes(instanceTypes);
       } else {
@@ -693,7 +693,7 @@ const AzureConfigPage: React.FC = () => {
                     `${option.name} (${option.category})`
                   }
                   value={availableInstanceTypes.filter((type) =>
-                    config.allowed_instance_types.includes(type.name)
+                    config.allowed_instance_types.includes(type.name),
                   )}
                   onChange={(_, newValue) => {
                     setConfig((prev) => ({
@@ -734,7 +734,7 @@ const AzureConfigPage: React.FC = () => {
                     setConfig((prev) => ({
                       ...prev,
                       allowed_instance_types: availableInstanceTypes.map(
-                        (type) => type.name
+                        (type) => type.name,
                       ),
                     }));
                   }}
@@ -910,7 +910,7 @@ const AzureConfigPage: React.FC = () => {
                 options={availableTeams}
                 getOptionLabel={(opt) => opt.name}
                 value={availableTeams.filter((t) =>
-                  allowedTeamIds.includes(t.id)
+                  allowedTeamIds.includes(t.id),
                 )}
                 onChange={(_, newValue) => {
                   setAllowedTeamIds(newValue.map((t) => t.id));

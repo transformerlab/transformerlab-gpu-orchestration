@@ -82,7 +82,7 @@ const MyQuota: React.FC = () => {
         buildApiUrl(`quota/organization/${organizationId}/usage`),
         {
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -93,7 +93,7 @@ const MyQuota: React.FC = () => {
       setQuotaData(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to fetch quota data"
+        err instanceof Error ? err.message : "Failed to fetch quota data",
       );
     } finally {
       if (showLoading) {
@@ -113,12 +113,12 @@ const MyQuota: React.FC = () => {
         {
           method: "POST",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
         throw new Error(
-          `Failed to sync from cost report: ${response.statusText}`
+          `Failed to sync from cost report: ${response.statusText}`,
         );
       }
 
@@ -127,7 +127,7 @@ const MyQuota: React.FC = () => {
       setLastSyncTime(new Date());
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to sync from cost report"
+        err instanceof Error ? err.message : "Failed to sync from cost report",
       );
     } finally {
       if (showLoading) {
