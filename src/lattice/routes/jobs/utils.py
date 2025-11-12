@@ -187,7 +187,11 @@ def submit_job_to_existing_cluster(
         # Only do sky.launch for file_mounts otherwise skypilot wont honour it
         if file_mounts is not None:
             request_id = sky.launch(
-                task, cluster_name=cluster_name, fast=True, no_setup=True
+                task,
+                cluster_name=cluster_name,
+                fast=True,
+                no_setup=True,
+                retry_until_up=True,
             )
         else:
             request_id = sky.exec(task, cluster_name=cluster_name)

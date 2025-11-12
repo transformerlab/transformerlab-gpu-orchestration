@@ -640,6 +640,7 @@ def launch_cluster_with_skypilot(
             cluster_name=cluster_name,
             idle_minutes_to_autostop=idle_minutes_to_autostop,
             credentials=credentials,
+            retry_until_up=True,
         )
         print(f"REQUEST ID: {request_id}")
 
