@@ -133,6 +133,8 @@ def submit_job_to_existing_cluster(
     zone: Optional[str] = None,
     job_name: Optional[str] = None,
     num_nodes: Optional[int] = None,
+    env_vars: Optional[dict] = None,
+    storage_mounts: Optional[dict] = None,
 ):
     try:
         # Create job name with metadata if it's a special job type
@@ -148,14 +150,24 @@ def submit_job_to_existing_cluster(
         except Exception:
             effective_num_nodes = 1
 
+        # Prepare environment variables
+        envs = None
+        if env_vars and isinstance(env_vars, dict):
+            envs = env_vars.copy()
+
         task = sky.Task(
             name=final_job_name,
             run=command,
             setup=setup,
             num_nodes=effective_num_nodes,
+            envs=envs,
         )
         if file_mounts:
             task.set_file_mounts(file_mounts)
+        
+        # Set storage mounts if provided
+        if storage_mounts:
+            task.set_storage_mounts(storage_mounts)
 
         resources_kwargs = {}
         if cpus:
