@@ -22,27 +22,9 @@ try:
     # the default API server URL, not our custom one
     SKYPILOT_AVAILABLE = True
 except ImportError as e:
-    sky = None
-    sky_resources = None
-    dag_utils = None
-    payloads = None
-    backend_utils = None
-    sky_common = None
-    server_common = None
-    SKYPILOT_AVAILABLE = False
-    SKYPILOT_IMPORT_ERROR = str(e)
-    print(f"SkyPilot import error: {e}")
+    raise ImportError(f"SkyPilot SDK is required. Install with: pip install skypilot")
 except Exception as e:
-    # Catch other import errors (e.g., missing dependencies)
-    sky = None
-    sky_resources = None
-    dag_utils = None
-    payloads = None
-    backend_utils = None
-    sky_common = None
-    server_common = None
-    SKYPILOT_AVAILABLE = False
-    SKYPILOT_IMPORT_ERROR = str(e)
+    raise ImportError(f"SkyPilot SDK is required. Install with: pip install skypilot")
 
 from .base import Provider
 from .models import (
