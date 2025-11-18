@@ -39,10 +39,10 @@ def example_skypilot():
     # result = provider.launch_cluster("my-cluster", cluster_config)
     # print(f"   Result: {result}\n")
 
-    # Get cluster status
-    print("2. Getting cluster status...")
-    status = provider.get_cluster_status("my-cluster")
-    print(f"   Status: {status.state}, Message: {status.status_message}\n")
+    # # Get cluster status
+    # print("2. Getting cluster status...")
+    # status = provider.get_cluster_status("my-cluster")
+    # print(f"   Status: {status.state}, Message: {status.status_message}\n")
 
     # # Get cluster resources
     # print("3. Getting cluster resources...")
@@ -59,11 +59,11 @@ def example_skypilot():
     # job_result = provider.submit_job("my-cluster", job_config)
     # print(f"   Job ID: {job_result.get('job_id')}\n")
 
-    # # List jobs
-    # print("5. Listing jobs...")
-    # jobs = provider.list_jobs("my-cluster")
-    # for job in jobs:
-    #     print(f"   Job {job.job_id}: {job.state} - {job.job_name}")
+    # List jobs
+    print("5. Listing jobs...")
+    jobs = provider.list_jobs("my-cluster")
+    for job in jobs:
+        print(f"   Job {job.job_id}: {job.state} - {job.job_name}")
 
     # # Get job logs
     # if jobs:

@@ -16,6 +16,9 @@ try:
     from sky.backends import backend_utils
     from sky.server import common as server_common
     from sky.utils import common as sky_common
+    # We'll implement get() ourselves since we need to use our custom server_url
+    # The SDK's get() uses server_common.make_authenticated_request which uses
+    # the default API server URL, not our custom one
     SKYPILOT_AVAILABLE = True
 except ImportError as e:
     sky = None
@@ -23,6 +26,7 @@ except ImportError as e:
     dag_utils = None
     payloads = None
     backend_utils = None
+    sky_common = None
     server_common = None
     SKYPILOT_AVAILABLE = False
     SKYPILOT_IMPORT_ERROR = str(e)
@@ -136,6 +140,112 @@ class SkyPilotProvider(Provider):
         )
         response.raise_for_status()
         return response
+    
+    def _get_request_result(self, request_id: str):
+        """
+        Get the result of a request by its request ID.
+        This implements the same logic as sky.client.common.get() but uses our custom server_url.
+        
+        Args:
+            request_id: The request ID to get results for
+            
+        Returns:
+            The return_value from the request task
+        """
+        # Get timeout from client_common if available
+        try:
+            from sky.client import common as client_common
+            timeout = (
+                getattr(client_common, 'API_SERVER_REQUEST_CONNECTION_TIMEOUT_SECONDS', 5),
+                None  # No read timeout
+            )
+        except (ImportError, AttributeError):
+            timeout = (5, None)
+        
+        # Make GET request to /api/get?request_id={request_id}
+        response = self._make_authenticated_request(
+            'GET',
+            f'/api/get?request_id={request_id}',
+            json_data=None,
+            timeout=timeout
+        )
+        
+        # Parse the response
+        if hasattr(response, 'status_code'):
+            if response.status_code == 200:
+                try:
+                    response_json = response.json()
+                    # The response should be a RequestPayload
+                    # We need to decode it using requests_lib.Request.decode
+                    try:
+                        from sky.server import requests_lib
+                        request_task = requests_lib.Request.decode(
+                            payloads.RequestPayload(**response_json)
+                        )
+                    except (ImportError, AttributeError, Exception):
+                        # Fallback: try to extract return_value directly
+                        if isinstance(response_json, dict):
+                            return_value = response_json.get('return_value')
+                            if return_value:
+                                # return_value might be a JSON string
+                                try:
+                                    return json.loads(return_value)
+                                except (json.JSONDecodeError, TypeError):
+                                    return return_value
+                        return response_json
+                    
+                    # Check for errors
+                    error = request_task.get_error() if hasattr(request_task, 'get_error') else None
+                    if error is not None:
+                        error_obj = error.get('object') if isinstance(error, dict) else error
+                        raise RuntimeError(f"Request failed with error: {error_obj}")
+                    
+                    # Check if cancelled
+                    if hasattr(request_task, 'status'):
+                        try:
+                            from sky.server import requests_lib as req_lib
+                            if request_task.status == req_lib.RequestStatus.CANCELLED:
+                                raise RuntimeError(f"Request {request_id} was cancelled")
+                        except (ImportError, AttributeError):
+                            pass
+                    
+                    # Get return value
+                    if hasattr(request_task, 'get_return_value'):
+                        return request_task.get_return_value()
+                    elif hasattr(request_task, 'return_value'):
+                        return_value = request_task.return_value
+                        if isinstance(return_value, str):
+                            try:
+                                return json.loads(return_value)
+                            except json.JSONDecodeError:
+                                return return_value
+                        return return_value
+                    else:
+                        return response_json
+                except Exception as e:
+                    raise RuntimeError(f"Failed to parse response for request {request_id}: {e}")
+            elif response.status_code == 500:
+                try:
+                    response_json = response.json()
+                    detail = response_json.get('detail', response_json)
+                    try:
+                        from sky.server import requests_lib
+                        request_task = requests_lib.Request.decode(
+                            payloads.RequestPayload(**detail)
+                        )
+                        error = request_task.get_error() if hasattr(request_task, 'get_error') else None
+                        if error:
+                            error_obj = error.get('object') if isinstance(error, dict) else error
+                            raise RuntimeError(f"Request failed with error: {error_obj}")
+                    except (ImportError, AttributeError):
+                        pass
+                except Exception:
+                    pass
+                raise RuntimeError(f'Failed to get request {request_id}: {response.status_code} {response.text}')
+            else:
+                raise RuntimeError(f'Failed to get request {request_id}: {response.status_code} {response.text}')
+        else:
+            raise RuntimeError(f'Invalid response for request {request_id}')
 
     def launch_cluster(
         self, cluster_name: str, config: ClusterConfig
@@ -383,12 +493,12 @@ class SkyPilotProvider(Provider):
             try:
                 request_id = self._server_common.get_request_id(response)
                 # For debugging: return early after getting request_id
-                print(f"Got request_id: {request_id}")
-                return ClusterStatus(
-                    cluster_name=cluster_name,
-                    state=ClusterState.UNKNOWN,
-                    status_message=f"Debug: Got request_id {request_id}",
-                )
+                # print(f"Got request_id: {request_id}")
+                # return ClusterStatus(
+                #     cluster_name=cluster_name,
+                #     state=ClusterState.UNKNOWN,
+                #     status_message=f"Debug: Got request_id {request_id}",
+                # )
             except Exception as e:
                 # If get_request_id fails, try to extract from response directly
                 if response_content and isinstance(response_content, dict):
@@ -416,17 +526,21 @@ class SkyPilotProvider(Provider):
         
         # Get the actual result from the request ID
         clusters = []
-        if request_id and self._server_common:
+        if request_id:
             try:
-                # Use server_common.get() to get the actual response
-                request_payload = self._server_common.get(request_id)
-                if request_payload and hasattr(request_payload, 'return_value'):
-                    # return_value is a JSON string of the list of clusters
-                    if request_payload.return_value:
-                        clusters = json.loads(request_payload.return_value)
-                elif request_payload and isinstance(request_payload, (list, dict)):
-                    # Sometimes the response is directly the clusters list
-                    clusters = request_payload if isinstance(request_payload, list) else [request_payload]
+                # Use our custom _get_request_result() to get the actual response
+                # This makes a GET request to /api/get?request_id={request_id}
+                # and returns the return_value from the request task
+                clusters = self._get_request_result(request_id)
+                # The return value should be a list of clusters
+                if not isinstance(clusters, list):
+                    # If it's not a list, try to convert it
+                    if isinstance(clusters, str):
+                        clusters = json.loads(clusters)
+                    elif isinstance(clusters, dict):
+                        clusters = clusters.get("clusters", [clusters])
+                    else:
+                        clusters = [clusters] if clusters else []
             except Exception as e:
                 print(f"Warning: Could not get clusters from request_id {request_id}: {e}")
                 # Fallback: try to parse response directly
@@ -798,15 +912,21 @@ class SkyPilotProvider(Provider):
         
         # Get the actual job records from the request ID
         job_records = []
-        if request_id and self._server_common:
+        if request_id:
             try:
-                # Use server_common.get() to get the actual response
-                # The get() function returns a RequestPayload, which has a 'return_value' field
-                # that contains the actual list of job records.
-                request_payload = self._server_common.get(request_id)
-                if request_payload and request_payload.return_value:
-                    # return_value is a JSON string of the list of job records
-                    job_records = json.loads(request_payload.return_value)
+                # Use our custom _get_request_result() to get the actual response
+                # This makes a GET request to /api/get?request_id={request_id}
+                # and returns the return_value from the request task
+                job_records = self._get_request_result(request_id)
+                # The return value should be a list of job records
+                if not isinstance(job_records, list):
+                    # If it's not a list, try to convert it
+                    if isinstance(job_records, str):
+                        job_records = json.loads(job_records)
+                    elif isinstance(job_records, dict):
+                        job_records = job_records.get("jobs", [job_records])
+                    else:
+                        job_records = [job_records] if job_records else []
             except Exception as e:
                 print(f"Error getting job records from request payload: {e}")
                 # Fallback: try to parse response directly
