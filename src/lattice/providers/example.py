@@ -29,15 +29,15 @@ def example_skypilot():
     config_path = os.path.join(os.path.dirname(__file__), "providers.yaml")
     provider = get_provider("skypilot", config_path=config_path)
 
-    # # Launch a cluster
-    # print("1. Launching cluster...")
-    # cluster_config = ClusterConfig(
-    #     # instance_type="g4dn.xlarge",
-    #     accelerators="RTX3090:1",
-    #     command="echo 'Hello from SkyPilot'",
-    # )
-    # result = provider.launch_cluster("my-cluster", cluster_config)
-    # print(f"   Result: {result}\n")
+    # Launch a cluster
+    print("1. Launching cluster...")
+    cluster_config = ClusterConfig(
+        # instance_type="g4dn.xlarge",
+        accelerators="RTX3090:1",
+        command="echo 'Hello from SkyPilot'",
+    )
+    result = provider.launch_cluster("my-cluster", cluster_config)
+    print(f"   Result: {result}\n")
 
     # # Get cluster status
     # print("2. Getting cluster status...")
@@ -59,22 +59,23 @@ def example_skypilot():
     # job_result = provider.submit_job("my-cluster", job_config)
     # print(f"   Job ID: {job_result.get('job_id')}\n")
 
-    # List jobs
-    print("5. Listing jobs...")
-    jobs = provider.list_jobs("my-cluster")
-    for job in jobs:
-        print(f"   Job {job.job_id}: {job.state} - {job.job_name}")
+    # # List jobs
+    # print("5. Listing jobs...")
+    # jobs = provider.list_jobs("my-cluster")
+    # for job in jobs:
+    #     print(job)
+    #     print(f"   Job {job.job_id}: {job.state} - {job.job_name}")
 
-    # # Get job logs
+    # # # Get job logs
     # if jobs:
     #     print(f"\n6. Getting logs for job {jobs[0].job_id}...")
     #     logs = provider.get_job_logs("my-cluster", jobs[0].job_id, tail_lines=50)
-    #     print(f"   Logs (first 200 chars): {str(logs)[:200]}...\n")
+    #     print(f"   Logs: {str(logs)}...\n")
 
-    # # Stop cluster
-    # print("7. Stopping cluster...")
-    # stop_result = provider.stop_cluster("my-cluster")
-    # print(f"   Result: {stop_result}\n")
+    # Stop cluster
+    print("7. Stopping cluster...")
+    stop_result = provider.stop_cluster("my-cluster")
+    print(f"   Result: {stop_result}\n")
 
 
 def example_slurm():
