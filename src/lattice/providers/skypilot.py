@@ -349,45 +349,106 @@ class SkyPilotProvider(Provider):
         if self.default_entrypoint_command:
             body_json.setdefault("entrypoint_command", self.default_entrypoint_command)
         body_json.setdefault("using_remote_api_server", False)
-        body_json.setdefault("override_skypilot_config", {})
-        
+        body_json.setdefault("override_skypilot_config", {})        
         # Use SkyPilot's make_authenticated_request (matches SDK exactly)
         response = self._make_authenticated_request(
-            'POST', '/status', json_data=body_json, timeout=5
+            'POST', '/status', json_data=body_json, timeout=10
         )
+        
+        # Check response status
+        if hasattr(response, 'status_code'):
+            if response.status_code != 200:
+                return ClusterStatus(
+                    cluster_name=cluster_name,
+                    state=ClusterState.UNKNOWN,
+                    status_message=f"API returned status code {response.status_code}",
+                )
+        
+        # Parse response content
+        response_content = None
+        is_null_response = False
+        if hasattr(response, 'content'):
+            if response.content == b'null' or response.content == b'':
+                is_null_response = True
+            else:
+                try:
+                    response_content = response.json() if hasattr(response, 'json') else None
+                except Exception as e:
+                    print(f"Warning: Could not parse response as JSON: {e}")
+                    response_content = None
         
         # Get request ID using SkyPilot's method (matches SDK exactly)
         request_id = None
         if self._server_common:
             try:
                 request_id = self._server_common.get_request_id(response)
-            except Exception:
-                pass
+                # For debugging: return early after getting request_id
+                print(f"Got request_id: {request_id}")
+                return ClusterStatus(
+                    cluster_name=cluster_name,
+                    state=ClusterState.UNKNOWN,
+                    status_message=f"Debug: Got request_id {request_id}",
+                )
+            except Exception as e:
+                # If get_request_id fails, try to extract from response directly
+                if response_content and isinstance(response_content, dict):
+                    request_id = response_content.get("request_id")
+                # Also check headers
+                if not request_id and hasattr(response, 'headers'):
+                    request_id = (
+                        response.headers.get('X-Request-ID') or
+                        response.headers.get('Request-ID') or
+                        response.headers.get('X-Request-Id')
+                    )
+                if not request_id:
+                    print(f"Warning: Could not extract request_id: {e}")
+                    print(f"Response status: {getattr(response, 'status_code', 'unknown')}")
+                    print(f"Response headers: {getattr(response, 'headers', {})}")
+                    print(f"Response content: {getattr(response, 'content', b'')[:200]}")
+        
+        # If response is null and we don't have a request ID, the cluster likely doesn't exist
+        if is_null_response and not request_id:
+            return ClusterStatus(
+                cluster_name=cluster_name,
+                state=ClusterState.UNKNOWN,
+                status_message="API returned null response - cluster may not exist or request format is incorrect",
+            )
         
         # Get the actual result from the request ID
+        clusters = []
         if request_id and self._server_common:
             try:
                 # Use server_common.get() to get the actual response
-                clusters = self._server_common.get(request_id)
-            except Exception:
+                request_payload = self._server_common.get(request_id)
+                if request_payload and hasattr(request_payload, 'return_value'):
+                    # return_value is a JSON string of the list of clusters
+                    if request_payload.return_value:
+                        clusters = json.loads(request_payload.return_value)
+                elif request_payload and isinstance(request_payload, (list, dict)):
+                    # Sometimes the response is directly the clusters list
+                    clusters = request_payload if isinstance(request_payload, list) else [request_payload]
+            except Exception as e:
+                print(f"Warning: Could not get clusters from request_id {request_id}: {e}")
                 # Fallback: try to parse response directly
                 try:
-                    if hasattr(response, 'json'):
+                    if response_content:
+                        clusters = response_content if isinstance(response_content, list) else response_content.get("clusters", [])
+                    elif hasattr(response, 'json'):
                         result = response.json()
                         clusters = result if isinstance(result, list) else result.get("clusters", [])
-                    else:
-                        clusters = []
-                except Exception:
+                except Exception as parse_error:
+                    print(f"Warning: Could not parse response: {parse_error}")
                     clusters = []
         else:
             # Fallback: try to parse response directly
             try:
-                if hasattr(response, 'json'):
+                if response_content:
+                    clusters = response_content if isinstance(response_content, list) else response_content.get("clusters", [])
+                elif hasattr(response, 'json'):
                     result = response.json()
                     clusters = result if isinstance(result, list) else result.get("clusters", [])
-                else:
-                    clusters = []
-            except Exception:
+            except Exception as e:
+                print(f"Warning: Could not parse response directly: {e}")
                 clusters = []
         
         # Handle empty or invalid responses

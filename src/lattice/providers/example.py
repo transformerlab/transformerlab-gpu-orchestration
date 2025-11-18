@@ -44,37 +44,37 @@ def example_skypilot():
     status = provider.get_cluster_status("my-cluster")
     print(f"   Status: {status.state}, Message: {status.status_message}\n")
 
-    # Get cluster resources
-    print("3. Getting cluster resources...")
-    resources = provider.get_cluster_resources("my-cluster")
-    print(f"   Resources: {resources.num_nodes} nodes, GPUs: {resources.gpus}\n")
+    # # Get cluster resources
+    # print("3. Getting cluster resources...")
+    # resources = provider.get_cluster_resources("my-cluster")
+    # print(f"   Resources: {resources.num_nodes} nodes, GPUs: {resources.gpus}\n")
 
-    # Submit a job
-    print("4. Submitting job...")
-    job_config = JobConfig(
-        command="python train.py",
-        job_name="training-job",
-        env_vars={"CUDA_VISIBLE_DEVICES": "0"},
-    )
-    job_result = provider.submit_job("my-cluster", job_config)
-    print(f"   Job ID: {job_result.get('job_id')}\n")
+    # # Submit a job
+    # print("4. Submitting job...")
+    # job_config = JobConfig(
+    #     command="python train.py",
+    #     job_name="training-job",
+    #     env_vars={"CUDA_VISIBLE_DEVICES": "0"},
+    # )
+    # job_result = provider.submit_job("my-cluster", job_config)
+    # print(f"   Job ID: {job_result.get('job_id')}\n")
 
-    # List jobs
-    print("5. Listing jobs...")
-    jobs = provider.list_jobs("my-cluster")
-    for job in jobs:
-        print(f"   Job {job.job_id}: {job.state} - {job.job_name}")
+    # # List jobs
+    # print("5. Listing jobs...")
+    # jobs = provider.list_jobs("my-cluster")
+    # for job in jobs:
+    #     print(f"   Job {job.job_id}: {job.state} - {job.job_name}")
 
-    # Get job logs
-    if jobs:
-        print(f"\n6. Getting logs for job {jobs[0].job_id}...")
-        logs = provider.get_job_logs("my-cluster", jobs[0].job_id, tail_lines=50)
-        print(f"   Logs (first 200 chars): {str(logs)[:200]}...\n")
+    # # Get job logs
+    # if jobs:
+    #     print(f"\n6. Getting logs for job {jobs[0].job_id}...")
+    #     logs = provider.get_job_logs("my-cluster", jobs[0].job_id, tail_lines=50)
+    #     print(f"   Logs (first 200 chars): {str(logs)[:200]}...\n")
 
-    # Stop cluster
-    print("7. Stopping cluster...")
-    stop_result = provider.stop_cluster("my-cluster")
-    print(f"   Result: {stop_result}\n")
+    # # Stop cluster
+    # print("7. Stopping cluster...")
+    # stop_result = provider.stop_cluster("my-cluster")
+    # print(f"   Result: {stop_result}\n")
 
 
 def example_slurm():
