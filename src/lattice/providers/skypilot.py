@@ -2,6 +2,7 @@
 
 import requests
 import json
+import re
 from typing import Dict, Any, Optional, Union, List
 
 # SkyPilot SDK imports - try to import, but allow graceful failure if not available
@@ -610,7 +611,7 @@ class SkyPilotProvider(Provider):
             last_use=cluster_data.get("last_use"),
             autostop=cluster_data.get("autostop"),
             num_nodes=cluster_data.get("num_nodes"),
-            resources_str=cluster_data.get("resources_str"),
+            resources_str=cluster_data.get("resources_str_full"),
             provider_data=cluster_data,
         )
 
@@ -619,20 +620,81 @@ class SkyPilotProvider(Provider):
         # SkyPilot doesn't have a dedicated resources endpoint,
         # so we get it from status
         status = self.get_cluster_status(cluster_name)
-        resources_str = status.resources_str or ""
-
-        # Try to parse resources from resources_str
-        # This is a simplified parser - may need enhancement
+        
+        # Use resources_str_full if available, otherwise fall back to resources_str
+        resources_str = status.provider_data.get("resources_str_full") or status.resources_str or ""
+        
+        # Also check provider_data for direct resource fields
+        provider_data = status.provider_data or {}
+        num_nodes = status.num_nodes or provider_data.get("nodes") or 1
+        
+        # Parse resources from resources_str_full
+        # Format: "1x(gpus=RTX3090:1, cpus=4, mem=16, 4CPU--16GB--RTX3090:1, disk=256)"
         gpus = []
-        if "GPU" in resources_str.upper():
-            # Basic parsing - can be enhanced
-            gpus.append({"type": "unknown", "count": 1})
+        cpus = None
+        memory_gb = None
+        disk_gb = None
+        
+        if resources_str:
+            # Extract num_nodes from prefix (e.g., "1x(...)" or "2x(...)")
+            node_match = re.match(r"(\d+)x\(", resources_str)
+            if node_match:
+                num_nodes = int(node_match.group(1))
+            
+            # Extract GPUs: gpus=RTX3090:1 or gpus=V100:2
+            gpu_match = re.search(r"gpus=([\w\d]+):(\d+)", resources_str)
+            if gpu_match:
+                gpu_type = gpu_match.group(1)
+                gpu_count = int(gpu_match.group(2))
+                gpus.append({"gpu": gpu_type, "count": gpu_count})
+            
+            # Extract CPUs: cpus=4
+            cpu_match = re.search(r"cpus=([\d.]+)", resources_str)
+            if cpu_match:
+                cpus = int(float(cpu_match.group(1)))
+            
+            # Extract Memory: mem=16 (in GB)
+            mem_match = re.search(r"mem=([\d.]+)", resources_str)
+            if mem_match:
+                memory_gb = float(mem_match.group(1))
+            
+            # Extract Disk: disk=256 (in GB)
+            disk_match = re.search(r"disk=([\d.]+)", resources_str)
+            if disk_match:
+                disk_gb = int(float(disk_match.group(1)))
+        
+        # Also try to get from provider_data directly if available
+        if not cpus and provider_data.get("cpus"):
+            try:
+                cpus = int(float(provider_data["cpus"]))
+            except (ValueError, TypeError):
+                pass
+        
+        if not gpus and provider_data.get("accelerators"):
+            try:
+                # accelerators might be a string like "{'RTX3090': 1}" or a dict
+                accel_str = provider_data["accelerators"]
+                if isinstance(accel_str, str):
+                    # Try to parse string representation
+                    import ast
+                    accel_dict = ast.literal_eval(accel_str)
+                else:
+                    accel_dict = accel_str
+                
+                if isinstance(accel_dict, dict):
+                    for gpu_type, count in accel_dict.items():
+                        gpus.append({"gpu": gpu_type, "count": int(count)})
+            except (ValueError, TypeError, SyntaxError):
+                pass
 
         return ResourceInfo(
             cluster_name=cluster_name,
             gpus=gpus,
-            num_nodes=status.num_nodes,
-            provider_data={"resources_str": resources_str},
+            cpus=cpus,
+            memory_gb=memory_gb,
+            disk_gb=disk_gb,
+            num_nodes=num_nodes,
+            provider_data={"resources_str": resources_str, **provider_data},
         )
 
     def submit_job(self, cluster_name: str, job_config: JobConfig) -> Dict[str, Any]:
