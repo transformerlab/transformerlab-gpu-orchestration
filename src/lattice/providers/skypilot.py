@@ -5,6 +5,17 @@ import json
 import re
 from typing import Dict, Any, Optional, Union, List
 
+from .base import Provider
+from .models import (
+    ClusterConfig,
+    JobConfig,
+    ClusterStatus,
+    JobInfo,
+    ResourceInfo,
+    ClusterState,
+    JobState,
+)
+
 # SkyPilot SDK imports - try to import, but allow graceful failure if not available
 SKYPILOT_AVAILABLE = False
 SKYPILOT_IMPORT_ERROR = None
@@ -17,25 +28,11 @@ try:
     from sky.backends import backend_utils
     from sky.server import common as server_common
     from sky.utils import common as sky_common
-    # We'll implement get() ourselves since we need to use our custom server_url
-    # The SDK's get() uses server_common.make_authenticated_request which uses
-    # the default API server URL, not our custom one
     SKYPILOT_AVAILABLE = True
-except ImportError as e:
-    raise ImportError(f"SkyPilot SDK is required. Install with: pip install skypilot")
-except Exception as e:
-    raise ImportError(f"SkyPilot SDK is required. Install with: pip install skypilot")
-
-from .base import Provider
-from .models import (
-    ClusterConfig,
-    JobConfig,
-    ClusterStatus,
-    JobInfo,
-    ResourceInfo,
-    ClusterState,
-    JobState,
-)
+except ImportError:
+    raise ImportError("SkyPilot SDK is required. Install with: pip install skypilot")
+except Exception:
+    raise ImportError("SkyPilot SDK is required. Install with: pip install skypilot")
 
 
 class SkyPilotProvider(Provider):
@@ -108,7 +105,7 @@ class SkyPilotProvider(Provider):
                     method, endpoint, **kwargs
                 )
                 return response
-            except Exception as e:
+            except Exception:
                 # Fall back to manual request if SkyPilot's method fails
                 pass
         
@@ -826,13 +823,13 @@ class SkyPilotProvider(Provider):
             stream=True
         )
         
-        # Get request ID using SkyPilot's method (matches SDK exactly)
-        request_id = None
-        if self._server_common:
-            try:
-                request_id = self._server_common.get_request_id(response)
-            except Exception:
-                pass
+        # # Get request ID using SkyPilot's method (matches SDK exactly)
+        # request_id = None
+        # if self._server_common:
+        #     try:
+        #         request_id = self._server_common.get_request_id(response)
+        #     except Exception:
+        #         pass
         
         if follow:
             # For streaming, return an iterator

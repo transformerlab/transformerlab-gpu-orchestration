@@ -151,7 +151,7 @@ class SLURMProvider(Provider):
         """Get cluster status using sinfo."""
         if self.mode == "ssh":
             # Use sinfo to get cluster status
-            command = f"sinfo -h -o '%P %A %D %T'"
+            command = "sinfo -h -o '%P %A %D %T'"
             output = self._ssh_execute(command)
             # Parse sinfo output
             # Format: PARTITION AVAIL NODES STATE
@@ -302,7 +302,7 @@ class SLURMProvider(Provider):
         """Cancel a job using scancel."""
         if self.mode == "ssh":
             command = f"scancel {job_id}"
-            output = self._ssh_execute(command)
+            self._ssh_execute(command)
             return {"job_id": job_id, "status": "cancelled"}
         else:
             # REST API
