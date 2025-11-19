@@ -86,27 +86,27 @@ def example_slurm():
     config_path = os.path.join(os.path.dirname(__file__), "providers.yaml")
     provider = get_provider("slurm-ssh", config_path=config_path)
 
-    # # Get cluster status
-    # print("1. Getting cluster status...")
-    # status = provider.get_cluster_status("slurm-cluster")
-    # print(f"   Status: {status.state}\n")
+    # Get cluster status
+    print("1. Getting cluster status...")
+    status = provider.get_cluster_status("slurm-cluster")
+    print(f"   Status: {status.state}\n")
 
-    # # Get cluster resources
-    # print("2. Getting cluster resources...")
-    # resources = provider.get_cluster_resources("slurm-cluster")
-    # gpu_str = f", GPUs: {resources.gpus}" if resources.gpus else ""
-    # print(f"   Resources: {resources.num_nodes} nodes, CPUs: {resources.cpus}{gpu_str}\n")
+    # Get cluster resources
+    print("2. Getting cluster resources...")
+    resources = provider.get_cluster_resources("slurm-cluster")
+    gpu_str = f", GPUs: {resources.gpus}" if resources.gpus else ""
+    print(f"   Resources: {resources.num_nodes} nodes, CPUs: {resources.cpus}{gpu_str}\n")
 
-    # # Submit a job
-    # print("3. Submitting job...")
-    # job_config = JobConfig(
-    #     command="srun python -c 'print(\"Hello, World!\")'",
-    #     job_name="slurm-training",
-    #     num_nodes=1,
-    #     env_vars={"CUDA_VISIBLE_DEVICES": "0"},
-    # )
-    # job_result = provider.submit_job("slurm-cluster", job_config)
-    # print(f"   Job ID: {job_result.get('job_id')}\n")
+    # Submit a job
+    print("3. Submitting job...")
+    job_config = JobConfig(
+        command="srun python -c 'print(\"Hello, World!\")'",
+        job_name="slurm-training",
+        num_nodes=1,
+        env_vars={"CUDA_VISIBLE_DEVICES": "0"},
+    )
+    job_result = provider.submit_job("slurm-cluster", job_config)
+    print(f"   Job ID: {job_result.get('job_id')}\n")
 
     # List jobs
     print("4. Listing jobs...")
