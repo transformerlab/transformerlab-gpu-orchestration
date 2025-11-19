@@ -160,9 +160,9 @@ class SLURMProvider(Provider):
             else:
                 state = ClusterState.UNKNOWN
         else:
-            # REST API - use /slurm/v0.0.38/partitions or similar
+            # REST API - use /slurm/v0.0.39/partitions or similar
             try:
-                result = self._rest_request("GET", "/slurm/v0.0.38/partitions")
+                result = self._rest_request("GET", "/slurm/v0.0.39/partitions")
                 state = ClusterState.UP if result else ClusterState.UNKNOWN
             except Exception:
                 state = ClusterState.UNKNOWN
@@ -227,7 +227,7 @@ class SLURMProvider(Provider):
         else:
             # REST API
             try:
-                result = self._rest_request("GET", "/slurm/v0.0.38/nodes")
+                result = self._rest_request("GET", "/slurm/v0.0.39/nodes")
                 # Parse REST API response
                 gpus = []
                 cpus = None
@@ -279,14 +279,14 @@ class SLURMProvider(Provider):
                     job_id = line.split()[-1]
                     break
         else:
-            # REST API - POST to /slurm/v0.0.38/job/submit
+            # REST API - POST to /slurm/v0.0.39/job/submit
             data = {
                 "script": script_content,
                 "job": {
                     "name": job_config.job_name,
                 },
             }
-            result = self._rest_request("POST", "/slurm/v0.0.38/job/submit", data=data)
+            result = self._rest_request("POST", "/slurm/v0.0.39/job/submit", data=data)
             job_id = result.get("job_id")
 
         return {"job_id": job_id, "cluster_name": cluster_name}
@@ -310,7 +310,7 @@ class SLURMProvider(Provider):
             return output
         else:
             # REST API
-            result = self._rest_request("GET", f"/slurm/v0.0.38/job/{job_id}")
+            result = self._rest_request("GET", f"/slurm/v0.0.39/job/{job_id}")
             return result.get("logs", str(result))
 
     def cancel_job(self, cluster_name: str, job_id: Union[str, int]) -> Dict[str, Any]:
@@ -321,7 +321,7 @@ class SLURMProvider(Provider):
             return {"job_id": job_id, "status": "cancelled"}
         else:
             # REST API
-            result = self._rest_request("DELETE", f"/slurm/v0.0.38/job/{job_id}")
+            result = self._rest_request("DELETE", f"/slurm/v0.0.39/job/{job_id}")
             return result
 
     def list_jobs(self, cluster_name: str) -> List[JobInfo]:
@@ -355,7 +355,7 @@ class SLURMProvider(Provider):
             return jobs
         else:
             # REST API
-            result = self._rest_request("GET", "/slurm/v0.0.38/jobs")
+            result = self._rest_request("GET", "/slurm/v0.0.39/jobs")
             jobs = []
             for job_data in result.get("jobs", []):
                 state_str = job_data.get("job_state", "UNKNOWN").upper()
