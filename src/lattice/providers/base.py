@@ -28,7 +28,7 @@ class Provider(ABC):
         Returns:
             Dictionary with launch result (e.g., request_id, cluster_name)
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def stop_cluster(self, cluster_name: str) -> Dict[str, Any]:
@@ -41,7 +41,7 @@ class Provider(ABC):
         Returns:
             Dictionary with stop result
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_cluster_status(
@@ -56,7 +56,7 @@ class Provider(ABC):
         Returns:
             ClusterStatus object with cluster information
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_cluster_resources(
@@ -71,7 +71,7 @@ class Provider(ABC):
         Returns:
             ResourceInfo object with resource details
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def submit_job(
@@ -87,7 +87,7 @@ class Provider(ABC):
         Returns:
             Dictionary with job submission result (e.g., job_id)
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_job_logs(
@@ -109,7 +109,7 @@ class Provider(ABC):
         Returns:
             Log content as string, or stream object if follow=True
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def cancel_job(
@@ -125,7 +125,7 @@ class Provider(ABC):
         Returns:
             Dictionary with cancellation result
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def list_jobs(self, cluster_name: str) -> List[JobInfo]:
@@ -138,5 +138,5 @@ class Provider(ABC):
         Returns:
             List of JobInfo objects
         """
-        pass
+        raise NotImplementedError
 
