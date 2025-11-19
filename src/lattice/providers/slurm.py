@@ -145,9 +145,7 @@ class SLURMProvider(Provider):
             "status": "stopped",
         }
 
-    def get_cluster_status(
-        self, cluster_name: str
-    ) -> ClusterStatus:
+    def get_cluster_status(self, cluster_name: str) -> ClusterStatus:
         """Get cluster status using sinfo."""
         if self.mode == "ssh":
             # Use sinfo to get cluster status
@@ -175,9 +173,7 @@ class SLURMProvider(Provider):
             status_message="SLURM cluster status",
         )
 
-    def get_cluster_resources(
-        self, cluster_name: str
-    ) -> ResourceInfo:
+    def get_cluster_resources(self, cluster_name: str) -> ResourceInfo:
         """Get cluster resources using sinfo."""
         if self.mode == "ssh":
             # Use sinfo to get resource information
@@ -194,15 +190,43 @@ class SLURMProvider(Provider):
             if lines and lines[0]:
                 parts = lines[0].split()
                 if len(parts) >= 5:
-                    gres = parts[1]  # GPU resources
-                    if "gpu" in gres.lower():
-                        # Parse GPU count
-                        gpus.append({"type": "gpu", "count": 1})
+                    # Parse GRES (GPU resources) - format: "gpu:2" or "gpu:1"
+                    gres = parts[1].strip() if len(parts) > 1 else ""
+                    if gres and "gpu" in gres.lower():
+                        # Extract GPU count from format like "gpu:2"
+                        try:
+                            if ":" in gres:
+                                gpu_type, gpu_count_str = gres.split(":", 1)
+                                gpu_count = int(gpu_count_str.strip())
+                            else:
+                                # Fallback if format is just "gpu"
+                                gpu_count = 1
+                                print(f"GPU without count, defaulting to 1")
+                            gpus.append({"type": "gpu", "count": gpu_count})
+                        except (ValueError, AttributeError) as e:
+                            # If parsing fails, default to 1 GPU
+                            print(f"Error parsing GPU: {e}")
+                            gpus.append({"type": "gpu", "count": 1})
+                    else:
+                        print(f"No GPU found in gres: '{gres}'")
+
+                    # Parse CPUs
                     cpus = int(parts[2]) if parts[2].isdigit() else None
-                    memory_mb = int(parts[3]) if parts[3].isdigit() else None
-                    if memory_mb:
-                        memory_gb = memory_mb / 1024
+
+                    # Parse memory - sinfo %m outputs in MB, but handle small values
+                    # that might already be in GB (some sinfo versions/configs differ)
+                    memory_value = int(parts[3]) if parts[3].isdigit() else None
+                    if memory_value:
+                        # If value is very small (< 100), assume it's already in GB
+                        # Otherwise assume it's in MB and convert to GB
+                        if memory_value < 100:
+                            memory_gb = float(memory_value)
+                        else:
+                            memory_gb = memory_value / 1024.0
+
+                    # Parse number of nodes
                     num_nodes = int(parts[4]) if parts[4].isdigit() else None
+            
         else:
             # REST API
             try:
@@ -228,9 +252,7 @@ class SLURMProvider(Provider):
             num_nodes=num_nodes,
         )
 
-    def submit_job(
-        self, cluster_name: str, job_config: JobConfig
-    ) -> Dict[str, Any]:
+    def submit_job(self, cluster_name: str, job_config: JobConfig) -> Dict[str, Any]:
         """Submit a job using sbatch."""
         # Create a temporary SLURM script
         script_content = "#!/bin/bash\n"
@@ -291,14 +313,10 @@ class SLURMProvider(Provider):
             return output
         else:
             # REST API
-            result = self._rest_request(
-                "GET", f"/slurm/v0.0.38/job/{job_id}"
-            )
+            result = self._rest_request("GET", f"/slurm/v0.0.38/job/{job_id}")
             return result.get("logs", str(result))
 
-    def cancel_job(
-        self, cluster_name: str, job_id: Union[str, int]
-    ) -> Dict[str, Any]:
+    def cancel_job(self, cluster_name: str, job_id: Union[str, int]) -> Dict[str, Any]:
         """Cancel a job using scancel."""
         if self.mode == "ssh":
             command = f"scancel {job_id}"
@@ -306,9 +324,7 @@ class SLURMProvider(Provider):
             return {"job_id": job_id, "status": "cancelled"}
         else:
             # REST API
-            result = self._rest_request(
-                "DELETE", f"/slurm/v0.0.38/job/{job_id}"
-            )
+            result = self._rest_request("DELETE", f"/slurm/v0.0.38/job/{job_id}")
             return result
 
     def list_jobs(self, cluster_name: str) -> List[JobInfo]:
@@ -365,4 +381,3 @@ class SLURMProvider(Provider):
                     )
                 )
             return jobs
-
