@@ -201,14 +201,11 @@ class SLURMProvider(Provider):
                             else:
                                 # Fallback if format is just "gpu"
                                 gpu_count = 1
-                                print(f"GPU without count, defaulting to 1")
                             gpus.append({"type": "gpu", "count": gpu_count})
                         except (ValueError, AttributeError) as e:
                             # If parsing fails, default to 1 GPU
                             print(f"Error parsing GPU: {e}")
                             gpus.append({"type": "gpu", "count": 1})
-                    else:
-                        print(f"No GPU found in gres: '{gres}'")
 
                     # Parse CPUs
                     cpus = int(parts[2]) if parts[2].isdigit() else None

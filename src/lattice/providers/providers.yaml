@@ -12,19 +12,19 @@ providers:
       SKYPILOT_USER: "deep.gandhi"
     default_entrypoint_command: ""  # Optional default entrypoint
 
-  # SLURM provider with REST API
-  slurm-rest:
-    type: slurm
-    mode: rest
-    rest_url: http://slurm-head.example.com:6820
-    api_token: null  # Optional: set if authentication is required
+  # # SLURM provider with REST API
+  # slurm-rest:
+  #   type: slurm
+  #   mode: rest
+  #   rest_url: http://slurm-head.example.com:6820
+  #   api_token: null  # Optional: set if authentication is required
 
   # SLURM provider with SSH access
   slurm-ssh:
     type: slurm
     mode: ssh
-    ssh_host: slurm-head.example.com
-    ssh_user: myuser
+    ssh_host: <machine-ip>
+    ssh_user: slurm
     ssh_key_path: ~/.ssh/id_rsa  # Path to SSH private key
     ssh_port: 22
 
